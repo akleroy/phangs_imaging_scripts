@@ -32,6 +32,11 @@ except NameError:
     do_copy = True
 
 try:
+    do_process
+except NameError:    
+    do_process = True
+
+try:
     do_mask
 except NameError:    
     do_mask = True
@@ -180,7 +185,7 @@ except NameError:
     print "Please specify a target round beam for continuum (target_beam_cont string)."
  
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# COPY DATA FROM ITS ORIGINAL LOCATION AND CARVE IT UP
+# COPY DATA FROM ITS ORIGINAL LOCATION
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 if do_copy:
@@ -213,15 +218,21 @@ if do_copy:
         counter = 1
         to_concat = []
         
-        for this_file in calibrated_file:
-            infile = calibrated_file[counter-1]
+        for this_file in calibrated_7m_file:
+            infile = calibrated_7m_file[counter-1]
             outfile = gal+'_'+str(counter)+'_7m.ms'
             os.system('rm -rf '+outfile)
             os.system('rm -rf '+outfile+'.flagversions')
             os.system('scp -r '+infile+' '+outfile)
             
             counter += 1
-        
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# PROCESS DATA INTO THE MEASUREMENT SETS TO IMAGE
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+if do_process:
+      
     # ------------------------------------------------
     # CO 2-1
     # ------------------------------------------------
@@ -240,6 +251,7 @@ if do_copy:
         this_outfile = gal+'_'+str(counter)+'_co21_bin.ms'
         
         os.system('rm -rf '+this_outfile)
+        os.system('rm -rf '+this_outfile+'.flagversions')
         split(vis=this_infile
               , field=field
               , datacolumn='DATA'
@@ -259,6 +271,7 @@ if do_copy:
             this_outfile = gal+'_'+str(counter)+'_7m_co21_bin.ms'
             
             os.system('rm -rf '+this_outfile)
+            os.system('rm -rf '+this_outfile+'.flagversions')
             split(vis=this_infile
                   , field=field_7m
                   , datacolumn='DATA'
@@ -270,12 +283,14 @@ if do_copy:
             counter += 1
 
     os.system('rm -rf '+gal+'_co21_bin.ms')
+    os.system('rm -rf '+gal+'_co21_bin.ms.flagversions')
     concat(vis=to_concat,
            concatvis=gal+'_co21_bin.ms')
 
     # Regrid CO 2-1 to a regular, 2.5km/s velocity grid
 
     os.system('rm -rf '+gal+'_co21.ms')
+    os.system('rm -rf '+gal+'_co21.ms.flagversions')
     mstransform(vis=gal+'_co21_bin.ms',
                 datacolumn='DATA',
                 outputvis=gal+'_co21.ms',
@@ -309,6 +324,7 @@ if do_copy:
             this_outfile = gal+'_'+str(counter)+'_c18o_bin.ms'
 
             os.system('rm -rf '+this_outfile)
+            os.system('rm -rf '+this_outfile+'.flagversions')
             split(vis=this_infile
                   , field=field
                   , datacolumn='DATA'
@@ -328,6 +344,7 @@ if do_copy:
                 this_outfile = gal+'_'+str(counter)+'_7m_c18o_bin.ms'
             
                 os.system('rm -rf '+this_outfile)
+                os.system('rm -rf '+this_outfile+'.flagversions')
                 split(vis=this_infile
                       , field=field_7m
                       , datacolumn='DATA'
@@ -338,12 +355,14 @@ if do_copy:
                 counter += 1
         
         os.system('rm -rf '+gal+'_c18o_bin.ms')
+        os.system('rm -rf '+gal+'_c18o_bin.ms.flagversions')
         concat(vis=to_concat,
                concatvis=gal+'_c18o_bin.ms')
                 
         # Regrid C18O to a regular, 5km/s grid
 
         os.system('rm -rf '+gal+'_c18o21.ms')
+        os.system('rm -rf '+gal+'_c18o21.ms.flagversions')
         mstransform(vis=gal+'_c18o_bin.ms',
                     datacolumn='DATA',
                     outputvis=gal+'_c18o21.ms',
@@ -402,6 +421,7 @@ if do_copy:
                 this_outfile = gal+'_'+str(counter)+'_7m_cont_temp.ms'
                 
                 os.system('rm -rf '+this_outfile)
+                os.system('rm -rf '+this_outfile+'.flagversions')
                 split(vis=this_infile
                       , field=field_7m
                       , datacolumn='DATA'
@@ -422,11 +442,13 @@ if do_copy:
                 counter += 1
         
         os.system('rm -rf '+gal+'_cont_temp.ms')
+        os.system('rm -rf '+gal+'_cont_temp.ms.flagversions')
         concat(vis=to_concat,
                concatvis=gal+'_cont_temp.ms')
 
     # Average to only one channel per spectral window.
     os.system('rm -rf '+gal+'_cont.ms')
+    os.system('rm -rf '+gal+'_cont.ms.flagversions')
     split(vis=gal+'_cont_temp.ms' 
           , datacolumn='DATA'
           , width=4000 
@@ -460,6 +482,7 @@ if do_copy:
     # ......................................
 
     os.system('rm -rf '+gal+'_chan0_co21.ms')
+    os.system('rm -rf '+gal+'_chan0_co21.ms.flagversions')
     split(vis=gal+'_co21.ms' 
           , datacolumn='DATA'
           , width=4000, timebin='120s'
@@ -467,6 +490,7 @@ if do_copy:
 
     if has_c18o:
         os.system('rm -rf '+gal+'_chan0_c18o21.ms')
+        os.system('rm -rf '+gal+'_chan0_c18o21.ms.flagversions')
         split(vis=gal+'_c18o21.ms' 
               , datacolumn='DATA'
               , width=4000, timebin='120s'

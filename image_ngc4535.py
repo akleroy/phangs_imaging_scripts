@@ -2,9 +2,9 @@
 # Control Flow
 # --------------------------------------
 
-do_copy = True
+do_copy = False
+do_process = False
 do_cleanup = False
-split_mosaic = False
 has_7m = True
 
 do_mask = False
@@ -20,15 +20,18 @@ do_taper = True
 # --------------------------------------
 
 # ... original data
-calibrated_file = '../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cd/calibrated/calibrated_final.ms'
-calibrated_7m_file = '../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms'
+calibrated_file = ['../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cd/calibrated/calibrated_final.ms']
+calibrated_7m_file = ['../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms']
 
 # ... SPW and field labeling
 field = ''
 field_7m = ''
+co21_spw = '2'
+c18o_spw = '3'
 co21_spw_7m = '0,4,8,12'
 c18o_spw_7m = '2,6,10,14'
 
+# ... flagging covering the line in the continuum image
 flag_co21 = '2:200~550'
 flag_c18o21 = '3:15~50'
 flag_co21_7m = '0:200~550'
