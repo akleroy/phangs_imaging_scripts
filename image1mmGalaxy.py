@@ -76,11 +76,6 @@ except NameError:
     print "Please define a calibrated data file (calibrated_file string)."
 
 try:
-    split_mosaic
-except NameError:
-    print "Please indicate if the file is a split mosaic (split_mosaic=False)."
-
-try:
     co21_spw
 except NameError:
     print "Defaulting CO21 SPW to 2 (co21_spw='2')."
@@ -128,12 +123,26 @@ except NameError:
 try:
     flag_co21
 except NameError:
-    print "Please specify flagging to remove 12CO from the continuum (flag_co21 string)."
+    print "Assume no flagging for co21 in the continuum (flag_co21 string = '')."
+    flag_co21 = ''
 
 try:
     flag_c18o21
 except NameError:
-    print "Please specify flagging to remove C18O from the continuum (flag_c18o21 string)."
+    print "Assume no flagging for c18o21 in the continuum (flag_c18o21 string = '')."
+    flag_c18o21 = ''
+
+try:
+    flag_co21_7m
+except NameError:
+    print "Assume no flagging for co21 in the 7m continuum (flag_co21_7m string = '')."
+    flag_co21_7m = ''
+
+try:
+    flag_c18o21_7m
+except NameError:
+    print "Assume no flagging for c18o21 in the 7m continuum (flag_c18o21_7m string = '')."
+    flag_c18o21_7m = ''
 
 try:
     phase_center
@@ -186,48 +195,32 @@ if do_copy:
 
     print "... Copying from original calibrated data."
 
-    if split_mosaic:
-        print "... ... treating this as a split mosaic."
+    counter = 1
+    to_concat = []
+
+    for this_file in calibrated_file:
+        infile = calibrated_file[counter-1]
+        outfile = gal+'_'+str(counter)+'.ms'
+        os.system('rm -rf '+outfile)
+        os.system('rm -rf '+outfile+'.flagversions')
+        os.system('scp -r '+infile+' '+outfile)
+            
+        counter += 1
+
+    if has_7m:
+        print "... ... copying the 7m data."
 
         counter = 1
         to_concat = []
-
+        
         for this_file in calibrated_file:
             infile = calibrated_file[counter-1]
-            outfile = gal+'_'+str(counter)+'.ms'
+            outfile = gal+'_'+str(counter)+'_7m.ms'
             os.system('rm -rf '+outfile)
             os.system('rm -rf '+outfile+'.flagversions')
             os.system('scp -r '+infile+' '+outfile)
             
             counter += 1
-    else:
-        print "... ... treating this as a single mosaic."
-        os.system('rm -rf '+gal+'.ms')
-        os.system('rm -rf '+gal+'.ms.flagversions')
-        os.system('scp -r '+calibrated_file+' '+gal+'.ms')
-
-    if has_7m:
-        print "... ... copying the 7m data."
-
-        if split_mosaic:
-            print "... ... treating this as a split mosaic."
-
-            counter = 1
-            to_concat = []
-
-            for this_file in calibrated_file:
-                infile = calibrated_file[counter-1]
-                outfile = gal+'_'+str(counter)+'_7m.ms'
-                os.system('rm -rf '+outfile)
-                os.system('rm -rf '+outfile+'.flagversions')
-                os.system('scp -r '+infile+' '+outfile)
-                
-                counter += 1
-        else:
-            print "... ... treating this as a single mosaic."
-            os.system('rm -rf '+gal+'_7m.ms')
-            os.system('rm -rf '+gal+'_7m.ms.flagversions')
-            os.system('scp -r '+calibrated_7m_file+' '+gal+'_7m.ms')
         
     # ------------------------------------------------
     # CO 2-1
@@ -238,79 +231,47 @@ if do_copy:
     # Split out the CO 2-1, averaging in time and frequency to make
     # the data volume smaller.
 
-    if split_mosaic:
+    counter = 1
+    to_concat = []
 
+    for this_file in calibrated_file:
+        
+        this_infile =  gal+'_'+str(counter)+'.ms'
+        this_outfile = gal+'_'+str(counter)+'_co21_bin.ms'
+        
+        os.system('rm -rf '+this_outfile)
+        split(vis=this_infile
+              , field=field
+              , datacolumn='DATA'
+              , spw=co21_spw, timebin='120s'
+              , outputvis=this_outfile)
+        
+        to_concat.append(this_outfile)
+
+        counter += 1
+        
+    if has_7m:
+            
         counter = 1
-        to_concat = []
+        for this_file in calibrated_7m_file:
 
-        for this_file in calibrated_file:
-                
-            this_infile =  gal+'_'+str(counter)+'.ms'
-            this_outfile = gal+'_'+str(counter)+'_co21_bin.ms'
+            this_infile =  gal+'_'+str(counter)+'_7m.ms'
+            this_outfile = gal+'_'+str(counter)+'_7m_co21_bin.ms'
             
             os.system('rm -rf '+this_outfile)
             split(vis=this_infile
-                  , field=field
+                  , field=field_7m
                   , datacolumn='DATA'
-                  , spw=co21_spw, timebin='120s'
+                  , spw=co21_spw_7m, timebin='120s'
                   , outputvis=this_outfile)
             
             to_concat.append(this_outfile)
 
             counter += 1
-        
-        if has_7m:
-            
-            counter = 1
-            for this_file in calibrated_7m_file:
 
-                this_infile =  gal+'_'+str(counter)+'_7m.ms'
-                this_outfile = gal+'_'+str(counter)+'_7m_co21_bin.ms'
-            
-                os.system('rm -rf '+this_outfile)
-                split(vis=this_infile
-                      , field=field_7m
-                      , datacolumn='DATA'
-                      , spw=co21_spw_7m, timebin='120s'
-                      , outputvis=this_outfile)
-            
-                to_concat.append(this_outfile)
-
-                counter += 1
-
-        os.system('rm -rf '+gal+'_co21_bin.ms')
-        concat(vis=to_concat,
-               concatvis=gal+'_co21_bin.ms')
-
-    else:
-
-        print "... ... treating this as a single mosaic."
-
-        if has_7m:
-            outputvis = gal+'_12m_co21_bin.ms'
-        else:
-            outputvis = gal+'_co21_bin.ms'
-
-        os.system('rm -rf '+outputvis)        
-        split(vis=gal+'.ms' 
-              , datacolumn='DATA'
-              , spw=co21_spw, width=5, timebin='120s'
-              , outputvis=outputivs
-              , field=field)
-
-        if has_7m:
-            outputvis = gal+'_7m_co21_bin.ms'
-            os.system('rm -rf '+outputvis)        
-            split(vis=gal+'_7m.ms'
-                  , datacolumn='DATA'
-                  , spw=co21_spw_7m, width=5, timebin='120s'
-                  , outputvis=outputivs
-                  , field=field_7m)
-            
-            os.system('rm -rf '+gal+'_co21_bin.ms')
-            concat(vis=[gal+'_12m_co21_bin.ms',
-                        gal+'_7m_co21_bin.ms']
-                   concatvis=gal+'_co21_bin.ms')
+    os.system('rm -rf '+gal+'_co21_bin.ms')
+    concat(vis=to_concat,
+           concatvis=gal+'_co21_bin.ms')
 
     # Regrid CO 2-1 to a regular, 2.5km/s velocity grid
 
@@ -338,78 +299,47 @@ if do_copy:
         # Split out the C18O 2-1
 
         print "... Processing the C18O 2-1 into an MS appropriate for imaging."
-
-        if split_mosaic:
-            print "... ... treating this as a split mosaic."
-
-            counter = 1
-            to_concat = []
-
-            for this_file in calibrated_file:
-                
-                this_infile =  gal+'_'+str(counter)+'.ms'
-                this_outfile = gal+'_'+str(counter)+'_c18o_bin.ms'
-
-                os.system('rm -rf '+this_outfile)
-                split(vis=this_infile
-                      , field=field
-                      , datacolumn='DATA'
-                      , spw=c18o_spw, timebin='120s'
-                      , outputvis=this_outfile)
-
-                to_concat.append(this_outfile)
-
-                counter += 1
-
-            if has_7m:
-                
-                counter = 1
-                for this_file in calibrated_7m_file:
-
-                    this_infile =  gal+'_'+str(counter)+'_7m.ms'
-                    this_outfile = gal+'_'+str(counter)+'_7m_c18o_bin.ms'
-            
-                    os.system('rm -rf '+this_outfile)
-                    split(vis=this_infile
-                          , field=field_7m
-                          , datacolumn='DATA'
-                          , spw=c18o_spw_7m, timebin='120s'
-                          , outputvis=this_outfile)
-            
-                    to_concat.append(this_outfile)
-                    counter += 1
         
-            os.system('rm -rf '+gal+'_c18o_bin.ms')
-            concat(vis=to_concat,
-                   concatvis=gal+'_c18o_bin.ms')
-        else:
-            print "... ... treating this as a single mosaic."
+        counter = 1
+        to_concat = []
 
-            if has_7m:
-                outputvis = gal+'_12m_c18o_bin.ms'
-            else:
-                outputvis = gal+'_c18o_bin.ms'
+        for this_file in calibrated_file:
+                
+            this_infile =  gal+'_'+str(counter)+'.ms'
+            this_outfile = gal+'_'+str(counter)+'_c18o_bin.ms'
 
-            os.system('rm -rf '+outputvis)
-            split(vis=gal+'.ms' 
+            os.system('rm -rf '+this_outfile)
+            split(vis=this_infile
                   , field=field
                   , datacolumn='DATA'
                   , spw=c18o_spw, timebin='120s'
-                  , outputvis=gal+'_c18o_bin.ms')
+                  , outputvis=this_outfile)
+
+            to_concat.append(this_outfile)
+
+            counter += 1
+
+        if has_7m:
             
-            if has_7m:
-                outputvis = gal+'_7m_c18o_bin.ms'
-                os.system('rm -rf '+outputvis)        
-                split(vis=gal+'_7m.ms'
+            counter = 1
+            for this_file in calibrated_7m_file:
+
+                this_infile =  gal+'_'+str(counter)+'_7m.ms'
+                this_outfile = gal+'_'+str(counter)+'_7m_c18o_bin.ms'
+            
+                os.system('rm -rf '+this_outfile)
+                split(vis=this_infile
+                      , field=field_7m
                       , datacolumn='DATA'
                       , spw=c18o_spw_7m, timebin='120s'
-                      , outputvis=outputivs
-                      , field=field_7m)
+                      , outputvis=this_outfile)
             
-                os.system('rm -rf '+gal+'_c18o_bin.ms')
-                concat(vis=[gal+'_12m_c18o_bin.ms',
-                            gal+'_7m_c18o_bin.ms']
-                       concatvis=gal+'_c18o_bin.ms')
+                to_concat.append(this_outfile)
+                counter += 1
+        
+        os.system('rm -rf '+gal+'_c18o_bin.ms')
+        concat(vis=to_concat,
+               concatvis=gal+'_c18o_bin.ms')
                 
         # Regrid C18O to a regular, 5km/s grid
 
@@ -434,35 +364,34 @@ if do_copy:
 
     print "... Creating continuum and channel 0 measurement sets."
 
-    if split_mosaic:
-
-        counter = 1
-        to_concat = []
-
-        for this_file in calibrated_file:
+    counter = 1
+    to_concat = []
+    
+    for this_file in calibrated_file:
                 
-            this_infile =  gal+'_'+str(counter)+'.ms'
-            this_outfile = gal+'_'+str(counter)+'_cont_temp.ms'
+        this_infile =  gal+'_'+str(counter)+'.ms'
+        this_outfile = gal+'_'+str(counter)+'_cont_temp.ms'
             
-            os.system('rm -rf '+this_outfile)
-            os.system('rm -rf '+this_outfile+'.flagversions')
-            split(vis=this_infile
-                  , field=field
-                  , datacolumn='DATA'
-                  , width=5
-                  , timebin='120s'
-                  , outputvis=this_outfile)
+        os.system('rm -rf '+this_outfile)
+        os.system('rm -rf '+this_outfile+'.flagversions')
+        split(vis=this_infile
+              , field=field
+              , datacolumn='DATA'
+              , width=5
+              , timebin='120s'
+              , outputvis=this_outfile)
             
+        if flag_co21 != '':
             flagdata(vis=this_outfile,
                      spw=flag_co21)
 
-            if has_c18o:
-                flagdata(vis=this_outfile,
-                         spw=flag_c18o21)
+        if flag_c18o21 != '':
+            flagdata(vis=this_outfile,
+                     spw=flag_c18o21)
 
-            to_concat.append(this_outfile)
+        to_concat.append(this_outfile)
 
-            counter += 1
+        counter += 1
 
         if has_7m:
                 
@@ -480,10 +409,11 @@ if do_copy:
                       , timebin='120s'
                       , outputvis=this_outfile)
             
-                flagdata(vis=this_outfile,
-                         spw=flag_co21_7m)
+                if flag_co21_7m != '':
+                    flagdata(vis=this_outfile,
+                             spw=flag_co21_7m)
 
-                if has_c18o:
+                if flag_c18o21_7m != '':
                     flagdata(vis=this_outfile,
                              spw=flag_c18o21_7m)
             
@@ -494,24 +424,6 @@ if do_copy:
         os.system('rm -rf '+gal+'_cont_temp.ms')
         concat(vis=to_concat,
                concatvis=gal+'_cont_temp.ms')
-
-    else:
-
-        print "... ... treating this as a single mosaic."
-
-        os.system('rm -rf '+gal+'_cont_temp.ms*')
-        split(vis=gal+'.ms'
-              , field=field 
-              , datacolumn='DATA'
-              , width=5, timebin='120s'
-              , outputvis=gal+'_cont_temp.ms')
-
-        # Flag the CO lines in the continuum
-        flagdata(vis=gal+'_cont_temp.ms',
-                 spw=flag_co21)
-        if has_c18o:
-            flagdata(vis=gal+'_cont_temp.ms',
-                     spw=flag_c18o21)
 
     # Average to only one channel per spectral window.
     os.system('rm -rf '+gal+'_cont.ms')
