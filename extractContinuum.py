@@ -176,9 +176,10 @@ if do_flag:
 
         print "... proposed flagging "+spw_flagging_string
 
-        flagdata(vis=this_infile,
-                 spw=spw_flagging_string,
-                 )
+        if spw_flagging_string != '':
+            flagdata(vis=this_infile,
+                     spw=spw_flagging_string,
+                     )
 
         if do_statwt:
             print "... deriving emprical weights using STATWT"
