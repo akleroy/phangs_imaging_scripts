@@ -18,6 +18,15 @@
 # - Data are regridded to the desired velocity grid.
 # - A channel zero data set is created.
 
+# TO DO:
+#
+# - For maximum generality, this script should take the central
+# velocity and a width and do a lot of the supporting calculations,
+# saving the user a headache.
+#
+# - Would also then make sense to start with known lines. Later.
+#
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # CHECKS AND DEFAULTS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -60,8 +69,6 @@ except NameError:
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # INPUTS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-sol_kms = 2.99e5
 
 print "---------- extractLineData.py ----------"
 
@@ -278,11 +285,15 @@ if do_extract:
         spw_list_string += str(spw)
     print "... I will regrid with spw="+spw_list_string
 
+    if chanbin > 1:
+        chanaverage = True
+    else:
+        chanaverage = False
     mstransform(vis=concat_out_file,
                 spw=spw_list_string,
                 outputvis=final_out_file+'.temp',
                 datacolumn='DATA',
-                chanaverage=True,
+                chanaverage=chanaverage,
                 chanbin=chanbin,
                 )
 

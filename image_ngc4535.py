@@ -1,12 +1,12 @@
 # --------------------------------------
-# Overall controll flow
+# Overall control flow
 # --------------------------------------
 
 script_copy = False
 script_extract_co21 = False
 script_extract_c18o21 = False
-script_extract_cont = False
-script_image_co21 = False
+script_extract_continuum = False
+script_image_co21 = True
 script_image_c18o21 = False
 
 # --------------------------------------
@@ -67,31 +67,27 @@ if script_extract_c18o21:
 # --------------------------------------
 
 if script_extract_continuum:
-    # ... flagging covering the line in the continuum image
-    flag_co21 = '2:200~550'
-    flag_c18o21 = '3:15~50'
-    flag_co21_7m = '0:200~550'
-    flag_c18o21_7m = '2:15~50'
+    pass
 
 # --------------------------------------
 # Image the data
 # --------------------------------------
 
-if script_image_co21:
-    pass
-
-if script_image_co21:
-    pass
-
-# ... target resolution used in post-processing
-target_beam_co21 = '1.4arcsec'
-target_beam_c18o21 = '1.5arcsec'
-target_beam_cont = '1.5arcsec'
-
-# imaging parameters
 phase_center = 'J2000 12h34m20.3s +08d11m52'
-imsize = [2048, 2048]
-imsize_lowres = [600, 600]
 
-# threshold parameters for cleaning
-thresh_factor = 1.5
+if script_image_co21:
+    do_init = True
+    do_mask = False
+    do_clean = False
+    do_postprocess = False
+
+    im_size = [600, 600]
+    cell_size = '0.5arcsec'
+    input_vis = 'ngc4535_co21_regrid.ms'
+    cube_root = 'ngc4535_co21_tapercube'
+    uvtaper = ["2.5arcsec", "2.5arcsec", "0.0deg"]
+    niter = 1E6
+    execfile('../scripts/imageLine.py')
+
+if script_image_c18o21:
+    pass
