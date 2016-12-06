@@ -1,8 +1,21 @@
-execfile('../scripts/line_list.py')
+# --------------------------------------
+# User inputs
+# --------------------------------------
+
+out_root = 'ngc4535'
+tag = '956'
+phase_center = 'J2000 12h34m20.3s +08d11m52'
+source_vel_kms = 1970
+vwidth_kms = 500
+
+calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cd/calibrated/calibrated_final.ms',
+              '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms'}
 
 # --------------------------------------
 # Overall control flow
 # --------------------------------------
+
+execfile('../scripts/line_list.py')
 
 # Extract data
 script_copy = True
@@ -18,12 +31,6 @@ script_image_c18o21 = False
 # Copy the data
 # --------------------------------------
 
-out_root = 'ngc4535'
-tag = '956'
-
-calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cd/calibrated/calibrated_final.ms',
-              '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms'}
-
 if script_copy:
     do_copy = True
     do_split = True
@@ -34,9 +41,6 @@ if script_copy:
 # --------------------------------------
 # Extract line data
 # --------------------------------------
-
-source_vel_kms = 1970
-vwidth_kms = 500
 
 # 12CO 2-1
 linetag = 'co21'
@@ -75,10 +79,8 @@ if script_extract_continuum:
     execfile('../scripts/extractContinuum.py')
 
 # --------------------------------------
-# Image the data
+# Image cubes
 # --------------------------------------
-
-phase_center = 'J2000 12h34m20.3s +08d11m52'
 
 if script_image_co21:
     do_init = True
