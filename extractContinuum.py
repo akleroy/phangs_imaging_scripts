@@ -1,17 +1,9 @@
-# This script extracts a line measurement set from calibrated
-# visibility data sets. The idea is to yield a single, simple
-# visibility set that can be fed to our imaging scripts.
-
-# USAGE: Run *once* with "do_copy=True" and "do_split=True" for each
-# data set. Then run with "do_extract=True" and "do_combine=True" once
-# *for each line.*
+# This script extracts a data set ready for continuum imaging from
+# calibrated visibility data sets.
+#
+# USAGE:
 #
 # TO DO:
-#
-# - Would make sense to start with known lines. Later.
-#
-# - We know how to adapt (from AS scripts) for the case of multiple
-# - sources. But for now, the script assumes one source.
 #
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -28,6 +20,8 @@ else:
     print "The script has been verified for this version of CASA."
 
 sol_kms = 2.99e5
+execfile('../scripts/line_list.py')
+import numpy as np
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER
@@ -41,32 +35,27 @@ extract_start_time = time.time()
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 try:
-    do_copy
-except NameError:    
-    do_copy = True
+    do_recopy
+except NameError:
+    do_recopy = True
 
 try:
-    do_split
+    do_flag
 except NameError:    
-    do_split = True
+    do_flag = True
 
 try:
-    do_extract
+    do_average
 except NameError:    
-    do_extract = True
-
-try:
-    do_combine
-except NameError:    
-    do_combine = True
+    do_average = True
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # INPUTS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-print "****************************************"
-print "********** extractLineData.py **********"
-print "****************************************"
+print "*****************************************"
+print "********** extractContinuum.py **********"
+print "*****************************************"
 
 abort = False
 
@@ -77,18 +66,6 @@ except NameError:
     print "Format is calibrated_files[tag]:ms_to_copy."
     print "(I will turn off all steps for this round)."
     abort = True
-
-try:
-    field_names
-except NameError:
-    print "Considering all fields."
-    field_names = ''
-
-try:
-    timebin
-except NameError:
-    print "No timebin specified. I will leave this blank."
-    timebin = '0s'
 
 try:
     do_statwt
@@ -112,63 +89,38 @@ except NameError:
     print "(I will turn off all steps for this round)."
     abort = True
 
+# .............................................................
+# Trigger abort
+# .............................................................
+    
 if abort:
-    do_copy = False
-    do_split = False
-    do_extract = False
-    do_combine = False
+    do_recopy = False
+    do_flag = False
+    do_average = False
 
 # .............................................................
-# Define the line to extract and averaging to do 
+# Define the lines to flag
 # .............................................................
 
-# Eventually we can imagine automating aspects of this, including
-# using analysisUtils to figure out the ideal channel averaging
-# calls. For now, let's get a working path and then automate.
-
 try:
-    linetag
+    lines_to_flag
 except NameError:
-    print "I will use a default linetag of 'co21'."
-    linetag = 'co21'
-
-try:
-    restfreq_ghz
-except NameError:
-    print "I will assume that we target CO 2-1 and set restfreq_ghz=230.538."
-    restfreq_ghz = 230.53800
-
-try:
-    chan_dv_kms
-except NameError:
-    print "I will assume a desired channel width of 2.5kms."
-    chan_dv_kms = 2.5
-
-try:
-    source_vel_kms
-except NameError:
-    print "I will assume a desired starting velocity of 0km/s."
-    source_vel_kms = '0km/s'
-
-try:
-    vwidth_kms
-except NameError:
-    print "I will assume a desire velocity width of 500km/s."
-    vwidth_kms = 500
+    print "I will default to flagging only the CO and 13CO lines."
+    lines_to_flag = lines_co.append(lines_13co)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# COPY DATA FROM ITS ORIGINAL LOCATION
+# MAKE A CONTINUUM COPY OF THE DATA
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-if do_copy:
+if do_recopy:
 
     print "--------------------------------------------------------"
-    print "extractLineData: (1) Copying data from original location"
+    print "extractContinuum: (1) Making a continuum copy"
     print "--------------------------------------------------------"
 
     for this_tag in calibrated_files.keys():
-        in_file = calibrated_files[this_tag]
-        out_file = out_root+'_'+this_tag+'_copied.ms'
+        in_file = out_root+'_'+this_tag+'.ms'
+        out_file = out_root+'_'+this_tag+'_cont_copy.ms'
         os.system('rm -rf '+out_file)
         os.system('rm -rf '+out_file+'.flagversions')
         command = 'cp -r '+in_file+' '+out_file
@@ -176,49 +128,56 @@ if do_copy:
         os.system(command)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# TIME AVERAGE AND SPLIT OUT ONLY THE SOURCE
+# FLAG LINES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-if do_split:
+if do_flag:
 
     print "--------------------------------------------------------"
-    print "extractLineData: (2) Splitting out source"
+    print "extractContinuum: (2) Flagging spectral lines"
     print "--------------------------------------------------------"
-      
-    print "... time smoothing and extracting source data for all files."
 
     for this_tag in calibrated_files.keys():
-        this_infile = out_root+'_'+this_tag+'_copied.ms'
-        this_outfile = out_root+'_'+this_tag+'.ms'
+        this_infile = out_root+'_'+this_tag+'_cont_copy.ms'
         
-        os.system('rm -rf '+this_outfile)
-        os.system('rm -rf '+this_outfile+'.flagversions')
+        print "... flagging lines in file "+this_infile
 
-        print "... splitting file "+this_infile
+        vm = au.ValueMapping(this_infile)
 
-        split(vis=this_infile
-              , intent ='OBSERVE_TARGET#ON_SOURCE'
-              , field = field_names
-              , datacolumn='DATA'
-              , timebin=timebin
-              , outputvis=this_outfile)        
+        spw_flagging_string = ''
+        for line in lines_to_flag:
+            rest_linefreq_ghz = line_list[line]
+
+            shifted_linefreq_hz = rest_linefreq_ghz*(1.-source_vel_kms/sol_kms)
+            hi_linefreq_hz = rest_linefreq_ghz*(1.-(source_vel_kms-vwidth_kms)/sol_kms)
+            lo_linefreq_hz = rest_linefreq_ghz*(1.-(source_vel_kms+vwidth_kms)/sol_kms)
+
+            spw_list = au.getScienceSpwsForFrequency(this_infile,
+                                                     shifted_linefreq_ghz*1e9)
+            if spw_list == []:
+                continue
+            
+            for this_spw in spw_list:
+                freq_ra = vm.spwInfo[this_spw]['chanFreqs']
+                chan_ra = np.arange(len(freq_ra))
+                to_flag = (freq_ra >= low_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
+                to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
+                low_chan = np.min(chan_ra[to_flag])
+                hi_chan = np.min(chan_ra[to_flag])                
+                this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
+                spw_flagging_string += this_spw_string+','
+
+        print "... proposed flagging "+spw_flagging_string
+
+        flagdata(vis=this_infile,
+                 spw=spw_string,
+                 )
 
         if do_statwt:
             print "... deriving emprical weights using STATWT"
-            statwt(vis=this_outfile,
+            statwt(vis=this_infile,
                    datacolumn='DATA')
             
-    # ......................................
-    # Delete intermediate files
-    # ......................................
-
-    print "... cleaning up copied files."
-
-    for this_tag in calibrated_files.keys():
-        copied_file = out_root+'_'+this_tag+'_copied.ms'
-        os.system('rm -rf '+copied_file)
-        os.system('rm -rf '+copied_file+'.flagversions')
-
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACT THE LINE OF INTEREST FROM EACH FILE
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -226,7 +185,7 @@ if do_split:
 if do_extract:
 
     print "--------------------------------------------------------"
-    print "extractLineData: (3) Extract the line of interest"
+    print "extractContinuum: (3) Average and collapse"
     print "--------------------------------------------------------"
 
     for this_tag in calibrated_files.keys():

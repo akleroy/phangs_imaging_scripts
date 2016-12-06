@@ -2,10 +2,10 @@
 # Overall control flow
 # --------------------------------------
 
-script_copy = True
-script_extract_co21 = True
+script_copy = False
+script_extract_co21 = False
 script_extract_c18o21 = False
-script_extract_continuum = False
+script_extract_continuum = True
 script_image_co21 = False
 script_image_c18o21 = False
 
@@ -30,30 +30,33 @@ if script_copy:
 # Extract line data
 # --------------------------------------
 
+execfile('../scripts/line_list.py')
+
 source_vel_kms = 1970
 vwidth_kms = 500
 
 # 12CO 2-1
 linetag = 'co21'
-restfreq_ghz = 230.53800
+restfreq_ghz = line_list[linetag]
 chan_dv_kms = 2.5
-nchan = 240
 
 if script_extract_co21:
     do_copy = False
-    do_concat = False
+    do_split = False
     do_extract = True
+    do_combine = True
     execfile('../scripts/extractLineData.py')
 
 # C18O 2-1
 linetag = 'c18o21'
-restfreq_ghz = 219.56035
+restfreq_ghz = line_list[linetag]
 chan_dv_kms = 5.0
 
 if script_extract_c18o21:
     do_copy = False
-    do_concat = False
-    do_extract = True    
+    do_split = False
+    do_extract = True
+    do_combine = True
     execfile('../scripts/extractLineData.py')
 
 # --------------------------------------
@@ -61,7 +64,10 @@ if script_extract_c18o21:
 # --------------------------------------
 
 if script_extract_continuum:
-    pass
+    do_recopy = True
+    do_flag = False
+    do_average = False
+    execfile('../scripts/extractLineData.py')
 
 # --------------------------------------
 # Image the data
