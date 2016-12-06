@@ -40,6 +40,8 @@ if this_version not in tested_versions:
 else:
     print "The script has been verified for this version of CASA."
 
+sol_kms = 2.99e5
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -140,34 +142,28 @@ except NameError:
     linetag = 'co21'
 
 try:
-    restfreq
+    restfreq_ghz
 except NameError:
-    print "I will assume that we target CO 2-1."
-    restfreq = '230.53800GHz'
+    print "I will assume that we target CO 2-1 and set restfreq_ghz=230.538."
+    restfreq_ghz = 230.53800
 
 try:
-    chanbin
-except NameError:
-    print "I will default to a channel binning factor of 1."
-    chanbin = 1
-
-try:
-    chan_dv
+    chan_dv_kms
 except NameError:
     print "I will assume a desired channel width of 2.5kms."
-    chan_dv = '2.5km/s'
+    chan_dv_kms = 2.5
 
 try:
-    start_vel
+    source_vel_kms
 except NameError:
-    print "I will assume a desired starting velocity of 1000km/s."
-    start_vel = '1000km/s'
+    print "I will assume a desired starting velocity of 0km/s."
+    source_vel_kms = '0km/s'
 
 try:
-    nchan
+    vwidth_kms
 except NameError:
-    print "I will assume 200 channels."
-    nchan = 200
+    print "I will assume a desire velocity width of 500km/s."
+    vwidth_kms = 500
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # COPY DATA FROM ITS ORIGINAL LOCATION
@@ -251,16 +247,55 @@ if do_extract:
     print "... extracting line data using MSTRANSFORM."
 
     # .........................................
-    # Summarize
+    # Calculate and recast as strings
+    # .........................................
+
+    # Crude, but probably fine for extragalactic work. Figure out what
+    # SPWs contain the line in question.
+
+    target_freq_ghz = restfreq_ghz*(1.-source_vel_kms/sol_kms)
+
+    spw_list = au.getScienceSpwsForFrequency(concat_out_file,
+                                             target_freq_ghz*1e9)    
+    spw_list_string = ''    
+    first = True
+    for spw in spw_list:
+        if not first:
+            spw_list_string += ','
+        first = False
+        spw_list_string += str(spw)
+
+    # Figure out the starting velocity and number of channels.
+    start_vel_kms = (source_vel_kms - vwidth_kms/2.0)
+    nchan = int(floor(vwidth_kms / chan_dv_kms)+1)
+
+    # I'm hardcoding the precision with extragalactic ALMA work in mind.
+    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
+    chan_dv_string =  "{:5.2f}".format(chan_dv_kms)+'km/s'
+    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
+
+    # Figure out how much averaging is needed to reach
+    chan_width_hz = au.getChanWidths(concat_out_file, spw_list_string)
+    target_width_hz = chan_dv_kms/sol_kms*restfreq_ghz*1e9
+    rebin_factor = target_width_hz / chan_width_hz
+    
+    if rebin_factor < 2:
+        chanbin = 1
+    else:
+        chanbin = int(floor(rebin_factor/2.))
+
+    # .........................................
+    # Concert to strings and summarize
     # .........................................
 
     print "LINE TAG: ", linetag
-    print "REST FREQUENCY: ", restfreq
-    print "TARGET CHANNEL WIDTH: ", chan_dv
-    print "START VELOCITY: ", start_vel
-    print "NUMBER OF CHANNELS: ", nchan
+    print "REST FREQUENCY: ", restfreq_string
+    print "SPECTRAL WINDOWS: ", spw_list
+    print "TARGET CHANNEL WIDTH: ", chan_dv_string
+    print "START VELOCITY: ", start_vel_string
+    print "NUMBER OF CHANNELS: ", str(nchan)
     print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
-      
+    
     # .........................................
     # Regrid
     # .........................................
@@ -274,27 +309,20 @@ if do_extract:
     os.system('rm -rf '+final_out_file+'.temp')
     os.system('rm -rf '+final_out_file+'.temp.flagversions')
 
-    spw_list = au.getScienceSpwsForFrequency(concat_out_file,
-                                             target_freq_hz)
-    spw_list_string = ''    
-    first = True
-    for spw in spw_list:
-        if not first:
-            spw_list_string += ','
-        first = False
-        spw_list_string += str(spw)
-    print "... I will regrid with spw="+spw_list_string
-
     if chanbin > 1:
         chanaverage = True
     else:
         chanaverage = False
+
     mstransform(vis=concat_out_file,
                 spw=spw_list_string,
                 outputvis=final_out_file+'.temp',
                 datacolumn='DATA',
                 chanaverage=chanaverage,
                 chanbin=chanbin,
+                hanning=True,
+                # Does this matter? It shouldn't, but AS thinks it still might
+                interpolation='cubic',
                 )
 
     print "... now regridding to the desired velocity grid."
@@ -309,10 +337,10 @@ if do_extract:
                 regridms=True,
                 mode='velocity',
                 interpolation='cubic',
-                start=start_vel,
+                start=start_vel_string,
                 nchan=nchan,
-                width=chan_dv,
-                restfreq=restfreq,
+                width=chan_dv_string,
+                restfreq=restfreq_string,
                 outframe='lsrk',
                 veltype='radio',
             )
