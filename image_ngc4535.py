@@ -32,15 +32,14 @@ if script_copy:
 # Extract line data
 # --------------------------------------
 
-start_vel = '1600km/s'
+source_vel_kms = 1970
+vwidth_kms = 500
 
 # 12CO 2-1
 linetag = 'co21'
-restfreq = '230.53800GHz'
-chan_dv = '2.5km/s'
+restfreq_ghz = 230.53800
+chan_dv_kms = 2.5
 nchan = 240
-chanbin = 4
-target_freq_hz = 230.538e9*(1.-1900./2.99e5)
 
 if script_extract_co21:
     do_copy = False
@@ -50,11 +49,8 @@ if script_extract_co21:
 
 # C18O 2-1
 linetag = 'c18o21'
-restfreq = '219.56035GHz'
-chan_dv = '5.0km/s'
-nchan = 120
-chanbin = 1
-target_freq_hz = 219.560e9*(1.-1900./2.99e5)
+restfreq_ghz = 219.56035
+chan_dv_kms = 5.0
 
 if script_extract_c18o21:
     do_copy = False

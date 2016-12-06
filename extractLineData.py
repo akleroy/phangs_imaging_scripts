@@ -20,11 +20,7 @@
 
 # TO DO:
 #
-# - For maximum generality, this script should take the central
-# velocity and a width and do a lot of the supporting calculations,
-# saving the user a headache.
-#
-# - Would also then make sense to start with known lines. Later.
+# - Would make sense to start with known lines. Later.
 #
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -292,6 +288,8 @@ if do_extract:
     print "REST FREQUENCY: ", restfreq_string
     print "SPECTRAL WINDOWS: ", spw_list
     print "TARGET CHANNEL WIDTH: ", chan_dv_string
+    print "SUPPLIED SOURCE VELOCITY: ", str(source_vel_kms)
+    print "DESIRED VELOCITY WIDTH: ", str(vwidth_kms)
     print "START VELOCITY: ", start_vel_string
     print "NUMBER OF CHANNELS: ", str(nchan)
     print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
