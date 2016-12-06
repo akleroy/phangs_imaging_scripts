@@ -22,6 +22,9 @@
 #
 # - Would make sense to start with known lines. Later.
 #
+# - We know how to adapt (from AS scripts) for the case of multiple
+# - sources. But for now, the script assumes one source.
+#
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # CHECKS AND DEFAULTS
@@ -55,14 +58,19 @@ except NameError:
     do_copy = True
 
 try:
-    do_concat
+    do_split
 except NameError:    
-    do_concat = True
+    do_split = True
 
 try:
     do_extract
 except NameError:    
     do_extract = True
+
+try:
+    do_combine
+except NameError:    
+    do_combine = True
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # INPUTS
@@ -81,15 +89,10 @@ except NameError:
     do_extract = False
 
 try:
-    fields_to_use
+    field_names
 except NameError:
-    print "Please define a fields dictionary with the same keys as calibrate_files."
-    print "Format is calibrated_files[tag]:'fields_to_use'."
-    print "Can be an empty string for all fields."
-    print "(I will turn off all steps for this round)."
-    do_copy = False
-    do_concat = False
-    do_extract = False
+    print "Considering all fields."
+    field_names = ''
 
 try:
     timebin
@@ -173,46 +176,46 @@ if do_copy:
 
     for this_tag in calibrated_files.keys():
         in_file = calibrated_files[this_tag]
-        out_file = out_root+'_'+this_tag+'.ms'
+        out_file = out_root+'_'+this_tag+'_copied.ms'
         os.system('rm -rf '+out_file)
         os.system('rm -rf '+out_file+'.flagversions')
-        os.system('scp -r '+in_file+' '+out_file)
+        command = 'cp -r '+in_file+' '+out_file
+        print command
+        os.system(command)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# TIME AVERAGE AND CONCATENATE
+# TIME AVERAGE AND SPLIT OUT ONLY THE SOURCE
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-if do_concat:
+if do_split:
 
     print "--------------------------------------------------------"
-    print "extractLineData: (2) Processing line into single MS"
+    print "extractLineData: (2) Splitting out source"
     print "--------------------------------------------------------"
       
-    print "... time smoothing and then concatenating all of the data."
-
-    files_to_concat = []
+    print "... time smoothing and extracting source data for all files."
 
     for this_tag in calibrated_files.keys():
-        this_infile = out_root+'_'+this_tag+'.ms'
-        this_outfile = out_root+'_'+this_tag+'_temp_timebin.ms'
+        this_infile = out_root+'_'+this_tag+'_copied.ms'
+        this_outfile = out_root+'_'+this_tag+'.ms'
         
         os.system('rm -rf '+this_outfile)
         os.system('rm -rf '+this_outfile+'.flagversions')
 
+        print "... splitting file "+this_infile
+
         split(vis=this_infile
-              , field=fields_to_use[this_tag]
+              , intent ='OBSERVE_TARGET#ON_SOURCE'
+              , field = field_names
               , datacolumn='DATA'
               , timebin=timebin
               , outputvis=this_outfile)        
 
-        files_to_concat.append(this_outfile)
-
-    concat_out_file = out_root+'_'+tag+'_concat.ms'
-    os.system('rm -rf '+concat_out_file)
-    os.system('rm -rf '+concat_out_file+'.flagversions')
-    concat(vis=files_to_concat,
-           concatvis=concat_out_file)
-
+        if do_statwt:
+            print "... deriving emprical weights using STATWT"
+            statwt(vis=this_outfile,
+                   datacolumn='DATA')
+            
     # ......................................
     # Delete intermediate files
     # ......................................
@@ -220,18 +223,12 @@ if do_concat:
     print "... cleaning up copied files."
 
     for this_tag in calibrated_files.keys():
-        copied_file = out_root+'_'+this_tag+'.ms'
+        copied_file = out_root+'_'+this_tag+'_copied.ms'
         os.system('rm -rf '+copied_file)
         os.system('rm -rf '+copied_file+'.flagversions')
 
-    print "... cleaning up time-smoothed individual files."
-
-    for file_name in files_to_concat:
-        os.system('rm -rf '+file_name)
-        os.system('rm -rf '+file_name+'.flagversions')    
-
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# EXTRACT THE LINE OF INTEREST
+# EXTRACT THE LINE OF INTEREST FROM EACH FILE
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
   
 if do_extract:
@@ -240,120 +237,140 @@ if do_extract:
     print "extractLineData: (3) Extract the line of interest"
     print "--------------------------------------------------------"
 
-    print "... extracting line data using MSTRANSFORM."
+    for this_tag in calibrated_files.keys():
+        print "... extracting line data for "+this_infile
 
-    concat_out_file = out_root+'_'+tag+'_concat.ms'
+        this_infile = out_root+'_'+this_tag+'.ms'
+        this_outfile = out_root+'_'+this_tag+'_'+linetag+'.ms'
 
-    # .........................................
-    # Calculate and recast as strings
-    # .........................................
+        # .........................................
+        # Calculate and recast as strings
+        # .........................................
 
-    # Crude, but probably fine for extragalactic work. Figure out what
-    # SPWs contain the line in question.
+        # Crude, but probably fine for extragalactic work. Figure out what
+        # SPWs contain the line in question.
 
-    target_freq_ghz = restfreq_ghz*(1.-source_vel_kms/sol_kms)
+        target_freq_ghz = restfreq_ghz*(1.-source_vel_kms/sol_kms)
+        
+        spw_list = au.getScienceSpwsForFrequency(this_infile,
+                                                 target_freq_ghz*1e9)    
+        spw_list_string = ''    
+        first = True
+        for spw in spw_list:
+            if not first:
+                spw_list_string += ','
+            first = False
+            spw_list_string += str(spw)
 
-    spw_list = au.getScienceSpwsForFrequency(concat_out_file,
-                                             target_freq_ghz*1e9)    
-    spw_list_string = ''    
-    first = True
-    for spw in spw_list:
-        if not first:
-            spw_list_string += ','
-        first = False
-        spw_list_string += str(spw)
+        # Figure out the starting velocity and number of channels.
+        start_vel_kms = (source_vel_kms - vwidth_kms/2.0)
+        nchan = int(floor(vwidth_kms / chan_dv_kms)+1)
 
-    # Figure out the starting velocity and number of channels.
-    start_vel_kms = (source_vel_kms - vwidth_kms/2.0)
-    nchan = int(floor(vwidth_kms / chan_dv_kms)+1)
+        # I'm hardcoding the precision with extragalactic ALMA work in mind.
+        restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
+        chan_dv_string =  "{:5.2f}".format(chan_dv_kms)+'km/s'
+        start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
 
-    # I'm hardcoding the precision with extragalactic ALMA work in mind.
-    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
-    chan_dv_string =  "{:5.2f}".format(chan_dv_kms)+'km/s'
-    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
-
-    # Figure out how much averaging is needed to reach
-    chan_width_hz = au.getChanWidths(concat_out_file, spw_list_string)
-    target_width_hz = chan_dv_kms/sol_kms*restfreq_ghz*1e9
-    rebin_factor = min(target_width_hz / chan_width_hz)
+        # Figure out how much averaging is needed to reach
+        chan_width_hz = au.getChanWidths(this_infile, spw_list_string)
+        target_width_hz = chan_dv_kms/sol_kms*restfreq_ghz*1e9
+        rebin_factor = min(target_width_hz / chan_width_hz)
     
-    if rebin_factor < 2:
-        chanbin = 1
-    else:
-        chanbin = int(floor(rebin_factor/2.))
+        if rebin_factor < 2:
+            chanbin = 1
+        else:
+            chanbin = int(floor(rebin_factor/2.))
 
-    # .........................................
-    # Concert to strings and summarize
-    # .........................................
+        # .........................................
+        # Concert to strings and summarize
+        # .........................................
 
-    print "LINE TAG: ", linetag
-    print "REST FREQUENCY: ", restfreq_string
-    print "SPECTRAL WINDOWS: ", spw_list
-    print "TARGET CHANNEL WIDTH: ", chan_dv_string
-    print "SUPPLIED SOURCE VELOCITY: ", str(source_vel_kms)
-    print "DESIRED VELOCITY WIDTH: ", str(vwidth_kms)
-    print "START VELOCITY: ", start_vel_string
-    print "NUMBER OF CHANNELS: ", str(nchan)
-    print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
+        print "FILE:", this_infile
+        print "LINE TAG: ", linetag
+        print "REST FREQUENCY: ", restfreq_string
+        print "SPECTRAL WINDOWS: ", spw_list
+        print "TARGET CHANNEL WIDTH: ", chan_dv_string
+        print "SUPPLIED SOURCE VELOCITY: ", str(source_vel_kms)
+        print "DESIRED VELOCITY WIDTH: ", str(vwidth_kms)
+        print "START VELOCITY: ", start_vel_string
+        print "NUMBER OF CHANNELS: ", str(nchan)
+        print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
     
+        # .........................................
+        # Regrid
+        # .........................................
+
+        print "... carrying out channel averaging and hanning smooth first."
+
+        os.system('rm -rf '+this_outfile+'.temp')
+        os.system('rm -rf '+this_outfile+'.temp.flagversions')
+
+        if chanbin > 1:
+            chanaverage = True
+        else:
+            chanaverage = False
+
+        mstransform(vis=this_infile,
+                    outputvis=this_outfile+'.temp',
+                    spw=spw_list_string,
+                    datacolumn='DATA',
+                    chanaverage=chanaverage,
+                    chanbin=chanbin,
+                    hanning=True,
+                    # Does this matter? It shouldn't, but AS thinks it still might
+                    interpolation='cubic',
+                    )
+
+        print "... now regridding to the desired velocity grid."
+
+        os.system('rm -rf '+this_outfile)
+        os.system('rm -rf '+this_outfile+'.flagversions')
+
+        mstransform(vis=this_outfile+'.temp',
+                    outputvis=this_outfile,
+                    datacolumn='DATA',
+                    combinespws=True,
+                    regridms=True,
+                    mode='velocity',
+                    interpolation='cubic',
+                    start=start_vel_string,
+                    nchan=nchan,
+                    width=chan_dv_string,
+                    restfreq=restfreq_string,
+                    outframe='lsrk',
+                    veltype='radio',
+                    )
+
+        os.system('rm -rf '+this_outfile+'.temp')
+        os.system('rm -rf '+this_outfile+'.temp.flagversions')
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# CONCATENATE, STATWT, AND PRODUCE CHANNEL 0
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_combine:
+
+    print "--------------------------------------------------------"
+    print "extractLineData: (4) Combining all data for the line"
+    print "--------------------------------------------------------"
+
+    files_to_concat = []
+    for this_tag in calibrated_files.keys():
+        this_infile = out_root+'_'+this_tag+'_'+linetag+'.ms'
+        files_to_concat.append(this_infile)
+
+    final_out_file = out_root+'_'+tag+'_'+linetag+'.ms'
+    os.system('rm -rf '+concat_out_file)
+    os.system('rm -rf '+concat_out_file+'.flagversions')
+    concat(vis=files_to_concat,
+           concatvis=concat_out_file)
+
     # .........................................
-    # Regrid
-    # .........................................
-
-    print "... carrying out channel averaging first."
-
-    final_out_file = out_root+'_'+linetag+'_regrid.ms'
-
-    os.system('rm -rf '+final_out_file+'.temp')
-    os.system('rm -rf '+final_out_file+'.temp.flagversions')
-
-    if chanbin > 1:
-        chanaverage = True
-    else:
-        chanaverage = False
-
-    mstransform(vis=concat_out_file,
-                spw=spw_list_string,
-                outputvis=final_out_file+'.temp',
-                datacolumn='DATA',
-                chanaverage=chanaverage,
-                chanbin=chanbin,
-                hanning=True,
-                # Does this matter? It shouldn't, but AS thinks it still might
-                interpolation='cubic',
-                )
-
-    print "... now regridding to the desired velocity grid."
-
-    os.system('rm -rf '+final_out_file)
-    os.system('rm -rf '+final_out_file+'.flagversions')
-
-    mstransform(vis=final_out_file+'.temp',
-                outputvis=final_out_file,
-                datacolumn='DATA',
-                combinespws=True,
-                regridms=True,
-                mode='velocity',
-                interpolation='cubic',
-                start=start_vel_string,
-                nchan=nchan,
-                width=chan_dv_string,
-                restfreq=restfreq_string,
-                outframe='lsrk',
-                veltype='radio',
-            )
-
-    os.system('rm -rf '+final_out_file+'.temp')
-    os.system('rm -rf '+final_out_file+'.temp.flagversions')
-
-    # .........................................
-    # Use "statwt" to derive empirical weights
+    # A final statwt
     # .........................................
 
     if do_statwt:
-
         print "... deriving empirical weights using STATWT."
-
         statwt(vis=final_out_file,
                datacolumn='DATA')
 
@@ -363,12 +380,12 @@ if do_extract:
 
     print '... making a "channel zero" data set using SPLIT.'
 
-    chan0_vis = out_root+'_'+linetag+'_chan0.ms'
+    chan0_vis = out_root+'_'+tag+'_'+linetag+'_chan0.ms'
     os.system('rm -rf '+chan0_vis)
     os.system('rm -rf '+chan0_vis+'.flagversions')
     split(vis=final_out_file
           , datacolumn='DATA'
-          , width=4000
+          , spw=''
           , outputvis=chan0_vis)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

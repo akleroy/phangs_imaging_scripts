@@ -2,7 +2,7 @@
 # Overall control flow
 # --------------------------------------
 
-script_copy = False
+script_copy = True
 script_extract_co21 = True
 script_extract_c18o21 = False
 script_extract_continuum = False
@@ -19,13 +19,11 @@ tag = '956'
 calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cd/calibrated/calibrated_final.ms',
               '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms'}
 
-fields_to_use = {'12m':'',
-                 '7m':''}
-
 if script_copy:
     do_copy = True
-    do_concat = True
+    do_split = True
     do_extract = False
+    do_combine = False
     execfile('../scripts/extractLineData.py')
 
 # --------------------------------------
