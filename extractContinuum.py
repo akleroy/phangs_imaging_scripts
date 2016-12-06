@@ -105,8 +105,8 @@ if abort:
 try:
     lines_to_flag
 except NameError:
-    print "I will default to flagging only the CO and 13CO lines."
-    lines_to_flag = lines_co.append(lines_13co)
+    print "I will default to flagging only the CO, 13CO, and C18O lines."
+    lines_to_flag = lines_co+lines_13co+lines_c18o
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # MAKE A CONTINUUM COPY OF THE DATA
@@ -141,36 +141,43 @@ if do_flag:
         this_infile = out_root+'_'+this_tag+'_cont_copy.ms'
         
         print "... flagging lines in file "+this_infile
+        print "... flagging lines "+str(lines_to_flag)
 
         vm = au.ValueMapping(this_infile)
 
         spw_flagging_string = ''
+        first = True
         for line in lines_to_flag:
             rest_linefreq_ghz = line_list[line]
 
-            shifted_linefreq_hz = rest_linefreq_ghz*(1.-source_vel_kms/sol_kms)
-            hi_linefreq_hz = rest_linefreq_ghz*(1.-(source_vel_kms-vwidth_kms)/sol_kms)
-            lo_linefreq_hz = rest_linefreq_ghz*(1.-(source_vel_kms+vwidth_kms)/sol_kms)
+            shifted_linefreq_hz = rest_linefreq_ghz*(1.-source_vel_kms/sol_kms)*1e9
+            hi_linefreq_hz = rest_linefreq_ghz*(1.-(source_vel_kms-vwidth_kms/2.0)/sol_kms)*1e9
+            lo_linefreq_hz = rest_linefreq_ghz*(1.-(source_vel_kms+vwidth_kms/2.0)/sol_kms)*1e9
 
             spw_list = au.getScienceSpwsForFrequency(this_infile,
-                                                     shifted_linefreq_ghz*1e9)
+                                                     shifted_linefreq_hz)
             if spw_list == []:
                 continue
-            
+
+            print "Found overlap for "+line
             for this_spw in spw_list:
                 freq_ra = vm.spwInfo[this_spw]['chanFreqs']
                 chan_ra = np.arange(len(freq_ra))
-                to_flag = (freq_ra >= low_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
+                to_flag = (freq_ra >= lo_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
                 to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
                 low_chan = np.min(chan_ra[to_flag])
-                hi_chan = np.min(chan_ra[to_flag])                
+                hi_chan = np.max(chan_ra[to_flag])                
                 this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
-                spw_flagging_string += this_spw_string+','
+                if first:
+                    spw_flagging_string += this_spw_string
+                    first = False
+                else:
+                    spw_flagging_string += ','+this_spw_string
 
         print "... proposed flagging "+spw_flagging_string
 
         flagdata(vis=this_infile,
-                 spw=spw_string,
+                 spw=spw_flagging_string,
                  )
 
         if do_statwt:
@@ -182,136 +189,29 @@ if do_flag:
 # EXTRACT THE LINE OF INTEREST FROM EACH FILE
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
   
-if do_extract:
+if do_average:
 
     print "--------------------------------------------------------"
     print "extractContinuum: (3) Average and collapse"
     print "--------------------------------------------------------"
 
+    files_to_concat = []
     for this_tag in calibrated_files.keys():
+        this_infile = out_root+'_'+this_tag+'_cont_copy.ms'
+        this_outfile = out_root+'_'+this_tag+'_cont.ms'
 
-        this_infile = out_root+'_'+this_tag+'.ms'
-        this_outfile = out_root+'_'+this_tag+'_'+linetag+'.ms'
-
-        print "... extracting line data for "+this_infile
-
-        # .........................................
-        # Calculate and recast as strings
-        # .........................................
-
-        # Crude, but probably fine for extragalactic work. Figure out what
-        # SPWs contain the line in question.
-
-        target_freq_ghz = restfreq_ghz*(1.-source_vel_kms/sol_kms)
-        
-        spw_list = au.getScienceSpwsForFrequency(this_infile,
-                                                 target_freq_ghz*1e9)    
-        spw_list_string = ''    
-        first = True
-        for spw in spw_list:
-            if not first:
-                spw_list_string += ','
-            first = False
-            spw_list_string += str(spw)
-
-        # Figure out the starting velocity and number of channels.
-        start_vel_kms = (source_vel_kms - vwidth_kms/2.0)
-        nchan = int(floor(vwidth_kms / chan_dv_kms)+1)
-
-        # I'm hardcoding the precision with extragalactic ALMA work in mind.
-        restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
-        chan_dv_string =  "{:5.2f}".format(chan_dv_kms)+'km/s'
-        start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
-
-        # Figure out how much averaging is needed to reach
-        chan_width_hz = au.getChanWidths(this_infile, spw_list_string)
-        target_width_hz = chan_dv_kms/sol_kms*restfreq_ghz*1e9
-        rebin_factor = min(target_width_hz / chan_width_hz)
-    
-        if rebin_factor < 2:
-            chanbin = 1
-        else:
-            chanbin = int(floor(rebin_factor/2.))
-
-        # .........................................
-        # Concert to strings and summarize
-        # .........................................
-
-        print "FILE:", this_infile
-        print "LINE TAG: ", linetag
-        print "REST FREQUENCY: ", restfreq_string
-        print "SPECTRAL WINDOWS: ", spw_list
-        print "TARGET CHANNEL WIDTH: ", chan_dv_string
-        print "SUPPLIED SOURCE VELOCITY: ", str(source_vel_kms)
-        print "DESIRED VELOCITY WIDTH: ", str(vwidth_kms)
-        print "START VELOCITY: ", start_vel_string
-        print "NUMBER OF CHANNELS: ", str(nchan)
-        print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
-    
-        # .........................................
-        # Regrid
-        # .........................................
-
-        print "... carrying out channel averaging and hanning smooth first."
-
-        os.system('rm -rf '+this_outfile+'.temp')
-        os.system('rm -rf '+this_outfile+'.temp.flagversions')
-
-        if chanbin > 1:
-            chanaverage = True
-        else:
-            chanaverage = False
-
-        mstransform(vis=this_infile,
-                    outputvis=this_outfile+'.temp',
-                    spw=spw_list_string,
-                    datacolumn='DATA',
-                    chanaverage=chanaverage,
-                    chanbin=chanbin,
-                    hanning=True,
-                    # Does this matter? It shouldn't, but AS thinks it still might
-                    interpolation='cubic',
-                    )
-
-        print "... now regridding to the desired velocity grid."
+        print "... averaging data for "+this_infile
 
         os.system('rm -rf '+this_outfile)
         os.system('rm -rf '+this_outfile+'.flagversions')
-
-        mstransform(vis=this_outfile+'.temp',
-                    outputvis=this_outfile,
-                    datacolumn='DATA',
-                    combinespws=True,
-                    regridms=True,
-                    mode='velocity',
-                    interpolation='cubic',
-                    start=start_vel_string,
-                    nchan=nchan,
-                    width=chan_dv_string,
-                    restfreq=restfreq_string,
-                    outframe='lsrk',
-                    veltype='radio',
-                    )
-
-        os.system('rm -rf '+this_outfile+'.temp')
-        os.system('rm -rf '+this_outfile+'.temp.flagversions')
-
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# CONCATENATE, STATWT, AND PRODUCE CHANNEL 0
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-if do_combine:
-
-    print "--------------------------------------------------------"
-    print "extractLineData: (4) Combining all data for the line"
-    print "--------------------------------------------------------"
-
-    files_to_concat = []
-    for this_tag in calibrated_files.keys():
-        this_infile = out_root+'_'+this_tag+'_'+linetag+'.ms'
-        files_to_concat.append(this_infile)
-
-    final_out_file = out_root+'_'+tag+'_'+linetag+'.ms'
+        split(vis=this_infile,
+              outputvis=this_outfile,
+              width=10000,
+              datacolumn='DATA',
+              keepflags=False)
+        files_to_concat.append(this_outfile)
+    
+    final_out_file = out_root+'_'+this_tag+'_cont.ms'
     os.system('rm -rf '+final_out_file)
     os.system('rm -rf '+final_out_file+'.flagversions')
     concat(vis=files_to_concat,
@@ -326,19 +226,14 @@ if do_combine:
         statwt(vis=final_out_file,
                datacolumn='DATA')
 
-    # ......................................
-    # Make "Channel 0" CO measurement sets
-    # ......................................
+    # .........................................
+    # Clean up
+    # .........................................
 
-    print '... making a "channel zero" data set using SPLIT.'
-
-    chan0_vis = out_root+'_'+tag+'_'+linetag+'_chan0.ms'
-    os.system('rm -rf '+chan0_vis)
-    os.system('rm -rf '+chan0_vis+'.flagversions')
-    split(vis=final_out_file
-          , datacolumn='DATA'
-          , spw=''
-          , outputvis=chan0_vis)
+    for this_tag in calibrated_files.keys():
+        this_infile = out_root+'_'+this_tag+'_cont_copy.ms'
+        os.system('rm -rf '+this_infile)
+        os.system('rm -rf '+this_infile+'.flagversions')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # PRINT OUR TIME BENCHMARK
@@ -348,5 +243,5 @@ extract_stop_time = time.time()
 extract_elapsed_time = (extract_stop_time - extract_start_time)/60.
 
 print "****************************************"
-print "extractLineData took "+"{:6.2f}".format(extract_elapsed_time)+" minutes"
+print "extractContinuum took "+"{:6.2f}".format(extract_elapsed_time)+" minutes"
 print "****************************************"

@@ -1,11 +1,16 @@
+execfile('../scripts/line_list.py')
+
 # --------------------------------------
 # Overall control flow
 # --------------------------------------
 
-script_copy = False
-script_extract_co21 = False
-script_extract_c18o21 = False
+# Extract data
+script_copy = True
+script_extract_co21 = True
+script_extract_c18o21 = True
 script_extract_continuum = True
+
+# Image data
 script_image_co21 = False
 script_image_c18o21 = False
 
@@ -29,8 +34,6 @@ if script_copy:
 # --------------------------------------
 # Extract line data
 # --------------------------------------
-
-execfile('../scripts/line_list.py')
 
 source_vel_kms = 1970
 vwidth_kms = 500
@@ -65,9 +68,11 @@ if script_extract_c18o21:
 
 if script_extract_continuum:
     do_recopy = True
-    do_flag = False
-    do_average = False
-    execfile('../scripts/extractLineData.py')
+    do_flag = True
+    do_average = True
+    do_statwt = True
+    lines_to_flag = lines_co+lines_13co+lines_c18o
+    execfile('../scripts/extractContinuum.py')
 
 # --------------------------------------
 # Image the data
