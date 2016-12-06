@@ -3,10 +3,10 @@
 # --------------------------------------
 
 script_copy = False
-script_extract_co21 = False
+script_extract_co21 = True
 script_extract_c18o21 = False
 script_extract_continuum = False
-script_image_co21 = True
+script_image_co21 = False
 script_image_c18o21 = False
 
 # --------------------------------------

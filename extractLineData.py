@@ -242,6 +242,8 @@ if do_extract:
 
     print "... extracting line data using MSTRANSFORM."
 
+    concat_out_file = out_root+'_'+tag+'_concat.ms'
+
     # .........................................
     # Calculate and recast as strings
     # .........................................
@@ -273,7 +275,7 @@ if do_extract:
     # Figure out how much averaging is needed to reach
     chan_width_hz = au.getChanWidths(concat_out_file, spw_list_string)
     target_width_hz = chan_dv_kms/sol_kms*restfreq_ghz*1e9
-    rebin_factor = target_width_hz / chan_width_hz
+    rebin_factor = min(target_width_hz / chan_width_hz)
     
     if rebin_factor < 2:
         chanbin = 1
@@ -297,8 +299,6 @@ if do_extract:
     # .........................................
     # Regrid
     # .........................................
-
-    concat_out_file = out_root+'_'+tag+'_concat.ms'
 
     print "... carrying out channel averaging first."
 
