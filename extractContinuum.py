@@ -212,7 +212,7 @@ if do_average:
               keepflags=False)
         files_to_concat.append(this_outfile)
     
-    final_out_file = out_root+'_'+this_tag+'_cont.ms'
+    final_out_file = out_root+'_'+tag+'_cont.ms'
     os.system('rm -rf '+final_out_file)
     os.system('rm -rf '+final_out_file+'.flagversions')
     concat(vis=files_to_concat,
