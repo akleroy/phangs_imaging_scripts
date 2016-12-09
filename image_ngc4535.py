@@ -22,12 +22,13 @@ calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = True
-script_extract_co21 = True
-script_extract_c18o21 = True
-script_extract_continuum = True
+script_copy = False
+script_extract_co21 = False
+script_extract_c18o21 = False
+script_extract_continuum = False
 
 # Image data
+script_image_chan0 = True
 script_image_co21 = False
 script_image_c18o21 = False
 
@@ -96,16 +97,17 @@ if script_extract_continuum:
 
 if script_image_chan0:
     do_pickcellsize = True
-    do_init = False
+    do_init = True
     do_mask = False
     do_clean = False
     do_postprocess = False
 
     input_vis = 'ngc4535_956_co21_chan0.ms'
     cube_root = 'ngc4535_co21_tapercube'
-    uvtaper = ["2.5arcsec", "2.5arcsec", "0.0deg"]
-    force_cell_size = 0.5
+    uvtaper = 2.5
     niter = 1E6
+    linetag = 'co21'
+    restfreq_ghz = line_list[linetag]
     execfile('../scripts/imageImage.py')    
 
 # --------------------------------------
