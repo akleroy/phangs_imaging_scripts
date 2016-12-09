@@ -145,6 +145,7 @@ if do_pickcellsize:
             for jj in range(3):
                 valid_sizes.append(2**(ii+1)*5**(jj)*3**(kk))
     valid_sizes.sort()
+    valid_sizes = np.array(valid_sizes)
 
     cells_x = np.min(valid_sizes[valid_sizes > need_cells_x])
     cells_y = np.min(valid_sizes[valid_sizes > need_cells_y])

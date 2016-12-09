@@ -98,8 +98,8 @@ if script_extract_continuum:
 if script_image_chan0:
     do_pickcellsize = True
     do_init = True
-    do_mask = False
-    do_clean = False
+    do_makemask = False
+    do_cleancube = False
     do_postprocess = False
 
     input_vis = 'ngc4535_956_co21_chan0.ms'
