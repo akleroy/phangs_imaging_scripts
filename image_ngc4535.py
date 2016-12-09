@@ -1,10 +1,14 @@
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# PREPARATION AND CONTROL FLOW
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
 # --------------------------------------
 # User inputs
 # --------------------------------------
 
 out_root = 'ngc4535'
 tag = '956'
-phase_center = 'J2000 12h34m20.3s +08d11m52'
+#phase_center = 'J2000 12h34m20.3s +08d11m52'
 source_vel_kms = 1970
 vwidth_kms = 500
 
@@ -26,6 +30,10 @@ script_extract_continuum = True
 # Image data
 script_image_co21 = False
 script_image_c18o21 = False
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# EXTRACTION
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 # --------------------------------------
 # Copy the data
@@ -77,6 +85,28 @@ if script_extract_continuum:
     do_statwt = True
     lines_to_flag = lines_co+lines_13co+lines_c18o
     execfile('../scripts/extractContinuum.py')
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# IMAGING AND EXPORT
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# --------------------------------------
+# Image channel 0
+# --------------------------------------
+
+if script_image_chan0:
+    do_pickcellsize = True
+    do_init = False
+    do_mask = False
+    do_clean = False
+    do_postprocess = False
+
+    input_vis = 'ngc4535_956_co21_chan0.ms'
+    cube_root = 'ngc4535_co21_tapercube'
+    uvtaper = ["2.5arcsec", "2.5arcsec", "0.0deg"]
+    force_cell_size = 0.5
+    niter = 1E6
+    execfile('../scripts/imageImage.py')    
 
 # --------------------------------------
 # Image cubes

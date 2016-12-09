@@ -70,22 +70,29 @@ except NameError:
     abort = True
 
 try:
-    im_size
+    image_size
 except NameError:
-    print "Please specify an image size (im_size [integer, integer]))."
+    print "Please specify an image size (image_size [integer, integer]))."
     abort = True
     
 try:
     cell_size
 except NameError:
-    print "Please specify a cell size (e.g., '0.1arcsec')."
+    print "Please specify a cell size (e.g., '0.15arcsec')."
     abort = True
 
 try:
-    restfreq
+    restfreq_ghz
 except NameError:
-    print "Please specify a rest frequency (restfreq string)."
+    print "Please specify a rest frequency (restfreq_ghz)."
     abort = True
+
+try:
+    specmode
+except NameError:
+    print "Spectral mode defaulting to a single continuum image."
+    print "Should be 'cube' for a cube. I use 'mfs'."
+    specmode = "mfs"
 
 # ......................................
 # Tuning parameters for CLEAN
@@ -106,14 +113,16 @@ except NameError:
 try:
     scales
 except NameError:
-    print "I will default to scales with [0,5,15]."
-    scales = [0,5,15]
+    print "I will default to scales with [0,5,10,20,40,80]."
+    scales = [0,5,10,20,40,80]
+    # Andreas - factors of a few 12m beam and a scale ~1 and ~2 times 7m beam
 
 try:
     smallscalebias
 except NameError:
-    print "I will default to smallscalebias 0.6."
-    smallscalebias = 0.6
+    print "I will default to smallscalebias 0.8."
+    smallscalebias = 0.8
+    # Andreas ~0.8 or 0.9
 
 try:
     briggs_weight
@@ -131,7 +140,7 @@ try:
     cycle_niter
 except NameError:
     print "I will default to cycle_niter 200."
-    cycle_niter = 10000
+    cycle_niter = 200
 
 try:
     uvtaper
@@ -185,11 +194,11 @@ if do_callclean:
            # Spatial axes
            phasecenter=phase_center,
            cell=cell_size,
-           imsize=im_size,
+           imsize=image_size,
            gridder='mosaic',
            # Spectral axis
-           specmode='cube',
-           restfreq=restfreq,
+           specmode=specmode,
+           restfreq=str(restfreq_ghz)+'GHz',
            outframe='lsrk',
            veltype='radio',
            # Deconvolver
@@ -199,7 +208,7 @@ if do_callclean:
            # U-V plane gridding
            weighting='briggs',
            robust=briggs_weight,
-           uvtaper=uvtaper,
+           uvtaper=uv_taper_string,
            # Stopping criterion
            niter=niter,
            threshold=threshold,
