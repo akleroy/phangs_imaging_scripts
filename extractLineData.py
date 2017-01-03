@@ -379,7 +379,8 @@ if do_combine:
     split(vis=final_out_file
           , datacolumn='DATA'
           , spw=''
-          , outputvis=chan0_vis)
+          , outputvis=chan0_vis
+          , width=10000)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # PRINT OUR TIME BENCHMARK

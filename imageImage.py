@@ -1,5 +1,3 @@
-# Script to collapse a measurement set into a one-plane image.
-
 tested_versions = ['4.6.0','4.7.0']
 this_version = casa['build']['version']
 if this_version not in tested_versions:
@@ -53,7 +51,10 @@ except NameError:
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 abort = False
+
+print ""
 print "---------- imageImage.py ----------"
+print ""
 
 # ......................................
 # Input/output files
@@ -156,19 +157,19 @@ if do_pickcellsize:
     print "I propose the following:"
     print "... cell size = "+cell_size_string
     print "... image size = ", image_size
-    print "... central field = ", au_centralField
 
-    phase_center = au_centralField
+    # This is not currently working ...
+
+    #print "... central field = ", au_centralField
+    #phase_center = au_centralField
 
 if do_init:
-    
-    niter = 0
-    do_reset = True
-    do_callclean = True
-    do_savecopy = True    
 
-    # Single plane
-    specmode = 'mfs'
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Making a dirty cube."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
 
     # Work out the uv taper
     try:
@@ -180,6 +181,14 @@ if do_init:
         uv_taper_string = False
     else:
         uv_taper_string = [str(uvtaper)+'arcsec',str(uvtaper)+'arcsec','0deg']
+
+    niter = 0
+    do_reset = True
+    do_callclean = True
+    do_savecopy = True    
+
+    bkup_ext = "dirty"
+    logfile = cube_root+"_dirty.log"
 
     execfile('../scripts/callClean.py')
 
@@ -194,13 +203,6 @@ if do_makemask:
 
     # Alternatively, regrid an external mask on to the parent cube.
 
-    print "... ... aligning the mask to the map."        
-    os.system('rm -rf '+gal+'_mask_for_native.image')
-    imregrid(imagename=gal+'_co21_mask.image'
-             , output=gal+'_mask_for_native.image'
-             , template=gal+'_co21_cube.residual'
-             , interpolation='nearest')
-
     pass
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -209,6 +211,12 @@ if do_makemask:
 
 if do_cleancube:
 
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+"
+    print "Resuming cleaning."
+    print "+-+-+-+-+-+-+-+-+-+"
+    print ""
+
     do_reset = False
     do_savecopy = False
     
@@ -216,17 +224,33 @@ if do_cleancube:
     base_niter_per_channel = 100
     base_cycle_niter = 100
     loop = 1
-    max_loop = 5
+    max_loop = 10
 
-    prev_flux = -1
-    this_flux = 0
-    while converged == False and loop <= max_loop:
+    this_flux = 0.0
+    delta_thresh = 0.02
+    proceed = True
+    while proceed == True and loop <= max_loop:
         do_callclean = True
         niter = base_niter_per_channel*(2**loop)*nchan
         cycle_niter = base_cycle_niter*(2**loop)
-        logfile = "clean_loop_"+str(loop)+".log"
+        logfile = cube_root+"_loop_"+str(loop)+".log"
         execfile('../scripts/callClean.py')
         execfile('../scripts/statCleanCube.py')    
+        prev_flux = this_flux
+        this_flux = imstat_model['sum'][0]
+        delta_flux = (this_flux-prev_flux)/this_flux
+        proceed = abs(delta_flux) > delta_thresh
+        print ""
+        print "***************"
+        print "LOOP "+str(loop)
+        print "... old flux "+str(prev_flux)
+        print "... new flux "+str(this_flux)
+        print "... fractional change "+str(delta_flux)+" compare to threshold "+str(delta_thresh)
+        print "... proceed? "+str(proceed)
+        print "***************"        
+        print ""
+        if proceed == False:
+            break
         loop += 1
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

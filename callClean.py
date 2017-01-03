@@ -101,8 +101,9 @@ except NameError:
 try:
     deconvolver
 except NameError:
-    print "Defaulting deconvolver to MULTISCALE."
-    deconvolver = 'multiscale'
+    #print "Defaulting deconvolver to MULTISCALE."
+    #deconvolver = 'multiscale'
+    deconvolver = "clark"
 
 try:
     threshold
@@ -113,9 +114,11 @@ except NameError:
 try:
     scales
 except NameError:
-    print "I will default to scales with [0,5,10,20,40,80]."
-    scales = [0,5,10,20,40,80]
+    scales=[0]
+    print "I will default to scales (in pixels) of ", scales
+    #scales = [0,5,10,20,40]
     # Andreas - factors of a few 12m beam and a scale ~1 and ~2 times 7m beam
+    # AKL - interaction with "taper" is weird. Need to think about this.
 
 try:
     smallscalebias
@@ -178,6 +181,7 @@ if do_callclean:
         print "... leaving the logfile unset."
     else:
         print "... setting the logfile to "+logfile
+        oldlogfile = casalog.logfile()
         casalog.setlogfile(logfile)
             
     try:
@@ -221,6 +225,14 @@ if do_callclean:
            # UI
            interactive=False,
            )
+
+    try:
+        logfile
+    except NameError:
+        pass
+    else:
+        print "... unsetting the logfile."
+        casalog.setlogfile(oldlogfile)
     
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # POST PROCESS AND WRITE THE RESULTS
@@ -228,26 +240,29 @@ if do_callclean:
 
 if do_savecopy:
 
-    print "........................................................"
-    print "callClean: Saving a copy of the results."
-    print "........................................................"
-
     try:
-        bkup_root
+        bkup_ext
     except NameError:
-        print "Please define a root output name for the saved cube via bkup_root=XXX."
-    
-    os.system('rm -rf '+bkup_root+'.image')
-    os.system('rm -rf '+bkup_root+'.model')
-    os.system('rm -rf '+bkup_root+'.pb')
-    os.system('rm -rf '+bkup_root+'.psf')
-    os.system('rm -rf '+bkup_root+'.residual')
+        print "do_savecopy is on but bkup_ext is not specified. No copy saved."
+        bkup_ext = None
 
-    os.system('cp -r '+cube_root+'.image '+bkup_root+'.image')
-    os.system('cp -r '+cube_root+'.model '+bkup_root+'.model')
-    os.system('cp -r '+cube_root+'.pb '+bkup_root+'.pb')
-    os.system('cp -r '+cube_root+'.psf '+bkup_root+'.psf')
-    os.system('cp -r '+cube_root+'.residual '+bkup_root+'.residual')
+    if bkup_ext != None:
+
+        print "........................................................"
+        print "callClean: Saving a copy of the results."
+        print "........................................................"
+        
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.image')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.model')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.pb')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.psf')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.residual')
+        
+        os.system('cp -r '+cube_root+'.image '+cube_root+'_'+bkup_ext+'.image')
+        os.system('cp -r '+cube_root+'.model '+cube_root+'_'+bkup_ext+'.model')
+        os.system('cp -r '+cube_root+'.pb '+cube_root+'_'+bkup_ext+'.pb')
+        os.system('cp -r '+cube_root+'.psf '+cube_root+'_'+bkup_ext+'.psf')
+        os.system('cp -r '+cube_root+'.residual '+cube_root+'_'+bkup_ext+'.residual')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER
