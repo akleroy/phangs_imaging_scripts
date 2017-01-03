@@ -2,13 +2,11 @@
 # visibility data.
 
 tested_versions = ['4.6.0','4.7.0']
-this_version = casa['build']['version']
+this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
     print "This version of CASA is "+this_version
     print "Tested versions are "+str(tested_versions)
-else:
-    print "The script has been verified for this version of CASA."
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER
@@ -103,7 +101,7 @@ try:
 except NameError:
     #print "Defaulting deconvolver to MULTISCALE."
     #deconvolver = 'multiscale'
-    deconvolver = "clark"
+    deconvolver = "hogbom"
 
 try:
     threshold
@@ -146,10 +144,10 @@ except NameError:
     cycle_niter = 200
 
 try:
-    uvtaper
+    uv_taper_string
 except NameError:
     print "Defaulting to no uvtaper."
-    uvtaper = False
+    uv_taper_string = ''
 
 # ......................................
 # If we abort, turn off the script
@@ -182,6 +180,7 @@ if do_callclean:
     else:
         print "... setting the logfile to "+logfile
         oldlogfile = casalog.logfile()
+        os.system('rm -rf '+logfile)
         casalog.setlogfile(logfile)
             
     try:
@@ -217,7 +216,7 @@ if do_callclean:
            niter=niter,
            threshold=threshold,
            cycleniter=cycle_niter,
-           cyclefactor=2.0,
+           cyclefactor=3.0,
            minpsffraction=0.1,
            # Mask
            usemask=usemask,

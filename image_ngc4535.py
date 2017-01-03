@@ -8,7 +8,7 @@
 
 out_root = 'ngc4535'
 tag = '956'
-#phase_center = 'J2000 12h34m20.3s +08d11m52'
+phase_center = 'J2000 12h34m20.3s +08d11m52'
 source_vel_kms = 1970
 vwidth_kms = 500
 
@@ -96,19 +96,28 @@ if script_extract_continuum:
 # --------------------------------------
 
 if script_image_chan0:
+
     do_pickcellsize = True
     do_init = True
     do_makemask = False
-    do_cleancube = False
+    do_cleancube = True
     do_postprocess = False
 
     input_vis = 'ngc4535_956_co21_chan0.ms'
-    cube_root = 'ngc4535_co21_tapercube'
-    uvtaper = 2.5
-    niter = 1E6
+    cube_root = 'ngc4535_co21_chan0'
+    uvtaper = None
     linetag = 'co21'
+    specmode = 'mfs'
     restfreq_ghz = line_list[linetag]
-    execfile('../scripts/imageImage.py')    
+    execfile('../scripts/imageImage.py')
+
+#    input_vis = 'ngc4535_956_co21_chan0.ms'
+#    cube_root = 'ngc4535_co21_chan0_taper'
+#    uvtaper = 2.5
+#    linetag = 'co21'
+#    specmode = 'mfs'
+#    restfreq_ghz = line_list[linetag]
+#    execfile('../scripts/imageImage.py')
 
 # --------------------------------------
 # Image cubes
