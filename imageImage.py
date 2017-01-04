@@ -35,6 +35,11 @@ except NameError:
     do_mask = True
 
 try:
+    resume_from_singlescale
+except NameError:
+    resume_from_singlescale = False
+
+try:
     do_clean
 except NameError:
     do_clean = True
@@ -53,6 +58,9 @@ abort = False
 print ""
 print "---------- imageImage.py ----------"
 print ""
+
+bright_snr_thresh = 3.0
+thresh_step = 0.5
 
 # ......................................
 # Input/output files
@@ -215,146 +223,213 @@ if do_cleancube:
     print "+-+-+-+-+-+-+-+-+-+"
     print ""
 
+    if resume_from_singlescale == False:
+
+        print ""
+        print "... first, I will clean using a single scale down to a 3sigma threshold"
+        print "... and minimal masking. I will stop when the flux in the model converges"
+        print "... at the 2% level."
+        print ""
+
+        nchan = 1
+        base_niter_per_channel = 100
+        base_cycle_niter = 100
+        loop = 1
+        max_loop = 10
+        deconvolver = "hogbom"    
+
+        this_flux = 0.0
+        delta_thresh = 0.02
+        proceed = True
+
+        while proceed == True and loop <= max_loop:
+
+            # Steadily increase the iterations between statistical checks.
+
+            do_reset = False
+            do_callclean = True
+            do_savecopy = False
+
+            niter = base_niter_per_channel*(2**loop)*nchan
+            cycle_niter = base_cycle_niter*(2**loop)/2
+            logfile = cube_root+"_loop_"+str(loop)+"_singlescale.log"
+            
+            # Figure out a current threshold in a very crude way.
+            usemask = 'pb'
+            mask = ''
+            execfile('../scripts/statCleanCube.py')    
+            threshold = str(bright_snr_thresh*imstat_residual['medabsdevmed'][0]/0.6745)+'Jy/beam'
+            
+            # Clean.
+            
+            calcres = False
+            execfile('../scripts/callClean.py')
+
+            # Run stats after the clean.
+            
+            execfile('../scripts/statCleanCube.py')    
+            
+            prev_flux = this_flux
+            this_flux = imstat_model['sum'][0]
+            delta_flux = (this_flux-prev_flux)/this_flux
+            proceed = abs(delta_flux) > delta_thresh
+            
+            print ""
+            print "***************"
+            print "SINGLE SCALE LOOP "+str(loop)
+            print "... threshold "+threshold
+            print "... old flux "+str(prev_flux)
+            print "... new flux "+str(this_flux)
+            print "... fractional change "+str(delta_flux)+ \
+                " compare to stopping criterion of "+str(delta_thresh)
+            print "... proceed? "+str(proceed)
+            print "***************"        
+            print ""
+
+            if proceed == False:
+                break
+            loop += 1
+
+        # Make a copy of the cube cleaned down to S/N 3 using only point sources.
+        
+        bkup_ext = "singlescale"
+        
+        do_reset = False
+        do_callclean = False
+        do_savecopy = True
+
+        execfile('../scripts/callClean.py')
+        
+    else:
+        
+        # If the "resume_from_singlescale" option is set, copy the
+        # backed up singlescale image to be the new cube. This flow
+        # seems likely to be deprecated once we lock the algorithm.
+        
+        print ""
+        print "Copying the previous single scale image to be the main cube."
+        print ""
+        
+        os.system('rm -rf '+cube_root+'.image')
+        os.system('rm -rf '+cube_root+'.model')
+        os.system('rm -rf '+cube_root+'.mask')
+        os.system('rm -rf '+cube_root+'.pb')
+        os.system('rm -rf '+cube_root+'.psf')
+        os.system('rm -rf '+cube_root+'.residual')
+        
+        bkup_ext = "singlescale"
+        os.system('cp -r '+cube_root+'_'+bkup_ext+'.image '+cube_root+'.image')
+        os.system('cp -r '+cube_root+'_'+bkup_ext+'.model '+cube_root+'.model')
+        os.system('cp -r '+cube_root+'_'+bkup_ext+'.mask '+cube_root+'.mask')
+        os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
+        os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
+        os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
+
     print ""
-    print "... first, I will clean using a single scale down to a 3sigma threshold."
-    print "... I will stop when the flux in the model converges at the 2% level."
+    print "... now I will clean around the peaks pushing into the noise."
     print ""
 
     nchan = 1
-    base_niter_per_channel = 100
-    base_cycle_niter = 100
+    base_niter_per_channel = 10000
+    base_cycle_niter = 10000
     loop = 1
     max_loop = 10
     deconvolver = "hogbom"    
 
-    this_flux = 0.0
+    print ""
+    print "... I am making a mask around the model I have built so far."
+    print ""
+    
+    execfile('../scripts/statCleanCube.py')                
+
+    current_thresh = bright_snr_thresh
+    current_rms = imstat_residual['medabsdevmed'][0]/0.6745
+
+    target_beam = str((imhead(cube_root+'.image'))['restoringbeam']['major']['value']*2.0)+'arcsec'
+
+    os.system('rm -rf '+cube_root+'_smoothed_model.image')    
+    imsmooth(imagename=cube_root+'.model',
+             targetres=True, major=target_beam, minor=target_beam, pa='0deg',
+             outfile=cube_root+'_smoothed_model.image', overwrite=True)
+
+    os.system('rm -rf '+cube_root+'_mask.image')
+    thresh_for_mask = 0.5*current_rms
+    immath(imagename = cube_root+'_smoothed_model.image',
+           outfile = cube_root+'_mask.image',
+           expr = 'iif(IM0 > '+str(thresh_for_mask) +',1.0,0.0)')
+
+    ia.open(cube_root+'_mask.image')
+    mask = ia.getchunk()
+    ia.done()
+
+    ia.open(cube_root+'.mask')
+    ia.putchunk(mask*1.0)
+    ia.done()
+    
+    print ""
+    print "... Proceeding with the clean."
+    print ""
+
+    this_flux = imstat_model['sum'][0]
     delta_thresh = 0.02
     proceed = True
-
+    
     while proceed == True and loop <= max_loop:
 
-        # Steadily increase the iterations between statistical checks.
+            # Steadily increase the iterations between statistical checks.
 
-        do_reset = False
-        do_callclean = True
-        do_savecopy = False
+            do_reset = False
+            do_callclean = True
+            do_savecopy = False
 
-        niter = base_niter_per_channel*(2**loop)*nchan
-        cycle_niter = base_cycle_niter*(2**loop)/2
-        logfile = cube_root+"_loop_"+str(loop)+".log"
+            niter = base_niter_per_channel*(2**loop)*nchan
+            cycle_niter = base_cycle_niter*(2**loop)/2
+            logfile = cube_root+"_loop_"+str(loop)+"_deepclean.log"
+            
+            # Figure out a current threshold in a very crude way.
+            usemask = 'user'
+            mask = ''            
+            execfile('../scripts/statCleanCube.py')    
+            threshold = '0Jy/beam'
+            
+            # Clean.
+            
+            calcres = False            
+            mask_file = cube_root+'.mask'
+            execfile('../scripts/callClean.py')
 
-        # Figure out a current threshold in a very crude way.
+            # Run stats after the clean.
+            
+            execfile('../scripts/statCleanCube.py')    
+            
+            prev_flux = this_flux
+            this_flux = imstat_model['sum'][0]
+            delta_flux = (this_flux-prev_flux)/this_flux
+            proceed = abs(delta_flux) > delta_thresh
+            
+            print ""
+            print "***************"
+            print "DEEP CLEAN SCALE LOOP "+str(loop)
+            print "... threshold "+threshold
+            print "... old flux "+str(prev_flux)
+            print "... new flux "+str(this_flux)
+            print "... fractional change "+str(delta_flux)+ \
+                " compare to stopping criterion of "+str(delta_thresh)
+            print "... proceed? "+str(proceed)
+            print "***************"        
+            print ""
 
-        execfile('../scripts/statCleanCube.py')    
-        threshold = str(3.0*imstat_residual['medabsdevmed'][0]/0.6745)+'Jy/beam'
-
-        # Clean.
-
-        execfile('../scripts/callClean.py')
-
-        # Run stats after the clean.
-
-        execfile('../scripts/statCleanCube.py')    
-
-        prev_flux = this_flux
-        this_flux = imstat_model['sum'][0]
-        delta_flux = (this_flux-prev_flux)/this_flux
-        proceed = abs(delta_flux) > delta_thresh
-
-        print ""
-        print "***************"
-        print "SINGLE SCALE LOOP "+str(loop)
-        print "... threshold "+threshold
-        print "... old flux "+str(prev_flux)
-        print "... new flux "+str(this_flux)
-        print "... fractional change "+str(delta_flux)+" compare to stopping criterion of "+str(delta_thresh)
-        print "... proceed? "+str(proceed)
-        print "***************"        
-        print ""
-        if proceed == False:
-            break
-        loop += 1
-
-    # Make a copy of the cube cleaned down to S/N 3 using only point sources.
-
-    bkup_ext = "singlescale"
+            if proceed == False:
+                break
+            loop += 1
     
+    # Make a copy of the fully cleaned cube.
+    bkup_ext = "deepclean"
+        
     do_reset = False
     do_callclean = False
     do_savecopy = True
-
-    execfile('../scripts/callClean.py')
-
-    # Now try to clean extended structure by using multi-scale clean.
-
-    print ""
-    print "... Now I will try cleaning what is left using incorporating multiple scales."
-    print ""
-
-    nchan = 1
-    base_niter_per_channel = 100
-    base_cycle_niter = 100
-    loop = 1
-    max_loop = 10
-    deconvolver = "multiscale"    
-    scales = [0, 5, 10, 20, 40]
-
-    this_flux = 0.0
-    delta_thresh = 0.01
-    proceed = True
-
-    while proceed == True and loop <= max_loop:
-
-        # Steadily increase the iterations between statistical checks.
-
-        do_reset = False
-        do_callclean = True
-        do_savecopy = False
-
-        niter = base_niter_per_channel*(2**loop)*nchan
-        cycle_niter = base_cycle_niter*(2**loop)/2
-        logfile = cube_root+"_loop_"+str(loop)+".log"
-
-        # Figure out a current threshold in a very crude way.
-
-        execfile('../scripts/statCleanCube.py')    
-        threshold = str(3.0*imstat_residual['medabsdevmed'][0]/0.6745)+'Jy/beam'
-
-        # Clean.
-
-        execfile('../scripts/callClean.py')
-
-        # Run stats after the clean.
-
-        execfile('../scripts/statCleanCube.py')    
-
-        prev_flux = this_flux
-        this_flux = imstat_model['sum'][0]
-        delta_flux = (this_flux-prev_flux)/this_flux
-        proceed = abs(delta_flux) > delta_thresh
-
-        print ""
-        print "***************"
-        print "MULTISCALE LOOP "+str(loop)
-        print "... threshold "+threshold
-        print "... old flux "+str(prev_flux)
-        print "... new flux "+str(this_flux)
-        print "... fractional change "+str(delta_flux)+" compare to stopping criterion of "+str(delta_thresh)
-        print "... proceed? "+str(proceed)
-        print "***************"        
-        print ""
-        if proceed == False:
-            break
-        loop += 1
-
-    # Make a copy of the cube cleaned down to S/N 3 using only point sources.
-
-    bkup_ext = "multiscale"
     
-    do_reset = False
-    do_callclean = False
-    do_savecopy = True
-
     execfile('../scripts/callClean.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

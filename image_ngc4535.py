@@ -96,13 +96,14 @@ if script_extract_continuum:
 # --------------------------------------
 
 if script_image_chan0:
-
+    
     do_pickcellsize = True
-    do_init = True
+    do_init = False # was True
     do_makemask = False
     do_cleancube = True
+    resume_from_singlescale = True # was False
     do_postprocess = False
-
+    
     input_vis = 'ngc4535_956_co21_chan0.ms'
     cube_root = 'ngc4535_co21_chan0'
     uvtaper = None

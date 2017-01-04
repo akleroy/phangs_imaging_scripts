@@ -58,6 +58,15 @@ except NameError:
     abort = True
 
 # ......................................
+# Workflow
+# ......................................
+
+try:
+    calcres
+except NameError:
+    calcres = True
+
+# ......................................
 # Shape and center of the cube
 # ......................................
 
@@ -121,8 +130,8 @@ except NameError:
 try:
     smallscalebias
 except NameError:
-    print "I will default to smallscalebias 0.8."
-    smallscalebias = 0.8
+    print "I will default to smallscalebias 0.9."
+    smallscalebias = 0.9
     # Andreas ~0.8 or 0.9
 
 try:
@@ -148,6 +157,12 @@ try:
 except NameError:
     print "Defaulting to no uvtaper."
     uv_taper_string = ''
+
+try:
+    minpsffraction
+except NameError:
+    print "Defaulting to a VERY HIGH minpsffraction."
+    minpsffraction = 0.5
 
 # ......................................
 # If we abort, turn off the script
@@ -183,14 +198,18 @@ if do_callclean:
         os.system('rm -rf '+logfile)
         casalog.setlogfile(logfile)
             
-    try:
-        mask_file
-    except NameError:
-        usemask = 'pb'
-    else:
-        if mask_file != '':
-            usemask = 'user'
-            mask = mask_file
+    #try:
+    #    mask_file
+    #except NameError:
+    #    usemask = 'pb'
+    #    mask = ''
+    #else:
+    #    if mask_file != '':
+    #        usemask = 'user'
+    #        mask = mask_file
+    #    else:
+    #        usemask = 'pb'
+    #        mask = ''
 
     tclean(vis=input_vis,
            imagename=cube_root,
@@ -204,6 +223,8 @@ if do_callclean:
            restfreq=str(restfreq_ghz)+'GHz',
            outframe='lsrk',
            veltype='radio',
+           # Workflow
+           calcres=calcres,
            # Deconvolver
            deconvolver=deconvolver,
            scales=scales,
@@ -217,9 +238,10 @@ if do_callclean:
            threshold=threshold,
            cycleniter=cycle_niter,
            cyclefactor=3.0,
-           minpsffraction=0.1,
+           minpsffraction=minpsffraction,
            # Mask
            usemask=usemask,
+           mask=mask,
            pbmask=0.2,
            # UI
            interactive=False,
@@ -253,12 +275,14 @@ if do_savecopy:
         
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.image')
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.model')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.mask')
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.pb')
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.psf')
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.residual')
         
         os.system('cp -r '+cube_root+'.image '+cube_root+'_'+bkup_ext+'.image')
         os.system('cp -r '+cube_root+'.model '+cube_root+'_'+bkup_ext+'.model')
+        os.system('cp -r '+cube_root+'.mask '+cube_root+'_'+bkup_ext+'.mask')
         os.system('cp -r '+cube_root+'.pb '+cube_root+'_'+bkup_ext+'.pb')
         os.system('cp -r '+cube_root+'.psf '+cube_root+'_'+bkup_ext+'.psf')
         os.system('cp -r '+cube_root+'.residual '+cube_root+'_'+bkup_ext+'.residual')
