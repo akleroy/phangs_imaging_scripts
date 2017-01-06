@@ -36,7 +36,7 @@ abort = False
 
 print ""
 print "....................................."
-print "makeMask: Begins."
+print "makeMask: begins."
 
 # ......................................
 # Input/output files
@@ -58,12 +58,39 @@ except NameError:
     recipe = ""
 
 if recipe == "smoothandclip":
+    print "Using recipe: "+recipe
     do_convolve = True
     do_scale_beam = True
-    scale_factor = 3.0
+    scale_factor = 8.0
+    hi_thresh = 10.0
+    lo_thresh = 10.0
+    do_specsmooth = False
+    spec_width = 1
+    do_smooth_mask = False
+
+if recipe == "clipandsmooth":
+
+    # This recipe tries to make a mask that includes only signal and
+    # then smooths it very heavily AFTER thresholding. The result
+    # should be appropriate for a very agnostic clean. The basic
+    # pipeline 
+
+    print "Using recipe: "+recipe
+    do_convolve = False
+    do_specsmooth = False
+    do_scale_beam = False
+
     hi_thresh = 5.0
-    do_specsmooth = True
-    spec_width = 3
+    lo_thresh = 2.0
+
+    do_reject_small_regions = True
+    reject_area_in_beams = 1.0
+
+    do_spectral_dilation = True
+    spectral_dilation_iters = 1
+
+    do_smooth_mask = True
+    smooth_mask_factor = 20.
 
 if recipe == "cprops":
     pass
@@ -132,6 +159,44 @@ try:
     lo_thresh
 except NameError:
     lo_thresh = 3
+
+# -----------
+# Pruning
+# -----------
+
+try:
+    do_reject_small_regions
+except NameError:
+    do_reject_small_regions = False
+
+try:
+    reject_area_in_beams
+except NameError:
+    reject_area_in_beams = 1.0
+
+# ----------------------
+# Dilation and smoothing
+# ----------------------
+
+try:
+    do_spectral_dilation
+except NameError:
+    do_spectral_dilation = False
+
+try:
+    spectral_dilation_iters
+except NameError:
+    spectral_dilation_iters = 1
+
+try:
+    do_smooth_mask
+except NameError:
+    do_smooth_mask = False
+
+try:
+    smooth_mask_to_res
+except NameError:
+    smooth_mask_to_res = 20.
 
 # ......................................
 # Other options
@@ -203,6 +268,13 @@ else:
     beam = None
 
 print "makeMask: found a beam of "+str(beam)+" arcseconds"
+
+pix_arcsec = abs(header['incr'][0]*180./np.pi*3600.)
+pix_per_beam = beam/pix_arcsec
+beam_area_pix = (beam/pix_arcsec/2.)**2*np.pi/log(2)
+
+print "makeMask: found "+str(pix_per_beam)+" pixels per beam."
+print "makeMask: found a beam area of "+str(beam_area_pix)+" pixels."
 
 # ...........................................................................
 # Figure out if the data are a cube or an image.
@@ -291,8 +363,6 @@ working_rms = stats['medabsdevmed'][0]/0.6745
 # THRESHOLD THE WORKING DATA
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-print "makeMask: thresholding the working image."
-
 print "makeMask: making a high threshold image."
 
 rms_for_mask = working_rms
@@ -305,7 +375,7 @@ immath(imagename = working_file,
 
 if lo_thresh < hi_thresh:
 
-    print "makeMask: making a low threshold image."
+    print "makeMask: also making a low threshold image."
 
     os.system('rm -rf '+working_file+'.lo_mask')
 
@@ -341,7 +411,16 @@ print "makeMask: requiring multiple adjacent channels."
 # SMALL REGION REJECTION
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-print "makeMask: removing small regions from the mask."
+if do_reject_small_regions:
+
+    print "makeMask: removing small regions from the mask."
+
+    regions, n_regions = scipy.ndimage.label(mask)                     
+    myhistogram = scipy.ndimage.measurements.histogram(regions,0,n_regions+1,n_regions+1)
+    object_slices = scipy.ndimage.find_objects(regions)
+    for i in range(n_regions):
+        if myhistogram[i+1] < reject_area_in_beams*beam_area_pix:
+            mask[object_slices[i]] = 0
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # DILATION
@@ -352,25 +431,71 @@ if lo_thresh < hi_thresh:
     new_mask = scipy.ndimage.binary_dilation(mask,iterations=-1,mask=lo_mask)    
     mask = new_mask
 
-print "makeMask: dilating the mask spatially."
+#print "makeMask: dilating the mask spatially."
+#spatial_dilation = 
 
-print "makeMask: dilating the mask spectrally."
+if do_spectral_dilation:
+    if is_cube == True:
+        print "makeMask: dilating the mask spectrally."
+        if header['axisnames'][2] == 'Frequency':
+            spec_axis = 2
+        else:
+            spec_axis = 3
+        for ii in range(spectral_dilation_iters):
+            new_mask = \
+                (mask + np.roll(mask,1,axis=spec_axis) + \
+                     np.roll(mask,-1,axis=spec_axis)) >= 1
+            mask = new_mask
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # PUT THE DATA INTO THE MASK FOR THE IMAGE
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-print "makeMask: putting the data into existing mask."
+print "makeMask: removing the old mask."
+os.system('rm -rf '+cube_root+'.mask')
 
-mask_file_list = glob.glob(cube_root+'.mask')
+print "makeMask: copying the image."
+os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
 
-if len(mask_file_list) == 0:
-    print "makeMask: no mask found. Making a new mask file."
-    os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
-
+print "makeMask: putting the data into a copy of the image."
 ia.open(cube_root+'.mask')
 ia.putchunk(mask*1.0)
 ia.done()
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# SMOOTH THE MASK
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_smooth_mask:
+    print "makeMask: smoothing the mask then clipping."
+    print "makeMask: (this operation assumes Jy/beam math)."
+
+    os.system('rm -rf '+cube_root+'.mask.temp')
+    smooth_to_beam = str(beam*smooth_mask_factor)+'arcsec'
+    imsmooth(imagename=cube_root+'.mask',
+             targetres=True,
+             major=smooth_to_beam, minor=smooth_to_beam, pa='0deg',
+             outfile=cube_root+'.mask.temp',
+             overwrite=True)
+
+    cutoff = 1.0
+    os.system('rm -rf '+cube_root+'.mask.temp.temp')
+    immath(imagename = cube_root+'.mask.temp',
+           outfile = cube_root+'.mask.temp.temp',
+           expr = 'iif(IM0 > '+str(cutoff) +',1.0,0.0)')
+    
+    print "makeMask: copying the data from the smoothed mask to the original."
+
+    ia.open(cube_root+'.mask.temp.temp')
+    mask = ia.getchunk()
+    ia.done()
+
+    ia.open(cube_root+'.mask')
+    ia.putchunk(mask*1.0)
+    ia.done()
+
+    os.system('rm -rf '+cube_root+'.mask.temp')
+    os.system('rm -rf '+cube_root+'.mask.temp.temp')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # CLEAN UP
@@ -383,5 +508,5 @@ os.system('rm -rf '+working_file+'.temp')
 os.system('rm -rf '+working_file+'.lo_mask')
 os.system('rm -rf '+working_file+'.hi_mask')
 
-print "makeMask: Ends."
+print "makeMask: ends."
 print "....................................."
