@@ -92,7 +92,8 @@ try:
     restfreq_ghz
 except NameError:
     print "Please specify a rest frequency (restfreq_ghz)."
-    abort = True
+    print "Will default leaving this unset."
+    restfreq_ghz = -1.0
 
 try:
     specmode
@@ -211,6 +212,11 @@ if do_callclean:
     #        usemask = 'pb'
     #        mask = ''
 
+    if restfreq_ghz < 0:
+        restfreq_str = ''
+    else:
+        restfreq_str = str(restfreq_ghz)+'GHz'
+
     tclean(vis=input_vis,
            imagename=cube_root,
            # Spatial axes
@@ -220,7 +226,7 @@ if do_callclean:
            gridder='mosaic',
            # Spectral axis
            specmode=specmode,
-           restfreq=str(restfreq_ghz)+'GHz',
+           restfreq=restfreq_str,
            outframe='lsrk',
            veltype='radio',
            # Workflow
