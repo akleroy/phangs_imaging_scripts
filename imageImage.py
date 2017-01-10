@@ -18,6 +18,20 @@ total_start_time = time.time()
 # CONTROL FLOW
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+# Here are the steps in easy form, for copy-and-paste for debugging.
+
+#do_pickcellsize = True
+#do_init = False
+#do_make_dirty_mask = False
+#do_revert_to_dirty = False
+#do_start_with_pbmask = False
+#do_clean_bright = False
+#do_revert_to_bright = True
+#do_make_model_mask = True
+#do_clean_deep = True
+#do_revert_to_deep = False
+#do_postprocess = False
+
 try:
     do_end_to_end
 except:
@@ -243,9 +257,9 @@ if do_init:
 if do_revert_to_dirty:
     
     print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Resetting to the dirty cube."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the dirty cube or image."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
         
     print ""
@@ -270,9 +284,9 @@ if do_revert_to_dirty:
 if do_make_dirty_mask:
 
     print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Making a mask based on the dirty cube."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Making a mask based on the dirty cube or image."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
     recipe = 'clipandsmooth'
@@ -381,9 +395,9 @@ if do_clean_bright and (do_revert_to_bright == False):
 if do_revert_to_bright:
     
     print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Resetting to the bright signal cube."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the bright signal cube or image."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
     
     os.system('rm -rf '+cube_root+'.image')
@@ -500,9 +514,9 @@ if do_clean_deep and (do_revert_to_deep == False):
 if do_revert_to_deep:
     
     print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Resetting to the deep cube."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the deep cube or image."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
     
     os.system('rm -rf '+cube_root+'.image')

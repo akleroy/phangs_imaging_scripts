@@ -278,17 +278,17 @@ elif (header.keys()).count('perplanebeams') == 1:
             this_major = this_plane[key]["major"]["value"]
             if this_major > beam:
                 beam = this_major
+    beam = str(beam)+'arcsec'
 else:
     print "makeMask: could not find a beam."
     beam = None
-
-print "makeMask: found a beam of "+str(beam)+" arcseconds"
 
 pix_arcsec = abs(header['incr'][0]*180./np.pi*3600.)
 beam_arcsec = float((beam.split('arcsec')[0]))
 pix_per_beam = beam_arcsec/pix_arcsec
 beam_area_pix = (beam_arcsec/pix_arcsec/2.)**2*np.pi/log(2)
 
+print "makeMask: found a beam of "+str(beam_arcsec)+" arcseconds"
 print "makeMask: found "+str(pix_per_beam)+" pixels per beam."
 print "makeMask: found a beam area of "+str(beam_area_pix)+" pixels."
 

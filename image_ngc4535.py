@@ -28,8 +28,8 @@ script_extract_c18o21 = False
 script_extract_continuum = False
 
 # Image data
-script_image_chan0 = True
-script_image_co21 = False
+script_image_chan0 = False
+script_image_co21 = True
 script_image_c18o21 = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -97,18 +97,8 @@ if script_extract_continuum:
 
 if script_image_chan0:
     
-    do_pickcellsize = True
-    do_init = False
-    do_make_dirty_mask = False
-    do_revert_to_dirty = False
-    do_start_with_pbmask = False
-    do_clean_bright = False
-    do_revert_to_bright = True
-    do_make_model_mask = True
-    do_clean_deep = True
-    do_revert_to_deep = False
-    do_postprocess = False
-    
+    do_end_to_end = True
+    do_start_with_pbmask = True
     input_vis = 'ngc4535_956_co21_chan0.ms'
     cube_root = 'ngc4535_co21_chan0'
     uvtaper = None
@@ -117,13 +107,24 @@ if script_image_chan0:
     restfreq_ghz = line_list[linetag]
     execfile('../scripts/imageImage.py')
 
-#    input_vis = 'ngc4535_956_co21_chan0.ms'
-#    cube_root = 'ngc4535_co21_chan0_taper'
-#    uvtaper = 2.5
-#    linetag = 'co21'
-#    specmode = 'mfs'
-#    restfreq_ghz = line_list[linetag]
-#    execfile('../scripts/imageImage.py')
+    do_end_to_end = True
+    do_start_with_pbmask = True
+    input_vis = 'ngc4535_956_c18o21_chan0.ms'
+    cube_root = 'ngc4535_c18o21_chan0'
+    uvtaper = None
+    linetag = 'c18o21'
+    specmode = 'mfs'
+    restfreq_ghz = line_list[linetag]
+    execfile('../scripts/imageImage.py')
+
+    do_end_to_end = True
+    do_start_with_pbmask = True
+    input_vis = 'ngc4535_956_cont.ms'
+    cube_root = 'ngc4535_cont'
+    uvtaper = None
+    specmode = 'mfs'
+    restfreq_ghz = ''
+    execfile('../scripts/imageImage.py')
 
 # --------------------------------------
 # Image cubes
@@ -131,12 +132,8 @@ if script_image_chan0:
 
 if script_image_co21:
 
-    do_pickcellsize = True
-    do_init = True
-    do_makemask = True
-    do_cleancube = True
-    resume_from_singlescale = False
-    do_postprocess = False
+    do_end_to_end = True
+    do_start_with_pbmask = False
 
     input_vis = 'ngc4535_956_co21.ms'
     cube_root = 'ngc4535_co21'
