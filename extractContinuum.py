@@ -222,10 +222,10 @@ if do_average:
     # A final statwt
     # .........................................
 
-    if do_statwt:
-        print "... deriving empirical weights using STATWT."
-        statwt(vis=final_out_file,
-               datacolumn='DATA')
+    #if do_statwt:
+    #    print "... deriving empirical weights using STATWT."
+    #    statwt(vis=final_out_file,
+    #           datacolumn='DATA')
 
     # .........................................
     # Clean up
