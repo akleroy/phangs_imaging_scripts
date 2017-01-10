@@ -98,10 +98,15 @@ if script_extract_continuum:
 if script_image_chan0:
     
     do_pickcellsize = True
-    do_init = False # was True
-    do_makemask = False
-    do_cleancube = True
-    resume_from_singlescale = True # was False
+    do_init = False
+    do_make_dirty_mask = False
+    do_revert_to_dirty = False
+    do_start_with_pbmask = False
+    do_clean_bright = False
+    do_revert_to_bright = True
+    do_make_model_mask = True
+    do_clean_deep = True
+    do_revert_to_deep = False
     do_postprocess = False
     
     input_vis = 'ngc4535_956_co21_chan0.ms'
@@ -125,18 +130,22 @@ if script_image_chan0:
 # --------------------------------------
 
 if script_image_co21:
+
+    do_pickcellsize = True
     do_init = True
-    do_mask = False
-    do_clean = False
+    do_makemask = True
+    do_cleancube = True
+    resume_from_singlescale = False
     do_postprocess = False
 
-    im_size = [600, 600]
-    cell_size = '0.5arcsec'
-    input_vis = 'ngc4535_co21_regrid.ms'
-    cube_root = 'ngc4535_co21_tapercube'
-    uvtaper = ["2.5arcsec", "2.5arcsec", "0.0deg"]
-    niter = 1E6
-    execfile('../scripts/imageLine.py')
+    input_vis = 'ngc4535_956_co21.ms'
+    cube_root = 'ngc4535_co21'
+    uvtaper = None
+    linetag = 'co21'
+    specmode = 'cube'
+    restfreq_ghz = line_list[linetag]
+
+    execfile('../scripts/imageImage.py')
 
 if script_image_c18o21:
     pass

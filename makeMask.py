@@ -96,7 +96,22 @@ if recipe == "cprops":
     pass
 
 if recipe == "modelmask":
+
+    print "Using recipe: "+recipe
+
     use_model = True
+    
+    do_convolve = True
+    do_scale_beam = True
+    scale_factor = 2.0
+    
+    hi_thresh = 1.0
+    lo_thresh = 1.0
+
+    do_spectral_dilation = True
+    spectral_dilation_iters = 1
+
+    do_smooth_mask = False
 
 # ------------
 # Image to use
@@ -270,8 +285,9 @@ else:
 print "makeMask: found a beam of "+str(beam)+" arcseconds"
 
 pix_arcsec = abs(header['incr'][0]*180./np.pi*3600.)
-pix_per_beam = beam/pix_arcsec
-beam_area_pix = (beam/pix_arcsec/2.)**2*np.pi/log(2)
+beam_arcsec = float((beam.split('arcsec')[0]))
+pix_per_beam = beam_arcsec/pix_arcsec
+beam_area_pix = (beam_arcsec/pix_arcsec/2.)**2*np.pi/log(2)
 
 print "makeMask: found "+str(pix_per_beam)+" pixels per beam."
 print "makeMask: found a beam area of "+str(beam_area_pix)+" pixels."
@@ -306,7 +322,7 @@ if do_convolve == True:
 
     if do_scale_beam == True:
         # Scale from the current beam.
-        target_beam = str(beam*scale_factor)+'arcsec'
+        target_beam = str(beam_arcsec*scale_factor)+'arcsec'
         os.system('rm -rf '+working_file)
         imsmooth(imagename=base_image,
                  targetres=True, major=target_beam, minor=target_beam, pa='0deg',
@@ -365,10 +381,12 @@ working_rms = stats['medabsdevmed'][0]/0.6745
 
 print "makeMask: making a high threshold image."
 
-rms_for_mask = working_rms
-os.system('rm -rf '+working_file+'.hi_mask')
+if use_model == False:
+    rms_for_mask = working_rms
+else:
+    rms_for_mask = rms
 
-rms_for_mask = working_rms
+os.system('rm -rf '+working_file+'.hi_mask')
 immath(imagename = working_file,
        outfile = working_file+'.hi_mask',
        expr = 'iif(IM0 > '+str(hi_thresh*rms_for_mask) +',1.0,0.0)')
@@ -378,8 +396,6 @@ if lo_thresh < hi_thresh:
     print "makeMask: also making a low threshold image."
 
     os.system('rm -rf '+working_file+'.lo_mask')
-
-    rms_for_mask = working_rms
     immath(imagename = working_file,
            outfile = working_file+'.lo_mask',
            expr = 'iif(IM0 > '+str(lo_thresh*rms_for_mask) +',1.0,0.0)')
@@ -471,7 +487,7 @@ if do_smooth_mask:
     print "makeMask: (this operation assumes Jy/beam math)."
 
     os.system('rm -rf '+cube_root+'.mask.temp')
-    smooth_to_beam = str(beam*smooth_mask_factor)+'arcsec'
+    smooth_to_beam = str(beam_arcsec*smooth_mask_factor)+'arcsec'
     imsmooth(imagename=cube_root+'.mask',
              targetres=True,
              major=smooth_to_beam, minor=smooth_to_beam, pa='0deg',

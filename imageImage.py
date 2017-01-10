@@ -5,7 +5,6 @@ if this_version not in tested_versions:
     print "This version of CASA is "+this_version
     print "Tested versions are "+str(tested_versions)
 
-# Hate this ... but directories
 execfile('../scripts/auExtensions.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -20,6 +19,23 @@ total_start_time = time.time()
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 try:
+    do_end_to_end
+except:
+    do_end_to_end = False
+
+if do_end_to_end:
+    do_pickcellsize = True
+    do_init = True
+    do_make_dirty_mask = True
+    do_revert_to_dirty = False
+    do_clean_bright = True
+    do_revert_to_bright = False
+    do_make_model_mask = True
+    do_clean_deep = True
+    do_revert_to_deep = False
+    do_postprocess = True
+
+try:
     do_pickcellsize
 except NameError:
     do_pickcellsize = True
@@ -30,19 +46,44 @@ except NameError:
     do_init = True
 
 try:
-    do_mask
-except NameError:    
-    do_mask = True
+    do_revert_to_dirty
+except NameError:
+    do_revert_to_dirty = False
 
 try:
-    resume_from_singlescale
+    do_make_dirty_mask
 except NameError:
-    resume_from_singlescale = False
+    do_make_dirty_mask = True
 
 try:
-    do_clean
+    do_clean_bright
 except NameError:
-    do_clean = True
+    do_clean_bright = True
+
+try:
+    do_start_with_pbmask
+except NameError:
+    do_start_with_pbmask = True
+
+try:
+    do_revert_to_bright
+except NameError:
+    do_revert_to_bright = False
+
+try:
+    do_make_model_mask
+except NameError:
+    do_make_model_mask = False
+
+try:
+    do_clean_deep
+except NameError:
+    do_clean_deep = True
+
+try:
+    do_revert_to_deep
+except NameError:
+    do_revert_to_deep = False
 
 try:
     do_postprocess
@@ -177,7 +218,6 @@ if do_init:
     print "+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
-    # Work out the uv taper
     try:
         uvtaper
     except NameError:
@@ -196,137 +236,195 @@ if do_init:
     bkup_ext = "dirty"
     logfile = cube_root+"_dirty.log"
 
+    usemask = 'pb'
+    mask = ''
     execfile('../scripts/callClean.py')
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# MAKE A MASK
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-if do_makemask:
-
-    # smooth to large (~10-15") scales and make mask. Expand it even a
-    # bit more. Also look for very bright things. 
-
-    # Alternatively, regrid an external mask on to the parent cube.
-
-    pass
-
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# CLEAN
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-if do_cleancube:
-
+if do_revert_to_dirty:
+    
     print ""
-    print "+-+-+-+-+-+-+-+-+-+"
-    print "Resuming cleaning."
-    print "+-+-+-+-+-+-+-+-+-+"
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the dirty cube."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
-
-    if resume_from_singlescale == False:
-
-        print ""
-        print "... first, I will clean using a single scale down to a 3sigma threshold"
-        print "... and minimal masking. I will stop when the flux in the model converges"
-        print "... at the 2% level."
-        print ""
-
-        nchan = 1
-        base_niter_per_channel = 100
-        base_cycle_niter = 100
-        loop = 1
-        max_loop = 10
-        deconvolver = "hogbom"    
-
-        this_flux = 0.0
-        delta_thresh = 0.02
-        proceed = True
-
-        while proceed == True and loop <= max_loop:
-
-            # Steadily increase the iterations between statistical checks.
-
-            do_reset = False
-            do_callclean = True
-            do_savecopy = False
-
-            niter = base_niter_per_channel*(2**loop)*nchan
-            cycle_niter = base_cycle_niter*(2**loop)/2
-            logfile = cube_root+"_loop_"+str(loop)+"_singlescale.log"
-            
-            # Figure out a current threshold in a very crude way.
-            usemask = 'pb'
-            mask = ''
-            execfile('../scripts/statCleanCube.py')    
-            threshold = str(bright_snr_thresh*imstat_residual['medabsdevmed'][0]/0.6745)+'Jy/beam'
-            
-            # Clean.
-            
-            calcres = False
-            execfile('../scripts/callClean.py')
-
-            # Run stats after the clean.
-            
-            execfile('../scripts/statCleanCube.py')    
-            
-            prev_flux = this_flux
-            this_flux = imstat_model['sum'][0]
-            delta_flux = (this_flux-prev_flux)/this_flux
-            proceed = abs(delta_flux) > delta_thresh
-            
-            print ""
-            print "***************"
-            print "SINGLE SCALE LOOP "+str(loop)
-            print "... threshold "+threshold
-            print "... old flux "+str(prev_flux)
-            print "... new flux "+str(this_flux)
-            print "... fractional change "+str(delta_flux)+ \
-                " compare to stopping criterion of "+str(delta_thresh)
-            print "... proceed? "+str(proceed)
-            print "***************"        
-            print ""
-
-            if proceed == False:
-                break
-            loop += 1
-
-        # Make a copy of the cube cleaned down to S/N 3 using only point sources.
         
-        bkup_ext = "singlescale"
+    print ""
+    print "Copying the previous dirty image to be the main cube."
+    print ""
+    
+    os.system('rm -rf '+cube_root+'.image')
+    os.system('rm -rf '+cube_root+'.model')
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('rm -rf '+cube_root+'.pb')
+    os.system('rm -rf '+cube_root+'.psf')
+    os.system('rm -rf '+cube_root+'.residual')
+        
+    bkup_ext = "dirty"
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.image '+cube_root+'.image')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.model '+cube_root+'.model')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.mask '+cube_root+'.mask')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
+
+if do_make_dirty_mask:
+
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Making a mask based on the dirty cube."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+
+    recipe = 'clipandsmooth'
+    execfile('../scripts/makeMask.py')
+
+    os.system('rm -rf '+cube_root+'_widearea.mask')
+    os.system('cp -r '+cube_root+'.mask '+cube_root+'_widearea.mask')
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# CLEAN DOWN TO A BRIGHT THRESHOLD
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_clean_bright and (do_revert_to_bright == False):
+
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resuming cleaning, targeting bright emission."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+
+    print ""
+    print "... first, I will clean using a wide mask and a single scale"
+    print "... down to a 3sigma threshold. I will stop when the flux in"
+    print "... the model converges for successive cleans at the ~2% level."
+    print "... This data product is the 'bright' cube."
+    print ""
+    
+    nchan = 1
+    base_niter_per_channel = 100
+    base_cycle_niter = 100
+    loop = 1
+    max_loop = 10
+    deconvolver = "hogbom"    
+
+    this_flux = 0.0
+    delta_thresh = 0.02
+    proceed = True
+    
+    while proceed == True and loop <= max_loop:
+        
+        # Steadily increase the iterations between statistical checks.
         
         do_reset = False
-        do_callclean = False
-        do_savecopy = True
+        do_callclean = True
+        do_savecopy = False
+        
+        niter = base_niter_per_channel*(2**loop)*nchan
+        cycle_niter = base_cycle_niter*(2**loop)/2
+        logfile = cube_root+"_loop_"+str(loop)+"_singlescale.log"
+        
+        # Figure out a current threshold in a very crude way.
+        execfile('../scripts/statCleanCube.py')    
+        this_threshold = bright_snr_thresh* \
+            imstat_residual['medabsdevmed'][0]/0.6745
+        threshold = str(this_threshold)+'Jy/beam'
+            
+        # Clean.
 
+        calcres = False
+        
+        if do_start_with_pbmask == False:
+            usemask = 'user'
+            mask = ''
+            mask_file = cube_root+'.mask'
+        else:
+            usemask = 'pb'
         execfile('../scripts/callClean.py')
         
-    else:
+        # Run stats after the clean.
         
-        # If the "resume_from_singlescale" option is set, copy the
-        # backed up singlescale image to be the new cube. This flow
-        # seems likely to be deprecated once we lock the algorithm.
+        execfile('../scripts/statCleanCube.py')    
+        
+        prev_flux = this_flux
+        this_flux = imstat_model['sum'][0]
+        delta_flux = (this_flux-prev_flux)/this_flux
+        proceed = abs(delta_flux) > delta_thresh
         
         print ""
-        print "Copying the previous single scale image to be the main cube."
+        print "***************"
+        print "BRIGHT CLEAN LOOP "+str(loop)
+        print "... threshold "+threshold
+        print "... old flux "+str(prev_flux)
+        print "... new flux "+str(this_flux)
+        print "... fractional change "+str(delta_flux)+ \
+            " compare to stopping criterion of "+str(delta_thresh)
+        print "... proceed? "+str(proceed)
+        print "***************"        
         print ""
         
-        os.system('rm -rf '+cube_root+'.image')
-        os.system('rm -rf '+cube_root+'.model')
-        os.system('rm -rf '+cube_root+'.mask')
-        os.system('rm -rf '+cube_root+'.pb')
-        os.system('rm -rf '+cube_root+'.psf')
-        os.system('rm -rf '+cube_root+'.residual')
+        if proceed == False:
+            break
+        loop += 1
+    
+    # We are done. Now make a copy of the cube cleaned down to S/N 3
+    # using only point sources. The next step can be used to revert to
+    # this bright emission only.
+    
+    bkup_ext = "bright"
+    
+    do_reset = False
+    do_callclean = False
+    do_savecopy = True
+    
+    execfile('../scripts/callClean.py')
         
-        bkup_ext = "singlescale"
-        os.system('cp -r '+cube_root+'_'+bkup_ext+'.image '+cube_root+'.image')
-        os.system('cp -r '+cube_root+'_'+bkup_ext+'.model '+cube_root+'.model')
-        os.system('cp -r '+cube_root+'_'+bkup_ext+'.mask '+cube_root+'.mask')
-        os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
-        os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
-        os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
+if do_revert_to_bright:
+    
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the bright signal cube."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+    
+    os.system('rm -rf '+cube_root+'.image')
+    os.system('rm -rf '+cube_root+'.model')
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('rm -rf '+cube_root+'.pb')
+    os.system('rm -rf '+cube_root+'.psf')
+    os.system('rm -rf '+cube_root+'.residual')
+        
+    bkup_ext = "bright"
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.image '+cube_root+'.image')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.model '+cube_root+'.model')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.mask '+cube_root+'.mask')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
+
+if do_make_model_mask:
 
     print ""
-    print "... now I will clean around the peaks pushing into the noise."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Making a mask based on the model."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+
+    recipe = 'modelmask'
+    execfile('../scripts/makeMask.py')
+
+    os.system('rm -rf '+cube_root+'_modelbased.mask')
+    os.system('cp -r '+cube_root+'.mask '+cube_root+'_modelbased.mask')
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# CLEAN DEEPLY AROUND THE CURRENT MODEL
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_clean_deep and (do_revert_to_deep == False):
+
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resuming cleaning, pushing in to the noise."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
     nchan = 1
@@ -336,40 +434,7 @@ if do_cleancube:
     max_loop = 10
     deconvolver = "hogbom"    
 
-    print ""
-    print "... I am making a mask around the model I have built so far."
-    print ""
-    
-    execfile('../scripts/statCleanCube.py')                
-
-    current_thresh = bright_snr_thresh
-    current_rms = imstat_residual['medabsdevmed'][0]/0.6745
-
-    target_beam = str((imhead(cube_root+'.image'))['restoringbeam']['major']['value']*2.0)+'arcsec'
-
-    os.system('rm -rf '+cube_root+'_smoothed_model.image')    
-    imsmooth(imagename=cube_root+'.model',
-             targetres=True, major=target_beam, minor=target_beam, pa='0deg',
-             outfile=cube_root+'_smoothed_model.image', overwrite=True)
-
-    os.system('rm -rf '+cube_root+'_mask.image')
-    thresh_for_mask = 0.5*current_rms
-    immath(imagename = cube_root+'_smoothed_model.image',
-           outfile = cube_root+'_mask.image',
-           expr = 'iif(IM0 > '+str(thresh_for_mask) +',1.0,0.0)')
-
-    ia.open(cube_root+'_mask.image')
-    mask = ia.getchunk()
-    ia.done()
-
-    ia.open(cube_root+'.mask')
-    ia.putchunk(mask*1.0)
-    ia.done()
-    
-    print ""
-    print "... Proceeding with the clean."
-    print ""
-
+    execfile('../scripts/statCleanCube.py')    
     this_flux = imstat_model['sum'][0]
     delta_thresh = 0.02
     proceed = True
@@ -387,14 +452,14 @@ if do_cleancube:
             logfile = cube_root+"_loop_"+str(loop)+"_deepclean.log"
             
             # Figure out a current threshold in a very crude way.
-            usemask = 'user'
-            mask = ''            
             execfile('../scripts/statCleanCube.py')    
             threshold = '0Jy/beam'
             
             # Clean.
             
             calcres = False            
+            usemask = 'user'
+            mask = ''
             mask_file = cube_root+'.mask'
             execfile('../scripts/callClean.py')
 
@@ -409,7 +474,7 @@ if do_cleancube:
             
             print ""
             print "***************"
-            print "DEEP CLEAN SCALE LOOP "+str(loop)
+            print "DEEP CLEAN LOOP "+str(loop)
             print "... threshold "+threshold
             print "... old flux "+str(prev_flux)
             print "... new flux "+str(this_flux)
@@ -424,13 +489,36 @@ if do_cleancube:
             loop += 1
     
     # Make a copy of the fully cleaned cube.
-    bkup_ext = "deepclean"
+    bkup_ext = "deep"
         
     do_reset = False
     do_callclean = False
     do_savecopy = True
     
     execfile('../scripts/callClean.py')
+
+if do_revert_to_deep:
+    
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the deep cube."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+    
+    os.system('rm -rf '+cube_root+'.image')
+    os.system('rm -rf '+cube_root+'.model')
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('rm -rf '+cube_root+'.pb')
+    os.system('rm -rf '+cube_root+'.psf')
+    os.system('rm -rf '+cube_root+'.residual')
+        
+    bkup_ext = "deep"
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.image '+cube_root+'.image')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.model '+cube_root+'.model')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.mask '+cube_root+'.mask')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # POST PROCESS
