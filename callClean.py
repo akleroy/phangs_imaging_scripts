@@ -85,7 +85,7 @@ except NameError:
 try:
     cell_size_string
 except NameError:
-    print "Please specify a cell size (e.g., '0.15arcsec')."
+    print "Please specify a cell_size_string (e.g., '0.15arcsec')."
     abort = True
 
 try:

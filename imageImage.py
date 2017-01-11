@@ -155,8 +155,8 @@ if do_pickcellsize:
     # Cell size implied by baseline distribution
     au_cellsize, au_imsize, au_centralField = \
         au.pickCellSize(input_vis, imsize=True, npix=oversamp)
-    xextent = au_cellsize*au_imsize[0]
-    yextent = au_cellsize*au_imsize[1]
+    xextent = au_cellsize*au_imsize[0]*1.2
+    yextent = au_cellsize*au_imsize[1]*1.2
 
     # If a u-v taper is present, then take that as an alternate beam
     # size.
@@ -488,7 +488,8 @@ if do_clean_deep and (do_revert_to_deep == False):
             prev_flux = this_flux
             this_flux = imstat_model['sum'][0]
             delta_flux = (this_flux-prev_flux)/this_flux
-            proceed = abs(delta_flux) > delta_thresh
+            proceed = abs(delta_flux) > delta_thresh and \
+                (this_flux > 0.0)
             
             print ""
             print "***************"
