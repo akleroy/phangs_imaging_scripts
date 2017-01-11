@@ -155,15 +155,11 @@ if script_image_cube:
         do_end_to_end = True
         do_start_with_pbmask = False
         
-        input_vis = 'ngc4535_956_co21.ms'
-        cube_root = 'ngc4535_co21'
+        input_vis = 'ngc4535_956_c18o21.ms'
+        cube_root = 'ngc4535_c18o21'
         uvtaper = None
-        linetag = 'co21'
+        linetag = 'c18o21'
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
         execfile('../scripts/imageImage.py')
-
-
-if script_image_c18o21:
-    pass
