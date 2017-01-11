@@ -173,7 +173,7 @@ if do_shrink == False:
     os.system('rm -rf '+cube_root+'_rebin.pb')
 
     os.system('cp -r '+cube_root+'_round_pbcor.image '+ \
-                  cube_root+'round_pbcor_rebin.image')
+                  cube_root+'_round_pbcor_rebin.image')
     os.system('cp -r '+cube_root+'.residual '+ \
                   cube_root+'_rebin.residual')
     os.system('cp -r '+cube_root+'_round.image '+ \

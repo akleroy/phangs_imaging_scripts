@@ -83,7 +83,7 @@ except NameError:
     abort = True
     
 try:
-    cell_size
+    cell_size_string
 except NameError:
     print "Please specify a cell size (e.g., '0.15arcsec')."
     abort = True
@@ -221,7 +221,7 @@ if do_callclean:
            imagename=cube_root,
            # Spatial axes
            phasecenter=phase_center,
-           cell=cell_size,
+           cell=cell_size_string,
            imsize=image_size,
            gridder='mosaic',
            # Spectral axis

@@ -251,6 +251,8 @@ if do_init:
 
     usemask = 'pb'
     mask = ''
+    pbmask=0.2
+    calcres = True
     execfile('../scripts/callClean.py')
 
 if do_revert_to_dirty:
@@ -352,6 +354,8 @@ if do_clean_bright and (do_revert_to_bright == False):
             mask_file = cube_root+'.mask'
         else:
             usemask = 'pb'
+            mask = ''
+            pbmask = 0.2
         execfile('../scripts/callClean.py')
         
         # Run stats after the clean.
@@ -361,7 +365,8 @@ if do_clean_bright and (do_revert_to_bright == False):
         prev_flux = this_flux
         this_flux = imstat_model['sum'][0]
         delta_flux = (this_flux-prev_flux)/this_flux
-        proceed = abs(delta_flux) > delta_thresh
+        proceed = abs(delta_flux) > delta_thresh and \
+            (this_flux > 0.0)
         
         print ""
         print "***************"
