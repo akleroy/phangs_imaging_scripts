@@ -264,29 +264,7 @@ print "makeMask: found a noise of "+str(rms)+" Jy/beam"
 
 header = imhead(cube_root+'.image')
 
-# ... this is complicated by the possible presence of per-plane beams
-if (header.keys()).count('restoringbeam') == 1:
-    # ... the simple case
-    beam = str(header['restoringbeam']['major']['value'])+'arcsec'
-elif (header.keys()).count('perplanebeams') == 1:
-    # ... per plane beams, pick the largest beam
-    ppbdict = header['perplanebeams']['beams']
-    beam = 0.0
-    for plane in ppbdict.keys():
-        this_plane = ppbdict[plane]
-        for key in this_plane.keys():
-            this_major = this_plane[key]["major"]["value"]
-            if this_major > beam:
-                beam = this_major
-    beam = str(beam)+'arcsec'
-else:
-    print "makeMask: could not find a beam."
-    beam = None
-
-pix_arcsec = abs(header['incr'][0]*180./np.pi*3600.)
-beam_arcsec = float((beam.split('arcsec')[0]))
-pix_per_beam = beam_arcsec/pix_arcsec
-beam_area_pix = (beam_arcsec/pix_arcsec/2.)**2*np.pi/log(2)
+execfile('../scripts/extractBeam.py')
 
 print "makeMask: found a beam of "+str(beam_arcsec)+" arcseconds"
 print "makeMask: found "+str(pix_per_beam)+" pixels per beam."

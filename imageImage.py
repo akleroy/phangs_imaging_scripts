@@ -149,7 +149,6 @@ if abort:
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 if do_pickcellsize:
-
     # Factor by which to oversample the beam
     oversamp = 5
 
@@ -539,10 +538,19 @@ if do_revert_to_deep:
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 if do_postprocess:
+
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Post-processing and exporting the data."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+
+    do_calc_beam = True
     do_process = True
-    do_shrink = True
+    do_shrink = False
     do_fits = True
-    execfile('.../scripts/postProcessCubes.py')
+
+    execfile('../scripts/postProcessCubes.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER

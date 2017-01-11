@@ -29,8 +29,11 @@ script_extract_continuum = False
 
 # Image data
 script_image_chan0 = False
+script_image_cube = False
+
 script_image_co21 = True
 script_image_c18o21 = False
+script_image_cont = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -88,7 +91,7 @@ if script_extract_continuum:
     execfile('../scripts/extractContinuum.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# IMAGING AND EXPORT
+# IMAGING
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 # --------------------------------------
@@ -97,52 +100,70 @@ if script_extract_continuum:
 
 if script_image_chan0:
     
-    do_end_to_end = True
-    do_start_with_pbmask = True
-    input_vis = 'ngc4535_956_co21_chan0.ms'
-    cube_root = 'ngc4535_co21_chan0'
-    uvtaper = None
-    linetag = 'co21'
-    specmode = 'mfs'
-    restfreq_ghz = line_list[linetag]
-    execfile('../scripts/imageImage.py')
+    if script_image_co21:
+        do_end_to_end = True
+        do_start_with_pbmask = True
+        input_vis = 'ngc4535_956_co21_chan0.ms'
+        cube_root = 'ngc4535_co21_chan0'
+        uvtaper = None
+        linetag = 'co21'
+        specmode = 'mfs'
+        restfreq_ghz = line_list[linetag]
+        execfile('../scripts/imageImage.py')
 
-    do_end_to_end = True
-    do_start_with_pbmask = True
-    input_vis = 'ngc4535_956_c18o21_chan0.ms'
-    cube_root = 'ngc4535_c18o21_chan0'
-    uvtaper = None
-    linetag = 'c18o21'
-    specmode = 'mfs'
-    restfreq_ghz = line_list[linetag]
-    execfile('../scripts/imageImage.py')
+    if script_image_c18o21:
+        do_end_to_end = True
+        do_start_with_pbmask = True
+        input_vis = 'ngc4535_956_c18o21_chan0.ms'
+        cube_root = 'ngc4535_c18o21_chan0'
+        uvtaper = None
+        linetag = 'c18o21'
+        specmode = 'mfs'
+        restfreq_ghz = line_list[linetag]
+        execfile('../scripts/imageImage.py')
 
-    do_end_to_end = True
-    do_start_with_pbmask = True
-    input_vis = 'ngc4535_956_cont.ms'
-    cube_root = 'ngc4535_cont'
-    uvtaper = None
-    specmode = 'mfs'
-    restfreq_ghz = ''
-    execfile('../scripts/imageImage.py')
+    if script_image_cont:
+        do_end_to_end = True
+        do_start_with_pbmask = True
+        input_vis = 'ngc4535_956_cont.ms'
+        cube_root = 'ngc4535_cont'
+        uvtaper = None
+        specmode = 'mfs'
+        restfreq_ghz = ''
+        execfile('../scripts/imageImage.py')
 
 # --------------------------------------
 # Image cubes
 # --------------------------------------
 
-if script_image_co21:
+if script_image_cube:
 
-    do_end_to_end = True
-    do_start_with_pbmask = False
+    if script_image_co21:
+        do_end_to_end = True
+        do_start_with_pbmask = False
+        
+        input_vis = 'ngc4535_956_co21.ms'
+        cube_root = 'ngc4535_co21'
+        uvtaper = None
+        linetag = 'co21'
+        specmode = 'cube'
+        restfreq_ghz = line_list[linetag]
 
-    input_vis = 'ngc4535_956_co21.ms'
-    cube_root = 'ngc4535_co21'
-    uvtaper = None
-    linetag = 'co21'
-    specmode = 'cube'
-    restfreq_ghz = line_list[linetag]
+        execfile('../scripts/imageImage.py')
 
-    execfile('../scripts/imageImage.py')
+    if script_image_c18o21:
+        do_end_to_end = True
+        do_start_with_pbmask = False
+        
+        input_vis = 'ngc4535_956_co21.ms'
+        cube_root = 'ngc4535_co21'
+        uvtaper = None
+        linetag = 'co21'
+        specmode = 'cube'
+        restfreq_ghz = line_list[linetag]
+
+        execfile('../scripts/imageImage.py')
+
 
 if script_image_c18o21:
     pass

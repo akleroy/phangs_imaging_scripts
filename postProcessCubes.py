@@ -2,19 +2,19 @@
 # future analysis.
 
 tested_versions = ['4.6.0','4.7.0']
-this_version = casa['build']['version']
+this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
     print "This version of CASA is "+this_version
     print "Tested versions are "+str(tested_versions)
-else:
-    print "The script has been verified for this version of CASA."
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 import time
+import numpy as np
+
 start_time = time.time()
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -60,7 +60,8 @@ except NameError:
 try:
     target_beam
 except NameError:
-    print "Please specify a target round beam. Otherwise I will try to calculate it."    
+    print "I will try to calculate a target beam."    
+    do_calc_beam = True
 
 if abort:
     print "(Turning off other parts of the script)."
@@ -69,16 +70,41 @@ if abort:
     do_fits = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# PICK A TARGET ROUND BEAM
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_calc_beam:
+
+    print ""
+    print "........................................................"
+    print "postProcessCubes: picking a target resolution."
+    print "........................................................"
+    print ""
+
+    header = imhead(cube_root+'.image')
+
+    execfile('../scripts/extractBeam.py')
+    
+    print "postProcessCubes: found a beam of "+str(beam_arcsec)+" arcseconds"
+    print "postProcessCubes: found "+str(pix_per_beam)+" pixels per beam."
+    print "postProcessCubes: found a beam area of "+str(beam_area_pix)+" pixels."
+
+    target_beam_arcsec = \
+        sqrt(beam_arcsec**2+(pix_arcsec*2.0)**2)
+    target_beam = str(target_beam_arcsec)+'arcsec'
+    print "postProcessCubes: will target a round beam of "+str(target_beam_arcsec)+" arcseconds"
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # PROCESS THE CUBES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
 if do_process:
 
+    print ""
     print "........................................................"
     print "postProcessCubes: processing cubes."
     print "........................................................"
-
-    # Add logic to figure out round beam if not user supplied here.
+    print ""
 
     # Smooth to have a round beam        
     imsmooth(imagename=cube_root+'.image',
@@ -97,7 +123,7 @@ if do_process:
     imsmooth(imagename=cube_root+'_pbcor.image',
              outfile=cube_root+'_round_pbcor.image',
              targetres=True,
-             major=target_beam_co21, minor=target_beam_co21, pa='0deg',
+             major=target_beam, minor=target_beam, pa='0deg',
              overwrite=True)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -106,56 +132,88 @@ if do_process:
 
 if do_shrink:
 
+    print ""
     print "........................................................"
     print "postProcessCubes: shrinking the cubes to save space."
     print "........................................................"
-        
+    print ""
+
     os.system('rm -rf '+cube_root+'round_pbcor_rebin.image')
+    os.system('rm -rf '+cube_root+'_rebin.residual')
+    os.system('rm -rf '+cube_root+'_round_rebin.image')
+    os.system('rm -rf '+cube_root+'_rebin.pb')
+
     imrebin(imagename=cube_root+'_round_pbcor.image',
             outfile=cube_root+'_round_pbcor_rebin.image',
             factor=[2,2,1,1])
     
-    os.system('rm -rf '+cube_root+'_rebin.residual')
     imrebin(imagename=cube_root+'.residual',
             outfile=cube_root+'_rebin.residual',
             factor=[2,2,1,1])
     
-    os.system('rm -rf '+cube_root+'_round_rebin.image')
     imrebin(imagename=cube_root+'_round.image',
             outfile=cube_root+'_round_rebin.image',
             factor=[2,2,1,1])
     
-    os.system('rm -rf '+cube_root+'_rebin.pb')
     imrebin(imagename=cube_root+'.pb',
             outfile=cube_root+'_rebin.pb',
             factor=[2,2,1,1])
+
+if do_shrink == False:
+    
+    print ""
+    print "........................................................"
+    print "postProcessCubes: keeping original pixel scale."
+    print "........................................................"
+    print ""
+
+    os.system('rm -rf '+cube_root+'round_pbcor_rebin.image')
+    os.system('rm -rf '+cube_root+'_rebin.residual')
+    os.system('rm -rf '+cube_root+'_round_rebin.image')
+    os.system('rm -rf '+cube_root+'_rebin.pb')
+
+    os.system('cp -r '+cube_root+'_round_pbcor.image '+ \
+                  cube_root+'round_pbcor_rebin.image')
+    os.system('cp -r '+cube_root+'.residual '+ \
+                  cube_root+'_rebin.residual')
+    os.system('cp -r '+cube_root+'_round.image '+ \
+                  cube_root+'_round_rebin.image')
+    os.system('cp -r '+cube_root+'.pb '+ \
+                  cube_root+'_rebin.pb')
+    
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXPORT TO FITS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-if do_shrink:
+if do_fits:
 
+    print ""
     print "........................................................"
     print "postProcessCubes: exporting to FITS."
     print "........................................................"
+    print ""
 
     # Export to FITS        
     exportfits(imagename=cube_root+'_round_rebin.image',
                fitsimage=cube_root+'_round.fits',
-               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
 
     exportfits(imagename=cube_root+'_round_pbcor_rebin.image',
                fitsimage=cube_root+'_round_pbcor.fits',
-               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
     
     exportfits(imagename=cube_root+'_rebin.residual',
                fitsimage=cube_root+'_residual.fits',
-               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
         
     exportfits(imagename=cube_root+'_rebin.pb',
                fitsimage=cube_root+'_pb.fits',
-               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)    
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)    
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER

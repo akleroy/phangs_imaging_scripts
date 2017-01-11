@@ -6,26 +6,17 @@
 # data set. Then run with "do_extract=True" and "do_combine=True" once
 # *for each line.*
 #
-# TO DO:
-#
-# - Would make sense to start with known lines. Later.
-#
-# - We know how to adapt (from AS scripts) for the case of multiple
-# - sources. But for now, the script assumes one source.
-#
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # CHECKS AND DEFAULTS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 tested_versions = ['4.6.0','4.7.0']
-this_version = casa['build']['version']
+this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
     print "This version of CASA is "+this_version
     print "Tested versions are "+str(tested_versions)
-else:
-    print "The script has been verified for this version of CASA."
 
 sol_kms = 2.99e5
 
@@ -309,7 +300,7 @@ if do_extract:
                     datacolumn='DATA',
                     chanaverage=chanaverage,
                     chanbin=chanbin,
-                    hanning=True,
+                    hanning=False,
                     # Does this matter? It shouldn't, but AS thinks it still might
                     interpolation='cubic',
                     )
