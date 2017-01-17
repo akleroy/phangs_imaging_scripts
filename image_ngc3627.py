@@ -24,17 +24,17 @@ calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = True
-script_extract_co21 = True
-script_extract_c18o21 = True
-script_extract_continuum = True
+script_copy = False
+script_extract_co21 = False
+script_extract_c18o21 = False
+script_extract_continuum = False
 
 # Image data
 script_image_chan0 = False
-script_image_cube = False
+script_image_cube = True
 
-script_image_co21 = False
-script_image_c18o21 = False
+script_image_co21 = True
+script_image_c18o21 = True
 script_image_cont = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

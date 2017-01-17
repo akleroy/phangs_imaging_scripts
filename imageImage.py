@@ -34,7 +34,7 @@ total_start_time = time.time()
 
 try:
     do_end_to_end
-except:
+except NameError:
     do_end_to_end = False
 
 if do_end_to_end:
@@ -315,17 +315,26 @@ if do_clean_bright and (do_revert_to_bright == False):
     print "... This data product is the 'bright' cube."
     print ""
     
-    nchan = 1
-    base_niter_per_channel = 100
-    base_cycle_niter = 100
+    base_niter = 100
+    base_cycle_niter = 200
     loop = 1
-    max_loop = 10
+    max_loop = 20
     deconvolver = "hogbom"    
 
     this_flux = 0.0
     delta_thresh = 0.02
     proceed = True
-    
+
+    loop_record_file = cube_root+"_bright_record.txt"
+    f = open(loop_record_file,'w')    
+    f.write("# column 1: loop type\n")
+    f.write("# column 2: loop number\n")
+    f.write("# column 3: supplied threshold\n")
+    f.write("# column 4: model flux at end of this clean\n")
+    f.write("# column 5: fractional change in flux (current-previous)/current\n")
+    f.write("# column 6: number of iterations allocated (not necessarily used)\n")
+    f.close()
+
     while proceed == True and loop <= max_loop:
         
         # Steadily increase the iterations between statistical checks.
@@ -334,9 +343,13 @@ if do_clean_bright and (do_revert_to_bright == False):
         do_callclean = True
         do_savecopy = False
         
-        niter = base_niter_per_channel*(2**loop)*nchan
-        cycle_niter = base_cycle_niter*(2**loop)/2
-        logfile = cube_root+"_loop_"+str(loop)+"_singlescale.log"
+        if loop > 10:
+            factor = 10
+        else:
+            factor = loop
+        niter = base_niter*(2**factor)
+        cycle_niter = base_cycle_niter*factor
+        logfile = cube_root+"_loop_"+str(loop)+"_bright.log"
         
         # Figure out a current threshold in a very crude way.
         execfile('../scripts/statCleanCube.py')    
@@ -365,7 +378,8 @@ if do_clean_bright and (do_revert_to_bright == False):
         prev_flux = this_flux
         this_flux = imstat_model['sum'][0]
         delta_flux = (this_flux-prev_flux)/this_flux
-        proceed = abs(delta_flux) > delta_thresh and \
+        proceed = \
+            (delta_flux > delta_thresh) and \
             (this_flux > 0.0)
         
         print ""
@@ -379,7 +393,13 @@ if do_clean_bright and (do_revert_to_bright == False):
         print "... proceed? "+str(proceed)
         print "***************"        
         print ""
-        
+
+        line = 'BRIGHT '+str(loop)+' '+threshold+' '+str(this_flux)+ \
+            ' '+str(delta_flux) + ' ' + str(niter)+ '\n' 
+        f = open(loop_record_file,'a')
+        f.write(line)
+        f.close()
+
         if proceed == False:
             break
         loop += 1
@@ -445,17 +465,26 @@ if do_clean_deep and (do_revert_to_deep == False):
     print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
-    nchan = 1
-    base_niter_per_channel = 10000
-    base_cycle_niter = 10000
+    base_niter = 10000
+    base_cycle_niter = 100
     loop = 1
-    max_loop = 10
+    max_loop = 20
     deconvolver = "hogbom"    
 
     execfile('../scripts/statCleanCube.py')    
     this_flux = imstat_model['sum'][0]
     delta_thresh = 0.02
     proceed = True
+
+    loop_record_file = cube_root+"_deep_record.txt"
+    f = open(loop_record_file,'w')    
+    f.write("# column 1: loop type\n")
+    f.write("# column 2: loop number\n")
+    f.write("# column 3: supplied threshold\n")
+    f.write("# column 4: model flux at end of this clean\n")
+    f.write("# column 5: fractional change in flux (current-previous)/current\n")
+    f.write("# column 6: number of iterations allocated (not necessarily used)\n")
+    f.close()
     
     while proceed == True and loop <= max_loop:
 
@@ -465,8 +494,12 @@ if do_clean_deep and (do_revert_to_deep == False):
             do_callclean = True
             do_savecopy = False
 
-            niter = base_niter_per_channel*(2**loop)*nchan
-            cycle_niter = base_cycle_niter*(2**loop)/2
+            if loop > 10:
+                factor = 10
+            else:
+                factor = loop
+            niter = base_niter*(2**factor)
+            cycle_niter = base_cycle_niter*factor
             logfile = cube_root+"_loop_"+str(loop)+"_deepclean.log"
             
             # Figure out a current threshold in a very crude way.
@@ -488,7 +521,8 @@ if do_clean_deep and (do_revert_to_deep == False):
             prev_flux = this_flux
             this_flux = imstat_model['sum'][0]
             delta_flux = (this_flux-prev_flux)/this_flux
-            proceed = abs(delta_flux) > delta_thresh and \
+            proceed = \
+                (delta_flux > delta_thresh) and \
                 (this_flux > 0.0)
             
             print ""
@@ -502,6 +536,12 @@ if do_clean_deep and (do_revert_to_deep == False):
             print "... proceed? "+str(proceed)
             print "***************"        
             print ""
+
+            line = 'DEEP '+str(loop)+' '+threshold+' '+str(this_flux)+ \
+                ' '+str(delta_flux) + ' ' + str(niter) + '\n'
+            f = open(loop_record_file,'a')    
+            f.write(line)
+            f.close()
 
             if proceed == False:
                 break

@@ -31,7 +31,7 @@ script_extract_continuum = False
 script_image_chan0 = False
 script_image_cube = False
 
-script_image_co21 = True
+script_image_co21 = False
 script_image_c18o21 = False
 script_image_cont = False
 

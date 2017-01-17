@@ -29,11 +29,11 @@ script_extract_c18o21 = False
 script_extract_continuum = False
 
 # Image data
-script_image_chan0 = True
-script_image_cube = False
+script_image_chan0 = False
+script_image_cube = True
 
-script_image_co21 = False
-script_image_c18o21 = True
+script_image_co21 = True
+script_image_c18o21 = False
 script_image_cont = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -140,8 +140,20 @@ if script_image_chan0:
 if script_image_cube:
 
     if script_image_co21:
-        do_end_to_end = True
+        #do_end_to_end = True
         do_start_with_pbmask = False
+
+        do_end_to_end = False
+        do_pickcellsize = True
+        do_init = False
+        do_make_dirty_mask = False
+        do_revert_to_dirty = False
+        do_clean_bright = False
+        do_revert_to_bright = True
+        do_make_model_mask = True
+        do_clean_deep = True
+        do_revert_to_deep = False
+        do_postprocess = True
         
         input_vis = 'ngc4303_956_co21.ms'
         cube_root = 'ngc4303_co21'
