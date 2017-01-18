@@ -314,8 +314,11 @@ if do_clean_bright and (do_revert_to_bright == False):
     print "... the model converges for successive cleans at the ~2% level."
     print "... This data product is the 'bright' cube."
     print ""
+
+    vm = au.ValueMapping(input_vis)
+    nchan = vm.spwInfo[0]['numChannels']
     
-    base_niter = 100
+    base_niter = 10*nchan
     base_cycle_niter = 200
     loop = 1
     max_loop = 20
@@ -341,12 +344,11 @@ if do_clean_bright and (do_revert_to_bright == False):
         
         do_reset = False
         do_callclean = True
-        do_savecopy = False
         
-        if loop > 10:
-            factor = 10
+        if loop > 6:
+            factor = 6
         else:
-            factor = loop
+            factor = (loop-1)
         niter = base_niter*(2**factor)
         cycle_niter = base_cycle_niter*factor
         logfile = cube_root+"_loop_"+str(loop)+"_bright.log"
@@ -360,7 +362,8 @@ if do_clean_bright and (do_revert_to_bright == False):
         # Clean.
 
         calcres = False
-        
+        minpsffraction = 0.5
+
         if do_start_with_pbmask == False:
             usemask = 'user'
             mask = ''
@@ -369,6 +372,12 @@ if do_clean_bright and (do_revert_to_bright == False):
             usemask = 'pb'
             mask = ''
             pbmask = 0.2
+
+        # Keep a running backup of the previous iteration.
+
+        do_savecopy = True
+        bkup_ext = "prev"
+
         execfile('../scripts/callClean.py')
         
         # Run stats after the clean.
@@ -465,16 +474,49 @@ if do_clean_deep and (do_revert_to_deep == False):
     print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
-    base_niter = 10000
+    # First figure out how much flux, approximately, lies inside the
+    # mask and has not yet been cleaned. This tells us about what we
+    # aim for in this stage (though only within about a factor of
+    # two).
+
+    print ""
+    print "..............................................."
+    print "Estimating the flux that I expect to clean."
+    print "..............................................."
+    print ""
+
+    stat_image = imstat(cube_root+'.image'
+                        , mask=cube_root+'.mask')
+    stat_resid = imstat(cube_root+'.residual'
+                        , mask=cube_root+'.mask')
+    stat_model = imstat(cube_root+'.model')
+
+    frac_to_clean = stat_resid['sum'][0]/stat_image['sum'][0]
+    frac_cleaned = 1.0 - frac_to_clean
+    this_flux = stat_model['sum'][0]
+    flux_at_start = this_flux
+    flux_to_clean = this_flux / frac_cleaned
+
+    vm = au.ValueMapping(input_vis)
+    nchan = vm.spwInfo[0]['numChannels']
+
+    print "Based on the current residuals I expect to clean about "+ \
+        str(flux_to_clean)+" Jy"
+    
+    print ""
+    print "......................................................"
+    print "Now I will clean in to deeper levels in a narrow mask."
+    print "......................................................"
+    print ""    
+
+    proceed = True
+
+    delta_thresh = 0.01
+    base_niter = 200*nchan
     base_cycle_niter = 100
     loop = 1
     max_loop = 20
     deconvolver = "hogbom"    
-
-    execfile('../scripts/statCleanCube.py')    
-    this_flux = imstat_model['sum'][0]
-    delta_thresh = 0.02
-    proceed = True
 
     loop_record_file = cube_root+"_deep_record.txt"
     f = open(loop_record_file,'w')    
@@ -486,6 +528,8 @@ if do_clean_deep and (do_revert_to_deep == False):
     f.write("# column 6: number of iterations allocated (not necessarily used)\n")
     f.close()
     
+    first = True
+
     while proceed == True and loop <= max_loop:
 
             # Steadily increase the iterations between statistical checks.
@@ -494,12 +538,12 @@ if do_clean_deep and (do_revert_to_deep == False):
             do_callclean = True
             do_savecopy = False
 
-            if loop > 10:
-                factor = 10
+            if loop > 8:
+                factor = 8
             else:
                 factor = loop
-            niter = base_niter*(2**factor)
-            cycle_niter = base_cycle_niter*factor
+            niter = base_niter
+            cycle_niter = base_cycle_niter
             logfile = cube_root+"_loop_"+str(loop)+"_deepclean.log"
             
             # Figure out a current threshold in a very crude way.
@@ -509,9 +553,17 @@ if do_clean_deep and (do_revert_to_deep == False):
             # Clean.
             
             calcres = False            
+            minpsffraction = 0.8
+
             usemask = 'user'
             mask = ''
             mask_file = cube_root+'.mask'
+
+            # Keep a running backup of the previous iteration.
+            
+            do_savecopy = True
+            bkup_ext = "prev"
+
             execfile('../scripts/callClean.py')
 
             # Run stats after the clean.
@@ -521,9 +573,19 @@ if do_clean_deep and (do_revert_to_deep == False):
             prev_flux = this_flux
             this_flux = imstat_model['sum'][0]
             delta_flux = (this_flux-prev_flux)/this_flux
-            proceed = \
-                (delta_flux > delta_thresh) and \
-                (this_flux > 0.0)
+
+            proceed = True
+
+            if this_flux > flux_to_clean:
+                proceed = False
+
+            if this_flux <= 0.0:
+                proceed = False
+
+            if first:
+                first = False
+                if delta_flux < delta_thresh:
+                    proceed = False
             
             print ""
             print "***************"
@@ -531,6 +593,7 @@ if do_clean_deep and (do_revert_to_deep == False):
             print "... threshold "+threshold
             print "... old flux "+str(prev_flux)
             print "... new flux "+str(this_flux)
+            print "... target flux "+str(flux_to_clean)
             print "... fractional change "+str(delta_flux)+ \
                 " compare to stopping criterion of "+str(delta_thresh)
             print "... proceed? "+str(proceed)
