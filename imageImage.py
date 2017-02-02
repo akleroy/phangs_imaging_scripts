@@ -38,7 +38,6 @@ except NameError:
     do_end_to_end = False
 
 if do_end_to_end:
-    do_pickcellsize = True
     do_init = True
     do_make_dirty_mask = True
     do_revert_to_dirty = False
