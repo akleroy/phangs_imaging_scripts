@@ -11,8 +11,8 @@ pro build_release $
 ;-
 
 ; DIRECTORIES
-  version = '0.3'
-  vstring = 'v0p3'
+  version = '0.4'
+  vstring = 'v0p4'
   root_imaging_dir = '../'
   release_dir = root_imaging_dir+'release/'+vstring+'/'
 
@@ -25,16 +25,11 @@ pro build_release $
       , 'ngc4254' $
       , 'ngc4303' $
       , 'ngc4321' $
-;      , 'ngc4535' $
+      , 'ngc4535' $
       , 'ngc5068' $
       , 'ngc6744' $
      ]
   n_gals = n_elements(gals)
-
-; TARGET RESOLUTIONS
-  target_res = [60, 80, 100, 150]
-  n_res = n_elements(target_res)
-  res_tol = 0.1
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COPY DATA
@@ -42,13 +37,35 @@ pro build_release $
 
   if keyword_set(copy) then begin
 
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'COPYING DATA', /info     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+
      message, 'I am copying the raw data to build a release.', /info
+     message, '... deleting and remaking the raw data directory', /info
 
-     spawn, 'rm -rf '+release_dir+'raw/*.fits'
-     spawn, 'rm -rf '+release_dir+'delivery/*.fits'
-     spawn, 'cp '+root_imaging_dir+'ngc*/*fits '+release_dir+'raw/.'
+     spawn, 'rm -rf '+release_dir+'raw/'
+     spawn, 'mkdir '+release_dir+'raw/'
 
-     spawn, 'cp sfng12m_README_'+vstring+'.txt '+release_dir+'delivery/.'
+     ext_to_copy = $
+        ['_co21_pb.fits' $
+         , '_co21_residual.fits' $
+         , '_co21_round.fits' $
+         , '_co21_round_pbcor.fits']
+     n_ext = n_elements(ext_to_copy)
+
+     for ii = 0, n_gals-1 do begin
+        message, '... copying data for '+gals[ii], /info        
+        for jj = 0, n_ext-1 do begin
+           spawn, 'cp '+root_imaging_dir+gal+'/'+ $
+                  gals[ii]+ext_to_copy[jj]+'.fits '+ $
+                  release_dir+'raw/.'
+        endfor
+     endfor
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'FINISHED COPYING DATA', /info     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
   endif
 
@@ -171,6 +188,11 @@ pro build_release $
      endfor
 
   endif
+
+; TARGET RESOLUTIONS
+  target_res = [60, 80, 100, 150]
+  n_res = n_elements(target_res)
+  res_tol = 0.1
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; PROCESS CUBES

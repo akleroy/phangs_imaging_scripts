@@ -2,18 +2,21 @@
 # Build dirty maps that gives us the target astrometry
 # %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
 
+# This is 100% an ad hoc script. It's just built to do what we need
+# for this one case. We could build a general script to make a target
+# astrometry
+
 if False:
 
     #   CO 2-1
-
     os.system('rm -rf ngc6744_co21_cube*')
-    tclean(vis='ngc6744north_co21.ms',
+    tclean(vis='ngc6744north_956_co21.ms',
            imagename='ngc6744_co21_cube',
            phasecenter='J2000 19h09m46.1s -63d51m27',
            gridder='mosaic',
-           deconvolver='clark',
-           cell='0.3arcsec',
-           imsize=[1000,1500],
+           deconvolver='hogbom',
+           cell='0.15arcsec',
+           imsize=[2000,3000],
            weighting='briggs',
            robust=0.5,
            specmode='cube',
@@ -27,411 +30,114 @@ if False:
            pbmask=0.2,
            )
 
-    #   CO 2-1 TAPER
+# %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
+# Convolve the north and south cubes to have the same resolution
+# %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
 
-    os.system('rm -rf ngc6744_co21_taper*')
-    tclean(vis='ngc6744north_co21.ms',
-           imagename='ngc6744_co21_taper',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.5arcsec',
-           imsize=[600,1200],
-           weighting='briggs',
-           robust=0.5,
-           specmode='cube',
-           restfreq='230.53800GHz' ,
-           outframe='lsrk',
-           veltype='radio',
-           niter=0,
-           threshold='0.015Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
+if False:
 
-    #   C18O
+    # Match the southern image to the resolution of the northern one.
 
-    os.system('rm -rf ngc6744_c18o21_cube*')
-    tclean(vis='ngc6744north_c18o21.ms',
-           imagename='ngc6744_c18o21_cube',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.3arcsec',
-           imsize=[1000,1500],
-           weighting='briggs',
-           robust=0.5,
-           specmode='cube',
-           restfreq='219.56035GHz',
-           outframe='lsrk',
-           veltype='radio',
-           niter=0,
-           threshold='0.015Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
+    imsmooth(imagename='ngc6744south_co21_round.image',
+             outfile='ngc6744south_co21_round_matched.image',
+             targetres=True,
+             major='1.0arcsec', minor='1.0arcsec', pa='0deg',
+             overwrite=True)
 
-    #   C18O TAPER
-
-    os.system('rm -rf ngc6744_c18o21_taper*')
-    tclean(vis='ngc6744north_c18o21.ms',
-           imagename='ngc6744_c18o21_taper',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.5arcsec',
-           imsize=[600,1200],
-           weighting='briggs',
-           robust=0.5,
-           specmode='cube',
-           restfreq='219.56035GHz',
-           outframe='lsrk',
-           veltype='radio',
-           niter=0,
-           threshold='0.015Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
-
-    #   MM CONTINUUM
-
-    os.system('rm -rf ngc6744_cont_map*')
-    tclean(vis='ngc6744north_cont.ms',
-           imagename='ngc6744_cont_map',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.3arcsec',
-           imsize=[1000,1500],
-           weighting='briggs',
-           robust=0.5,
-           specmode='mfs',
-           niter=0,
-           threshold='0.015Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
-
-    #   MM CONTINUUM TAPER
-
-    os.system('rm -rf ngc6744_cont_taper*')
-    tclean(vis='ngc6744north_cont.ms',
-           imagename='ngc6744_cont_taper',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.5arcsec',
-           imsize=[600,1200],
-           weighting='briggs',
-           robust=0.5,
-           specmode='mfs',
-           niter=0,
-           threshold='0.0Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
-
-    #   CO 2-1 CHANNEL 0
-
-    os.system('rm -rf ngc6744_chan0_co21_map*')
-    tclean(vis='ngc6744north_chan0_co21.ms',
-           imagename='ngc6744_chan0_co21_map',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.3arcsec',
-           imsize=[1000,1500],
-           weighting='briggs',
-           robust=0.5,
-           specmode='mfs',
-           niter=0,
-           threshold='0.015Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
-
-    #   CO 2-1 CHANNEL 0 TAPER
-
-    os.system('rm -rf ngc6744_chan0_co21_taper*')
-    tclean(vis='ngc6744north_chan0_co21.ms',
-           imagename='ngc6744_chan0_co21_taper',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.5arcsec',
-           imsize=[600,1200],
-           weighting='briggs',
-           robust=0.5,
-           specmode='mfs',
-           niter=0,
-           threshold='0.0Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
-
-    #   C18O 2-1 CHANNEL 0 
-
-    os.system('rm -rf ngc6744_chan0_c18o21_map*')
-    tclean(vis='ngc6744north_chan0_c18o21.ms',
-           imagename='ngc6744_chan0_c18o21_map',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.3arcsec',
-           imsize=[1000,1500],
-           weighting='briggs',
-           robust=0.5,
-           specmode='mfs',
-           niter=0,
-           threshold='0.015Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
-
-    #   C18O 2-1 CHANNEL 0 TAPER
-
-    os.system('rm -rf ngc6744_chan0_c18o21_taper*')
-    tclean(vis='ngc6744north_cont.ms',
-           imagename='ngc6744_chan0_c18o21_taper',
-           phasecenter='J2000 19h09m46.1s -63d51m27',
-           gridder='mosaic',
-           deconvolver='clark',
-           cell='0.5arcsec',
-           imsize=[600,1200],
-           weighting='briggs',
-           robust=0.5,
-           specmode='mfs',
-           niter=0,
-           threshold='0.0Jy/beam',
-           interactive=False,
-           usemask='pb', 
-           pbmask=0.2,
-           )
+    imsmooth(imagename='ngc6744south_co21_round_pbcor.image',
+             outfile='ngc6744south_co21_round_pbcor_matched.image',
+             targetres=True,
+             major='1.0arcsec', minor='1.0arcsec', pa='0deg',
+             overwrite=True)
 
 # %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
 # Align the other data to the template image
 # %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
 
-    
+if False:
+#if True: 
+               
+    print "Regridding to common grid."
 
-for field in ['north', 'south']:
+    for ext in ['round', 'round_pbcor']:
+        print ext
 
-#   --------------------------------------------------------------
-#   CUBES
-#   --------------------------------------------------------------
-
-    print "-----------------------"
-    print "LOOPING OVER DATA CUBES"
-    print "-----------------------"
-
-    for line in ['co21', 'c18o21']:
-        
-        #   --------------------------------------------------------------
-        #   REGRID
-        #   --------------------------------------------------------------
-
-        print "Regridding native resolution images."
-
-        os.system('rm -rf ngc6744'+field+'_'+line+'_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_cube_round.image'
-                 , output='ngc6744'+field+'_'+line+'_cube_align.image'
-                 , template='ngc6744_'+line+'_cube.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+line+'_align.pb')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_cube.pb'
-                 , output='ngc6744'+field+'_'+line+'_cube_align.pb'
-                 , template='ngc6744_'+line+'_cube.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+line+'_pbcor_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_cube_round_pbcor.image'
-                 , output='ngc6744'+field+'_'+line+'_cube_pbcor_align.image'
-                 , template='ngc6744_'+line+'_cube.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+line+'_align.residual')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_cube.residual'
-                 , output='ngc6744'+field+'_'+line+'_cube_align.residual'
-                 , template='ngc6744_'+line+'_cube.residual'
+        os.system('rm -rf ngc6744north_co21_align.image')
+        imregrid(imagename='ngc6744north_co21_'+ext+'.image'
+                 , output='ngc6744north_co21_'+ext+'_align.image'
+                 , template='ngc6744_co21_cube.residual'
                  , overwrite=True)
 
-        print "Regridding tapered resolution images."
+    for ext in ['round', 'round_pbcor']:
+        print ext
 
-        os.system('rm -rf ngc6744'+field+'_'+line+'_taper_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_taper_round.image'
-                 , output='ngc6744'+field+'_'+line+'_taper_align.image'
-                 , template='ngc6744_'+line+'_taper.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+line+'_taper_align.pb')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_taper.pb'
-                 , output='ngc6744'+field+'_'+line+'_taper_align.pb'
-                 , template='ngc6744_'+line+'_taper.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+line+'_taper_pbcor_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_taper_round_pbcor.image'
-                 , output='ngc6744'+field+'_'+line+'_taper_pbcor_align.image'
-                 , template='ngc6744_'+line+'_taper.residual'
+        os.system('rm -rf ngc6744south_co21_align.image')
+        imregrid(imagename='ngc6744south_co21_'+ext+'_matched.image'
+                 , output='ngc6744south_co21_'+ext+'_align.image'
+                 , template='ngc6744_co21_cube.residual'
                  , overwrite=True)
 
-        os.system('rm -rf ngc6744'+field+'_'+line+'_taper_align.residual')
-        imregrid(imagename='ngc6744'+field+'_'+line+'_taper.residual'
-                 , output='ngc6744'+field+'_'+line+'_taper_align.residual'
-                 , template='ngc6744_'+line+'_taper.residual'
-                 , overwrite=True)
+    os.system('rm -rf ngc6744north_co21_align.pb')
+    imregrid(imagename='ngc6744north_co21.pb'
+             , output='ngc6744north_co21_align.pb'
+             , template='ngc6744_co21_cube.residual'
+             , overwrite=True)
 
-        #   --------------------------------------------------------------
-        #   EXPORT TO FITS
-        #   --------------------------------------------------------------
+    os.system('rm -rf ngc6744south_co21_align.pb')
+    imregrid(imagename='ngc6744south_co21.pb'
+             , output='ngc6744south_co21_align.pb'
+             , template='ngc6744_co21_cube.residual'
+             , overwrite=True)
 
-        print "Exporting native resolution images."
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_cube_align.image',
-                   fitsimage='ngc6744'+field+'_'+line+'_cube_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_cube_align.pb',
-                   fitsimage='ngc6744'+field+'_'+line+'_cube_pb_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_cube_pbcor_align.image',
-                   fitsimage='ngc6744'+field+'_'+line+'_cube_pbcor_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_cube_align.residual',
-                   fitsimage='ngc6744'+field+'_'+line+'_cube_residual_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        print "Exporting tapered images."
+    os.system('rm -rf ngc6744north_co21_align.residual')
+    imregrid(imagename='ngc6744north_co21.residual'
+             , output='ngc6744north_co21_align.residual'
+             , template='ngc6744_co21_cube.residual'
+             , overwrite=True)
 
-        exportfits(imagename='ngc6744'+field+'_'+line+'_taper_align.image'
-                   , fitsimage='ngc6744'+field+'_'+line+'_taper_align.fits'
-                   , velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_taper_align.pb',
-                   fitsimage='ngc6744'+field+'_'+line+'_taper_pb_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_taper_pbcor_align.image',
-                   fitsimage='ngc6744'+field+'_'+line+'_taper_pbcor_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+line+'_taper_align.residual',
-                   fitsimage='ngc6744'+field+'_'+line+'_taper_residual_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
+    os.system('rm -rf ngc6744south_co21_align.residual')
+    imregrid(imagename='ngc6744south_co21.residual'
+             , output='ngc6744south_co21_align.residual'
+             , template='ngc6744_co21_cube.residual'
+             , overwrite=True)
 
-#   --------------------------------------------------------------
-#   MAPS
-#   --------------------------------------------------------------
+# %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
+# EXPORT TO FITS
+# %&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&
 
-    print "-----------------------"
-    print "LOOPING OVER IMAGES"
-    print "-----------------------"
+if False:
 
-    for image in ['cont', 'chan0_co21', 'chan0_c18o21']:
+    print "Exporting to FITS."
+        
+    exportfits(imagename='ngc6744north_co21_round_align.image',
+               fitsimage='ngc6744north_co21_round_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-#   --------------------------------------------------------------
-#   REGRID
-#   --------------------------------------------------------------
+    exportfits(imagename='ngc6744south_co21_round_align.image',
+               fitsimage='ngc6744south_co21_round_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-        print "Regridding native resolution images."
+    exportfits(imagename='ngc6744north_co21_round_pbcor_align.image',
+               fitsimage='ngc6744north_co21_round_pbcor_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-        os.system('rm -rf ngc6744'+field+'_'+image+'_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_round.image'
-                 , output='ngc6744'+field+'_'+image+'_align.image'
-                 , template='ngc6744_'+image+'_map.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+image+'_align.pb')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_map.pb'
-                 , output='ngc6744'+field+'_'+image+'_align.pb'
-                 , template='ngc6744_'+image+'_map.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+image+'_pbcor_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_round_pbcor.image'
-                 , output='ngc6744'+field+'_'+image+'_pbcor_align.image'
-                 , template='ngc6744_'+image+'_map.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+image+'_align.residual')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_map.residual'
-                 , output='ngc6744'+field+'_'+image+'_align.residual'
-                 , template='ngc6744_'+image+'_map.residual'
-                 , overwrite=True)
+    exportfits(imagename='ngc6744south_co21_round_pbcor_align.image',
+               fitsimage='ngc6744south_co21_round_pbcor_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-        print "Regridding tapered resolution images."
+    exportfits(imagename='ngc6744north_co21_align.residual',
+               fitsimage='ngc6744north_co21_residual_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-        os.system('rm -rf ngc6744'+field+'_'+image+'_taper_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_taper_round.image'
-                 , output='ngc6744'+field+'_'+image+'_taper_align.image'
-                 , template='ngc6744_'+image+'_taper.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+image+'_taper_align.pb')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_taper.pb'
-                 , output='ngc6744'+field+'_'+image+'_taper_align.pb'
-                 , template='ngc6744_'+image+'_taper.residual'
-                 , overwrite=True)
-        
-        os.system('rm -rf ngc6744'+field+'_'+image+'_taper_pbcor_align.image')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_taper_round_pbcor.image'
-                 , output='ngc6744'+field+'_'+image+'_taper_pbcor_align.image'
-                 , template='ngc6744_'+image+'_taper.residual'
-                 , overwrite=True)
+    exportfits(imagename='ngc6744south_co21_align.residual',
+               fitsimage='ngc6744south_co21_residual_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-        os.system('rm -rf ngc6744'+field+'_'+image+'_taper_align.residual')
-        imregrid(imagename='ngc6744'+field+'_'+image+'_taper.residual'
-                 , output='ngc6744'+field+'_'+image+'_taper_align.residual'
-                 , template='ngc6744_'+image+'_taper.residual'
-                 , overwrite=True)
+    exportfits(imagename='ngc6744north_co21_align.pb',
+               fitsimage='ngc6744north_co21_pb_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-#   --------------------------------------------------------------
-#   EXPORT TO FITS
-#   --------------------------------------------------------------
+    exportfits(imagename='ngc6744south_co21_align.pb',
+               fitsimage='ngc6744south_co21_pb_align.fits',
+               velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
 
-        print "Exporting native resolution images."
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_align.image',
-                   fitsimage='ngc6744'+field+'_'+image+'_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_align.pb',
-                   fitsimage='ngc6744'+field+'_'+image+'_pb_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_pbcor_align.image',
-                   fitsimage='ngc6744'+field+'_'+image+'_pbcor_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_align.residual',
-                   fitsimage='ngc6744'+field+'_'+image+'_residual_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        print "Exporting tapered images."
-
-        exportfits(imagename='ngc6744'+field+'_'+image+'_taper_align.image'
-                   , fitsimage='ngc6744'+field+'_'+image+'_taper_align.fits'
-                   , velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_taper_align.pb',
-                   fitsimage='ngc6744'+field+'_'+image+'_taper_pb_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_taper_pbcor_align.image',
-                   fitsimage='ngc6744'+field+'_'+image+'_taper_pbcor_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
-        
-        exportfits(imagename='ngc6744'+field+'_'+image+'_taper_align.residual',
-                   fitsimage='ngc6744'+field+'_'+image+'_taper_residual_align.fits',
-                   velocity=True, overwrite=True, dropstokes=True, dropdeg=True, bitpix=16)
