@@ -22,14 +22,19 @@ start_time = time.time()
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 try:
-    do_process
+    do_raw_fits
 except NameError:
-    do_process = True
+    do_raw_fits = True
 
 try:
-    do_shrink
+    do_rescale
+except NameError:
+    do_rescale = True
+
+try:
+    do_roundbeam
 except NameError:    
-    do_shrink = True
+    do_roundbeam = True
 
 try:
     do_fits
@@ -69,6 +74,52 @@ if abort:
     do_shrink = False
     do_fits = False
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# EXPORT RAW DATA TO FITS
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_raw_fits:
+
+    print ""
+    print "........................................................"
+    print "postProcessCubes: exporting the unprocessed data to FITS."
+    print "........................................................"
+    print ""
+
+    exportfits(imagename=cube_root+'.image',
+               fitsimage=cube_root+'.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
+
+    exportfits(imagename=cube_root+'_dirty.image',
+               fitsimage=cube_root+'.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
+
+    exportfits(imagename=cube_root+'.residual',
+               fitsimage=cube_root+'_residual.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
+    
+    exportfits(imagename=cube_root+'.pb',
+               fitsimage=cube_root+'_pb.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
+    
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# CALCULATE THE RESIDUAL RESCALING
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_rescale:
+
+    print ""
+    print "........................................................"
+    print "postProcessCubes: exporting the unprocessed data to FITS."
+    print "........................................................"
+    print ""
+
+
+    
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # PICK A TARGET ROUND BEAM
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

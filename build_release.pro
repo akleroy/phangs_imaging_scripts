@@ -1,8 +1,15 @@
 pro build_release $
+   , reset=reset $
    , copy=copy $
-   , stage=stage $
+   , rescale=rescale $
    , process=process $
-   , convolve=do_convolve
+   , pbcorr=pbcorr $
+   , roundbeam=roundbeam $
+   , convolve=do_convolve $
+   , smooth=do_smooth $
+   , mask=do_masks $
+   , collapse=do_collapse $
+   , compile=do_compile
 
 ;+
 ;
@@ -17,7 +24,7 @@ pro build_release $
   release_dir = root_imaging_dir+'release/'+vstring+'/'
 
 ; GALAXIES
-  gals = $
+  dirs = $
      ['ngc0628' $
       , 'ngc1672' $
       , 'ngc3351' $
@@ -28,8 +35,36 @@ pro build_release $
       , 'ngc4535' $
       , 'ngc5068' $
       , 'ngc6744' $
+      , 'ngc6744' $
+     ]
+  gals = $
+     ['ngc0628' $
+      , 'ngc1672' $
+      , 'ngc3351' $
+      , 'ngc3627' $
+      , 'ngc4254' $
+      , 'ngc4303' $
+      , 'ngc4321' $
+      , 'ngc4535' $
+      , 'ngc5068' $
+      , 'ngc6744north' $
+      , 'ngc6744south' $
      ]
   n_gals = n_elements(gals)
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; RESET THE DIRECTORY STRUCTURE
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(reset) then begin
+
+     spawn, 'rm -rf '+release_dir+'raw/'
+     spawn, 'mkdir '+release_dir+'raw/'
+     
+     spawn, 'rm -rf '+release_dir+'process/'
+     spawn, 'mkdir '+release_dir+'process/'
+     
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COPY DATA
@@ -44,21 +79,18 @@ pro build_release $
      message, 'I am copying the raw data to build a release.', /info
      message, '... deleting and remaking the raw data directory', /info
 
-     spawn, 'rm -rf '+release_dir+'raw/'
-     spawn, 'mkdir '+release_dir+'raw/'
-
      ext_to_copy = $
         ['_co21_pb.fits' $
          , '_co21_residual.fits' $
-         , '_co21_round.fits' $
-         , '_co21_round_pbcor.fits']
+         , '_co21.fits' $
+         , '_co21_dirty.fits']
      n_ext = n_elements(ext_to_copy)
 
      for ii = 0, n_gals-1 do begin
         message, '... copying data for '+gals[ii], /info        
         for jj = 0, n_ext-1 do begin
-           spawn, 'cp '+root_imaging_dir+gal+'/'+ $
-                  gals[ii]+ext_to_copy[jj]+'.fits '+ $
+           spawn, 'cp '+root_imaging_dir+dirs[ii]+'/'+ $
+                  gals[ii]+ext_to_copy[jj]+' '+ $
                   release_dir+'raw/.'
         endfor
      endfor
@@ -70,399 +102,411 @@ pro build_release $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; PROCESS DATA
+; RESIDUAL RESCALING
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(stage) then begin
+  if keyword_set(rescale) then begin
 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; Clean up NGC 6744
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=          
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'RESIDUAL RESCALING', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
-     ext = ['_cube' $
-            , '_cube_pb' $
-            , '_cube_pbcor' $
-            , '_cube_residual' $
-            , '_taper' $
-            , '_taper_pb' $
-            , '_taper_pbcor' $
-            , '_taper_residual']
-     out_ext = ['_cube_round' $
-                , '_cube_pb' $
-                , '_cube_round_pbcor' $
-                , '_cube_residual' $
-                , '_taper_round' $
-                , '_taper_pb' $
-                , '_taper_round_pbcor' $
-                , '_taper_residual']
-     n_ext = n_elements(ext)
+     for ii = 0, n_gals-1 do begin
+        message, '... rescaling data for '+gals[ii], /info        
+        
+        dirty_cube = readfits(release_dir+'raw/'+$
+                              gals[ii]+'_co21_dirty.fits', dirty_hdr)
 
-     for ii = 0, n_ext-1 do begin
+        resid_cube = readfits(release_dir+'raw/'+$
+                              gals[ii]+'_co21_residual.fits', resid_hdr)
 
-        for jj = 0, 2 do begin
+        clean_cube = readfits(release_dir+'raw/'+$
+                              gals[ii]+'_co21.fits', clean_hdr)
 
-           if jj eq 0 then $
-              line = 'co21'
-           if jj eq 1 then $
-              line = 'c18o21'
+        pb =  readfits(release_dir+'raw/'+$
+                       gals[ii]+'_co21_pb.fits', pb_hdr)
+        
+        mask = pb gt 0.5
 
-           north = readfits(release_dir+ $
-                            'raw/ngc6744north_'+line+ext[ii]+'_align.fits' $
-                            , north_hdr)
+        rms = mad(clean_cube[where(mask)])
+        mask = clean_cube gt 3.*rms
+        mask = mask*(shift(mask,0,0,-1) or shift(mask,0,0,1))
 
-           south = readfits(release_dir+ $
-                            'raw/ngc6744south_'+line+ext[ii]+'_align.fits' $
-                            , south_hdr)
-           
-           combo = north
-           sz = size(north)
-           if sz[2] gt 1300 then $
-              combo[*,0:750,*] = south[*,0:750,*] $
-           else $
-              combo[*,0:600,*] = south[*,0:600,*]
-           
-           sxdelpar, north_hdr, 'BLANK'
-           writefits, release_dir+'raw/ngc6744_'+line+out_ext[ii]+'.fits' $
-                      , combo, north_hdr
+        ind = where(mask)
+        y = (clean_cube[ind]-resid_cube[ind])
+        x = (dirty_cube[ind]-resid_cube[ind])
+        
+        print, "Rescaling factor would be: "
+        sum_scale_factor = total(y,/nan) / total(x,/nan)
+        print, "... sum: ", sum_scale_factor
 
-           loadct, 33
-           disp, max(combo, dim=3, /nan), /sq
+        bins = bin_data(x, y, /nan, xmin=0., xmax=max(x, /nan), binsize=max(x,/nan)/20.)
+        bin_scale_factor = median(bins.ymed/bins.xmed)
 
-        endfor
+        ploterror, bins.xmid, bins.ymed, bins.ymad $
+                   , ytitle="C-R", xtitle="D-R", ps=7
+        equality, slop=sum_scale_factor, color=cgcolor('red')
+        equality, lines=2, slope=bin_scale_factor, color=cgcolor('blue')
+        print, "... bins: ", bin_scale_factor
+        
+        scale_factor = float(bin_scale_factor)
 
-     endfor
+        rescale = float(clean_cube + resid_cube*(scale_factor-1.0))
+        sxaddpar, clean_hdr, 'RESCALE', scale_factor, 'Residual emission rescaled by this factor.'
+        sxdelpar, clean_hdr, 'CASAMBM'
+        writefits, release_dir+'process/'+gals[ii]+'_co21_rescale.fits', rescale, clean_hdr
 
-     ext = ['' $
-            , '_pb' $
-            , '_pbcor' $
-            , '_residual' $
-            , '_taper' $
-            , '_taper_pb' $
-            , '_taper_pbcor' $
-            , '_taper_residual']
-     out_ext = ['_round' $
-                , '_pb' $
-                , '_round_pbcor' $
-                , '_residual' $
-                , '_taper_round' $
-                , '_taper_pb' $
-                , '_taper_round_pbcor' $
-                , '_taper_residual']
-     n_ext = n_elements(ext)
-
-     for ii = 0, n_ext-1 do begin
-
-        for jj = 0, 3 do begin
-
-           if jj eq 0 then $
-              line = 'chan0_co21'
-           if jj eq 1 then $
-              line = 'chan0_c18o21'
-           if jj eq 2 then $
-              line = 'cont'
-
-           north = readfits(release_dir+ $
-                            'raw/ngc6744north_'+line+ext[ii]+'_align.fits' $
-                            , north_hdr)
-
-           south = readfits(release_dir+ $
-                            'raw/ngc6744south_'+line+ext[ii]+'_align.fits' $
-                            , south_hdr)
-           
-           combo = north
-           sz = size(north)
-           if sz[2] gt 1300 then $
-              combo[*,0:750] = south[*,0:750] $
-           else $
-              combo[*,0:600] = south[*,0:600]
-           
-           sxdelpar, north_hdr, 'BLANK'
-           writefits, release_dir+'raw/ngc6744_'+line+out_ext[ii]+'.fits' $
-                      , combo, north_hdr
-
-           loadct, 33
-           disp, combo, /sq
-
-        endfor
+        rescale = float(resid_cube*(scale_factor-1.0))
+        sxaddpar, resid_hdr, 'RESCALE', scale_factor, 'Residual emission rescaled by this factor.'
+        sxdelpar, resid_hdr, 'CASAMBM'
+        writefits, release_dir+'process/'+gals[ii]+'_co21_residual_rescale.fits', rescale, resid_hdr
 
      endfor
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'FINISHED RESIDUAL RESCALING', /info     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
   endif
 
-; TARGET RESOLUTIONS
-  target_res = [60, 80, 100, 150]
-  n_res = n_elements(target_res)
-  res_tol = 0.1
-
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; PROCESS CUBES
+; PRIMARY BEAM CORRECTION
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-; Loop over all of our targets and blank regions outside the main
-; field of view. Convert to Kelvin. Note conversion in header.
+  if keyword_set(pbcorr) then begin
 
-  if keyword_set(process) then begin
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'PRIMARY BEAM CORRECTION', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      for ii = 0, n_gals-1 do begin
 
+        message, '... primary beam correction for '+gals[ii], /info        
+        
+        clean_cube = readfits(release_dir+'raw/'+$
+                              gals[ii]+'_co21.fits', clean_hdr)
+
+        rescale_cube = readfits(release_dir+'process/'+$
+                                gals[ii]+'_co21_rescale.fits', rescale_hdr)
+
+        pb =  readfits(release_dir+'raw/'+$
+                       gals[ii]+'_co21_pb.fits', pb_hdr)
+        
+        maxpb = max(pb,dim=3,/nan)
+        disp, maxpb
+        contour, maxpb, lev=[0.5], /overplot
+
+        ind = where(pb lt 0.5)
+        
+        clean_cube[ind] = !values.f_nan
+        rescale_cube[ind] = !values.f_nan
+        
+        sxdelpar, clean_hdr, 'BLANK'
+        sxdelpar, clean_hdr, 'CASAMBM'
+        writefits, release_dir+'process/'+$
+                   gals[ii]+'_co21_clip.fits', clean_cube, clean_hdr
+
+        sxdelpar, rescale_hdr, 'BLANK'
+        sxdelpar, rescale_hdr, 'CASAMBM'
+        writefits, release_dir+'process/'+$
+                   gals[ii]+'_co21_rescale_clip.fits', rescale_cube, rescale_hdr
+
+        clean_cube /= pb
+        rescale_cube /= pb
+
+        sxdelpar, clean_hdr, 'BLANK'
+        sxdelpar, clean_hdr, 'CASAMBM'
+        writefits, release_dir+'process/'+$
+                   gals[ii]+'_co21_pbcorr.fits', clean_cube, clean_hdr
+
+        sxdelpar, rescale_hdr, 'BLANK'
+        sxdelpar, rescale_hdr, 'CASAMBM'
+        writefits, release_dir+'process/'+$
+                   gals[ii]+'_co21_rescale_pbcorr.fits', rescale_cube, rescale_hdr
+
+     endfor     
+
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; ROUND BEAM
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  if keyword_set(roundbeam) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'CONVOLUTION TO ROUND BEAM', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     for ii = 0, n_gals-1 do begin
+        
+        beam_table = mrdfits(release_dir+'raw/'+gals[ii]+'_co21.fits',1)
+
+        ext_to_convolve = $
+           ['_co21_clip' $
+            , '_co21_rescale_clip' $
+            , '_co21_pbcorr' $
+            , '_co21_rescale_pbcorr']
+        n_ext = n_elements(ext_to_convolve)
+        
+        for jj = 0, n_ext-1 do begin
+
+           cube = float(readfits(release_dir+'process/'+gals[ii]+ext_to_convolve[jj]+'.fits', hdr))
+           pix = abs(sxpar(hdr,'CDELT1'))
+           target_bmaj = sqrt(max(beam_table.bmaj,/nan)^2+(pix*1.5)^2)
+           print, "convolving "+gals[ii]+ext_to_convolve[jj]    
+
+           sz = size(cube)
+           for kk = 0, sz[3]-1 do begin
+              counter, kk, sz[3], 'Plane '
+              
+              copy_hdr = twod_head(hdr)
+              plane = cube[*,*,kk]
+              conv_with_gauss $
+                 , data=plane $
+                 , hdr=copy_hdr $
+                 , start_beam= $
+                 [beam_table[kk].bmaj, beam_table[kk].bmin, beam_table[kk].bpa] $
+                 , target = $
+                 [1,1,0.]*target_bmaj $
+                 , out_data=out_plane $
+                 , /quiet
+              cube[*,*,kk] = out_plane
+              
+           endfor
+
+           sxaddpar, hdr, 'BPA', 0.0
+           sxaddpar, hdr, 'BMAJ', target_bmaj/3600.
+           sxaddpar, hdr, 'BMIN', target_bmaj/3600.
+           sxdelpar, hdr, 'CASAMBM'
+           writefits, release_dir+'process/'+gals[ii]+ext_to_convolve[jj]+'_round.fits', cube, hdr
+
+        endfor
+
+     endfor
+     
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; CONVOLVE TO 3" RESOLUTION
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(do_smooth) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'CONVOLUTION TO LOWER RESOLUTION', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     for ii = 0, n_gals-1 do begin
+        
+        target_bmaj = 3.
+        
+        ext_to_convolve = $
+           ['_co21_clip_round' $
+            , '_co21_rescale_clip_round' $
+            , '_co21_pbcorr_round' $
+            , '_co21_rescale_pbcorr_round']
+        n_ext = n_elements(ext_to_convolve)
+        
+        for jj = 0, n_ext-1 do begin
+
+           dir = '../release/v0p4/process/'
+           in_cube = dir+gals[ii]+ext_to_convolve[jj]+".fits"
+           out_cube = dir+gals[ii]+ext_to_convolve[jj]+"_smoothed.fits"
+           print, "convolving "+in_cube
+
+           conv_with_gauss $
+              , data=in_cube $
+              , target = [1.,1.,0.]*target_bmaj $
+              , out_file=out_cube
+
+        endfor
+
+     endfor
+     
+  endif
+  
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; BUILD A COUPLE OF MASKS
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  if keyword_set(do_masks) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'BUILD MASKS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     for ii = 0, n_gals-1 do begin
+        
+        gal = gals[ii]
+        
+        ext = $
+           ['_co21_clip_round_smoothed' $
+            , '_co21_clip_round']
+        n_ext = n_elements(ext)
+        
+        for jj = 0, n_ext-1 do begin
+
+           cube = readfits('../release/v0p4/process/'+gal+ext[jj]+'.fits', cube_hdr)
+
+           rms = mad(cube)
+           make_cprops_mask $
+              , indata=cube $
+              , inrms = rms $
+              , lo_thresh = 2 $
+              , hi_thresh = 4 $
+              , outmask=mask
+           
+           !p.multi=[0,2,1]
+           loadct, 33
+           disp, max(cube, dim=3, /nan)
+           contour, max(mask, dim=3), lev=[1], /overplot
+
+           disp, max(cube, dim=2, /nan)
+           contour, max(mask, dim=2), lev=[1], /overplot
+           
+           mask_hdr = cube_hdr
+           sxaddpar, mask_hdr, 'BUNIT', 'MASK'
+           writefits, '../release/v0p4/process/'+gal+ext[jj]+'_mask.fits', mask, mask_hdr
+
+        endfor   
+
+     endfor
+     
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; COLLAPSE
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  if keyword_set(do_collapse) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'COLLAPSE INTO MOMENTS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     for ii = 0, n_gals-1 do begin
+        
         gal = gals[ii]
 
-        for jj = 0, 1 do begin
-           
-           if jj eq 0 then ext = '_cube'
-           if jj eq 1 then ext = '_taper'
-           
-;--------------------------------------------------------------------------
-; CO 2-1 AND C18O 2-1
-;--------------------------------------------------------------------------
+        pbcor = readfits('../release/v0p4/process/'+gal+'_co21_pbcorr_round.fits', hdr)
+        mask = readfits('../release/v0p4/process/'+gal+'_co21_clip_round_smoothed_mask.fits', mask_hdr)
 
-           for kk = 0, 2 do begin
+        jtok = calc_jtok(hdr=hdr)
+        pbcor *= jtok
+        sxaddpar, hdr, 'BUNIT', 'K'
+        sxaddpar, hdr, 'JTOK', jtok
+        writefits, '../release/v0p4/process/'+gal+'_co21_correct.fits', pbcor, hdr
 
-              if kk eq 0 then $
-                 line = 'co21' 
-              if kk eq 1 then begin
-;                NGC 0628 lacks C18O
-                 if gal eq 'ngc0628' then $
-                    continue
-                 line = 'c18o21'
-              endif
-              
-;             Read from disk
+        collapse_cube $
+           , cube=pbcor $
+           , hdr=hdr $
+           , mask=mask $
+           , mom0 = mom0 $
+           , e_mom0 = e_mom0 $
+           , mom1 = mom1 $
+           , e_mom1 = e_mom1
 
-              pbcor_cube = readfits(release_dir+ $
-                                    'raw/'+gal+'_'+line+ext+'_round_pbcor.fits', pbcor_hdr)
-              cube = readfits(release_dir+ $
-                              'raw/'+gal+'_'+line+ext+'_round.fits', hdr)
-              pb = readfits(release_dir+ $
-                            'raw/'+gal+'_'+line+ext+'_pb.fits', pb_hdr)
+        tpeak_mask = mask
+        sz = size(mask)
+        for kk = 0, sz[3]-1 do $
+           tpeak_mask[*,*,kk] = total(mask[*,*,kk]) ge 1
 
-              loadct, 33
-              disp, max(cube, dim=3, /nan), /sq
-              contour, max(pb, dim=3, /nan), /overplot, lev=[0.2, 0.5]
+        tpeak = max(pbcor*tpeak_mask, dim=3, /nan)
+        tpeak_hdr = twod_head(hdr)
+        sxaddpar, tpeak_hdr, 'BUNIT', 'K'
 
-;             Mask regions outside the main mosaic coverage
+        writefits, '../release/v0p4/process/'+ $
+                   gal+'_co21_tpeak.fits', tpeak, tpeak_hdr
 
-              ind = where(pb lt 0.5 or finite(pb) eq 0)
-              pbcor_cube[ind] = !values.f_nan
-              cube[ind] = !values.f_nan
-
-;             Convert to kelvin
-
-              jtok = calc_jtok(hdr=hdr)
-              cube *= jtok
-              pbcor_cube *= jtok
-
-              sxaddpar, hdr, 'BUNIT', 'K'
-              sxaddpar, pbcor_hdr, 'BUNIT', 'K'
-
-;             Pare down to only a small set of NaN values outside the
-;             main cube.
-
-              mask_2d = total(finite(cube), 3) ge 1
-              mask_x = total(mask_2d, 2) ge 1
-              ind_x = where(mask_x)
-              mask_y = total(mask_2d, 1) ge 1
-              ind_y = where(mask_y)
-
-              sz = size(mask_2d)
-              xlo = (min(ind_x)-10) > 0
-              xhi = (max(ind_x)+10) < (sz[1]-1)
-              ylo = (min(ind_y)-10) > 0
-              yhi = (max(ind_y)+10) < (sz[2]-1)
-
-              new_pbcor_cube = $
-                 cube_hextract(cube_in=pbcor_cube $
-                               , hdr_in=pbcor_hdr $
-                               , hdr_out=new_pbcor_hdr $
-                               , x0=xlo, x1=xhi $
-                               , y0=ylo, y1=yhi)
-              new_cube = $
-                 cube_hextract(cube_in=cube $
-                               , hdr_in=hdr $
-                               , hdr_out=new_hdr $
-                               , x0=xlo, x1=xhi $
-                               , y0=ylo, y1=yhi)
-              new_pb = $
-                 cube_hextract(cube_in=pb $
-                               , hdr_in=pb_hdr $
-                               , hdr_out=new_pb_hdr $
-                               , x0=xlo, x1=xhi $
-                               , y0=ylo, y1=yhi)
-
-;             Write to disk
-
-              writefits, release_dir+ $
-                         'delivery/'+strupcase(gal)+'_'+line+ext+'.fits' $
-                         , new_cube, new_hdr
-              writefits, release_dir+ $
-                         'delivery/'+strupcase(gal)+'_'+line+ext+'_pbcor.fits' $
-                         , new_pbcor_cube, new_pbcor_hdr
-              writefits, release_dir+ $
-                         'delivery/'+strupcase(gal)+'_'+line+ext+'_pb.fits' $
-                         , new_pb, new_pb_hdr
-
-           endfor
-
-        endfor
-
-        for jj = 0, 1 do begin
-           
-           if jj eq 0 then ext = ''
-           if jj eq 1 then ext = '_taper'
-
-; ------------------------------------------------------------------------
-; CONTINUUM
-; -------------------------------------------------------------------------
-           
-           for kk = 0, 3 do begin
-
-              if kk eq 0 then $
-                 line = 'chan0_co21' 
-              if kk eq 1 then begin
-;                NGC 0628 lacks C18O
-                 if gal eq 'ngc0628' then $
-                    continue
-                 line = 'chan0_c18o21'
-              endif
-              if kk eq 2 then begin
-                 line = 'cont'
-              endif
-
-;             Read from disk
-
-              pbcor_im = readfits(release_dir+ $
-                                  'raw/'+gal+'_'+line+ext+'_round_pbcor.fits' $
-                                  , pbcor_hdr)
-              im = readfits(release_dir+ $
-                            'raw/'+gal+'_'+line+ext+'_round.fits', hdr)
-              pb = readfits(release_dir+ $
-                            'raw/'+gal+'_'+line+ext+'_pb.fits', pb_hdr)
-
-              loadct, 33
-              disp, im, /sq
-              contour, pb, /overplot, lev=[0.2, 0.5]
-
-;             Mask regions outside the main mosaic coverage
-
-              ind = where(pb lt 0.5 or finite(pb) eq 0)
-              pbcor_im[ind] = !values.f_nan
-              im[ind] = !values.f_nan
-
-;             Leave these in Jy/beam. Later, we need to handle the
-;             chan0 right to get K km/s. For now, the velocity channel
-;             width has been dropped.
-
-;             Pare down to only a small set of NaN values outside the
-;             main cube.
-
-              mask_2d = finite(im) ge 1
-              mask_x = total(mask_2d, 2) ge 1
-              ind_x = where(mask_x)
-              mask_y = total(mask_2d, 1) ge 1
-              ind_y = where(mask_y)
-
-              sz = size(mask_2d)
-              xlo = (min(ind_x)-10) > 0
-              xhi = (max(ind_x)+10) < (sz[1]-1)
-              ylo = (min(ind_y)-10) > 0
-              yhi = (max(ind_y)+10) < (sz[2]-1)
-
-              hextract, pbcor_im, pbcor_hdr, new_pbcor_im, new_pbcor_hdr $
-                        , xlo, xhi, ylo, yhi
-
-              hextract, im, hdr, new_im, new_hdr $
-                        , xlo, xhi, ylo, yhi
-
-              hextract, pb, pb_hdr, new_pb, new_pb_hdr $
-                        , xlo, xhi, ylo, yhi
-
-;             Write to disk
-
-              writefits, release_dir+'delivery/'+strupcase(gal)+'_'+ $
-                         line+ext+'.fits', new_im, new_hdr
-              writefits, release_dir+'delivery/'+strupcase(gal)+'_'+ $
-                         line+ext+'_pbcor.fits', new_pbcor_im, new_pbcor_hdr
-              writefits, release_dir+'delivery/'+strupcase(gal)+'_'+line+ $
-                         ext+'_pb.fits', new_pb, new_pb_hdr
-              
-           endfor
-
-        endfor
+        tpeak_12p5 = max(smooth(pbcor,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
+        tpeak_hdr = twod_head(hdr)
+        sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+        writefits, '../release/v0p4/process/'+ $
+                   gal+'_co21_tpeak_12p5kms.fits', tpeak_12p5, tpeak_hdr
+        
+        mom0_hdr = twod_head(hdr)
+        sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
+        writefits, '../release/v0p4/process/'+ $
+                   gal+'_co21_mom0.fits', mom0, mom0_hdr
+        writefits, '../release/v0p4/process/'+ $
+                   gal+'_co21_emom0.fits', e_mom0, mom0_hdr
+        
+        mom1_hdr = twod_head(hdr)
+        sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
+        writefits, '../release/v0p4/process/'+ $
+                   gal+'_co21_mom1.fits', mom1, mom1_hdr
+        writefits, '../release/v0p4/process/'+ $
+                   gal+'_co21_emom1.fits', e_mom1, mom1_hdr
+                
+        !p.multi = [0, 2, 2]
+        loadct, 33
+        disp, tpeak, /sq
+        disp, tpeak_12p5, /sq
+        disp, mom0, /sq
+        disp, mom1, /sq
 
      endfor
-
+     
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CONVOLVE CUBES
+; COMPILE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_convolve) then begin
-     
-     in_dir = release_dir+'delivery/'
-     out_dir = release_dir+'delivery/'
+  if keyword_set(do_compile) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'COMPILE A RELEASE', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+ 
+     dir = '../release/v0p4/'
+
+     ext_in = $
+        ['_co21_correct.fits' $
+;         ,'_co21_pbcorr_round_smoothed.fits' $
+         ,'_co21_clip_round_smoothed_mask.fits' $
+         ,'_co21_clip_round_mask.fits' $
+         ,'_co21_mom0.fits' $
+         ,'_co21_emom0.fits' $
+         ,'_co21_mom1.fits' $
+         ,'_co21_emom1.fits' $
+         ,'_co21_tpeak.fits' $
+         ,'_co21_tpeak_12p5kms.fits' $
+        ]
+
+     ext_out = $
+        ['_co21.fits' $
+;         , '_co21_smoothed.fits' $
+         , '_co21_brightmask.fits' $
+         , '_co21_smoothedmask.fits' $
+         ,'_co21_mom0.fits' $
+         ,'_co21_emom0.fits' $
+         ,'_co21_mom1.fits' $
+         ,'_co21_emom1.fits' $
+         ,'_co21_tpeak.fits' $
+         ,'_co21_tpeak_12p5kms.fits' $
+        ]
+
+     n_ext = n_elements(ext_in)
 
      for ii = 0, n_gals-1 do begin
-
-        gal = strupcase(gals[ii])
-
-        for ww = 0, 1 do begin
-
-           if ww eq 0 then begin
-              ext = 'cube'
-           endif
-
-           if ww eq 1 then begin
-              ext = 'cube_pbcor'
-           endif
-
-           cube = readfits(in_dir+gal+'_co21_'+ext+'.fits', cube_hdr)
-           s = gal_data(gal)
-           sxaddpar, cube_hdr, 'DIST', s.dist_mpc, 'MPC'        
-           sxaddpar, cube_hdr, 'VERSION', version, 'SFNG Version'        
-           current_res = s.dist_mpc*!dtor*sxpar(cube_hdr, 'BMAJ')*1d6
-
-           for jj = 0, n_res -1 do begin
-
-              res_str = strcompress(str(target_res[jj]),/rem)+'pc'
-              out_name = out_dir+gal+'_co21_'+ext+'_'+res_str+'.fits'
-              target_res_as = target_res[jj]/(s.dist_mpc*1d6)/!dtor*3600.d
-
-              if target_res_as gt 3.0 then begin
-                 print, "Switching to tapered cube."
-                 if ww eq 0 then $
-                    cube = readfits(in_dir+gal+'_co21_taper.fits', cube_hdr)
-                 if ww eq 1 then $
-                    cube = readfits(out_dir+gal+'_co21_taper_pbcor.fits', cube_hdr)
-                 sxaddpar, cube_hdr, 'DIST', s.dist_mpc, 'MPC'
-                 sxaddpar, cube_hdr, 'VERSION', version, 'SFNG Version'        
-              endif
-
-              if current_res gt (1.0+res_tol)*target_res[jj] then begin
-                 print, "Resolution too coarse. Skipping."
-                 continue
-              endif
-
-              if abs(current_res - target_res[jj])/target_res[jj] lt res_tol then begin
-                 print, "I will call ", current_res, " ", target_res[jj]
-                 writefits, out_name, cube, cube_hdr           
-              endif else begin
-                 print, "I will convolve ", current_res, " to ", target_res[jj]
-                 conv_with_gauss $
-                    , data=cube $
-                    , hdr=cube_hdr $
-                    , target_beam=target_res_as*[1,1,0] $
-                    , out_file=out_name
-                 
-              endelse
-
-           endfor           
-
-        endfor    
         
+        gal = gals[ii]
+
+        print, 'Copying '+gal
+
+        for jj = 0, n_ext-1 do begin
+
+           spawn, 'rm -rf '+dir+'delivery/'+gal+ext_out[jj]
+
+           spawn, 'cp '+dir+'process/'+gal+ext_in[jj]+' '+dir+'delivery/'+gal+ext_out[jj]
+
+        endfor
+
      endfor
 
   endif
-
 
 end

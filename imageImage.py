@@ -649,16 +649,11 @@ if do_postprocess:
 
     print ""
     print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Post-processing and exporting the data."
+    print "Exporting the data."
     print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
-    do_calc_beam = True
-    do_process = True
-    do_shrink = False
-    do_fits = True
-
-    execfile('../scripts/postProcessCubes.py')
+    execfile('../scripts/exportToFITS.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER
