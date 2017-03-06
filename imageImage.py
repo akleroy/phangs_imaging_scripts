@@ -1,4 +1,4 @@
-tested_versions = ['4.6.0','4.7.0']
+tested_versions = ['4.6.0','4.7.0','4.7.1']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
@@ -20,17 +20,15 @@ total_start_time = time.time()
 
 # Here are the steps in easy form, for copy-and-paste for debugging.
 
-#do_pickcellsize = True
-#do_init = False
-#do_make_dirty_mask = False
+#do_init = True
 #do_revert_to_dirty = False
-#do_start_with_pbmask = False
-#do_clean_bright = False
-#do_revert_to_bright = True
+#do_read_in_clean_mask = True
+#do_clean_bright = True
+#do_revert_to_bright = False
 #do_make_model_mask = True
 #do_clean_deep = True
 #do_revert_to_deep = False
-#do_postprocess = False
+#do_postprocess = True
 
 try:
     do_end_to_end
@@ -39,8 +37,8 @@ except NameError:
 
 if do_end_to_end:
     do_init = True
-    do_make_dirty_mask = True
     do_revert_to_dirty = False
+    do_read_in_clean_mask = True
     do_clean_bright = True
     do_revert_to_bright = False
     do_make_model_mask = True
@@ -64,9 +62,9 @@ except NameError:
     do_revert_to_dirty = False
 
 try:
-    do_make_dirty_mask
+    do_read_in_clean_mask 
 except NameError:
-    do_make_dirty_mask = True
+    do_read_in_clean_mask = False
 
 try:
     do_clean_bright
@@ -113,8 +111,9 @@ print ""
 print "---------- imageImage.py ----------"
 print ""
 
-bright_snr_thresh = 3.0
+bright_snr_thresh = 4.0
 thresh_step = 0.5
+pblimit = 0.5
 
 # ......................................
 # Input/output files
@@ -250,7 +249,7 @@ if do_init:
 
     usemask = 'pb'
     mask = ''
-    pbmask=0.2
+    pbmask=pblimit
     calcres = True
     execfile('../scripts/callClean.py')
 
@@ -281,19 +280,33 @@ if do_revert_to_dirty:
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
 
-if do_make_dirty_mask:
+if do_read_in_clean_mask:
 
     print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Making a mask based on the dirty cube or image."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Aligning the external clean mask to the dirty cube."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
-    recipe = 'clipandsmooth'
-    execfile('../scripts/makeMask.py')
+    mask_in = clean_mask_file
+    mask_root = cube_root
+    execfile('../scripts/alignMask.py')
 
-    os.system('rm -rf '+cube_root+'_widearea.mask')
-    os.system('cp -r '+cube_root+'.mask '+cube_root+'_widearea.mask')
+    print "Also clipping at PB<0.5"
+
+    ia.open(cube_root+".pb")
+    pb = ia.getchunk()
+    ia.close()
+    
+    ia.open(cube_root+".mask")
+    mask = ia.getchunk()
+    mask *= (pb > pblimit)
+    ia.putchunk(mask)
+    ia.close()
+
+    mask = ''
+    pb = 0.0
+    
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # CLEAN DOWN TO A BRIGHT THRESHOLD
@@ -362,21 +375,27 @@ if do_clean_bright and (do_revert_to_bright == False):
 
         calcres = False
         minpsffraction = 0.5
+        usemask = 'user'
+        mask = ''
+        pbmask=0.5
 
-        if do_start_with_pbmask == False:
-            usemask = 'user'
-            mask = ''
-            mask_file = cube_root+'.mask'
-        else:
-            usemask = 'pb'
-            mask = ''
-            pbmask = 0.2
+        #if do_start_with_pbmask == False:
+        #    usemask = 'user'
+        #    mask = ''
+        #    mask_file = cube_root+'.mask'
+        #else:
+        #    usemask = 'pb'
+        #    mask = ''
+        #    pbmask = 0.2
 
         # Keep a running backup of the previous iteration.
 
         do_savecopy = True
         bkup_ext = "prev"
 
+        deconvolver = 'multiscale'
+        scales = [0,2,4,8,16,32]
+        
         execfile('../scripts/callClean.py')
         
         # Run stats after the clean.
@@ -407,6 +426,8 @@ if do_clean_bright and (do_revert_to_bright == False):
         f = open(loop_record_file,'a')
         f.write(line)
         f.close()
+
+        ch = raw_input('Hit <ENTER> to continue.')
 
         if proceed == False:
             break

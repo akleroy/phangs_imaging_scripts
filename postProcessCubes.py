@@ -96,6 +96,11 @@ if do_raw_fits:
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=16)
 
+    exportfits(imagename=cube_root+'.model',
+               fitsimage=cube_root+'_model.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=16)
+
     exportfits(imagename=cube_root+'.residual',
                fitsimage=cube_root+'_residual.fits',
                velocity=True, overwrite=True, dropstokes=True, 
@@ -106,19 +111,6 @@ if do_raw_fits:
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=16)
     
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# CALCULATE THE RESIDUAL RESCALING
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-if do_rescale:
-
-    print ""
-    print "........................................................"
-    print "postProcessCubes: exporting the unprocessed data to FITS."
-    print "........................................................"
-    print ""
-
-
     
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # PICK A TARGET ROUND BEAM

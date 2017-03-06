@@ -1,7 +1,7 @@
 # Script to call clean ONCE as part of producing a cube from
 # visibility data.
 
-tested_versions = ['4.6.0','4.7.0']
+tested_versions = ['4.6.0','4.7.0','4.7.1']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
@@ -165,6 +165,12 @@ except NameError:
     print "Defaulting to a VERY HIGH minpsffraction."
     minpsffraction = 0.5
 
+try:
+    pb_limit
+except NameError:
+    print "Defaulting to a PB limit of 0.75."
+    pb_limit = 0.5
+
 # ......................................
 # If we abort, turn off the script
 # ......................................
@@ -235,6 +241,8 @@ if do_callclean:
            deconvolver=deconvolver,
            scales=scales,
            smallscalebias=smallscalebias,
+           pblimit=pb_limit,
+           normtype='flatnoise',
            # U-V plane gridding
            weighting='briggs',
            robust=briggs_weight,
@@ -248,7 +256,7 @@ if do_callclean:
            # Mask
            usemask=usemask,
            mask=mask,
-           pbmask=0.2,
+           pbmask=pb_limit,
            # UI
            interactive=False,
            )
