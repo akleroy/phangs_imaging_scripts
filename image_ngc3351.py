@@ -12,9 +12,10 @@ phase_center = 'J2000 10h43m57s +11d42m14s'
 source_vel_kms = 778
 vwidth_kms = 500
 
-calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X27b/group.uid___A001_X2fb_X27c/member.uid___A001_X2fb_X27d/calibrated/calibrated_final.ms',
-                    }
-#              '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms'}
+calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X27b/group.uid___A001_X2fb_X27c/member.uid___A001_X2fb_X27d/calibrated/calibrated_final.ms',                
+                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X27b/group.uid___A001_X2fb_X27c/member.uid___A001_X2fb_X27f/calibrated/calibrated_final.ms'}
+
+clean_mask_file = '../clean_masks/ngc3351_clean_mask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -141,7 +142,6 @@ if script_image_cube:
 
     if script_image_co21:
         do_end_to_end = True
-        do_start_with_pbmask = False
         
         input_vis = 'ngc3351_956_co21.ms'
         cube_root = 'ngc3351_co21'
@@ -150,7 +150,7 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        execfile('../scripts/imageMultiscale.py')
 
     if script_image_c18o21:
         do_end_to_end = True

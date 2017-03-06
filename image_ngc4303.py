@@ -13,8 +13,10 @@ source_vel_kms = 1566
 vwidth_kms = 500
 
 calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/member.uid___A001_X2fb_X2af/calibrated/calibrated_final.ms',
+                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/member.uid___A001_X2fb_X2b1/calibrated/calibrated_final.ms',
                     }
-#              '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/member.uid___A001_X2fb_X2cf/calibrated/calibrated_final.ms'}
+
+clean_mask_file = '../clean_masks/ngc4303_co21_widemask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -140,29 +142,17 @@ if script_image_chan0:
 if script_image_cube:
 
     if script_image_co21:
-        #do_end_to_end = True
-        do_start_with_pbmask = False
+        do_end_to_end = True
 
-        do_end_to_end = False
-        do_pickcellsize = True
-        do_init = False
-        do_make_dirty_mask = False
-        do_revert_to_dirty = False
-        do_clean_bright = False
-        do_revert_to_bright = True
-        do_make_model_mask = True
-        do_clean_deep = True
-        do_revert_to_deep = False
-        do_postprocess = True
-        
         input_vis = 'ngc4303_956_co21.ms'
         cube_root = 'ngc4303_co21'
         uvtaper = None
         linetag = 'co21'
         specmode = 'cube'
+        scales_to_use=[0,2,4,8,16,32,64]        
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        execfile('../scripts/imageMultiscale.py')
 
     if script_image_c18o21:
         do_end_to_end = True

@@ -1,4 +1,5 @@
 pro build_release $
+   , just=just $
    , reset=reset $
    , copy=copy $
    , rescale=rescale $
@@ -7,6 +8,7 @@ pro build_release $
    , roundbeam=roundbeam $
    , convolve=do_convolve $
    , smooth=do_smooth $
+   , noise=do_noise $
    , mask=do_masks $
    , collapse=do_collapse $
    , compile=do_compile
@@ -87,6 +89,10 @@ pro build_release $
      n_ext = n_elements(ext_to_copy)
 
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
+
         message, '... copying data for '+gals[ii], /info        
         for jj = 0, n_ext-1 do begin
            spawn, 'cp '+root_imaging_dir+dirs[ii]+'/'+ $
@@ -112,6 +118,10 @@ pro build_release $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
+
         message, '... rescaling data for '+gals[ii], /info        
         
         dirty_cube = readfits(release_dir+'raw/'+$
@@ -181,6 +191,9 @@ pro build_release $
 
      for ii = 0, n_gals-1 do begin
 
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
+
         message, '... primary beam correction for '+gals[ii], /info        
         
         clean_cube = readfits(release_dir+'raw/'+$
@@ -239,6 +252,9 @@ pro build_release $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
         
         beam_table = mrdfits(release_dir+'raw/'+gals[ii]+'_co21.fits',1)
 
@@ -298,6 +314,9 @@ pro build_release $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
         
         target_bmaj = 3.
         
@@ -326,9 +345,51 @@ pro build_release $
      
   endif
   
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; ESTIMATE NOISE
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(do_noise) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'ESTIMATE NOISE', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+
+     for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
+        
+        gal = gals[ii]
+
+        ext = $
+           ['_co21_clip_round' $
+            , '_co21_clip_round_smoothed' $
+           ]
+        n_ext = n_elements(ext)
+
+        for jj = 0, n_ext-1 do begin
+
+           cube = readfits('../release/v0p4/process/'+gal+ext[jj]+'.fits', cube_hdr)
+
+           make_noise_cube $
+              , cube_in = cube $
+              , out_cube = rms_cube $
+              , box = 21 $
+              , /twod_only $
+              , /show $
+              , /iterate
+           
+           writefits, '../release/v0p4/process/'+gal+ext[jj]+'_noise.fits', rms_cube, cube_hdr
+
+        endfor
+
+     endfor
+
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; BUILD A COUPLE OF MASKS
+; BUILD MASKS
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
   
   if keyword_set(do_masks) then begin
@@ -338,24 +399,36 @@ pro build_release $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
         
         gal = gals[ii]
-        
+     
+; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+; MAKE MASKS FOR BOTH RESOLUTIONS
+; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   
         ext = $
-           ['_co21_clip_round_smoothed' $
-            , '_co21_clip_round']
+           ['_co21_clip_round' $
+            , '_co21_clip_round_smoothed' $
+           ]
         n_ext = n_elements(ext)
         
         for jj = 0, n_ext-1 do begin
 
            cube = readfits('../release/v0p4/process/'+gal+ext[jj]+'.fits', cube_hdr)
+           rms_cube = readfits('../release/v0p4/process/'+gal+ext[jj]+'_noise.fits', noise_hdr)
 
-           rms = mad(cube)
+           ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+
            make_cprops_mask $
               , indata=cube $
-              , inrms = rms $
+              , inrms = rms_cube $
               , lo_thresh = 2 $
-              , hi_thresh = 4 $
+              , hi_thresh = 3 $
+              , hi_nchan = 3 $
+              , min_area = ppbeam $
               , outmask=mask
            
            !p.multi=[0,2,1]
@@ -370,7 +443,42 @@ pro build_release $
            sxaddpar, mask_hdr, 'BUNIT', 'MASK'
            writefits, '../release/v0p4/process/'+gal+ext[jj]+'_mask.fits', mask, mask_hdr
 
+           if jj eq 0 then $
+              join_mask = mask $
+           else $
+              join_mask = join_mask or mask
+
         endfor   
+
+        mask_hdr = cube_hdr
+        sxaddpar, mask_hdr, 'BUNIT', 'MASK'
+        writefits, '../release/v0p4/process/'+gal+'_joint_mask.fits', join_mask, mask_hdr
+        
+; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+; SMOOTH THE MASK TO MAKE A CLEAN MASK
+; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        conv_with_gauss $
+           , data = join_mask*1.0 $
+           , hdr=mask_hdr $
+           ;, start_beam = [0,0,0] $
+           , target = [15.,15.,0.] $
+           , out_data= smooth_mask $
+           , /perbeam
+        smooth_mask = smooth_mask gt 1.0
+
+        !p.multi=[0,2,1]
+        loadct, 33
+        disp, max(cube, dim=3, /nan)
+        contour, max(smooth_mask, dim=3), lev=[1], /overplot
+        
+        disp, max(cube, dim=2, /nan)
+        contour, max(smooth_mask, dim=2), lev=[1], /overplot
+
+;        print, "This is the candidate clean mask. Hit key to continue."
+;        ch = get_kbrd(1)
+
+        writefits, '../release/v0p4/process/'+gal+'_large_mask.fits', smooth_mask, mask_hdr
 
      endfor
      
@@ -387,6 +495,9 @@ pro build_release $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
         
         gal = gals[ii]
 
@@ -465,9 +576,9 @@ pro build_release $
 
      ext_in = $
         ['_co21_correct.fits' $
-;         ,'_co21_pbcorr_round_smoothed.fits' $
          ,'_co21_clip_round_smoothed_mask.fits' $
          ,'_co21_clip_round_mask.fits' $
+         ,'_large_mask.fits' $
          ,'_co21_mom0.fits' $
          ,'_co21_emom0.fits' $
          ,'_co21_mom1.fits' $
@@ -478,9 +589,9 @@ pro build_release $
 
      ext_out = $
         ['_co21.fits' $
-;         , '_co21_smoothed.fits' $
-         , '_co21_brightmask.fits' $
          , '_co21_smoothedmask.fits' $
+         , '_co21_brightmask.fits' $
+         , '_co21_widemask.fits' $
          ,'_co21_mom0.fits' $
          ,'_co21_emom0.fits' $
          ,'_co21_mom1.fits' $
@@ -492,6 +603,9 @@ pro build_release $
      n_ext = n_elements(ext_in)
 
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if just ne gals[ii] then continue
         
         gal = gals[ii]
 

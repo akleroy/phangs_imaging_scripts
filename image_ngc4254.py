@@ -14,8 +14,8 @@ vwidth_kms = 500
 
 calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29b/calibrated/calibrated_final.ms',
                     '12m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a5/calibrated/calibrated_final.ms',
-#                    '7m_1':'',
-#                    '7m_2':''
+#                    '7m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/',
+                    '7m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a7/calibrated/calibrated_final.ms',
                     }
 
 # --------------------------------------
@@ -25,14 +25,14 @@ calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = False
-script_extract_co21 = False
-script_extract_c18o21 = False
-script_extract_continuum = False
+script_copy = True
+script_extract_co21 = True
+script_extract_c18o21 = True
+script_extract_continuum = True
 
 # Image data
 script_image_chan0 = False
-script_image_cube = True
+script_image_cube = False
 
 script_image_co21 = True
 script_image_c18o21 = False

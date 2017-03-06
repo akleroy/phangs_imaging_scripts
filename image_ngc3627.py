@@ -17,6 +17,8 @@ calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X
                     '7m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X293/calibrated/calibrated_final.ms',
                     '7m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X289/calibrated/calibrated_final.ms'}
 
+clean_mask_file = '../clean_masks/ngc3627_co21_widemask.fits'
+
 # --------------------------------------
 # Overall control flow
 # --------------------------------------
@@ -142,16 +144,16 @@ if script_image_cube:
 
     if script_image_co21:
         do_end_to_end = True
-        do_start_with_pbmask = False
-        
+
         input_vis = 'ngc3627_956_co21.ms'
         cube_root = 'ngc3627_co21'
         uvtaper = None
         linetag = 'co21'
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
+        scales_to_use = [0, 2, 4, 8, 16, 32, 64]
 
-        execfile('../scripts/imageImage.py')
+        execfile('../scripts/imageMultiscale.py')
 
     if script_image_c18o21:
         do_end_to_end = True

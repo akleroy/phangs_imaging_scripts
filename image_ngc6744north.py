@@ -15,6 +15,8 @@ vwidth_kms = 500
 calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d7/calibrated/calibrated_final.ms',
                     '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d9/calibrated/calibrated_final.ms'}
 
+clean_mask_file = '../clean_masks/ngc6744north_co21_widemask.fits'
+
 # --------------------------------------
 # Overall control flow
 # --------------------------------------
@@ -140,8 +142,6 @@ if script_image_cube:
 
     if script_image_co21:
         do_end_to_end = True
-        do_start_with_pbmask = False
-        
         input_vis = out_root+'_'+tag+'_co21.ms'
         cube_root = out_root+'_co21'
         uvtaper = None
@@ -149,7 +149,13 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        do_init = True
+        do_revert_to_dirty = False
+        do_read_in_clean_mask = True
+        do_clean = False
+        do_postprocess = False
+
+        execfile('../scripts/imageMultiscale.py')
 
     if script_image_c18o21:
         do_end_to_end = True

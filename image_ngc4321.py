@@ -14,9 +14,11 @@ vwidth_kms = 500
 
 calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/member.uid___A001_X2fb_X2b9/calibrated/calibrated_final.ms',
                     '12m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/member.uid___A001_X2fb_X2c3/calibrated/calibrated_final.ms',
-#                    '7m_1':'',
-#                    '7m_2':''
+                    '7m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/member.uid___A001_X2fb_X2bb/calibrated/calibrated_final.ms',
+                    '7m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/member.uid___A001_X2fb_X2c5/calibrated/calibrated_final.ms'
                     }
+
+clean_mask_file = '../clean_masks/ngc4321_co21_widemask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -143,7 +145,6 @@ if script_image_cube:
 
     if script_image_co21:
         do_end_to_end = True
-        do_start_with_pbmask = False
         
         input_vis = 'ngc4321_956_co21.ms'
         cube_root = 'ngc4321_co21'
@@ -152,7 +153,9 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        scales_to_use = [0, 2, 4, 8, 16, 32, 64]        
+
+        execfile('../scripts/imageMultiscale.py')
 
     if script_image_c18o21:
         do_end_to_end = True
