@@ -14,7 +14,7 @@ vwidth_kms = 500
 
 calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29b/calibrated/calibrated_final.ms',
                     '12m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a5/calibrated/calibrated_final.ms',
-#                    '7m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/',
+                    '7m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29d/calibrated/calibrated_final.ms',
                     '7m_2':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a7/calibrated/calibrated_final.ms',
                     }
 
@@ -25,18 +25,20 @@ calibrated_files = {'12m_1':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = True
-script_extract_co21 = True
-script_extract_c18o21 = True
-script_extract_continuum = True
+script_copy = False
+script_extract_co21 = False
+script_extract_c18o21 = False
+script_extract_continuum = False
 
 # Image data
 script_image_chan0 = False
-script_image_cube = False
+script_image_cube = True
 
 script_image_co21 = True
 script_image_c18o21 = False
 script_image_cont = False
+
+clean_mask_file = '../clean_masks/ngc4254_co21_widemask.fits'
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -143,7 +145,6 @@ if script_image_cube:
 
     if script_image_co21:
         do_end_to_end = True
-        do_start_with_pbmask = False
         
         input_vis = 'ngc4254_956_co21.ms'
         cube_root = 'ngc4254_co21'
@@ -152,7 +153,10 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        pb_limit = 0.5
+        scales_to_use = [0,2,4,8,16,32,64]
+
+        execfile('../scripts/imageMultiscale.py')
 
     if script_image_c18o21:
         do_end_to_end = True
@@ -165,4 +169,7 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        pb_limit = 0.5
+        scales_to_use = [0,2,4,8,16,32,64]
+
+        execfile('../scripts/imageMultiscale.py')

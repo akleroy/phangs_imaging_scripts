@@ -1,3 +1,7 @@
+# Note that "IMPROVEMENT TBD" items are scattered throughout the
+# program. Search on this to find areas where some clean up or a next
+# logical step could be worked out.
+
 tested_versions = ['4.6.0','4.7.0','4.7.1']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
@@ -15,21 +19,32 @@ import time
 total_start_time = time.time()
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# CONTROL FLOW
+# DEFINITIONS AND INPUTS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# Here are the steps in easy form, for copy-and-paste for debugging.
+# ----------------------------------------------------
+# CONTROL FLOW
+# ----------------------------------------------------
 
 try:
     do_end_to_end
 except NameError:
     do_end_to_end = False
 
+try:
+    do_use_pbmask
+except NameError:
+    do_use_pbmask = False
+    do_read_in_cleam_mask = False
+
 if do_end_to_end:
-    do_init = True
+    do_make_dirty_cube = True
     do_revert_to_dirty = False
-    do_read_in_clean_mask = True
+    if do_use_pbmask == False:
+        do_read_in_clean_mask = True
     do_clean = True
+    do_singlescale = True
+    do_revert_to_multiscale = False
     do_postprocess = True
 
 try:
@@ -38,9 +53,9 @@ except NameError:
     do_pickcellsize = True
 
 try:
-    do_init
+    do_make_dirty_cube
 except NameError:
-    do_init = True
+    do_make_dirty_cube = True
 
 try:
     do_revert_to_dirty
@@ -58,14 +73,48 @@ except NameError:
     do_clean = True
 
 try:
+    do_revert_to_multiscale
+except NameError:
+    revert_to_multiscale = False
+
+try:
+    do_singlescale
+except NameError:
+    do_singlescale = False
+
+try:
     do_postprocess
 except NameError:
     do_postprocess = False
+
+# ----------------------------------------------------
+# TUNING PARAMETERS
+# ----------------------------------------------------
 
 try:
     scales_to_use
 except NameError:
     scales_to_use = [0,2,4,8,16,32]
+
+try:
+    bright_snr_thresh 
+except NameError:
+    bright_snr_thresh = 4.0
+
+try:
+    pb_limit
+except NameError:
+    pb_limit = 0.75
+
+try:
+    max_loop
+except NameError:
+    max_loop = 10
+
+try:
+    single_scale_niter_per_chan
+except NameError:
+    single_scale_niter_per_chan = 1000
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Inputs
@@ -76,9 +125,6 @@ abort = False
 print ""
 print "---------- imageMultiscale.py ----------"
 print ""
-
-bright_snr_thresh = 4.0
-pb_limit = 0.75
 
 # ......................................
 # Input/output files
@@ -102,14 +148,33 @@ except NameError:
 
 if abort:
     print "(Turning off other parts of the script)."
-    do_init = False
-    do_mask = False
+    do_pickcellsize = False
+    do_make_dirty_cube = False
+    do_revert_to_dirty = False
+    do_read_in_clean_mask = False
+    do_use_pbmask = False
     do_clean = False
+    do_revert_to_multiscale = False
+    do_singlescale = False
     do_postprocess = False
  
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# MAKE THE DIRTY CUBE
+# PICK THE INPUT PARAMETERS FOR CLEAN
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# Here, determine the choices for the CLEAN image - the cell size,
+# image size, etc. Use the analysis utilities and the input UV data
+# set to do this.
+
+# IMPROVEMENT TBD: Pick up these numbers from an existing image. Or
+# perhaps CLEAN doesn't need them if it resumes from an existing image
+# on disk? In any case, figure out a way to avoid the case where this
+# step misfires and down some processes down the line come tumbling
+# down.
+
+# IMPROVEMENT TBD: Right now we specify the field center by hand. This
+# is actually probably okay. But doing this automatically might be
+# useful down the line. This is not high priority.
 
 if do_pickcellsize:
     # Factor by which to oversample the beam
@@ -181,12 +246,22 @@ if do_pickcellsize:
     print "... cell size = "+cell_size_string
     print "... image size = ", image_size
 
-    # This is not currently working ...
+    # This is not currently working ... we specify the field center by hand.
 
     #print "... central field = ", au_centralField
     #phase_center = au_centralField
 
-if do_init:
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# MAKE A DIRTY CUBE
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# Now we make a dirty cube, with 0 iterations supplied. This gives us
+# a target astrometry and WCS to work with for external clean
+# masks. It also provides a useful point of comparison for checking
+# residual rescaling, etc. Save the results separately so that one can
+# revert to the dirty map.
+
+if do_make_dirty_cube:
 
     print ""
     print "+-+-+-+-+-+-+-+-+-+-+-+-+"
@@ -245,6 +320,14 @@ if do_revert_to_dirty:
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# GENERATE OR READ THE CLEAN MASK
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# Generate the mask that will be used for cleaning. This is either a
+# pure primary-beam based mask or an externally defined clean mask
+# that we align to the astrometry of the input cube.
+
 if do_read_in_clean_mask:
 
     print ""
@@ -270,9 +353,39 @@ if do_read_in_clean_mask:
     mask = ''
     pb = 0.0
     
+if do_use_pbmask and do_read_in_clean_mask == False:
+
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Using a primary beam based mask only."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+ 
+    ia.open(cube_root+".pb")
+    pb = ia.getchunk()
+    ia.close()
+
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
+    
+    ia.open(cube_root+".mask")
+    mask = (pb > pb_limit)*1.0
+    ia.putchunk(mask)
+    ia.close()
+
+    mask = ''
+    pb = 0.0
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # RUN THE MULTISCALE CLEAN
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# Run the main clean loop using the multiscale cleaning approach. This
+# picks up from the dirty cube and executes a series of clean calls
+# with the "multiscale" algorithm. Successive calls to clean allocate
+# more and more iterations. Between executions, curate the model
+# slightly. We don't expect negative components, so delete negative
+# values from the model. 
 
 if do_clean:
 
@@ -294,7 +407,6 @@ if do_clean:
     base_niter = 10*nchan
     base_cycle_niter = 100
     loop = 1
-    max_loop = 10
 
     # Initialize our output file and tracking of the flux in the model
 
@@ -427,13 +539,53 @@ if do_clean:
     bkup_ext = "multiscale"
     execfile('../scripts/callClean.py')
 
-    # Now run one more single scale clean with a higher threshold. The
-    # method above can somewhat overclean (because of the suppression
-    # of the negatives). This last step may be able to come in and
-    # overcorrect a few of these blemishes.
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# REVERT TO THE MULTISCALE CASE IF DESIRED
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+if do_revert_to_multiscale:
+    
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Resetting to the multiscale cube or image."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+        
+    print ""
+    print "Copying the previous multiscale image to be the main cube."
+    print ""
+    
+    os.system('rm -rf '+cube_root+'.image')
+    os.system('rm -rf '+cube_root+'.model')
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('rm -rf '+cube_root+'.pb')
+    os.system('rm -rf '+cube_root+'.psf')
+    os.system('rm -rf '+cube_root+'.residual')
+        
+    bkup_ext = "multiscale"
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.image '+cube_root+'.image')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.model '+cube_root+'.model')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.mask '+cube_root+'.mask')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
+    os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# SINGLE SCALE CLEAN TO FINISH
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# Now run one more single scale clean with a higher threshold. The
+# method above can somewhat overclean (some because of the suppression
+# of the negatives, some just because). This last step may be able to
+# come in and overcorrect a few of these blemishes. In theory, this
+# could be run a few times.
+
+if do_singlescale:
 
     print ""
-    print "FINAL SINGLE SCALE CLEAN."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Running a final single scale clean."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
     execfile('../scripts/statCleanCube.py')
@@ -446,14 +598,13 @@ if do_clean:
     do_callclean = True
     deconvolver = 'hogbom'
     scales = [0]
-    niter = 1000*nchan
+    niter = single_scale_niter_per_chan*nchan
     calcres = False
     minpsffraction = 0.5
     usemask = 'user'
     mask = ''
 
     execfile('../scripts/callClean.py')
-
         
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # POST PROCESS

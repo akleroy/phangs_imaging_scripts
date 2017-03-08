@@ -1,7 +1,7 @@
 # Script to process cubes produced by clean into FITS files useful for
 # future analysis.
 
-tested_versions = ['4.6.0','4.7.0']
+tested_versions = ['4.6.0','4.7.1']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."

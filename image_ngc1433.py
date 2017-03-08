@@ -6,14 +6,14 @@
 # User inputs
 # --------------------------------------
 
-out_root = 'ic5332'
+out_root = 'ngc1433'
 tag = '925'
-phase_center = 'J2000 23h34m27.5s -36d06m04s'
-source_vel_kms = 701.
-vwidth_kms = 250.
+phase_center = 'J2000 03h42m01.5s -47d13m19s'
+source_vel_kms = 1076.
+vwidth_kms = 500.
 
 calibrated_files = {
-    '7m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ba/group.uid___A001_X2fe_X2bb/member.uid___A001_X2fe_X2be/calibrated/calibrated_final.ms'
+    '7m_1':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X300/group.uid___A001_X2fe_X301/member.uid___A001_X2fe_X304/calibrated/calibrated_final.ms'
     #, '12m':''
     }
 
@@ -24,10 +24,10 @@ calibrated_files = {
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = False
-script_extract_co21 = False
-script_extract_c18o21 = False
-script_extract_continuum = False
+script_copy = True
+script_extract_co21 = True
+script_extract_c18o21 = True
+script_extract_continuum = True
 
 # Image data
 script_image_chan0 = False
@@ -105,8 +105,8 @@ if script_image_chan0:
     if script_image_co21:
         do_end_to_end = True
         do_start_with_pbmask = True
-        input_vis = 'ic5332_925_co21_chan0.ms'
-        cube_root = 'ic5332_co21_chan0'
+        input_vis = 'ngc1433_925_co21_chan0.ms'
+        cube_root = 'ngc1433_co21_chan0'
         uvtaper = None
         linetag = 'co21'
         specmode = 'mfs'
@@ -116,8 +116,8 @@ if script_image_chan0:
     if script_image_c18o21:
         do_end_to_end = True
         do_start_with_pbmask = True
-        input_vis = 'ic5332_925_c18o21_chan0.ms'
-        cube_root = 'ic5332_c18o21_chan0'
+        input_vis = 'ngc1433_925_c18o21_chan0.ms'
+        cube_root = 'ngc1433_c18o21_chan0'
         uvtaper = None
         linetag = 'c18o21'
         specmode = 'mfs'
@@ -127,8 +127,8 @@ if script_image_chan0:
     if script_image_cont:
         do_end_to_end = True
         do_start_with_pbmask = True
-        input_vis = 'ic5332_925_cont.ms'
-        cube_root = 'ic5332_cont'
+        input_vis = 'ngc1433_925_cont.ms'
+        cube_root = 'ngc1433_cont'
         uvtaper = None
         specmode = 'mfs'
         restfreq_ghz = ''
@@ -144,8 +144,8 @@ if script_image_cube:
         do_end_to_end = True
         do_use_pbmask = True
         
-        input_vis = 'ic5332_925_co21.ms'
-        cube_root = 'ic5332_co21'
+        input_vis = 'ngc1433_925_co21.ms'
+        cube_root = 'ngc1433_co21'
         uvtaper = None
         linetag = 'co21'
         specmode = 'cube'
@@ -159,8 +159,8 @@ if script_image_cube:
         do_end_to_end = True
         do_start_with_pbmask = False
         
-        input_vis = 'ic5332_925_c18o21.ms'
-        cube_root = 'ic5332_c18o21'
+        input_vis = 'ngc1433_925_c18o21.ms'
+        cube_root = 'ngc1433_c18o21'
         uvtaper = None
         linetag = 'c18o21'
         specmode = 'cube'
