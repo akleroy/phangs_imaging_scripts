@@ -13,8 +13,8 @@ source_vel_kms = 1076.
 vwidth_kms = 500.
 
 calibrated_files = {
-    '7m_1':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X300/group.uid___A001_X2fe_X301/member.uid___A001_X2fe_X304/calibrated/calibrated_final.ms'
-    #, '12m':''
+    '7m_1':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X300/group.uid___A001_X2fe_X301/member.uid___A001_X2fe_X304/calibrated/calibrated_final.ms',
+    '7m_2':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X30a/group.uid___A001_X2fe_X30b/member.uid___A001_X2fe_X30e/calibrated/calibrated_final.ms'
     }
 
 # --------------------------------------
@@ -24,10 +24,10 @@ calibrated_files = {
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = True
-script_extract_co21 = True
-script_extract_c18o21 = True
-script_extract_continuum = True
+script_copy = False
+script_extract_co21 = False
+script_extract_c18o21 = False
+script_extract_continuum = False
 
 # Image data
 script_image_chan0 = False
@@ -152,6 +152,7 @@ if script_image_cube:
 
         scales_to_use = [0]
         restfreq_ghz = line_list[linetag]
+        pb_limit = 0.5
 
         execfile('../scripts/imageMultiscale.py')
 

@@ -1,4 +1,4 @@
-pro build_release $
+pro build_release_v0p5 $
    , just=just $
    , reset=reset $
    , copy=copy $
@@ -64,6 +64,7 @@ pro build_release $
       , 'ngc6744north' $
       , 'ngc6744south' $
      ]
+
   n_gals = n_elements(gals)
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -120,78 +121,6 @@ pro build_release $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; RESIDUAL RESCALING
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  if keyword_set(rescale) then begin
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'RESIDUAL RESCALING', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-
-     for ii = 0, n_gals-1 do begin
-
-        if n_elements(just) gt 0 then $
-           if just ne gals[ii] then continue
-
-        message, '... rescaling data for '+gals[ii], /info        
-        
-        dirty_cube = readfits(release_dir+'raw/'+$
-                              gals[ii]+'_co21_dirty.fits', dirty_hdr)
-
-        resid_cube = readfits(release_dir+'raw/'+$
-                              gals[ii]+'_co21_residual.fits', resid_hdr)
-
-        clean_cube = readfits(release_dir+'raw/'+$
-                              gals[ii]+'_co21.fits', clean_hdr)
-
-        pb =  readfits(release_dir+'raw/'+$
-                       gals[ii]+'_co21_pb.fits', pb_hdr)
-        
-        mask = pb gt 0.5
-
-        rms = mad(clean_cube[where(mask)])
-        mask = clean_cube gt 3.*rms
-        mask = mask*(shift(mask,0,0,-1) or shift(mask,0,0,1))
-
-        ind = where(mask)
-        y = (clean_cube[ind]-resid_cube[ind])
-        x = (dirty_cube[ind]-resid_cube[ind])
-        
-        print, "Rescaling factor would be: "
-        sum_scale_factor = total(y,/nan) / total(x,/nan)
-        print, "... sum: ", sum_scale_factor
-
-        bins = bin_data(x, y, /nan, xmin=0., xmax=max(x, /nan), binsize=max(x,/nan)/20.)
-        bin_scale_factor = median(bins.ymed/bins.xmed)
-
-        ploterror, bins.xmid, bins.ymed, bins.ymad $
-                   , ytitle="C-R", xtitle="D-R", ps=7
-        equality, slop=sum_scale_factor, color=cgcolor('red')
-        equality, lines=2, slope=bin_scale_factor, color=cgcolor('blue')
-        print, "... bins: ", bin_scale_factor
-        
-        scale_factor = float(bin_scale_factor)
-
-        rescale = float(clean_cube + resid_cube*(scale_factor-1.0))
-        sxaddpar, clean_hdr, 'RESCALE', scale_factor, 'Residual emission rescaled by this factor.'
-        sxdelpar, clean_hdr, 'CASAMBM'
-        writefits, release_dir+'process/'+gals[ii]+'_co21_rescale.fits', rescale, clean_hdr
-
-        rescale = float(resid_cube*(scale_factor-1.0))
-        sxaddpar, resid_hdr, 'RESCALE', scale_factor, 'Residual emission rescaled by this factor.'
-        sxdelpar, resid_hdr, 'CASAMBM'
-        writefits, release_dir+'process/'+gals[ii]+'_co21_residual_rescale.fits', rescale, resid_hdr
-
-     endfor
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'FINISHED RESIDUAL RESCALING', /info     
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-
-  endif
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; PRIMARY BEAM CORRECTION
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
@@ -201,53 +130,71 @@ pro build_release $
      message, 'PRIMARY BEAM CORRECTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
+     print, "!!!ALERT!!! I am applying the mosaic bug patch for 4.7.1"
+     print, "!!!ALERT!!! This will be WRONG for imaging in another version"
+
+     pb_limit = 0.5
+
      for ii = 0, n_gals-1 do begin
+
+        message, "Applying primary beam correction for "+gals[ii], /info
 
         if n_elements(just) gt 0 then $
            if just ne gals[ii] then continue
+
+;       Read our data
 
         message, '... primary beam correction for '+gals[ii], /info        
         
         clean_cube = readfits(release_dir+'raw/'+$
                               gals[ii]+'_co21.fits', clean_hdr)
 
-        rescale_cube = readfits(release_dir+'process/'+$
-                                gals[ii]+'_co21_rescale.fits', rescale_hdr)
+        resid_cube = readfits(release_dir+'raw/'+$
+                              gals[ii]+'_co21_residual.fits', resid_hdr)
 
-        pb =  readfits(release_dir+'raw/'+$
-                       gals[ii]+'_co21_pb.fits', pb_hdr)
+        pb_cube =  readfits(release_dir+'raw/'+$
+                            gals[ii]+'_co21_pb.fits', pb_hdr)
         
-        maxpb = max(pb,dim=3,/nan)
-        disp, maxpb
-        contour, maxpb, lev=[0.5], /overplot
+;       Blank everything blow the pb_limit
+        
+;        blank_ind = where(pb_cube eq sxpar(pb_hdr, 'BLANK'),
+;        blank_ct)
+        blank_ind = where(pb_cube eq pb_cube[0,0,0], blank_ct)
+        if blank_ct gt 0 then begin
+           clean_cube[blank_ind] = !values.f_nan
+           resid_cube[blank_ind] = !values.f_nan
+           pb_cube[blank_ind] = !values.f_nan
+        endif
 
-        ind = where(pb lt 0.5)
-        
+        loadct, 0
+        maxpb = max(pb_cube,dim=3,/nan)
+        disp, maxpb, min=0., max=1.0, /sq
+        contour, finite(maxpb), lev=[1], /overplot, color=cgcolor('red')
+
+        ind = where(pb_cube lt pb_limit)        
         clean_cube[ind] = !values.f_nan
-        rescale_cube[ind] = !values.f_nan
-        
+
+;       Correct for the mosaic scaling bug
+
+        model_cube = clean_cube - resid_cube
+        clean_cube = model_cube*pb_cube + resid_cube
+
         sxdelpar, clean_hdr, 'BLANK'
         sxdelpar, clean_hdr, 'CASAMBM'
         writefits, release_dir+'process/'+$
-                   gals[ii]+'_co21_clip.fits', clean_cube, clean_hdr
+                   gals[ii]+'_co21_flat.fits', clean_cube, clean_hdr
 
-        sxdelpar, rescale_hdr, 'BLANK'
-        sxdelpar, rescale_hdr, 'CASAMBM'
-        writefits, release_dir+'process/'+$
-                   gals[ii]+'_co21_rescale_clip.fits', rescale_cube, rescale_hdr
-
-        clean_cube /= pb
-        rescale_cube /= pb
+        clean_cube = model_cube + resid_cube/pb_cube
 
         sxdelpar, clean_hdr, 'BLANK'
         sxdelpar, clean_hdr, 'CASAMBM'
         writefits, release_dir+'process/'+$
                    gals[ii]+'_co21_pbcorr.fits', clean_cube, clean_hdr
 
-        sxdelpar, rescale_hdr, 'BLANK'
-        sxdelpar, rescale_hdr, 'CASAMBM'
+        sxdelpar, resid_hdr, 'BLANK'
+        sxdelpar, resid_hdr, 'CASAMBM'
         writefits, release_dir+'process/'+$
-                   gals[ii]+'_co21_rescale_pbcorr.fits', rescale_cube, rescale_hdr
+                   gals[ii]+'_co21_resid.fits', resid_cube, resid_hdr
 
      endfor     
 
@@ -269,20 +216,31 @@ pro build_release $
            if just ne gals[ii] then continue
         
         beam_table = mrdfits(release_dir+'raw/'+gals[ii]+'_co21.fits',1)
+        hdr = headfits(release_dir+'raw/'+gals[ii]+'_co21.fits')
+
+        bmaj_max = max(beam_table.bmaj, /nan)
+        pix = abs(sxpar(hdr,'CDELT1'))
+        target_bmaj = sqrt(max(beam_table.bmaj,/nan)^2+(pix*2.*3600.)^2)
+
+        ;for kk = 0, n_elements(beam_table)-1 do begin
+        ;   dummy = $
+        ;      calc_conv_beam(start=[beam_table[kk].bmaj, beam_table[kk].bmin, beam_table[kk].bpa] $
+        ;                     , target = [1,1,0.]*target_bmaj)
+        ;   print, "Plane "+str(kk)+" "+str(dummy[0])+" "+str(dummy[1])+" "+str(dummy[2])
+        ;endfor
+
+        ;stop
 
         ext_to_convolve = $
-           ['_co21_clip' $
-            , '_co21_rescale_clip' $
+           ['_co21_flat' $
             , '_co21_pbcorr' $
-            , '_co21_rescale_pbcorr']
+            , '_co21_resid']
         n_ext = n_elements(ext_to_convolve)
         
         for jj = 0, n_ext-1 do begin
 
            cube = float(readfits(release_dir+'process/'+gals[ii]+ext_to_convolve[jj]+'.fits', hdr))
-           pix = abs(sxpar(hdr,'CDELT1'))
-           target_bmaj = sqrt(max(beam_table.bmaj,/nan)^2+(pix*1.5)^2)
-           print, "convolving "+gals[ii]+ext_to_convolve[jj]    
+           print, "convolving "+gals[ii]+ext_to_convolve[jj]
 
            sz = size(cube)
            for kk = 0, sz[3]-1 do begin
@@ -316,7 +274,7 @@ pro build_release $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CONVOLVE TO 3" RESOLUTION
+; CONVOLVE TO 3 TIMES BEAM RESOLUTION
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
   if keyword_set(do_smooth) then begin
@@ -329,22 +287,23 @@ pro build_release $
 
         if n_elements(just) gt 0 then $
            if just ne gals[ii] then continue
-        
-        target_bmaj = 3.
-        
+                
         ext_to_convolve = $
-           ['_co21_clip_round' $
-            , '_co21_rescale_clip_round' $
+           ['_co21_flat_round' $
             , '_co21_pbcorr_round' $
-            , '_co21_rescale_pbcorr_round']
+            , '_co21_resid_round']
         n_ext = n_elements(ext_to_convolve)
         
         for jj = 0, n_ext-1 do begin
 
-           dir = '../release/v0p4/process/'
+           dir = release_dir+'process/'
            in_cube = dir+gals[ii]+ext_to_convolve[jj]+".fits"
            out_cube = dir+gals[ii]+ext_to_convolve[jj]+"_smoothed.fits"
            print, "convolving "+in_cube
+
+           hdr = headfits(in_cube)
+           target_bmaj = 3.*sxpar(hdr,'BMAJ')*3600.
+           print, "Convolving to "+str(target_bmaj)
 
            conv_with_gauss $
               , data=in_cube $
@@ -573,6 +532,10 @@ pro build_release $
      endfor
      
   endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; SHUFFLE
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COMPILE

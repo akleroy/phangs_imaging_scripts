@@ -6,16 +6,16 @@
 # User inputs
 # --------------------------------------
 
-out_root = 'ngc6744north'
-tag = '956'
-phase_center = 'J2000 19h09m46.1s -63d49m34.1'
-source_vel_kms = 841
-vwidth_kms = 500
+out_root = 'ngc1087'
+tag = '925'
+phase_center = 'J2000 02h46m25.1s -00d29m55s'
+source_vel_kms = 1517.
+vwidth_kms = 500.
 
-calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d7/calibrated/calibrated_final.ms',
-                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d9/calibrated/calibrated_final.ms'}
-
-clean_mask_file = '../clean_masks/ngc6744north_co21_widemask.fits'
+calibrated_files = {
+    '7m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2c4/group.uid___A001_X2fe_X2c5/member.uid___A001_X2fe_X2c8/calibrated/calibrated_final.ms'
+    #, '12m':''
+    }
 
 # --------------------------------------
 # Overall control flow
@@ -24,10 +24,10 @@ clean_mask_file = '../clean_masks/ngc6744north_co21_widemask.fits'
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = False
-script_extract_co21 = False
-script_extract_c18o21 = False
-script_extract_continuum = False
+script_copy = True
+script_extract_co21 = True
+script_extract_c18o21 = True
+script_extract_continuum = True
 
 # Image data
 script_image_chan0 = False
@@ -71,7 +71,7 @@ if script_extract_co21:
 # C18O 2-1
 linetag = 'c18o21'
 restfreq_ghz = line_list[linetag]
-chan_dv_kms = 5.0
+chan_dv_kms = 6.0
 
 if script_extract_c18o21:
     do_copy = False
@@ -105,8 +105,8 @@ if script_image_chan0:
     if script_image_co21:
         do_end_to_end = True
         do_start_with_pbmask = True
-        input_vis = out_root+'_'+tag+'_co21_chan0.ms'
-        cube_root = out_root+'_co21_chan0'
+        input_vis = 'ngc1087_925_co21_chan0.ms'
+        cube_root = 'ngc1087_co21_chan0'
         uvtaper = None
         linetag = 'co21'
         specmode = 'mfs'
@@ -116,8 +116,8 @@ if script_image_chan0:
     if script_image_c18o21:
         do_end_to_end = True
         do_start_with_pbmask = True
-        input_vis = out_root+'_'+tag+'_c18o21_chan0.ms'
-        cube_root = out_root+'_c18o21_chan0'
+        input_vis = 'ngc1087_925_c18o21_chan0.ms'
+        cube_root = 'ngc1087_c18o21_chan0'
         uvtaper = None
         linetag = 'c18o21'
         specmode = 'mfs'
@@ -127,8 +127,8 @@ if script_image_chan0:
     if script_image_cont:
         do_end_to_end = True
         do_start_with_pbmask = True
-        input_vis = out_root+'_'+tag+'_cont.ms'
-        cube_root = out_root+'_cont'
+        input_vis = 'ngc1087_925_cont.ms'
+        cube_root = 'ngc1087_cont'
         uvtaper = None
         specmode = 'mfs'
         restfreq_ghz = ''
@@ -143,18 +143,16 @@ if script_image_cube:
     if script_image_co21:
         do_end_to_end = True
         do_use_pbmask = True
-
-        input_vis = out_root+'_'+tag+'_co21.ms'
-        cube_root = out_root+'_co21'
+        
+        input_vis = 'ngc1087_925_co21.ms'
+        cube_root = 'ngc1087_co21'
         uvtaper = None
         linetag = 'co21'
         specmode = 'cube'
+
+        scales_to_use = [0]
         restfreq_ghz = line_list[linetag]
-
         pb_limit = 0.5
-        scales_to_use = [0,2,4,8,16,32,64]
-
-        max_loop = 5
 
         execfile('../scripts/imageMultiscale.py')
 
@@ -162,11 +160,11 @@ if script_image_cube:
         do_end_to_end = True
         do_start_with_pbmask = False
         
-        input_vis = out_root+'_'+tag+'_c18o21.ms'
-        cube_root = out_root+'_c18o21'
+        input_vis = 'ngc1087_925_c18o21.ms'
+        cube_root = 'ngc1087_c18o21'
         uvtaper = None
         linetag = 'c18o21'
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageImage.py')
+        execfile('../scripts/imageMultiscale.py')

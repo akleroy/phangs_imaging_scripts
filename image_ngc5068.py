@@ -154,6 +154,7 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
         scales_to_use = [0,2,4,8,16,32]
+        pb_limit = 0.5
 
         execfile('../scripts/imageMultiscale.py')
 
