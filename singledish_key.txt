@@ -1,0 +1,19 @@
+# column 1: galaxy
+# column 2: file where the single dish map is located
+ic5332	    	 ../singledish/data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits
+ngc0628		 ../singledish/data/m74co21_TP.fits
+#ngc1087	../singledish/data/
+#ngc1300	../singledish/data/
+#ngc1385	../singledish/data/
+#ngc1433	../singledish/data/
+#ngc1672	../singledish/data/
+ngc2835		../singledish/data/ALMA_TP.NGC_2835.CO21.v0p2.image.VLSRK.fits
+ngc3351		../singledish/data/ALMA_TP.NGC_3351.CO21.v0p2.fits
+ngc3627		../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits
+ngc4254		../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.image.VLSRK.fits
+ngc4303		../singledish/data/ALMA_TP.NGC4303.CO21.v0p2.fits
+ngc4321		../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits
+ngc4535		../singledish/data/ALMA_TP.NGC_4535.CO21.v0p2.fits
+ngc5068		../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.image.VLSRK.fits
+#ngc6744north	../singledish/data/
+#ngc6744south	../singledish/data/
