@@ -3,7 +3,7 @@
 gal_list = [
     'ic5332',
     'ngc0628',
-    #'ngc1087',
+    'ngc1087',
     #'ngc1300',
     #'ngc1385',
     #'ngc1433',
@@ -11,13 +11,13 @@ gal_list = [
     'ngc2835',
     'ngc3351',
     'ngc3627',
-    'ngc4254',
+    #'ngc4254',
     'ngc4303',
     'ngc4321',
     'ngc4535',
-    'ngc5068',
+    #'ngc5068',
     #'ngc6744north',
-    #'ngc6744south'
+    'ngc6744south'
     ]
 
 for gal in gal_list:
