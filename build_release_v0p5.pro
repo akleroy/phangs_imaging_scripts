@@ -35,6 +35,8 @@ pro build_release_v0p5 $
       , 'ngc1300' $
       , 'ngc1385' $
       , 'ngc1433' $
+      , 'ngc1512' $
+      , 'ngc1566' $
       , 'ngc1672' $
       , 'ngc2835' $
       , 'ngc3351' $
@@ -54,6 +56,8 @@ pro build_release_v0p5 $
       , 'ngc1300' $
       , 'ngc1385' $
       , 'ngc1433' $
+      , 'ngc1512' $
+      , 'ngc1566' $
       , 'ngc1672' $
       , 'ngc2835' $
       , 'ngc3351' $
@@ -69,6 +73,8 @@ pro build_release_v0p5 $
   array = $
      ['7M' $
       , '12M+7M' $
+      , '7M' $
+      , '7M' $
       , '7M' $
       , '7M' $
       , '7M' $
@@ -102,6 +108,12 @@ pro build_release_v0p5 $
      
      spawn, 'rm -rf '+release_dir+'process/'
      spawn, 'mkdir '+release_dir+'process/'
+
+     spawn, 'rm -rf '+release_dir+'feather/'
+     spawn, 'mkdir '+release_dir+'feather/'
+
+     spawn, 'rm -rf '+release_dir+'delivery/'
+     spawn, 'mkdir '+release_dir+'delivery/'
      
   endif
 
@@ -212,11 +224,13 @@ pro build_release_v0p5 $
 
         sxdelpar, clean_hdr, 'BLANK'
         sxdelpar, clean_hdr, 'CASAMBM'
+        sxaddpar, clean_hdr, 'ARRAY', array[ii]
         writefits, release_dir+'process/'+$
                    gals[ii]+'_co21_pbcorr.fits', clean_cube, clean_hdr
 
         sxdelpar, resid_hdr, 'BLANK'
         sxdelpar, resid_hdr, 'CASAMBM'
+        sxaddpar, clean_hdr, 'ARRAY', array[ii]
         writefits, release_dir+'process/'+$
                    gals[ii]+'_co21_resid.fits', resid_cube, resid_hdr
 
