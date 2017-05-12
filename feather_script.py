@@ -6,9 +6,9 @@ gal_list = [
     'ngc1087',
     'ngc1300',
     'ngc1385',
-    #'ngc1433',
+    'ngc1433',
     'ngc1512',
-    #'ngc1566',
+    'ngc1566',
     'ngc1672',
     'ngc2835',
     'ngc3351',
@@ -18,7 +18,7 @@ gal_list = [
     'ngc4321',
     'ngc4535',
     'ngc5068',
-    #'ngc6744north',
+    'ngc6744north',
     'ngc6744south'
     ]
 

@@ -1,13 +1,13 @@
 # column 1: galaxy
 # column 2: file where the single dish map is located
-ic5332	    	 ../singledish/data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits
-ngc0628		 ../singledish/data/ALMA_TP.M74.v0p2.fits
-ngc1087	 	 ../singledish/data/ALMA_TP.NGC_1087.CO21.v0p2.casa.fits
-ngc1300		 ../singledish/data/ALMA_TP.NGC_1300.CO21.v0p2.image.VLSRK.casa.fits
-ngc1385		 ../singledish/data/ALMA_TP.NGC_1385.CO21.v0p2.image.VLSRK.casa.fits
-#ngc1433	../singledish/data/
+ic5332	    	../singledish/data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits
+ngc0628		../singledish/data/ALMA_TP.M74.v0p2_rebin.fits
+ngc1087	 	../singledish/data/ALMA_TP.NGC_1087.CO21.v0p2.casa.fits
+ngc1300		../singledish/data/ALMA_TP.NGC_1300.CO21.v0p2.image.VLSRK.casa.fits
+ngc1385		../singledish/data/ALMA_TP.NGC_1385.CO21.v0p2.image.VLSRK.casa.fits
+ngc1433		../singledish/data/ALMA_TP.NGC_1433.CO21.v0p2.casa.fits
 ngc1512		../singledish/data/ALMA_TP.NGC_1512.CO21.v0p2.image.VLSRK.fits
-#ngc1566	../singledish/data/
+ngc1566		../singledish/data/ALMA_TP.NGC_1566.CO21.v0p2.casa.fits
 ngc1672		../singledish/data/ALMA_TP.NGC_1672.CO21.v0p2.image.VLSRK.fits
 ngc2835		../singledish/data/ALMA_TP.NGC_2835.CO21.v0p2.image.VLSRK.fits
 ngc3351		../singledish/data/ALMA_TP.NGC_3351.CO21.v0p2.fits
@@ -17,5 +17,5 @@ ngc4303		../singledish/data/ALMA_TP.NGC4303.CO21.v0p2.fits
 ngc4321		../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits
 ngc4535		../singledish/data/ALMA_TP.NGC_4535.CO21.v0p2.fits
 ngc5068		../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits
-#ngc6744north	../singledish/data/
+ngc6744north	../singledish/data/ALMA_TP.NGC6744.CO21.v0p2.image.VLSRK.fits
 ngc6744south	../singledish/data/ALMA_TP.NGC_6744south.CO21.v0p2.fits
