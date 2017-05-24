@@ -8,12 +8,15 @@ pro build_release_v0p5 $
    , feather=do_copy_feather $
    , special=do_special $
    , sanitize=do_sanitize $
+   , correct=do_correct $
+   , heracles=do_heracles_smooth $
+   , test=do_test $
    , smooth=do_smooth $
    , noise=do_noise $
    , mask=do_masks $
    , collapse=do_collapse $
    , shuffle=do_shuffle $
-   , convtores=do_conv_to_res $
+   , convolve=do_conv_to_res $
    , compile=do_compile
 
 ;+
@@ -359,6 +362,9 @@ pro build_release_v0p5 $
 
      for ii = 0, n_gals-1 do begin
 
+        if n_elements(just) gt 0 then $
+           if total(just eq gals[ii]) eq 0 then continue
+
         message, 'Copying data to feather '+gals[ii], /info
 
         spawn, 'cp '+in_dir+gals[ii]+'_co21_pbcorr_round.fits '+$
@@ -392,6 +398,9 @@ pro build_release_v0p5 $
      out_dir = release_dir+'process/'
 
      for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if total(just eq gals[ii]) eq 0 then continue
 
         message, 'Copying feathered and single dish data for '+gals[ii], /info
 
@@ -475,7 +484,7 @@ pro build_release_v0p5 $
         if cube_north[0] eq -1 then continue
         cube_south = readfits(dir+'ngc6744south'+ext[jj]+'.fits', hdr_south)
         if cube_south[0] eq -1 then continue
-
+        
         if sxpar(hdr_north,'BMAJ') lt sxpar(hdr_south,'BMAJ') then begin
            print, sxpar(hdr_north,'BMAJ'), sxpar(hdr_south,'BMAJ')
            conv_with_gauss $
@@ -498,7 +507,7 @@ pro build_release_v0p5 $
            hdr_south = new_hdr_south
         endelse
 
-;    The total power
+;       Combine them
         new_hdr = hdr_north
         sxaddpar, new_hdr, 'CTYPE1', 'RA---SIN'
         sxaddpar, new_hdr, 'CRVAL1', 287.442083
@@ -530,7 +539,29 @@ pro build_release_v0p5 $
 
      endfor
 
-;     Free up memory
+;    Total power          
+     cube_north = readfits(dir+'ngc6744north_tp_k.fits', hdr_north)     
+     cube_south = readfits(dir+'ngc6744south_tp_k.fits', hdr_south)
+          
+     cube_hastrom $
+        , data = cube_south $
+        , hdr_in = hdr_south $
+        , outcube = new_cube_south $
+        , outhdr = new_hdr_south $
+        , target_hdr = new_hdr
+
+     cube_hastrom $
+        , data = cube_north $
+        , hdr_in = hdr_north $
+        , outcube = new_cube_north $
+        , outhdr = new_hdr_north $
+        , target_hdr = new_hdr
+     
+     new_cube = new_cube_south
+     new_cube[*,1500:*,*] = new_cube_north[*,1500:*,*]
+     writefits, dir+'ngc6744_tp_k.fits', new_cube, new_hdr
+
+;    Free up memory
      cube_north = -1
      cube_south = -1
      new_cube_north = -1
@@ -604,6 +635,49 @@ pro build_release_v0p5 $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; CONVERT TO KELVIN
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(do_correct) then begin
+     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'CONVERTING TO KELVIN', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+
+     dir = release_dir+'process/'
+
+     for ii = 0, n_final_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if total(just eq final_gals[ii]) eq 0 then continue
+        
+        gal = final_gals[ii]
+
+        ext_to_convert = $
+           ['_co21_flat_round' $
+            , '_co21_pbcorr_round' $
+            , '_co21_resid_round' $
+            , '_co21_feather_pbcorr']
+        n_ext = n_elements(ext_to_convert)
+                
+        for jj = 0, n_ext-1 do begin        
+
+           cube = readfits(dir+gal+ext_to_convert[jj]+'_trimmed.fits', hdr)           
+           jtok = calc_jtok(hdr=hdr)
+
+           cube *= jtok
+           sxaddpar, hdr, 'BUNIT', 'K'
+           sxaddpar, hdr, 'JTOK', jtok
+           
+           writefits, dir+gal+ext_to_convert[jj]+'_correct.fits', cube, hdr
+           
+        endfor
+        
+     endfor
+     
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; CONVOLVE TO SPECIFIC RESOLUTION
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
@@ -613,46 +687,116 @@ pro build_release_v0p5 $
      message, 'CONVOLVING TO PHYSICAL RESOLUTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
 
-     dir = '../release/v0p5/process/'
-
-     target_res = [45, 50, 60, 80, 100, 120, 150, 250, 500]
+     dir = release_dir+'process/'
+     target_res = [60, 80, 120, 500, 750]
      n_res = n_elements(target_res)
      tol = 0.1
 
      for ii = 0, n_final_gals-1 do begin
 
-        gal = final_gals[ii]
-
         if n_elements(just) gt 0 then $
            if total(just eq final_gals[ii]) eq 0 then continue
-
-        cube = readfits(dir+gal+'_co21_correct.fits', cube_hdr)
-        s = gal_data(dirs[ii])
-        sxaddpar, cube_hdr, 'DIST', s.dist_mpc, 'MPC'
         
-        current_res = s.dist_mpc*!dtor*sxpar(cube_hdr, 'BMAJ')*1d6
-        for jj = 0, n_res -1 do begin
-           res_str = strcompress(str(target_res[jj]),/rem)+'pc'
-           out_name = dir+strlowcase(gal)+'_co21_correct_'+res_str+'.fits'
-           target_res_as = target_res[jj]/(s.dist_mpc*1d6)/!dtor*3600.d
-           if current_res gt (1.0+tol)*target_res[jj] then begin
-              print, "Resolution too coarse. Skipping."
-              continue
-           endif
-           if abs(current_res - target_res[jj])/target_res[jj] lt tol then begin
-              print, "I will call ", current_res, " ", target_res[jj]
-              writefits, out_name, cube, cube_hdr           
-           endif else begin
-              print, "I will convolve ", current_res, " to ", target_res[jj]
-              conv_with_gauss $
-                 , data=cube $
-                 , hdr=cube_hdr $
-                 , target_beam=target_res_as*[1,1,0] $
-                 , out_file=out_name              
-           endelse
-           
-        endfor    
+        gal = final_gals[ii]
 
+        ext_to_convolve = $
+           ['_co21_flat_round' $
+            , '_co21_pbcorr_round' $
+            , '_co21_resid_round' $
+            , '_co21_feather_pbcorr']
+        n_ext = n_elements(ext_to_convolve)
+        
+        for jj = 0, n_ext-1 do begin        
+
+           cube = readfits(dir+gal+ext_to_convolve[jj]+'_correct.fits', hdr)           
+           s = gal_data(dirs[ii])
+           sxaddpar, hdr, 'DIST', s.dist_mpc, 'MPC / USED IN CONVOLUTION'           
+           current_res = s.dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
+
+           for kk = 0, n_res -1 do begin
+
+              res_str = strcompress(str(target_res[kk]),/rem)+'pc'
+              out_name = dir+strlowcase(gal)+ext_to_convolve[jj]+'_'+res_str+'.fits'
+              target_res_as = target_res[kk]/(s.dist_mpc*1d6)/!dtor*3600.d
+
+              if current_res gt (1.0+tol)*target_res[jj] then begin
+                 print, strupcase(gal)+": Resolution too coarse. Skipping."
+                 continue
+              endif
+
+              if abs(current_res - target_res[kk])/target_res[kk] lt tol then begin
+                 print, strupcase(gal)+": I will call ", current_res, " ", target_res[kk]
+                 writefits, out_name, cube, hdr           
+              endif else begin                 
+                 print, strupcase(gal)+": I will convolve ", current_res, " to ", target_res[kk]
+                 conv_with_gauss $
+                    , data=cube $
+                    , hdr=hdr $
+                    , target_beam=target_res_as*[1,1,0] $
+                    , out_file=out_name              
+              endelse
+           
+           endfor
+
+        endfor
+
+     endfor
+     
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; CONVOLVE TO THE HERACLES RESOLTION
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(do_heracles_smooth) then begin
+
+     dir = release_dir+'process/'
+
+     for ii = 0, n_final_gals-1 do begin
+        
+        if n_elements(just) gt 0 then $
+           if total(just eq final_gals[ii]) eq 0 then continue
+        
+        gal = final_gals[ii]
+
+        ext_to_convolve = $
+           ['_co21_feather_pbcorr']
+        n_ext = n_elements(ext_to_convolve)
+        
+        for jj = 0, n_ext-1 do begin        
+           
+           cube = readfits(dir+gal+ext_to_convolve[jj]+'_correct.fits', hdr)           
+           s = gal_data(dirs[ii])
+           current_res = sxpar(hdr,'BMAJ')*3600.
+
+           n_res = 1
+           for kk = 0, n_res -1 do begin
+
+              out_name = dir+strlowcase(gal)+ext_to_convolve[jj]+'_heracles.fits'
+              target_res_as = 13.3
+              tol = 0.1
+
+              if current_res gt (1.0+tol)*target_res_as then begin
+                 print, strupcase(gal)+": Resolution too coarse. Skipping."
+                 continue
+              endif
+
+              if abs(current_res - target_res_as)/target_res_as lt tol then begin
+                 print, strupcase(gal)+": I will call ", current_res, " ", target_res_as
+                 writefits, out_name, cube, hdr           
+              endif else begin                 
+                 print, strupcase(gal)+": I will convolve ", current_res, " to ", target_res_as
+                 conv_with_gauss $
+                    , data=cube $
+                    , hdr=hdr $
+                    , target_beam=target_res_as*[1,1,0] $
+                    , out_file=out_name              
+              endelse
+           
+           endfor
+           
+        endfor
+        
      endfor
      
   endif
@@ -1112,6 +1256,34 @@ pro build_release_v0p5 $
 
      endfor
 
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; INFORMATIONAL
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(do_test) then begin
+     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'TEST', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+
+     dir = '../release/v0p5/process/'
+
+     for ii = 0, n_final_gals-1 do begin
+
+        gal = final_gals[ii]
+
+        if n_elements(just) gt 0 then $
+           if total(just eq final_gals[ii]) eq 0 then continue
+
+        h = headfits(dir+gal+'_co21_pbcorr_round_trimmed.fits')
+        s = gal_data(dirs[ii])
+        current_res = s.dist_mpc*!dtor*sxpar(h, 'BMAJ')*1d6
+        print, gal, ' starts at resolution ', current_res
+
+     endfor
+     
   endif
 
 end
