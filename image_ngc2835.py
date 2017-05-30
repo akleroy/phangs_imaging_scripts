@@ -154,9 +154,9 @@ if script_image_cube:
         scales_to_use=[0,2,4,8,16,32,64]        
         restfreq_ghz = line_list[linetag]
         max_loop = 5
-        pb_limit = 0.5
+        pb_limit = 0.25
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')
 
     if script_image_c18o21:
         do_end_to_end = True

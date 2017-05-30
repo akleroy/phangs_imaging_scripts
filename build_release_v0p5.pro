@@ -542,7 +542,19 @@ pro build_release_v0p5 $
 ;    Total power          
      cube_north = readfits(dir+'ngc6744north_tp_k.fits', hdr_north)     
      cube_south = readfits(dir+'ngc6744south_tp_k.fits', hdr_south)
-          
+
+;    Combine them
+     new_hdr = hdr_north
+     sxaddpar, new_hdr, 'CTYPE1', 'RA---SIN'
+     sxaddpar, new_hdr, 'CRVAL1', 287.442083
+     sxaddpar, new_hdr, 'NAXIS1', 130
+     sxaddpar, new_hdr, 'CRPIX1', floor(150/2)
+     
+     sxaddpar, new_hdr, 'CTYPE2', 'DEC--SIN'  
+     sxaddpar, new_hdr, 'CRVAL2', -63.857528
+     sxaddpar, new_hdr, 'NAXIS2', 180
+     sxaddpar, new_hdr, 'CRPIX2', floor(200/2)
+     
      cube_hastrom $
         , data = cube_south $
         , hdr_in = hdr_south $
@@ -558,7 +570,7 @@ pro build_release_v0p5 $
         , target_hdr = new_hdr
      
      new_cube = new_cube_south
-     new_cube[*,1500:*,*] = new_cube_north[*,1500:*,*]
+     new_cube[*,90:*,*] = new_cube_north[*,90:*,*]
      writefits, dir+'ngc6744_tp_k.fits', new_cube, new_hdr
 
 ;    Free up memory
@@ -567,7 +579,6 @@ pro build_release_v0p5 $
      new_cube_north = -1
      new_cube_south = -1
      new_cube = -1
-
 
   endif
 

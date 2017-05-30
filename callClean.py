@@ -1,7 +1,7 @@
 # Script to call clean ONCE as part of producing a cube from
 # visibility data.
 
-tested_versions = ['4.6.0','4.7.0','4.7.1']
+tested_versions = ['4.6.0','4.7.0','4.7.1','4.7.2']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
@@ -22,7 +22,7 @@ start_time_clean = time.time()
 try:
     do_callclean
 except NameError:
-    do_savecopy = True
+    do_callclean = True
 
 try:
     do_savecopy
@@ -109,49 +109,43 @@ except NameError:
 try:
     deconvolver
 except NameError:
-    #print "Defaulting deconvolver to MULTISCALE."
-    #deconvolver = 'multiscale'
     deconvolver = "hogbom"
+    print "Defaulting to deconvolver "+deconvolver
 
 try:
     threshold
 except NameError:
-    print "Defaulting to a threshold of 0.0mJy/beam"
     threshold = "0.0mJy/beam"
+    print "Defaulting to a threshold of "+threshold
 
 try:
     scales
 except NameError:
     scales=[0]
-    print "I will default to scales (in pixels) of ", scales
-    #scales = [0,5,10,20,40]
-    # Andreas - factors of a few 12m beam and a scale ~1 and ~2 times 7m beam
-    # AKL - interaction with "taper" is weird. Need to think about this.
 
 try:
     smallscalebias
 except NameError:
-    print "I will default to smallscalebias 0.9."
     smallscalebias = 0.9
-    # Andreas ~0.8 or 0.9
+    print "I will default to smallscalebias "+str(smallscalebias)
 
 try:
     briggs_weight
 except NameError:
-    print "I will default to briggs_weight 0.5."
     briggs_weight = 0.5
+    print "I will default to briggs_weight "+str(briggs_weight)
 
 try:
     niter
 except NameError:
-    print "I will default to niter 10000."
     niter = 10000
+    print "I will default to niter "+str(niter)
 
 try:
     cycle_niter
 except NameError:
-    print "I will default to cycle_niter 200."
     cycle_niter = 200
+    print "I will default to cycle_niter "+str(cycle_niter)
 
 try:
     uv_taper_string
@@ -162,14 +156,20 @@ except NameError:
 try:
     minpsffraction
 except NameError:
-    print "Defaulting to a VERY HIGH minpsffraction."
     minpsffraction = 0.5
+    print "Defaulting to a VERY HIGH minpsffraction of "+str(minpsffraction)
 
 try:
     pb_limit
 except NameError:
-    print "Defaulting to a PB limit of 0.75."
     pb_limit = 0.5
+    print "Defaulting to a PB limit of "+str(pb_limit)
+
+try:
+    restoringbeam
+except NameError:
+    restoringbeam = []
+    print "Using the default restoringbeam behavior."
 
 # ......................................
 # If we abort, turn off the script
@@ -193,7 +193,12 @@ if do_callclean:
 
     if do_reset:
         print "...wiping previous versions of the cube."
-        os.system('rm -rf '+cube_root+'.*')
+        os.system('rm -rf '+cube_root+'.image')
+        os.system('rm -rf '+cube_root+'.model')
+        os.system('rm -rf '+cube_root+'.mask')
+        os.system('rm -rf '+cube_root+'.pb')
+        os.system('rm -rf '+cube_root+'.psf')
+        os.system('rm -rf '+cube_root+'.residual')
         
     try:
         logfile
@@ -204,19 +209,6 @@ if do_callclean:
         oldlogfile = casalog.logfile()
         os.system('rm -rf '+logfile)
         casalog.setlogfile(logfile)
-            
-    #try:
-    #    mask_file
-    #except NameError:
-    #    usemask = 'pb'
-    #    mask = ''
-    #else:
-    #    if mask_file != '':
-    #        usemask = 'user'
-    #        mask = mask_file
-    #    else:
-    #        usemask = 'pb'
-    #        mask = ''
 
     if restfreq_ghz < 0:
         restfreq_str = ''
@@ -243,6 +235,8 @@ if do_callclean:
            smallscalebias=smallscalebias,
            pblimit=pb_limit,
            normtype='flatnoise',
+           # Restoring beam
+           restoringbeam=restoringbeam,
            # U-V plane gridding
            weighting='briggs',
            robust=briggs_weight,

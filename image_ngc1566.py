@@ -14,7 +14,7 @@ vwidth_kms = 500.
 
 calibrated_files = {
     '7m_1':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X31e/group.uid___A001_X2fe_X31f/member.uid___A001_X2fe_X322/calibrated/calibrated_final.ms',
-#    '7m_2':''
+    '7m_2':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X314/group.uid___A001_X2fe_X315/member.uid___A001_X2fe_X318/calibrated/calibrated_final.ms'
     }
 
 # --------------------------------------

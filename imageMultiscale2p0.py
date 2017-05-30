@@ -464,41 +464,6 @@ if do_clean:
 
         execfile('../scripts/callClean.py')
 
-        # Now clean up the model, removing negatives and components in weird places.
-
-        print ""
-        print "SANITIZING THE MODEL."
-        print ""
-
-        ia.open(cube_root+'.pb')
-        pbcube = ia.getchunk()
-        ia.close()
-
-        ia.open(cube_root+'.model')
-        model = ia.getchunk()
-        model[pbcube < pb_limit] = 0.0
-        model[model < 0.0] = 0.0
-        ia.putchunk(model)
-        ia.close()
-
-        # Reset the variables to free up the memory.
-
-        model = 0.
-        pbcube = 0.
-
-        # Rerun clean with the cleaned up model and save the result
-
-        print ""
-        print "REIMAGING."
-        print ""
-
-        do_savecopy = True
-        bkup_ext = "loop"+str(loop)
-        niter = 0
-
-        logfile = cube_root+"_sanitize_"+str(loop)+"_multiscale.log"
-        execfile('../scripts/callClean.py')
-
         # Run stats after the clean and write to the log file.
         
         execfile('../scripts/statCleanCube.py')    
@@ -569,42 +534,6 @@ if do_revert_to_multiscale:
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
-
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# SINGLE SCALE CLEAN TO FINISH
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-# Now run one more single scale clean with a higher threshold. The
-# method above can somewhat overclean (some because of the suppression
-# of the negatives, some just because). This last step may be able to
-# come in and overcorrect a few of these blemishes. In theory, this
-# could be run a few times.
-
-if do_singlescale:
-
-    print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Running a final single scale clean."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print ""
-
-    execfile('../scripts/statCleanCube.py')
-    this_threshold = bright_snr_thresh* \
-        imstat_residual['medabsdevmed'][0]/0.6745
-    threshold = str(this_threshold)+'Jy/beam'    
-
-    logfile = cube_root+"_singlescale_cleanup.log"
-    do_savecopy = False
-    do_callclean = True
-    deconvolver = 'hogbom'
-    scales = [0]
-    niter = single_scale_niter_per_chan*nchan
-    calcres = False
-    minpsffraction = 0.5
-    usemask = 'user'
-    mask = ''
-
-    execfile('../scripts/callClean.py')
         
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # POST PROCESS
