@@ -31,7 +31,7 @@ script_extract_continuum = False
 
 # Image data
 script_image_chan0 = False
-script_image_cube = False
+script_image_cube = True
 
 script_image_co21 = True
 script_image_c18o21 = False
@@ -166,4 +166,4 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')

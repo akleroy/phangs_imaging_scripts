@@ -24,10 +24,10 @@ calibrated_files = {
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = True
-script_extract_co21 = True
-script_extract_c18o21 = True
-script_extract_continuum = True
+script_copy = False
+script_extract_co21 = False
+script_extract_c18o21 = False
+script_extract_continuum = False
 
 # Image data
 script_image_chan0 = False
@@ -152,9 +152,9 @@ if script_image_cube:
 
         scales_to_use = [0]
         restfreq_ghz = line_list[linetag]
-        pb_limit = 0.5
+        pb_limit = 0.25
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')
 
     if script_image_c18o21:
         do_end_to_end = True
@@ -167,4 +167,4 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')

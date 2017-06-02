@@ -2,7 +2,7 @@
 # program. Search on this to find areas where some clean up or a next
 # logical step could be worked out.
 
-tested_versions = ['4.6.0','4.7.0','4.7.1']
+tested_versions = ['4.6.0','4.7.0','4.7.1','4.7.2']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
     print "The script hasn't been verified for this version of CASA."
@@ -42,9 +42,9 @@ if do_end_to_end:
     do_revert_to_dirty = False
     if do_use_pbmask == False:
         do_read_in_clean_mask = True
-    do_clean = True
-    do_singlescale = True
+    do_multiscale_clean = True
     do_revert_to_multiscale = False
+    do_singlescale_clean = True
     do_postprocess = True
 
 try:
@@ -92,19 +92,19 @@ except NameError:
 # ----------------------------------------------------
 
 try:
-    scales_to_use
+    pb_limit
+except NameError:
+    pb_limit = 0.25
+
+try:
+    scales_to_use = [0,2,4,8,16,32,64]
 except NameError:
     scales_to_use = [0,2,4,8,16,32,64]
 
 try:
-    bright_snr_thresh 
+    snr_thresh 
 except NameError:
-    bright_snr_thresh = 4.0
-
-try:
-    pb_limit
-except NameError:
-    pb_limit = 0.25
+    snr_thresh = 4.0
 
 try:
     max_loop
@@ -153,9 +153,9 @@ if abort:
     do_revert_to_dirty = False
     do_read_in_clean_mask = False
     do_use_pbmask = False
-    do_clean = False
+    do_multiscale_clean = False
     do_revert_to_multiscale = False
-    do_singlescale = False
+    do_singlescale_clean = False
     do_postprocess = False
  
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -166,19 +166,13 @@ if abort:
 # image size, etc. Use the analysis utilities and the input UV data
 # set to do this.
 
-# IMPROVEMENT TBD: Pick up these numbers from an existing image. Or
-# perhaps CLEAN doesn't need them if it resumes from an existing image
-# on disk? In any case, figure out a way to avoid the case where this
-# step misfires and down some processes down the line come tumbling
-# down.
-
-# IMPROVEMENT TBD: Right now we specify the field center by hand. This
-# is actually probably okay. But doing this automatically might be
-# useful down the line. This is not high priority.
-
 if do_pickcellsize:
+
     # Factor by which to oversample the beam
-    oversamp = 5
+    try:
+        oversamp
+    except NameError:
+        oversamp = 5
 
     # Cell size implied by baseline distribution
     au_cellsize, au_imsize, au_centralField = \
@@ -246,11 +240,6 @@ if do_pickcellsize:
     print "... cell size = "+cell_size_string
     print "... image size = ", image_size
 
-    # This is not currently working ... we specify the field center by hand.
-
-    #print "... central field = ", au_centralField
-    #phase_center = au_centralField
-
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # MAKE A DIRTY CUBE
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -291,6 +280,7 @@ if do_make_dirty_cube:
     mask = ''
     pbmask=pb_limit
     calcres = True
+    calcpsf = True
     execfile('../scripts/callClean.py')
 
 if do_revert_to_dirty:
@@ -377,17 +367,15 @@ if do_use_pbmask and do_read_in_clean_mask == False:
     pb = 0.0
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# RUN THE MULTISCALE CLEAN
+# RUN THE FIRST MULTISCALE CLEAN
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 # Run the main clean loop using the multiscale cleaning approach. This
 # picks up from the dirty cube and executes a series of clean calls
 # with the "multiscale" algorithm. Successive calls to clean allocate
-# more and more iterations. Between executions, curate the model
-# slightly. We don't expect negative components, so delete negative
-# values from the model. 
+# more and more iterations.
 
-if do_clean:
+if do_multiscale_clean:
 
     print ""
     print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
@@ -396,20 +384,52 @@ if do_clean:
     print ""
 
     print ""
-    print "... Cleaning using MULTISCALE. Looking for 2% convergence between iterations."
+    print "... Clean using MULTISCALE."
     print ""
+
+    # Calculate the scales to use
+
+    try:
+        outerscale
+    except NameError:
+        outerscale = oversamp*cell_size*4.5
+        print "Defaulting to an outer scale of "+str(outerscale)+" for multiscale."
+    
+    if outerscale != None:
+        outerscale_in_pix = ceil(outerscale / cell_size)
+        scales = [0]
+        for factor in range(10):
+            scale = oversamp*2.0**(0.5*factor)
+            if scale < outerscale_in_pix:
+                scales.append(int(round(scale)))
+    print "I will use scales: ", str(scales)
+
+    # Calculate the threshold for cleaning
+
+    try:
+        multiscale_threshold
+    except NameError:
+        multiscale_threshold = None
+
+    if multiscale_threshold == None:
+        execfile('../scripts/statCleanCube.py')    
+        this_threshold = snr_thresh* \
+            imstat_residual['medabsdevmed'][0]/0.6745
+        multiscale_threshold = str(this_threshold)+'Jy/beam'
+    print "I will use threshold: ", multiscale_threshold
+    threshold = multiscale_threshold
+
+    # Note the number of channels
 
     vm = au.ValueMapping(input_vis)
     nchan = vm.spwInfo[0]['numChannels']
 
-    # Figure out the number of iterations we will use
-    
+    # Figure out the number of iterations we will use    
     base_niter = 10*nchan
     base_cycle_niter = 100
     loop = 1
 
     # Initialize our output file and tracking of the flux in the model
-
     this_flux = 0.0
     delta_thresh = 0.02
     proceed = True
@@ -426,8 +446,7 @@ if do_clean:
 
     while proceed == True and loop <= max_loop:
         
-        # Steadily increase the iterations between statistical checks.
-        
+        # Steadily increase the iterations between statistical checks.        
         do_reset = False
         do_callclean = True
         
@@ -437,66 +456,25 @@ if do_clean:
             factor = (loop-1)
         this_niter = base_niter*(2**factor)
         cycle_niter = base_cycle_niter*factor
-        logfile = cube_root+"_loop_"+str(loop)+"_multiscale.log"
-        
-        # Figure out a current threshold
-
-        execfile('../scripts/statCleanCube.py')    
-        this_threshold = bright_snr_thresh* \
-            imstat_residual['medabsdevmed'][0]/0.6745
-        threshold = str(this_threshold)+'Jy/beam'
+        logfile = cube_root+"_loop_"+str(loop)+"_multiscale.log"        
             
-        # Clean.
-
+        # Clean and associated tuning parameters
         calcres = False
+        calcpsf = False
         minpsffraction = 0.5
         usemask = 'user'
         mask = ''
-        do_savecopy = False
         deconvolver = 'multiscale'
-
-        scales = scales_to_use
+        restoringbeam = 'common'
         niter = this_niter
+
+        do_savecopy = True
+        bkup_ext = "multiscaleloop"+str(loop)        
 
         print ""
         print "CALLING MULTISCALE CLEAN."
         print ""
 
-        execfile('../scripts/callClean.py')
-
-        # Now clean up the model, removing negatives and components in weird places.
-
-        print ""
-        print "SANITIZING THE MODEL."
-        print ""
-
-        ia.open(cube_root+'.pb')
-        pbcube = ia.getchunk()
-        ia.close()
-
-        ia.open(cube_root+'.model')
-        model = ia.getchunk()
-        model[pbcube < pb_limit] = 0.0
-        model[model < 0.0] = 0.0
-        ia.putchunk(model)
-        ia.close()
-
-        # Reset the variables to free up the memory.
-
-        model = 0.
-        pbcube = 0.
-
-        # Rerun clean with the cleaned up model and save the result
-
-        print ""
-        print "REIMAGING."
-        print ""
-
-        do_savecopy = True
-        bkup_ext = "loop"+str(loop)
-        niter = 0
-
-        logfile = cube_root+"_sanitize_"+str(loop)+"_multiscale.log"
         execfile('../scripts/callClean.py')
 
         # Run stats after the clean and write to the log file.
@@ -532,8 +510,7 @@ if do_clean:
             break
         loop += 1
 
-    # Save a final copy of the multiscale
-        
+    # Save a final copy
     do_savecopy = True
     do_callclean = False
     bkup_ext = "multiscale"
@@ -569,43 +546,141 @@ if do_revert_to_multiscale:
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.pb '+cube_root+'.pb')
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.psf '+cube_root+'.psf')
     os.system('cp -r '+cube_root+'_'+bkup_ext+'.residual '+cube_root+'.residual ')
-
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# SINGLE SCALE CLEAN TO FINISH
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-# Now run one more single scale clean with a higher threshold. The
-# method above can somewhat overclean (some because of the suppression
-# of the negatives, some just because). This last step may be able to
-# come in and overcorrect a few of these blemishes. In theory, this
-# could be run a few times.
-
-if do_singlescale:
-
-    print ""
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print "Running a final single scale clean."
-    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
-    print ""
-
-    execfile('../scripts/statCleanCube.py')
-    this_threshold = bright_snr_thresh* \
-        imstat_residual['medabsdevmed'][0]/0.6745
-    threshold = str(this_threshold)+'Jy/beam'    
-
-    logfile = cube_root+"_singlescale_cleanup.log"
-    do_savecopy = False
-    do_callclean = True
-    deconvolver = 'hogbom'
-    scales = [0]
-    niter = single_scale_niter_per_chan*nchan
-    calcres = False
-    minpsffraction = 0.5
-    usemask = 'user'
-    mask = ''
-
-    execfile('../scripts/callClean.py')
         
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# RUN THE SINGLE SCALE CLEAN
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# Run a second clean loop using a single scale cleaning approach. This
+# picks up from the multiscale cube and executes a series of clean
+# calls with the "hogbom" algorithm. Successive calls to clean
+# allocate more and more iterations.
+
+if do_singlescale_clean:
+
+    print ""
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print "Single scale cleaning."
+    print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
+    print ""
+
+    print ""
+    print "... Clean using one scale."
+    print ""
+
+    # Calculate the threshold for cleaning
+
+    try:
+        singlescale_threshold
+    except NameError:
+        singlescale_threshold = None
+
+    if singlescale_threshold == None:
+        execfile('../scripts/statCleanCube.py')    
+        this_threshold = snr_thresh* \
+            imstat_residual['medabsdevmed'][0]/0.6745
+        singlescale_threshold = str(this_threshold)+'Jy/beam'
+    print "I will use threshold: ", singlescale_threshold
+    threshold = singlescale_threshold
+
+    # Note the number of channels
+
+    vm = au.ValueMapping(input_vis)
+    nchan = vm.spwInfo[0]['numChannels']
+
+    # Figure out the number of iterations we will use    
+    base_niter = 10*nchan
+    base_cycle_niter = 100
+    loop = 1
+
+    # Initialize our output file and tracking of the flux in the model
+    this_flux = 0.0
+    delta_thresh = 0.02
+    proceed = True
+
+    loop_record_file = cube_root+"_singlescale_record.txt"
+    f = open(loop_record_file,'w')    
+    f.write("# column 1: loop type\n")
+    f.write("# column 2: loop number\n")
+    f.write("# column 3: supplied threshold\n")
+    f.write("# column 4: model flux at end of this clean\n")
+    f.write("# column 5: fractional change in flux (current-previous)/current\n")
+    f.write("# column 6: number of iterations allocated (not necessarily used)\n")
+    f.close()
+
+    while proceed == True and loop <= max_loop:
+        
+        # Steadily increase the iterations between statistical checks.        
+        do_reset = False
+        do_callclean = True
+        
+        if loop > 5:
+            factor = 5
+        else:
+            factor = (loop-1)
+        this_niter = base_niter*(2**factor)
+        cycle_niter = base_cycle_niter*factor
+        logfile = cube_root+"_loop_"+str(loop)+"_singlescale.log"
+            
+        # Clean and associated tuning parameters
+        calcres = False
+        calcpsf = False
+        minpsffraction = 0.5
+        usemask = 'user'
+        mask = ''
+        deconvolver = 'hogbom'
+        scales = [0]
+        restoringbeam = 'common'
+        niter = this_niter
+
+        do_savecopy = True
+        bkup_ext = "singlescaleloop"+str(loop)        
+
+        print ""
+        print "CALLING SINGLE SCALE CLEAN."
+        print ""
+
+        execfile('../scripts/callClean.py')
+
+        # Run stats after the clean and write to the log file.
+        
+        execfile('../scripts/statCleanCube.py')    
+        
+        prev_flux = this_flux
+        this_flux = imstat_model['sum'][0]
+        delta_flux = (this_flux-prev_flux)/this_flux
+        proceed = \
+            (delta_flux > delta_thresh) and \
+            (this_flux > 0.0)
+        
+        print ""
+        print "******************************"
+        print "SINGLESCALE CLEAN LOOP "+str(loop)
+        print "... threshold "+threshold
+        print "... old flux "+str(prev_flux)
+        print "... new flux "+str(this_flux)
+        print "... fractional change "+str(delta_flux)+ \
+            " compare to stopping criterion of "+str(delta_thresh)
+        print "... proceed? "+str(proceed)
+        print "******************************"
+        print ""
+
+        line = 'SINGLESCALE '+str(loop)+' '+threshold+' '+str(this_flux)+ \
+            ' '+str(delta_flux) + ' ' + str(this_niter)+ '\n' 
+        f = open(loop_record_file,'a')
+        f.write(line)
+        f.close()
+
+        if proceed == False:
+            break
+        loop += 1
+
+    # Save a final copy
+    do_savecopy = True
+    do_callclean = False
+    bkup_ext = "singlescale"
+    execfile('../scripts/callClean.py')
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # POST PROCESS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

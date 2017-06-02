@@ -154,7 +154,7 @@ if script_image_cube:
         restfreq_ghz = line_list[linetag]
         pb_limit = 0.5
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')
 
     if script_image_c18o21:
         do_end_to_end = True
@@ -167,4 +167,4 @@ if script_image_cube:
         specmode = 'cube'
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')

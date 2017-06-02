@@ -153,7 +153,7 @@ if script_image_cube:
         scales_to_use = [0]
         restfreq_ghz = line_list[linetag]
 
-        execfile('../scripts/imageMultiscale.py')
+        execfile('../scripts/imageMultiscale2p0.py')
 
     if script_image_c18o21:
         do_end_to_end = True
