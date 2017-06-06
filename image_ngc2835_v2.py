@@ -32,9 +32,6 @@ script_extract_continuum = False
 
 # Image data
 script_image_cube = True
-do_7m = False
-do_12m = True
-do_combo = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -96,6 +93,7 @@ if script_extract_continuum:
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 if script_image_cube:
+
     do_use_pbmask = True
     linetag = 'co21'
     specmode = 'cube'    

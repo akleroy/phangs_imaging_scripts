@@ -34,15 +34,17 @@ if do_image_7m:
     do_revert_to_dirty = False
     if do_use_pbmask == False:
         do_read_in_clean_mask = True
-    do_multiscale_clean = False
+    do_multiscale_clean = True
     do_revert_to_multiscale = False
     do_singlescale_clean = True
     do_postprocess = True
     
-    #smallscalebias = 0.6
-    #outerscale = 15.
+    smallscalebias = 0.6
+    outerscale = 15.
 
     snr_thresh = 3.0
+    multiscale_delta_thresh = 0.02
+    singlescale_delta_thresh = 0.005
     execfile('../scripts/imageMultiscale.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -63,7 +65,7 @@ if do_image_combo:
     imstat_7m = imstat(cube_root_7m+'.residual')
     multiscale_threshold = str(4.0*(imstat_7m['medabsdevmed'][0]/0.6745))+'Jy/beam'
 
-    smallscalebias = 0.9
+    smallscalebias = 0.6
     outerscale = 12.0
 
     snr_thresh = 4.0
@@ -86,6 +88,7 @@ if do_image_12m:
 
     multiscale_threshold = str(4.0*(imstat_7m['medabsdevmed'][0]/0.6745))+'Jy/beam'
     outerscale = 6.2
+    smallscalebias = 0.6
 
     snr_thresh = 4.0
     execfile('../scripts/imageMultiscale.py')

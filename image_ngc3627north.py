@@ -6,16 +6,17 @@
 # User inputs
 # --------------------------------------
 
-out_root = 'ngc1087'
-tag = '925'
-phase_center = 'J2000 02h46m25.1s -00d29m55s'
-source_vel_kms = 1517.
-vwidth_kms = 500.
+out_root = 'ngc3627north'
+tag = '956'
+# overall center: phase_center = 'J2000 11h20m14.9s +12d59m30'
+phase_center = 'J2000 11h20m14.9s +12d59m59'
+source_vel_kms = 727
+vwidth_kms = 500
 
-calibrated_files = {
-    '7m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2c4/group.uid___A001_X2fe_X2c5/member.uid___A001_X2fe_X2c8/calibrated/calibrated_final.ms'
-    #, '12m':''
-    }
+calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X287/calibrated/uid___A002_Xaf5c32_X6d2.ms.split.cal',
+                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X289/calibrated/calibrated_final.ms'}
+
+clean_mask_file = '../clean_masks/ngc3627_co21_widemask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -66,7 +67,7 @@ if script_extract_co21:
 # C18O 2-1
 linetag = 'c18o21'
 restfreq_ghz = line_list[linetag]
-chan_dv_kms = 6.0
+chan_dv_kms = 5.0
 
 if script_extract_c18o21:
     do_copy = False
@@ -101,14 +102,14 @@ if script_image_cube:
     pb_limit = 0.25
     uvtaper = None    
     
-    input_vis_7m = 'ngc1087_7m_co21.ms'
-    cube_root_7m = 'ngc1087_co21_7m'
+    input_vis_7m = 'ngc3627north_7m_co21.ms'
+    cube_root_7m = 'ngc3627north_co21_7m'
 
-    input_vis_combo = 'ngc1087_925_co21.ms'
-    cube_root_combo = 'ngc1087_co21_12m'
+    input_vis_combo = 'ngc3627north_956_co21.ms'
+    cube_root_combo = 'ngc3627north_co21_12m'
 
-    input_vis_12m = 'ngc1087_12m_co21.ms'
-    cube_root_12m = 'ngc1087_co21_12m'
+    input_vis_12m = 'ngc3627north_12m_co21.ms'
+    cube_root_12m = 'ngc3627north_co21_12m'
 
     do_image_7m = True
     do_image_combo = False

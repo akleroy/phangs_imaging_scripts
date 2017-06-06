@@ -431,7 +431,11 @@ if do_multiscale_clean:
 
     # Initialize our output file and tracking of the flux in the model
     this_flux = 0.0
-    delta_thresh = 0.02
+    try:
+        multiscale_delta_thresh
+    except NameError:
+        multiscale_delta_thresh = 0.02
+    delta_thresh = multiscale_delta_thresh
     proceed = True
 
     loop_record_file = cube_root+"_multiscale_record.txt"
@@ -595,7 +599,11 @@ if do_singlescale_clean:
 
     # Initialize our output file and tracking of the flux in the model
     this_flux = 0.0
-    delta_thresh = 0.02
+    try:
+        singlescale_delta_thresh
+    except NameError:
+        singlescale_delta_thresh = 0.02
+    delta_thresh = singlescale_delta_thresh
     proceed = True
 
     loop_record_file = cube_root+"_singlescale_record.txt"

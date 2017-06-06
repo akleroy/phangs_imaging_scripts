@@ -30,12 +30,7 @@ script_extract_c18o21 = False
 script_extract_continuum = False
 
 # Image data
-script_image_chan0 = False
 script_image_cube = True
-
-script_image_co21 = True
-script_image_c18o21 = False
-script_image_cont = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -96,73 +91,27 @@ if script_extract_continuum:
 # IMAGING
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# --------------------------------------
-# Image channel 0
-# --------------------------------------
-
-if script_image_chan0:
-    
-    if script_image_co21:
-        do_end_to_end = True
-        do_start_with_pbmask = True
-        input_vis = 'ngc4535_956_co21_chan0.ms'
-        cube_root = 'ngc4535_co21_chan0'
-        uvtaper = None
-        linetag = 'co21'
-        specmode = 'mfs'
-        restfreq_ghz = line_list[linetag]
-        execfile('../scripts/imageImage.py')
-
-    if script_image_c18o21:
-        do_end_to_end = True
-        do_start_with_pbmask = True
-        input_vis = 'ngc4535_956_c18o21_chan0.ms'
-        cube_root = 'ngc4535_c18o21_chan0'
-        uvtaper = None
-        linetag = 'c18o21'
-        specmode = 'mfs'
-        restfreq_ghz = line_list[linetag]
-        execfile('../scripts/imageImage.py')
-
-    if script_image_cont:
-        do_end_to_end = True
-        do_start_with_pbmask = True
-        input_vis = 'ngc4535_956_cont.ms'
-        cube_root = 'ngc4535_cont'
-        uvtaper = None
-        specmode = 'mfs'
-        restfreq_ghz = ''
-        execfile('../scripts/imageImage.py')
-
-# --------------------------------------
-# Image cubes
-# --------------------------------------
-
 if script_image_cube:
 
-    if script_image_co21:
+    do_use_pbmask = True
+    linetag = 'co21'
+    specmode = 'cube'    
+    restfreq_ghz = line_list[linetag]
+    max_loop = 10
+    pb_limit = 0.25
+    uvtaper = None    
+    
+    input_vis_7m = 'ngc4535_7m_co21.ms'
+    cube_root_7m = 'ngc4535_co21_7m'
 
-        do_end_to_end = False
+    input_vis_combo = 'ngc4535_956_co21.ms'
+    cube_root_combo = 'ngc4535_co21_12m'
 
-        input_vis = 'ngc4535_956_co21.ms'
-        cube_root = 'ngc4535_co21'
-        uvtaper = None
-        linetag = 'co21'
-        specmode = 'cube'
-        restfreq_ghz = line_list[linetag]
+    input_vis_12m = 'ngc4535_12m_co21.ms'
+    cube_root_12m = 'ngc4535_co21_12m'
 
-        execfile('../scripts/imageMultiscale.py')
+    do_image_7m = True
+    do_image_combo = False
+    do_image_12m = False
 
-    if script_image_c18o21:
-        do_end_to_end = True
-        do_start_with_pbmask = False
-        do_use_external_clean_mask = True
-        
-        input_vis = 'ngc4535_956_c18o21.ms'
-        cube_root = 'ngc4535_c18o21'
-        uvtaper = None
-        linetag = 'c18o21'
-        specmode = 'cube'
-        restfreq_ghz = line_list[linetag]
-
-        execfile('../scripts/imageImage.py')
+    execfile('../scripts/phangsImagingPipeline.py')

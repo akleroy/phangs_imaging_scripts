@@ -6,16 +6,15 @@
 # User inputs
 # --------------------------------------
 
-out_root = 'ngc1087'
-tag = '925'
-phase_center = 'J2000 02h46m25.1s -00d29m55s'
-source_vel_kms = 1517.
-vwidth_kms = 500.
+out_root = 'ngc4254south'
+tag = '956'
+phase_center = 'J2000 12h18m49.6 +14d24m24'
+source_vel_kms = 2407
+vwidth_kms = 500
 
-calibrated_files = {
-    '7m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2c4/group.uid___A001_X2fe_X2c5/member.uid___A001_X2fe_X2c8/calibrated/calibrated_final.ms'
-    #, '12m':''
-    }
+calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a5/calibrated/calibrated_final.ms',
+                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a7/calibrated/calibrated_final.ms',
+                    }
 
 # --------------------------------------
 # Overall control flow
@@ -24,13 +23,15 @@ calibrated_files = {
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = False
-script_extract_co21 = False
-script_extract_c18o21 = False
-script_extract_continuum = False
+script_copy = True
+script_extract_co21 = True
+script_extract_c18o21 = True
+script_extract_continuum = True
 
 # Image data
 script_image_cube = True
+
+clean_mask_file = '../clean_masks/ngc4254_co21_widemask.fits'
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -66,7 +67,7 @@ if script_extract_co21:
 # C18O 2-1
 linetag = 'c18o21'
 restfreq_ghz = line_list[linetag]
-chan_dv_kms = 6.0
+chan_dv_kms = 5.0
 
 if script_extract_c18o21:
     do_copy = False
@@ -101,14 +102,14 @@ if script_image_cube:
     pb_limit = 0.25
     uvtaper = None    
     
-    input_vis_7m = 'ngc1087_7m_co21.ms'
-    cube_root_7m = 'ngc1087_co21_7m'
+    input_vis_7m = 'ngc4254south_7m_co21.ms'
+    cube_root_7m = 'ngc4254south_co21_7m'
 
-    input_vis_combo = 'ngc1087_925_co21.ms'
-    cube_root_combo = 'ngc1087_co21_12m'
+    input_vis_combo = 'ngc4254south_956_co21.ms'
+    cube_root_combo = 'ngc4254south_co21_12m'
 
-    input_vis_12m = 'ngc1087_12m_co21.ms'
-    cube_root_12m = 'ngc1087_co21_12m'
+    input_vis_12m = 'ngc4254south_12m_co21.ms'
+    cube_root_12m = 'ngc4254south_co21_12m'
 
     do_image_7m = True
     do_image_combo = False

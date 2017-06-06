@@ -6,16 +6,17 @@
 # User inputs
 # --------------------------------------
 
-out_root = 'ic5332'
-tag = '925'
-phase_center = 'J2000 23h34m27.5s -36d06m04s'
-source_vel_kms = 701.
-vwidth_kms = 250.
+out_root = 'ngc3627south'
+tag = '956'
+# overall center: phase_center = 'J2000 11h20m14.9s +12d59m30'
+phase_center = 'J2000 11h20m14.9s +12d57m48'
+source_vel_kms = 727
+vwidth_kms = 500
 
-calibrated_files = {
-    '7m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ba/group.uid___A001_X2fe_X2bb/member.uid___A001_X2fe_X2be/calibrated/calibrated_final.ms'
-    , '12m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ba/group.uid___A001_X2fe_X2bb/member.uid___A001_X2fe_X2bc/calibrated/calibrated_final.ms'
-    }
+calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X291/calibrated/uid___A002_Xb12f3b_X92ce.ms.split.cal/',
+                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X293/calibrated/calibrated_final.ms'}
+
+clean_mask_file = '../clean_masks/ngc3627_co21_widemask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -31,9 +32,6 @@ script_extract_continuum = False
 
 # Image data
 script_image_cube = True
-do_7m = True
-do_12m = True
-do_combo = True
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -69,7 +67,7 @@ if script_extract_co21:
 # C18O 2-1
 linetag = 'c18o21'
 restfreq_ghz = line_list[linetag]
-chan_dv_kms = 6.0
+chan_dv_kms = 5.0
 
 if script_extract_c18o21:
     do_copy = False
@@ -96,31 +94,25 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_end_to_end = True
     do_use_pbmask = True
-
     linetag = 'co21'
-    specmode = 'cube'
-    
+    specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
-    max_loop = 5
+    max_loop = 10
     pb_limit = 0.25
     uvtaper = None    
+    
+    input_vis_7m = 'ngc3627south_7m_co21.ms'
+    cube_root_7m = 'ngc3627south_co21_7m'
 
-    if do_7m:
-        input_vis = 'ic5332_7m_co21.ms'
-        cube_root = 'ic5332_co21_7m'
-        scales_to_use=[0]        
-        execfile('../scripts/imageMultiscale2p0.py')
+    input_vis_combo = 'ngc3627south_956_co21.ms'
+    cube_root_combo = 'ngc3627south_co21_12m'
 
-    if do_12m:
-        input_vis = 'ic5332_12m_co21.ms'
-        cube_root = 'ic5332_co21_12m'
-        scales_to_use=[0,2,4,8,16,32,64]        
-        execfile('../scripts/imageMultiscale2p0.py')
+    input_vis_12m = 'ngc3627south_12m_co21.ms'
+    cube_root_12m = 'ngc3627south_co21_12m'
 
-    if do_combo:
-        input_vis = 'ic5332_925_co21.ms'
-        cube_root = 'ic5332_co21'
-        scales_to_use=[0,2,4,8,16,32,64]        
-        execfile('../scripts/imageMultiscale2p0.py')
+    do_image_7m = True
+    do_image_combo = False
+    do_image_12m = False
+
+    execfile('../scripts/phangsImagingPipeline.py')

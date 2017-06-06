@@ -66,6 +66,11 @@ try:
 except NameError:
     calcres = True
 
+try:
+    calcpsf
+except NameError:
+    calcpsf = True
+
 # ......................................
 # Shape and center of the cube
 # ......................................
@@ -229,6 +234,7 @@ if do_callclean:
            veltype='radio',
            # Workflow
            calcres=calcres,
+           calcpsf=calcpsf,
            # Deconvolver
            deconvolver=deconvolver,
            scales=scales,

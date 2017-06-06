@@ -28,14 +28,10 @@ script_copy = False
 script_extract_co21 = False
 script_extract_c18o21 = False
 script_extract_continuum = False
+special_concat = True
 
 # Image data
-script_image_chan0 = False
 script_image_cube = True
-
-script_image_co21 = True
-script_image_c18o21 = False
-script_image_cont = False
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -92,79 +88,56 @@ if script_extract_continuum:
     lines_to_flag = lines_co+lines_13co+lines_c18o
     execfile('../scripts/extractContinuum.py')
 
+# --------------------------------------
+# Some special concatenation
+# --------------------------------------
+
+if special_concat:
+    files_to_concat = []
+    for this_tag in calibrated_files.keys():
+        if this_tag[0:2] == '7m':
+            files_to_concat.append(out_root+'_'+this_tag+'_co21.ms')
+    out_file = out_root+'_7m_co21.ms'
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')
+    concat(vis=files_to_concat,
+           concatvis=out_file)
+
+    #files_to_concat = []
+    #for this_tag in calibrated_files.keys():
+    #    if this_tag[0:3] == '12m':
+    #        files_to_concat.append(out_root+'_'+this_tag+'_co21.ms')
+    #out_file = out_root+'_12m_co21.ms'
+    #os.system('rm -rf '+out_file)
+    #os.system('rm -rf '+out_file+'.flagversions')
+    #concat(vis=files_to_concat,
+    #       concatvis=out_file)
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # IMAGING
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# --------------------------------------
-# Image channel 0
-# --------------------------------------
-
-if script_image_chan0:
-    
-    if script_image_co21:
-        do_end_to_end = True
-        do_start_with_pbmask = True
-        input_vis = 'ngc1433_925_co21_chan0.ms'
-        cube_root = 'ngc1433_co21_chan0'
-        uvtaper = None
-        linetag = 'co21'
-        specmode = 'mfs'
-        restfreq_ghz = line_list[linetag]
-        execfile('../scripts/imageImage.py')
-
-    if script_image_c18o21:
-        do_end_to_end = True
-        do_start_with_pbmask = True
-        input_vis = 'ngc1433_925_c18o21_chan0.ms'
-        cube_root = 'ngc1433_c18o21_chan0'
-        uvtaper = None
-        linetag = 'c18o21'
-        specmode = 'mfs'
-        restfreq_ghz = line_list[linetag]
-        execfile('../scripts/imageImage.py')
-
-    if script_image_cont:
-        do_end_to_end = True
-        do_start_with_pbmask = True
-        input_vis = 'ngc1433_925_cont.ms'
-        cube_root = 'ngc1433_cont'
-        uvtaper = None
-        specmode = 'mfs'
-        restfreq_ghz = ''
-        execfile('../scripts/imageImage.py')
-
-# --------------------------------------
-# Image cubes
-# --------------------------------------
-
 if script_image_cube:
 
-    if script_image_co21:
-        do_end_to_end = True
-        do_use_pbmask = True
-        
-        input_vis = 'ngc1433_925_co21.ms'
-        cube_root = 'ngc1433_co21'
-        uvtaper = None
-        linetag = 'co21'
-        specmode = 'cube'
+    do_use_pbmask = True
+    linetag = 'co21'
+    specmode = 'cube'    
+    restfreq_ghz = line_list[linetag]
+    max_loop = 10
+    pb_limit = 0.25
+    uvtaper = None    
+    
+    input_vis_7m = 'ngc1433_7m_co21.ms'
+    cube_root_7m = 'ngc1433_co21_7m'
 
-        scales_to_use = [0]
-        restfreq_ghz = line_list[linetag]
-        pb_limit = 0.5
+    input_vis_combo = 'ngc1433_925_co21.ms'
+    cube_root_combo = 'ngc1433_co21_12m'
 
-        execfile('../scripts/imageMultiscale2p0.py')
+    input_vis_12m = 'ngc1433_12m_co21.ms'
+    cube_root_12m = 'ngc1433_co21_12m'
 
-    if script_image_c18o21:
-        do_end_to_end = True
-        do_start_with_pbmask = False
-        
-        input_vis = 'ngc1433_925_c18o21.ms'
-        cube_root = 'ngc1433_c18o21'
-        uvtaper = None
-        linetag = 'c18o21'
-        specmode = 'cube'
-        restfreq_ghz = line_list[linetag]
+    do_image_7m = True
+    do_image_combo = False
+    do_image_12m = False
 
-        execfile('../scripts/imageMultiscale.py')
+    execfile('../scripts/phangsImagingPipeline.py')
