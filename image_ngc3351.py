@@ -105,7 +105,7 @@ if script_image_cube:
     cube_root_7m = 'ngc3351_co21_7m'
 
     input_vis_combo = 'ngc3351_956_co21.ms'
-    cube_root_combo = 'ngc3351_co21_12m'
+    cube_root_combo = 'ngc3351_co21_12m+7m'
 
     input_vis_12m = 'ngc3351_12m_co21.ms'
     cube_root_12m = 'ngc3351_co21_12m'

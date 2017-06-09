@@ -25,10 +25,10 @@ clean_mask_file = '../clean_masks/ngc3627_co21_widemask.fits'
 execfile('../scripts/line_list.py')
 
 # Extract data
-script_copy = True
-script_extract_co21 = True
-script_extract_c18o21 = True
-script_extract_continuum = True
+script_copy = False
+script_extract_co21 = False
+script_extract_c18o21 = False
+script_extract_continuum = False
 
 # Image data
 script_image_cube = True
@@ -106,7 +106,7 @@ if script_image_cube:
     cube_root_7m = 'ngc3627north_co21_7m'
 
     input_vis_combo = 'ngc3627north_956_co21.ms'
-    cube_root_combo = 'ngc3627north_co21_12m'
+    cube_root_combo = 'ngc3627north_co21_12m+7m'
 
     input_vis_12m = 'ngc3627north_12m_co21.ms'
     cube_root_12m = 'ngc3627north_co21_12m'
