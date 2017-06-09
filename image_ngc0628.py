@@ -153,7 +153,7 @@ if script_image_cube:
     cube_root_7m = 'ngc0628_co21_7m'
 
     input_vis_combo = 'ngc0628_650_co21.ms'
-    cube_root_combo = 'ngc0628_co21_12m'
+    cube_root_combo = 'ngc0628_co21_12m+7m'
 
     input_vis_12m = 'ngc0628_12m_co21.ms'
     cube_root_12m = 'ngc0628_co21_12m'

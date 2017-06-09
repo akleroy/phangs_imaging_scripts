@@ -28,22 +28,22 @@ gal_list = [
 
 for gal in gal_list:
     print "Importing "+gal
-    importfits(fitsimage=gal+'_co21_flat_round.fits',
-               imagename=gal+'_co21_flat_round.image',
+    importfits(fitsimage=gal+'_co21_12m+7m_flat_round.fits',
+               imagename=gal+'_co21_12m+7m_flat_round.image',
                zeroblanks=True, overwrite=True)
-    importfits(fitsimage=gal+'_tp_tapered_12m.fits',
-               imagename=gal+'_tp_tapered_12m.image',
+    importfits(fitsimage=gal+'_tp_tapered_12m+7m.fits',
+               imagename=gal+'_tp_tapered_12m+7m.image',
                zeroblanks=True,overwrite=True)
 
 for gal in gal_list:
     print "Feathering "+gal    
-    feather(imagename=gal+'_co21_12m_feathered.image',
-            highres=gal+'_co21_flat_round.image',
-            lowres=gal+'_tp_tapered_12m.image')
+    feather(imagename=gal+'_co21_12m+7m_feathered.image',
+            highres=gal+'_co21_12m+7mflat_round.image',
+            lowres=gal+'_tp_tapered_12m+7m.image')
 
 for gal in gal_list:
     print "Exporting "+gal
-    exportfits(imagename=gal+'_co21_12m_feathered.image',
-               fitsimage=gal+'_co21_12m_feathered.fits',
+    exportfits(imagename=gal+'_co21_12m+7m_feathered.image',
+               fitsimage=gal+'_co21_12m+7m_feathered.fits',
                velocity=True, dropdeg=True, dropstokes=True, 
                overwrite=True, bitpix=16)

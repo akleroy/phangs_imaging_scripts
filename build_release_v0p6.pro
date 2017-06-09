@@ -149,7 +149,7 @@ pro build_release_v0p6 $
            endif
 
            if kk eq 2 then begin
-              array = ''
+              array = '_12m+7m'
               if keyword_set(only_7m) then $
                  continue
               if total(gals[ii] eq has_12m) eq 0B then $
@@ -158,22 +158,17 @@ pro build_release_v0p6 $
 
            for jj = 0, n_ext-1 do begin
               
-              galname = gals[ii]
-              if total(galname eq two_part) eq 0 then begin                 
-                 spawn, 'cp '+root_imaging_dir+gals[ii]+'/'+ $
-                        galname+'_co21'+array+ext_to_copy[jj]+' '+ $
-                        release_dir+'raw/.'
+              if total(gals[ii] eq two_part) eq 0 then begin                 
+                 galname = [gals[ii]]
               endif else begin
-                 galname = gals[ii]+'north'
-                 spawn, 'cp '+root_imaging_dir+gals[ii]+'/'+ $
-                        galname+'_co21'+array+ext_to_copy[jj]+' '+ $
-                        release_dir+'raw/.'
-
-                 galname = gals[ii]+'south'
-                 spawn, 'cp '+root_imaging_dir+gals[ii]+'/'+ $
-                        galname+'_co21'+array+ext_to_copy[jj]+' '+ $
-                        release_dir+'raw/.'
+                 galname = [gals[ii]+'north', gals[ii]+'south']
               endelse
+              
+              for zz = 0, n_elements(galname)-1 do begin                     
+                 spawn, 'cp '+root_imaging_dir+gals[ii]+'/'+ $
+                        galname[zz]+'_co21'+array+ext_to_copy[jj]+' '+ $
+                        release_dir+'raw/.'
+              endfor
 
            endfor
 
@@ -219,7 +214,7 @@ pro build_release_v0p6 $
            endif
 
            if kk eq 2 then begin
-              array = ''
+              array = '_12m+7m'
               if keyword_set(only_7m) then $
                  continue
               if total(gals[ii] eq has_12m) eq 0B then $
@@ -293,7 +288,7 @@ pro build_release_v0p6 $
            endif
 
            if kk eq 2 then begin
-              array = ''
+              array = '_12m+7m'
               if keyword_set(only_7m) then $
                  continue
               if total(gals[ii] eq has_12m) eq 0B then $
@@ -422,7 +417,7 @@ pro build_release_v0p6 $
                     continue
                  if total(gals[ii] eq has_12m) eq 0B then $
                     continue
-                 array = '_12m'
+                 array = '_12m+7m'
               endif
 
               pb_cube =  readfits(release_dir+'raw/'+$
@@ -469,57 +464,42 @@ pro build_release_v0p6 $
      in_dir = release_dir+'process/'
      out_dir = release_dir+'feather/'
 
-     readcol $
-        , 'singledish_key.txt' $
-        , format='A,A', comment='#' $
-        , sd_gal, sd_fname
-
      for ii = 0, n_gals-1 do begin
 
         if n_elements(just) gt 0 then $
            if total(just eq gals[ii]) eq 0 then continue
-        
+
         message, 'Copying data to feather '+gals[ii], /info
 
-        for kk = 0, 2 do begin
+        if total(gals[ii] eq two_part) eq 0 then begin                 
+           galname = [gals[ii]]
+        endif else begin
+           galname = [gals[ii]+'north', gals[ii]+'south']
+        endelse
+
+        for jj = 0, n_elements(galname)-1 do begin           
            
-           if kk eq 0 then begin
-              array = '_7m'
-           endif
+           for kk = 0, 1 do begin
+              
+              if kk eq 0 then begin
+                 array = '_7m'
+                 spawn, 'cp '+in_dir+galname[jj]+'_co21_7m_flat_round.fits '+$
+                        out_dir+'.'                 
+                 spawn, 'cp '+in_dir+galname[jj]+'_tp_tapered_7m.fits '+$
+                        out_dir+'.'
+              endif
 
-           if kk eq 1 then begin
-              array = '_12m'
-              if keyword_set(only_7m) then $
-                 continue
-              if total(gals[ii] eq has_12m) eq 0B then $
-                 continue
-           endif
-
-           if kk eq 2 then begin
-              array = ''
-              if keyword_set(only_7m) then $
-                 continue
-              if total(gals[ii] eq has_12m) eq 0B then $
-                 continue
-           endif
-
-           if total(gals[ii] eq two_part) eq 0 then begin                 
-              galname = [gals[ii]]
-           endif else begin
-              galname = [gals[ii]+'north', gals[ii]+'south']
-           endelse
-           
-           for jj = 0, n_elements(galname)-1 do begin
-
-              spawn, 'cp '+in_dir+gals[ii]+'_co21_pbcorr_round.fits '+$
-                     out_dir+'.'
-
-              sd_ind = where(sd_gal eq gals[ii], sd_ct)
-              if sd_ct eq 0 then begin
-                 message, 'I did not find a single dish key entry for '+gals[ii], /info
-              endif else begin
-                 spawn, 'cp '+sd_fname[sd_ind]+' '+out_dir+gals[ii]+'_tp.fits'
-              endelse
+              if kk eq 1 then begin
+                 array = '_12m+7m'
+                 if keyword_set(only_7m) then $
+                    continue
+                 if total(gals[ii] eq has_12m) eq 0B then $
+                    continue
+                 spawn, 'cp '+in_dir+galname[jj]+'_co21_12m+7m_flat_round.fits '+$
+                        out_dir+'.'                 
+                 spawn, 'cp '+in_dir+galname[jj]+'_tp_tapered_12m+7m.fits '+$
+                        out_dir+'.'
+              endif
 
            endfor
 
@@ -527,7 +507,8 @@ pro build_release_v0p6 $
 
      endfor
 
-     spawn, 'cp feather_script.py '+out_dir+'/.'
+     spawn, 'cp feather_script_7m.py '+out_dir+'/.'
+     spawn, 'cp feather_script_12m.py '+out_dir+'/.'
 
   endif
 
@@ -537,11 +518,6 @@ pro build_release_v0p6 $
 
   if keyword_set(do_copy_feather) then begin
 
-     readcol $
-        , 'singledish_key.txt' $
-        , format='A,A', comment='#' $
-        , sd_gal, sd_fname
-
      in_dir = release_dir+'feather/'
      out_dir = release_dir+'process/'
 
@@ -550,54 +526,57 @@ pro build_release_v0p6 $
         if n_elements(just) gt 0 then $
            if total(just eq gals[ii]) eq 0 then continue
 
-        message, 'Copying feathered and single dish data for '+gals[ii], /info
+        message, 'Copying data to feather '+gals[ii], /info
 
-        spawn, 'rm -rf '+$
-               out_dir+gals[ii]+'_co21_feather_pbcorr.fits'
-        spawn, 'cp '+in_dir+gals[ii]+'_co21_feathered.fits '+$
-               out_dir+gals[ii]+'_co21_feather_pbcorr.fits'
-
-        sd_ind = where(sd_gal eq gals[ii], sd_ct)
-        if sd_ct eq 0 then begin
-           message, 'I did not find a single dish key entry for '+gals[ii], /info
+        if total(gals[ii] eq two_part) eq 0 then begin                 
+           galname = [gals[ii]]
         endif else begin
-           spawn, 'rm -rf '+$
-                  out_dir+gals[ii]+'_tp.fits'
-           spawn, 'cp '+sd_fname[sd_ind]+' '+out_dir+gals[ii]+'_tp.fits'
+           galname = [gals[ii]+'north', gals[ii]+'south']
         endelse
 
-        if sd_ct gt 0 then begin
-
-           message, 'Cleaning feathered data for '+gals[ii], /info
-
-           cube = readfits(out_dir+gals[ii]+'_co21_feather_pbcorr.fits', hdr)
-
-           template = readfits(out_dir+gals[ii]+'_co21_flat_round.fits', temp_hdr)
-           blank_ind = where(finite(template) eq 0 or $
-                             abs(cube - sxpar(hdr,'BLANK')) lt 1d-6, blank_ct)
-           if blank_ct gt 0 then $
-              cube[blank_ind] = !values.f_nan
-           sxaddpar, hdr, 'ARRAY', '12M+7M+TP'
-
-           writefits, out_dir+gals[ii]+'_co21_feather_pbcorr.fits', cube, hdr
-
-           cube = readfits(out_dir+gals[ii]+'_tp.fits', hdr)
-
-           sxaddpar, hdr, 'ARRAY', 'TP'
-           blank_ind = where(abs(cube - sxpar(hdr,'BLANK')) lt 1d-6, blank_ct)
-           if blank_ct gt 0 then $
-              cube[blank_ind] = !values.f_nan
+        for jj = 0, n_elements(galname)-1 do begin           
            
-           writefits, out_dir+gals[ii]+'_tp.fits', cube, hdr
+           for kk = 0, 1 do begin
+              
+              if kk eq 0 then begin
+                 array = '_7m'
+                 cube = $
+                    readfits(in_dir+galname[jj]+ $
+                             '_co21'+array+'_feathered.fits', hdr)
+                 sxaddpar, hdr, 'ARRAY', '7M+TP'
+                 writefits, $
+                    out_dir+galname[jj]+'_co21_7m+tp_flat_round_taper.fits' $
+                    , cube, hdr
+                 pb_cube = $
+                    readfits(release_dir+'raw/'+$
+                             galname[jj]+'_co21'+array+'_pb.fits', pb_hdr)
+                 cube = cube/pb_cube
+                 writefits, $
+                    out_dir+galname[jj]+'_co21_7m+tp_pbcorr_round_taper.fits' $
+                    , cube, hdr
+              endif
 
-           jtok = calc_jtok(hdr=hdr)
-           sxaddpar, hdr, 'JTOK', jtok
-           cube *= jtok
-           sxaddpar, hdr, 'BUNIT', 'K'
+              if kk eq 1 then begin
+                 array = '_12m+7m'
+                 cube = $
+                    readfits(in_dir+galname[jj]+ $
+                             '_co21'+array+'_feathered.fits', hdr)
+                 sxaddpar, hdr, 'ARRAY', '12M+7M+TP'
+                 writefits, $
+                    out_dir+galname[jj]+'_co21_12m+7m+tp_flat_round_taper.fits' $
+                    , cube, hdr
+                 pb_cube = $
+                    readfits(release_dir+'raw/'+$
+                             galname[jj]+'_co21_12m+7m_pb.fits', pb_hdr)
+                 cube = cube/pb_cube
+                 writefits, $
+                    out_dir+galname[jj]+'_co21_12m+7m+tp_pbcorr_round_taper.fits' $
+                    , cube, hdr
+              endif
 
-           writefits, out_dir+gals[ii]+'_tp_k.fits', cube, hdr
+           endfor
 
-        endif
+        endfor
 
      endfor
 
