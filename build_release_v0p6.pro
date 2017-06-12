@@ -8,16 +8,10 @@ pro build_release_v0p6 $
    , taper_tp=do_taper_tp $
    , stage=do_stage_feather $
    , feather=do_copy_feather $
-   , special=do_special $
+   , merge=do_merge $
    , sanitize=do_sanitize $
+   , clean_mask=do_clean_mask $
    , correct=do_correct $
-   , heracles=do_heracles_smooth $
-   , test=do_test $
-   , smooth=do_smooth $
-   , noise=do_noise $
-   , mask=do_masks $
-   , collapse=do_collapse $
-   , shuffle=do_shuffle $
    , convolve=do_conv_to_res $
    , compile=do_compile
 
@@ -194,11 +188,11 @@ pro build_release_v0p6 $
 
      for ii = 0, n_gals-1 do begin
 
-        message, "Applying primary beam correction for "+gals[ii], /info
-
         if n_elements(just) gt 0 then $
            if total(just eq gals[ii]) eq 0 then continue
         
+        message, "Applying primary beam correction for "+gals[ii], /info
+
         for kk = 0, 2 do begin
            
            if kk eq 0 then begin
@@ -390,12 +384,7 @@ pro build_release_v0p6 $
            endelse
 
            cube = readfits(out_dir+galname[jj]+'_tp.fits', hdr)
-           
            sxaddpar, hdr, 'ARRAY', 'TP'
-           blank_ind = where(abs(cube - sxpar(hdr,'BLANK')) lt 1d-6, blank_ct)
-           if blank_ct gt 0 then $
-              cube[blank_ind] = !values.f_nan
-           
            writefits, out_dir+galname[jj]+'_tp.fits', cube, hdr
            
            jtok = calc_jtok(hdr=hdr)
@@ -412,7 +401,7 @@ pro build_release_v0p6 $
                  array = '_7m'
               endif
 
-              if kk eq 1 then begin
+              if kk eq 1 then begin 
                  if keyword_set(only_7m) then $
                     continue
                  if total(gals[ii] eq has_12m) eq 0B then $
@@ -543,34 +532,54 @@ pro build_release_v0p6 $
                  cube = $
                     readfits(in_dir+galname[jj]+ $
                              '_co21'+array+'_feathered.fits', hdr)
+
+                 template = readfits(out_dir+galname[jj]+ $
+                                     '_co21_7m_flat_round.fits', temp_hdr)
+                 blank_ind = where(finite(template) eq 0 or $
+                                   abs(cube - sxpar(hdr,'BLANK')) lt 1d-6, blank_ct)
+                 if blank_ct gt 0 then $
+                    cube[blank_ind] = !values.f_nan
+
                  sxaddpar, hdr, 'ARRAY', '7M+TP'
                  writefits, $
-                    out_dir+galname[jj]+'_co21_7m+tp_flat_round_taper.fits' $
+                    out_dir+galname[jj]+'_co21_7m+tp_flat_round.fits' $
                     , cube, hdr
                  pb_cube = $
                     readfits(release_dir+'raw/'+$
                              galname[jj]+'_co21'+array+'_pb.fits', pb_hdr)
                  cube = cube/pb_cube
                  writefits, $
-                    out_dir+galname[jj]+'_co21_7m+tp_pbcorr_round_taper.fits' $
+                    out_dir+galname[jj]+'_co21_7m+tp_pbcorr_round.fits' $
                     , cube, hdr
               endif
 
               if kk eq 1 then begin
+                 if keyword_set(only_7m) then $
+                    continue
+                 if total(gals[ii] eq has_12m) eq 0B then $
+                    continue
                  array = '_12m+7m'
                  cube = $
                     readfits(in_dir+galname[jj]+ $
                              '_co21'+array+'_feathered.fits', hdr)
+
+                 template = readfits(out_dir+galname[jj]+ $
+                                     '_co21_12m+7m_flat_round.fits', temp_hdr)
+                 blank_ind = where(finite(template) eq 0 or $
+                                   abs(cube - sxpar(hdr,'BLANK')) lt 1d-7, blank_ct)
+                 if blank_ct gt 0 then $
+                    cube[blank_ind] = !values.f_nan
+
                  sxaddpar, hdr, 'ARRAY', '12M+7M+TP'
                  writefits, $
-                    out_dir+galname[jj]+'_co21_12m+7m+tp_flat_round_taper.fits' $
+                    out_dir+galname[jj]+'_co21_12m+7m+tp_flat_round.fits' $
                     , cube, hdr
                  pb_cube = $
                     readfits(release_dir+'raw/'+$
                              galname[jj]+'_co21_12m+7m_pb.fits', pb_hdr)
                  cube = cube/pb_cube
                  writefits, $
-                    out_dir+galname[jj]+'_co21_12m+7m+tp_pbcorr_round_taper.fits' $
+                    out_dir+galname[jj]+'_co21_12m+7m+tp_pbcorr_round.fits' $
                     , cube, hdr
               endif
 
@@ -583,129 +592,270 @@ pro build_release_v0p6 $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; DEAL WITH SOME SPECIAL CASES
+; MERGE MULTI-FIELD CUBES
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_special) then begin
+  if keyword_set(do_merge) then begin
 
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'DEALING WITH SPECIAL CASES', /info
+     message, 'MERGING MULTI-PART MOSAICS', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      message, '', /info
-     message, 'Merging NGC 6744 into a single cube.', /info
+     message, 'Merging two part cubes into a single cube.', /info
      message, '', /info
      
      dir = release_dir+'process/'
      
-     ext = $
-        ['_co21_flat_round' $
-         , '_co21_pbcorr_round' $
-         , '_co21_resid_round' $
-         , '_co21_feather_pbcorr' $
-        ]
-     n_ext = n_elements(ext)
+     readcol $
+        , 'twopart_fields.txt', format='A,F,F,F,F' $
+        , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec $
+        , comment='#'
 
-     for jj = 0, n_elements(ext)-1 do begin
-        cube_north = readfits(dir+'ngc6744north'+ext[jj]+'.fits', hdr_north)
-        if cube_north[0] eq -1 then continue
-        cube_south = readfits(dir+'ngc6744south'+ext[jj]+'.fits', hdr_south)
-        if cube_south[0] eq -1 then continue
-        
-        if sxpar(hdr_north,'BMAJ') lt sxpar(hdr_south,'BMAJ') then begin
-           print, sxpar(hdr_north,'BMAJ'), sxpar(hdr_south,'BMAJ')
-           conv_with_gauss $
-              , data=cube_north $
-              , hdr=hdr_north $
-              , target_beam=sxpar(hdr_south, 'BMAJ')*[1,1,0] $
-              , out_data=new_cube_north $
-              , out_hdr = new_hdr_north
-           cube_north = new_cube_north
-           hdr_north = new_hdr_north
+     in_dir = release_dir+'process/'
+     out_dir = release_dir+'process/'
+
+     for ii = 0, n_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if total(just eq gals[ii]) eq 0 then continue
+
+        message, 'Copying data to feather '+gals[ii], /info
+
+        if total(gals[ii] eq two_part) eq 0 then begin                 
+           continue
         endif else begin
-           print, sxpar(hdr_north,'BMAJ'), sxpar(hdr_south,'BMAJ')
-           conv_with_gauss $
-              , data=cube_south $
-              , hdr=hdr_south $
-              , target_beam=sxpar(hdr_north, 'BMAJ')*3600.*[1,1,0] $
-              , out_data=new_cube_south $
-              , out_hdr = new_hdr_south
-           cube_south = new_cube_south
-           hdr_south = new_hdr_south
+           galname = [gals[ii]+'north', gals[ii]+'south']
         endelse
+        message, 'Merging '+gals[ii], /info
 
-;       Combine them
-        new_hdr = hdr_north
-        sxaddpar, new_hdr, 'CTYPE1', 'RA---SIN'
-        sxaddpar, new_hdr, 'CRVAL1', 287.442083
-        sxaddpar, new_hdr, 'NAXIS1', 2500
-        sxaddpar, new_hdr, 'CRPIX1', long(floor(2500/2))
+        for kk = 0, 4 do begin
+           
+           if kk eq 0 then begin
+              array = '_7m'
+           endif
 
-        sxaddpar, new_hdr, 'CTYPE2', 'DEC--SIN'  
-        sxaddpar, new_hdr, 'CRVAL2', -63.857528
-        sxaddpar, new_hdr, 'NAXIS2', 3000
-        sxaddpar, new_hdr, 'CRPIX2', long(floor(3000/2))
+           if kk eq 1 then begin
+              array = '_7m+tp'
+           endif
+           
+           if kk eq 2 then begin
+              array = '_12m'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(gals[ii] eq has_12m) eq 0B then $
+                 continue
+           endif
 
-        cube_hastrom $
-           , data = cube_south $
-           , hdr_in = hdr_south $
-           , outcube = new_cube_south $
-           , outhdr = new_hdr_south $
-           , target_hdr = new_hdr
+           if kk eq 3 then begin
+              array = '_12m+7m'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(gals[ii] eq has_12m) eq 0B then $
+                 continue
+           endif
 
-        cube_hastrom $
-           , data = cube_north $
-           , hdr_in = hdr_north $
-           , outcube = new_cube_north $
-           , outhdr = new_hdr_north $
-           , target_hdr = new_hdr
+           if kk eq 4 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(gals[ii] eq has_12m) eq 0B then $
+                 continue
+           endif
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; LOOP OVER FILES OF INTEREST
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+           
+           ext = $
+              ['_flat_round' $
+               , '_pbcorr_round' $
+              ]
+           n_ext = n_elements(ext)           
+           
+           for jj = 0, n_elements(ext)-1 do begin
+
+              if n_elements(galname) ne 2 then begin
+                 message, "I expect two parts but did not find two parts", /info
+              endif
+
+              part1 = $
+                 readfits(in_dir+galname[0]+ $
+                          '_co21'+array+ext[jj]+'.fits', part1_hdr)
+
+              part2 = $
+                 readfits(in_dir+galname[1]+ $
+                          '_co21'+array+ext[jj]+'.fits', part2_hdr)
+              
+              if array eq '_7m' or array eq '_7m+tp' then begin
+                 pb_cube1 =  readfits(release_dir+'raw/'+$
+                                      galname[0]+'_co21_7m_pb.fits', pb1_hdr)
+                 pb_cube2 =  readfits(release_dir+'raw/'+$
+                                      galname[1]+'_co21_7m_pb.fits', pb2_hdr)
+              endif else if array eq '_12m' then begin
+                 pb_cube1 =  readfits(release_dir+'raw/'+$
+                                      galname[0]+'_co21_12m_pb.fits', pb1_hdr)
+                 pb_cube2 =  readfits(release_dir+'raw/'+$
+                                      galname[1]+'_co21_12m_pb.fits', pb2_hdr)
+              endif else begin
+                 pb_cube1 =  readfits(release_dir+'raw/'+$
+                                      galname[0]+'_co21_12m+7m_pb.fits', pb1_hdr)
+                 pb_cube2 =  readfits(release_dir+'raw/'+$
+                                      galname[1]+'_co21_12m+7m_pb.fits', pb2_hdr)
+              endelse
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MATCH THE BEAMS BETWEEN THE TWO PARTS
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+              beam1 = sxpar(part1_hdr, 'BMAJ')
+              beam2 = sxpar(part2_hdr, 'BMAJ')
+
+              if beam1 gt beam2 then begin
+                 target_bmaj = beam1
+                 conv_with_gauss $
+                    , data=part2 $
+                    , hdr=part2_hdr $
+                    , target =[1,1,0.]*target_bmaj $
+                    , out_data=new_part2 $
+                    , out_hdr=new_part2_hdr $
+                    , /perbeam
+                 nan_ind = where(finite(part2) eq 0, nan_ct)
+                 if nan_ct gt 0 then new_part2[nan_ind] = !values.f_nan
+                 part2 = new_part2
+                 part2_hdr = new_part2_hdr
+                 target_hdr = part2_hdr                 
+              endif
+
+              if beam2 gt beam1 then begin
+                 target_bmaj = beam2
+                 conv_with_gauss $
+                    , data=part1 $
+                    , hdr=part1_hdr $
+                    , target =[1,1,0.]*target_bmaj $
+                    , out_data=new_part1 $
+                    , out_hdr=new_part1_hdr $
+                    , /perbeam
+                 nan_ind = where(finite(part1) eq 0, nan_ct)
+                 if nan_ct gt 0 then new_part1[nan_ind] = !values.f_nan
+                 part1 = new_part1
+                 part1_hdr = new_part1_hdr
+                 target_hdr = part1_hdr
+              endif
+
+              if beam2 eq beam1 then begin
+                 target_hdr = part1_hdr
+              endif
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; GENERATE A NEW TARGET HEADER AND ALIGN TO THE TARGET
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+              merge_ind = where(gals[ii] eq strcompress(merge_name,/rem) $
+                                , merge_ct)
+              if merge_ct eq 0 then begin
+                 message, 'Failed to find a match in the merge table. Stopping.', /info
+                 stop
+              endif
+              cdelt = abs(sxpar(target_hdr,'CDELT1'))
+
+              npix_ra = abs(ceil(merge_dra[merge_ind]/3600. / cdelt))
+              crpix_ra = npix_ra/2.0
+
+              npix_dec = abs(ceil(merge_ddec[merge_ind]/3600. / cdelt))
+              crpix_dec = npix_dec/2.0
+
+              sxaddpar, target_hdr, 'CTYPE1', 'RA---SIN'
+              sxdelpar, target_hdr, 'CRVAL1'
+              sxaddpar, target_hdr, 'CRVAL1', double((merge_ra[merge_ind]*1.0)[0])
+              sxdelpar, target_hdr, 'NAXIS1'
+              sxaddpar, target_hdr, 'NAXIS1', npix_ra[0]*1.0
+              sxdelpar, target_hdr, 'CRPIX1'
+              sxaddpar, target_hdr, 'CRPIX1', crpix_ra[0]*1.0
+
+              sxaddpar, target_hdr, 'CTYPE2', 'DEC--SIN'  
+              sxdelpar, target_hdr, 'CRVAL2'
+              sxaddpar, target_hdr, 'CRVAL2', double((merge_dec[merge_ind]*1.0)[0])
+              sxdelpar, target_hdr, 'NAXIS2'
+              sxaddpar, target_hdr, 'NAXIS2', npix_dec[0]*1.0
+              sxdelpar, target_hdr, 'CRPIX2'
+              sxaddpar, target_hdr, 'CRPIX2', crpix_dec[0]*1.0
+              
+              cube_hastrom $
+                 , data = part1 $
+                 , hdr_in = part1_hdr $
+                 , target_hdr = target_hdr $
+                 , outcube = new_part1 $
+                 , outhdr = new_part1_hdr $
+                 , missing=!values.f_nan
+
+              cube_hastrom $
+                 , data = pb_cube1 $
+                 , hdr_in = pb1_hdr $
+                 , target_hdr = target_hdr $
+                 , outcube = new_pbcube1 $
+                 , outhdr = new_pbcube1_hdr $
+                 , missing=!values.f_nan
+              pb_cube1 = new_pbcube1
+
+              cube_hastrom $
+                 , data = part2 $
+                 , hdr_in = part2_hdr $
+                 , target_hdr = target_hdr $
+                 , outcube = new_part2 $
+                 , outhdr = new_part2_hdr $
+                 , missing=!values.f_nan
+
+              cube_hastrom $
+                 , data = pb_cube2 $
+                 , hdr_in = pb2_hdr $
+                 , target_hdr = target_hdr $
+                 , outcube = new_pbcube2 $
+                 , outhdr = new_pbcube2_hdr $
+                 , missing=!values.f_nan
+              pb_cube2 = new_pbcube2
+
+              cube_out = new_part1*!values.f_nan
+              
+              cov_part1 = finite(new_part1) and pb_cube1 gt 0.
+              cov_part2 = finite(new_part2) and pb_cube2 gt 0.
+
+              ind = where(cov_part1 eq 1 and cov_part2 eq 0, ct)
+              if ct gt 0 then $
+                 cube_out[ind] = new_part1[ind]
+              
+              ind = where(cov_part1 eq 0 and cov_part2 eq 1, ct)
+              if ct gt 0 then $
+                 cube_out[ind] = new_part2[ind]
+              
+              ind = where(cov_part1 eq 1 and cov_part2 eq 1, ct)
+              if ct gt 0 then $
+                 cube_out[ind] = (new_part1[ind]*pb_cube1[ind]^2 + $
+                                  new_part2[ind]*pb_cube2[ind]^2) / $
+                                 (pb_cube1[ind]^2 + pb_cube2[ind]^2)
+              
+              !p.multi=[0,3,1]
+              disp, max(cube_out, dim=3, /nan), max=1
+              disp, max(new_part1, dim=3, /nan), max=1
+              disp, max(new_part2, dim=3, /nan), max=1
+              
+              stop
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; WRITE TO DISK
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+              writefits, out_dir+gals[ii]+'_co21'+ $
+                         array+ext[jj]+'.fits', cube_out $
+                         , target_hdr
+
+           endfor
+
+; Add a TP alignment step here?
+
+        endfor
         
-        new_cube = new_cube_south
-        new_cube[*,1500:*,*] = new_cube_north[*,1500:*,*]
-        writefits, dir+'ngc6744'+ext[jj]+'.fits', new_cube, new_hdr
-
      endfor
-
-;    Total power          
-     cube_north = readfits(dir+'ngc6744north_tp_k.fits', hdr_north)     
-     cube_south = readfits(dir+'ngc6744south_tp_k.fits', hdr_south)
-
-;    Combine them
-     new_hdr = hdr_north
-     sxaddpar, new_hdr, 'CTYPE1', 'RA---SIN'
-     sxaddpar, new_hdr, 'CRVAL1', 287.442083
-     sxaddpar, new_hdr, 'NAXIS1', 130
-     sxaddpar, new_hdr, 'CRPIX1', floor(150/2)
-     
-     sxaddpar, new_hdr, 'CTYPE2', 'DEC--SIN'  
-     sxaddpar, new_hdr, 'CRVAL2', -63.857528
-     sxaddpar, new_hdr, 'NAXIS2', 180
-     sxaddpar, new_hdr, 'CRPIX2', floor(200/2)
-     
-     cube_hastrom $
-        , data = cube_south $
-        , hdr_in = hdr_south $
-        , outcube = new_cube_south $
-        , outhdr = new_hdr_south $
-        , target_hdr = new_hdr
-
-     cube_hastrom $
-        , data = cube_north $
-        , hdr_in = hdr_north $
-        , outcube = new_cube_north $
-        , outhdr = new_hdr_north $
-        , target_hdr = new_hdr
-     
-     new_cube = new_cube_south
-     new_cube[*,90:*,*] = new_cube_north[*,90:*,*]
-     writefits, dir+'ngc6744_tp_k.fits', new_cube, new_hdr
-
-;    Free up memory
-     cube_north = -1
-     cube_south = -1
-     new_cube_north = -1
-     new_cube_south = -1
-     new_cube = -1
 
   endif
 
@@ -719,100 +869,206 @@ pro build_release_v0p6 $
      message, 'SANITIZING CUBES FOR FINAL PRODUCT CONSTRUCTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
-     for ii = 0, n_final_gals-1 do begin
-        
+     for ii = 0, n_gals-1 do begin
+
+        dir = release_dir+'process/'
+
         if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-        gal = final_gals[ii]
+           if total(just eq gals[ii]) eq 0 then continue
 
-        ext_to_trim = $
-           ['_co21_flat_round' $
-            , '_co21_pbcorr_round' $
-            , '_co21_resid_round' $
-            , '_co21_feather_pbcorr']
-        n_ext = n_elements(ext_to_trim)
+        message, "Sanitizing the cubes for "+gals[ii], /info
+
+        for kk = 0, 4 do begin
+           
+           if kk eq 0 then begin
+              array = '_7m'
+           endif
+
+           if kk eq 1 then begin
+              array = '_7m+tp'
+           endif
+           
+           if kk eq 2 then begin
+              array = '_12m'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(gals[ii] eq has_12m) eq 0B then $
+                 continue
+           endif
+
+           if kk eq 3 then begin
+              array = '_12m+7m'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(gals[ii] eq has_12m) eq 0B then $
+                 continue
+           endif
+
+           if kk eq 4 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(gals[ii] eq has_12m) eq 0B then $
+                 continue
+           endif
+
+           ext_to_process = $
+              ['_flat_round' $
+               , '_pbcorr_round']
+           n_ext = n_elements(ext_to_process)
+           
+           if total(gals[ii] eq two_part) eq 0 then begin                 
+              galname = [gals[ii]]
+           endif else begin
+              galname = [gals[ii], gals[ii]+'north', gals[ii]+'south']
+           endelse
+
+           for zz = 0, n_elements(galname)-1 do begin
+
+              for jj = 0, n_ext-1 do begin
+
+                 in_cube = dir+galname[zz]+'_co21'+array+ext_to_process[jj]+".fits"
+                 out_file = dir+galname[zz]+'_co21'+array+ext_to_process[jj]+"_trimmed.fits"
+                 
+                 message, '... cube '+in_cube, /info
+                 cube_trim $
+                    , data = in_cube $
+                    , outfile = out_file
+
+                 test = headfits(out_file)
+                 pix_per_beam = abs(sxpar(test, 'BMAJ') /  sxpar(test, 'CDELT1'))
+                 print, "I calculated "+str(pix_per_beam)+" pixels per beam."
+
+                 if pix_per_beam gt 6 then begin
+                    print, "... I will rebin."
+                    cube_hrebin $
+                       , data = out_file $
+                       , outfile = out_file $
+                       , factor = 2
+                 endif
+                
+                 cube = readfits(out_file, hdr)           
+                 jtok = calc_jtok(hdr=hdr)
+                 sxaddpar, hdr, 'BUNIT', 'K'
+                 writefits $
+                    , dir+galname[zz]+'_co21'+array+ext_to_process[jj]+"_k.fits" $
+                    , cube, hdr
+
+              endfor
+
+           endfor
         
-        for jj = 0, n_ext-1 do begin
-
-           dir = release_dir+'process/'
-           in_cube = dir+gal+ext_to_trim[jj]+".fits"
-           out_file = dir+gal+ext_to_trim[jj]+"_trimmed.fits"
-           print, "Trimming "+in_cube
-
-           cube_trim $
-              , data = in_cube $
-              , outfile = out_file
-
-           test = headfits(out_file)
-           pix_per_beam = abs(sxpar(test, 'BMAJ') /  sxpar(test, 'CDELT1'))
-           print, "I calculated "+str(pix_per_beam)+" pixels per beam."
-           if pix_per_beam gt 6 then begin
-              print, "... I will rebin."
-              cube_hrebin $
-                 , data = out_file $
-                 , outfile = out_file $
-                 , factor = 2
-           endif                      
-
         endfor
 
-        message, "I will now align the total power to the interferometer", /info
-        
-        tp = readfits(dir+gal+'_tp_k.fits', tp_hdr)
-        target_hdr = headfits(out_file)
-        cube_hastrom $
-           , data = tp $
-           , hdr_in = tp_hdr $
-           , outcube = new_tp $
-           , outhdr = new_tp_hdr $
-           , target_hdr = target_hdr
-        writefits, dir+gal+'_tp_k_align.fits', new_tp, new_tp_hdr
-
      endfor
-     
+
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CONVERT TO KELVIN
+; MAKE CLEAN MASKS
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_correct) then begin
-     
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'CONVERTING TO KELVIN', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+  if keyword_set(do_clean_mask) then begin
+          
+     for ii = 0, n_gals-1 do begin
+        
+        message, "Making clean mask for "+gals[ii], /info
 
-     dir = release_dir+'process/'
-
-     for ii = 0, n_final_gals-1 do begin
-
+        dir = release_dir+'process/'
+        
         if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
+           if total(just eq gals[ii]) eq 0 then continue
+
+        cube = readfits(dir+gals[ii]+'_co21_7m+tp_pbcorr_round_k.fits', hdr)
         
-        gal = final_gals[ii]
+        make_noise_cube $
+           , cube_in = cube $
+           , out_cube = rms_cube $
+           , /twod_only $
+           , show=0B $
+           , /iterate
 
-        ext_to_convert = $
-           ['_co21_flat_round' $
-            , '_co21_pbcorr_round' $
-            , '_co21_resid_round' $
-            , '_co21_feather_pbcorr']
-        n_ext = n_elements(ext_to_convert)
+        ppbeam = calc_pixperbeam(hdr=hdr)
+
+        make_cprops_mask $
+           , indata=cube $
+           , inrms = rms_cube $
+           , lo_thresh = 2 $
+           , hi_thresh = 5. $
+           , hi_nchan = 2 $
+           , min_area = ppbeam $
+           , outmask=mask
+
+        conv_with_gauss $
+           , data=mask*1.0 $
+           , hdr=hdr $
+           , target = [1,1,0.] * 20.0 $
+           , out_data=out_mask $
+           , /perbeam        
+        mask = out_mask ge 1.0
+
+        conv_with_gauss $
+           , data=cube $
+           , hdr=hdr $
+           , target = [1,1,0.] * 30.0 $
+           , out_data= tp_cube $
+           , out_hdr = tp_hdr
         
-        for jj = 0, n_ext-1 do begin        
+        make_noise_cube $
+           , cube_in = tp_cube $
+           , out_cube = rms_tp_cube $
+           , /twod_only $
+           , show=0B $
+           , /iterate
 
-           cube = readfits(dir+gal+ext_to_convert[jj]+'_trimmed.fits', hdr)           
-           jtok = calc_jtok(hdr=hdr)
+        tp_thresh = 10.
+        if gals[ii] eq 'ic5332' then $
+           tp_thresh = 7.
+        
+        tp_ppbeam = calc_pixperbeam(hdr=tp_hdr)
+        make_cprops_mask $
+           , indata=tp_cube $
+           , inrms = rms_tp_cube $
+           , lo_thresh = 3 $
+           , hi_thresh = tp_thresh $
+           , hi_nchan = 2 $
+           , min_area = 3.0*tp_ppbeam $
+           , min_pix = 6.0*tp_ppbeam $
+           , outmask=tp_mask
 
-           cube *= jtok
-           sxaddpar, hdr, 'BUNIT', 'K'
-           sxaddpar, hdr, 'JTOK', jtok
-           
-           writefits, dir+gal+ext_to_convert[jj]+'_correct.fits', cube, hdr
-           
-        endfor
+        conv_with_gauss $
+           , data=tp_mask*1.0 $
+           , hdr=tp_hdr $
+           , target = [1,1,0.] * 33.0 $
+           , out_data=out_tp_mask $
+           , /perbeam        
+        tp_mask = out_tp_mask ge 1.0
+
+        mask = mask or tp_mask
+        mask = grow_mask(mask, iters=1, /z_only)
+        mask = grow_mask(mask, iters=5, /xy_only)
+
+        !p.multi=[0,2,2]
+
+        loadct, 33
+        disp, max(cube, dim=3, /nan)
+        contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
+
+        loadct, 33
+        disp, max(cube, dim=2, /nan)
+        contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
+
+        loadct, 33
+        disp, max(cube, dim=1, /nan)
+        contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
+
+        sxaddpar, hdr, 'BUNIT', 'MASK'
+        writefits $
+           , dir+gals[ii]+'_co21_clean_mask.fits' $
+           , mask*1.0, hdr
         
      endfor
-     
+
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -820,48 +1076,48 @@ pro build_release_v0p6 $
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
   if keyword_set(do_conv_to_res) then begin
-     
+        
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      message, 'CONVOLVING TO PHYSICAL RESOLUTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
-
+     
      dir = release_dir+'process/'
      target_res = [60, 80, 120, 500, 750]
      n_res = n_elements(target_res)
      tol = 0.1
 
      for ii = 0, n_final_gals-1 do begin
-
+        
         if n_elements(just) gt 0 then $
            if total(just eq final_gals[ii]) eq 0 then continue
         
         gal = final_gals[ii]
-
+        
         ext_to_convolve = $
            ['_co21_flat_round' $
             , '_co21_pbcorr_round' $
             , '_co21_resid_round' $
             , '_co21_feather_pbcorr']
         n_ext = n_elements(ext_to_convolve)
-        
+           
         for jj = 0, n_ext-1 do begin        
-
+           
            cube = readfits(dir+gal+ext_to_convolve[jj]+'_correct.fits', hdr)           
            s = gal_data(dirs[ii])
            sxaddpar, hdr, 'DIST', s.dist_mpc, 'MPC / USED IN CONVOLUTION'           
            current_res = s.dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
-
+           
            for kk = 0, n_res -1 do begin
-
+              
               res_str = strcompress(str(target_res[kk]),/rem)+'pc'
               out_name = dir+strlowcase(gal)+ext_to_convolve[jj]+'_'+res_str+'.fits'
               target_res_as = target_res[kk]/(s.dist_mpc*1d6)/!dtor*3600.d
-
+              
               if current_res gt (1.0+tol)*target_res[jj] then begin
                  print, strupcase(gal)+": Resolution too coarse. Skipping."
                  continue
               endif
-
+              
               if abs(current_res - target_res[kk])/target_res[kk] lt tol then begin
                  print, strupcase(gal)+": I will call ", current_res, " ", target_res[kk]
                  writefits, out_name, cube, hdr           
@@ -875,553 +1131,444 @@ pro build_release_v0p6 $
               endelse
               
            endfor
-
-        endfor
-
-     endfor
-     
-  endif
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CONVOLVE TO THE HERACLES RESOLTION
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  if keyword_set(do_heracles_smooth) then begin
-
-     dir = release_dir+'process/'
-
-     for ii = 0, n_final_gals-1 do begin
-        
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-        
-        gal = final_gals[ii]
-
-        ext_to_convolve = $
-           ['_co21_feather_pbcorr']
-        n_ext = n_elements(ext_to_convolve)
-        
-        for jj = 0, n_ext-1 do begin        
-           
-           cube = readfits(dir+gal+ext_to_convolve[jj]+'_correct.fits', hdr)           
-           s = gal_data(dirs[ii])
-           current_res = sxpar(hdr,'BMAJ')*3600.
-
-           n_res = 1
-           for kk = 0, n_res -1 do begin
-
-              out_name = dir+strlowcase(gal)+ext_to_convolve[jj]+'_heracles.fits'
-              target_res_as = 13.3
-              tol = 0.1
-
-              if current_res gt (1.0+tol)*target_res_as then begin
-                 print, strupcase(gal)+": Resolution too coarse. Skipping."
-                 continue
-              endif
-
-              if abs(current_res - target_res_as)/target_res_as lt tol then begin
-                 print, strupcase(gal)+": I will call ", current_res, " ", target_res_as
-                 writefits, out_name, cube, hdr           
-              endif else begin                 
-                 print, strupcase(gal)+": I will convolve ", current_res, " to ", target_res_as
-                 conv_with_gauss $
-                    , data=cube $
-                    , hdr=hdr $
-                    , target_beam=target_res_as*[1,1,0] $
-                    , out_file=out_name              
-              endelse
-              
-           endfor
            
         endfor
         
      endfor
-     
-  endif
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CONVOLVE TO 3 TIMES BEAM RESOLUTION
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  if keyword_set(do_smooth) then begin
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'CONVOLUTION TO LOWER RESOLUTION', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     
-     for ii = 0, n_final_gals-1 do begin
-
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-        gal = final_gals[ii]
-
-        ext_to_convolve = $
-           ['_co21_flat_round_trimmed' $
-            , '_co21_pbcorr_round_trimmed' $
-            , '_co21_resid_round_trimmed' $
-            , '_co21_feather_pbcorr_trimmed']
-        n_ext = n_elements(ext_to_convolve)
         
-        for jj = 0, n_ext-1 do begin
-
-           dir = release_dir+'process/'
-           in_cube = dir+gal+ext_to_convolve[jj]+".fits"
-           out_cube = dir+gal+ext_to_convolve[jj]+"_smoothed.fits"
-           print, "convolving "+in_cube
-
-           fname = file_search(in_cube, count=file_ct)
-           if file_ct eq 0 then begin
-              message, 'No file '+in_cube, /info
-              continue
-           endif
-
-           hdr = headfits(in_cube)
-           target_bmaj = 3.*sxpar(hdr,'BMAJ')*3600.
-           print, "Convolving to "+str(target_bmaj)
-
-           conv_with_gauss $
-              , data=in_cube $
-              , target = [1.,1.,0.]*target_bmaj $
-              , out_file=out_cube $
-              , /perbeam
-
-        endfor
-
-     endfor
-     
   endif
-  
+
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; ESTIMATE NOISE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_noise) then begin
+     if keyword_set(do_noise) then begin
 
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'ESTIMATE NOISE', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'ESTIMATE NOISE', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
-     dir = release_dir+'process/'
+        dir = release_dir+'process/'
 
-     for ii = 0, n_final_gals-1 do begin
+        for ii = 0, n_final_gals-1 do begin
 
-        message, 'Estimating noise for '+final_gals[ii], /info
+           message, 'Estimating noise for '+final_gals[ii], /info
 
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-        
-        gal = final_gals[ii]
-
-        ext = $
-           ['_co21_flat_round' $
-            , '_co21_flat_round_smoothed' $
-            , '_co21_feather_pbcorr' $
-            , '_co21_feather_pbcorr_smoothed' $
-           ]
-        n_ext = n_elements(ext)
-
-        for jj = 0, n_ext-1 do begin
-
-           fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
-
-           if fct eq 0 then begin
-              message, "No file found for "+fname, /info
-              continue
-           endif
-
-           cube = readfits(fname, cube_hdr)
+           if n_elements(just) gt 0 then $
+              if total(just eq final_gals[ii]) eq 0 then continue
            
-           make_noise_cube $
-              , cube_in = cube $
-              , out_cube = rms_cube $
-              , box = 21 $
-              , /twod_only $
-              , /show $
-              , /iterate
-           
-           writefits, dir+gal+ext[jj]+'_noise.fits', rms_cube, cube_hdr
+           gal = final_gals[ii]
+
+           ext = $
+              ['_co21_flat_round' $
+               , '_co21_flat_round_smoothed' $
+               , '_co21_feather_pbcorr' $
+               , '_co21_feather_pbcorr_smoothed' $
+              ]
+           n_ext = n_elements(ext)
+
+           for jj = 0, n_ext-1 do begin
+
+              fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
+
+              if fct eq 0 then begin
+                 message, "No file found for "+fname, /info
+                 continue
+              endif
+
+              cube = readfits(fname, cube_hdr)
+              
+              make_noise_cube $
+                 , cube_in = cube $
+                 , out_cube = rms_cube $
+                 , box = 21 $
+                 , /twod_only $
+                 , /show $
+                 , /iterate
+              
+              writefits, dir+gal+ext[jj]+'_noise.fits', rms_cube, cube_hdr
+
+           endfor
 
         endfor
 
-     endfor
-
-  endif
+     endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; BUILD MASKS
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-  
-  if keyword_set(do_masks) then begin
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'BUILD MASKS', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-
-     dir = release_dir+'process/'
      
-     for ii = 0, n_final_gals-1 do begin
+     if keyword_set(do_masks) then begin
 
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'BUILD MASKS', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+
+        dir = release_dir+'process/'
         
-        gal = final_gals[ii]
-        
+        for ii = 0, n_final_gals-1 do begin
+
+           if n_elements(just) gt 0 then $
+              if total(just eq final_gals[ii]) eq 0 then continue
+           
+           gal = final_gals[ii]
+           
 ; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ; MAKE MASKS FOR BOTH RESOLUTIONS
 ; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-        ext = $
-           ['_co21_flat_round' $
-            , '_co21_flat_round_smoothed' $
-            , '_co21_feather_pbcorr' $
-            , '_co21_feather_pbcorr_smoothed' $
-           ]
-        n_ext = n_elements(ext)
-        
-        for jj = 0, n_ext-1 do begin
+           ext = $
+              ['_co21_flat_round' $
+               , '_co21_flat_round_smoothed' $
+               , '_co21_feather_pbcorr' $
+               , '_co21_feather_pbcorr_smoothed' $
+              ]
+           n_ext = n_elements(ext)
            
-           fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
+           for jj = 0, n_ext-1 do begin
+              
+              fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
 
-           if fct eq 0 then begin
-              message, "No file found for "+fname, /info
-              continue
-           endif
+              if fct eq 0 then begin
+                 message, "No file found for "+fname, /info
+                 continue
+              endif
 
-           cube = readfits(dir+gal+ext[jj]+'.fits', cube_hdr)
-           rms_cube = readfits(dir+gal+ext[jj]+'_noise.fits', noise_hdr)
+              cube = readfits(dir+gal+ext[jj]+'.fits', cube_hdr)
+              rms_cube = readfits(dir+gal+ext[jj]+'_noise.fits', noise_hdr)
 
-           ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+              ppbeam = calc_pixperbeam(hdr=cube_hdr)         
 
-           make_cprops_mask $
-              , indata=cube $
-              , inrms = rms_cube $
-              , lo_thresh = 2 $
-              , hi_thresh = 3 $
-              , hi_nchan = 3 $
-              , min_area = ppbeam $
-              , outmask=mask
-           
-           !p.multi=[0,2,1]
-           loadct, 33
-           disp, max(cube, dim=3, /nan)
-           contour, max(mask, dim=3), lev=[1], /overplot
+              make_cprops_mask $
+                 , indata=cube $
+                 , inrms = rms_cube $
+                 , lo_thresh = 2 $
+                 , hi_thresh = 3 $
+                 , hi_nchan = 3 $
+                 , min_area = ppbeam $
+                 , outmask=mask
+              
+              !p.multi=[0,2,1]
+              loadct, 33
+              disp, max(cube, dim=3, /nan)
+              contour, max(mask, dim=3), lev=[1], /overplot
 
-           disp, max(cube, dim=2, /nan)
-           contour, max(mask, dim=2), lev=[1], /overplot
-           
-           mask_hdr = cube_hdr
-           sxaddpar, mask_hdr, 'BUNIT', 'MASK'
-           writefits, dir+gal+ext[jj]+'_mask.fits', mask, mask_hdr
+              disp, max(cube, dim=2, /nan)
+              contour, max(mask, dim=2), lev=[1], /overplot
+              
+              mask_hdr = cube_hdr
+              sxaddpar, mask_hdr, 'BUNIT', 'MASK'
+              writefits, dir+gal+ext[jj]+'_mask.fits', mask, mask_hdr
 
-        endfor   
+           endfor   
 
 ; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ; COMBINE THE MASKS
 ; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        
-        first = 1B
-        for jj = 0, n_ext-1 do begin
            
-           fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
+           first = 1B
+           for jj = 0, n_ext-1 do begin
+              
+              fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
+              
+              if fct eq 0 then begin
+                 message, "No file found for "+fname, /info
+                 continue
+              endif
+              
+              this_mask = readfits(dir+gal+ext[jj]+'_mask.fits', mask_hdr)
+              
+              if first then begin
+                 joint_mask = this_mask
+                 first = 0B
+              endif else begin
+                 joint_mask = (joint_mask + this_mask) ge 1
+                 writefits, dir+gal+'_joint_mask.fits', joint_mask, mask_hdr 
+              endelse
+           endfor
            
-           if fct eq 0 then begin
-              message, "No file found for "+fname, /info
-              continue
-           endif
-           
-           this_mask = readfits(dir+gal+ext[jj]+'_mask.fits', mask_hdr)
-           
-           if first then begin
-              joint_mask = this_mask
-              first = 0B
-           endif else begin
-              joint_mask = (joint_mask + this_mask) ge 1
-              writefits, dir+gal+'_joint_mask.fits', joint_mask, mask_hdr 
-           endelse
-        endfor
-        
 ; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ; SMOOTH THE JOINT MASK TO MAKE A CLEAN MASK
 ; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-        target_hdr = headfits(dir+gal + '_co21_flat_round_smoothed.fits')
-        target_bmaj = sxpar(target_hdr, 'BMAJ')*3600.*3.
+           target_hdr = headfits(dir+gal + '_co21_flat_round_smoothed.fits')
+           target_bmaj = sxpar(target_hdr, 'BMAJ')*3600.*3.
 
-        conv_with_gauss $
-           , data = joint_mask*1.0 $
-           , hdr=mask_hdr $
-           , target = [1.,1.,0.]*target_bmaj $
-           , out_data= smooth_mask $
-           , /perbeam
-        smooth_mask = smooth_mask gt 1.0
-        
-        !p.multi=[0,2,1]
-        loadct, 33
-        disp, max(cube, dim=3, /nan)
-        contour, max(smooth_mask, dim=3), lev=[1], /overplot
-        
-        disp, max(cube, dim=2, /nan)
-        contour, max(smooth_mask, dim=2), lev=[1], /overplot
-        
+           conv_with_gauss $
+              , data = joint_mask*1.0 $
+              , hdr=mask_hdr $
+              , target = [1.,1.,0.]*target_bmaj $
+              , out_data= smooth_mask $
+              , /perbeam
+           smooth_mask = smooth_mask gt 1.0
+           
+           !p.multi=[0,2,1]
+           loadct, 33
+           disp, max(cube, dim=3, /nan)
+           contour, max(smooth_mask, dim=3), lev=[1], /overplot
+           
+           disp, max(cube, dim=2, /nan)
+           contour, max(smooth_mask, dim=2), lev=[1], /overplot
+           
 ;        print, "This is the candidate clean mask. Hit key to continue."
 ;        ch = get_kbrd(1)
+           
+           writefits, dir+gal+'_large_mask.fits', smooth_mask, mask_hdr
+           
+        endfor
         
-        writefits, dir+gal+'_large_mask.fits', smooth_mask, mask_hdr
-        
-     endfor
-     
-  endif
+     endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COLLAPSE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-  
-  if keyword_set(do_collapse) then begin
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'COLLAPSE INTO MOMENTS', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-
-     dir = release_dir+'process/'
      
-     for ii = 0, n_final_gals-1 do begin
+     if keyword_set(do_collapse) then begin
 
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'COLLAPSE INTO MOMENTS', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+
+        dir = release_dir+'process/'
         
-        gal = final_gals[ii]
+        for ii = 0, n_final_gals-1 do begin
 
-        fname = file_search(dir+gal+'_co21_feather_pbcorr.fits', count=fct)        
-        if fct eq 0 or $
-           gal eq 'ngc1087' or $
-           gal eq 'ngc4254' or $
-           gal eq 'ngc5068' $
-        then begin
-           pbcor = readfits(dir+gal+'_co21_pbcorr_round.fits', hdr)
-        endif else begin
-           pbcor = readfits(fname, hdr)
-        endelse
+           if n_elements(just) gt 0 then $
+              if total(just eq final_gals[ii]) eq 0 then continue
+           
+           gal = final_gals[ii]
 
-        mask = readfits(dir+gal+'_joint_mask.fits', mask_hdr)
+           fname = file_search(dir+gal+'_co21_feather_pbcorr.fits', count=fct)        
+           if fct eq 0 or $
+              gal eq 'ngc1087' or $
+              gal eq 'ngc4254' or $
+              gal eq 'ngc5068' $
+           then begin
+              pbcor = readfits(dir+gal+'_co21_pbcorr_round.fits', hdr)
+           endif else begin
+              pbcor = readfits(fname, hdr)
+           endelse
 
-        jtok = calc_jtok(hdr=hdr)
-        pbcor *= jtok
-        sxaddpar, hdr, 'BUNIT', 'K'
-        sxaddpar, hdr, 'JTOK', jtok
-        writefits, dir+gal+'_co21_correct.fits', pbcor, hdr
+           mask = readfits(dir+gal+'_joint_mask.fits', mask_hdr)
 
-        collapse_cube $
-           , cube=pbcor $
-           , hdr=hdr $
-           , mask=mask $
-           , mom0 = mom0 $
-           , e_mom0 = e_mom0 $
-           , mom1 = mom1 $
-           , e_mom1 = e_mom1
+           jtok = calc_jtok(hdr=hdr)
+           pbcor *= jtok
+           sxaddpar, hdr, 'BUNIT', 'K'
+           sxaddpar, hdr, 'JTOK', jtok
+           writefits, dir+gal+'_co21_correct.fits', pbcor, hdr
 
-        blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
-                           or (e_mom1 gt mom1_thresh), mom1_ct)
-        if mom1_ct gt 0 then begin
-           mom1[blank_mom1] = !values.f_nan
-           e_mom1[blank_mom1] = !values.f_nan
-        endif
+           collapse_cube $
+              , cube=pbcor $
+              , hdr=hdr $
+              , mask=mask $
+              , mom0 = mom0 $
+              , e_mom0 = e_mom0 $
+              , mom1 = mom1 $
+              , e_mom1 = e_mom1
 
-        tpeak_mask = mask
-        sz = size(mask)
-        for kk = 0, sz[3]-1 do $
-           tpeak_mask[*,*,kk] = total(mask[*,*,kk]) ge 1
+           blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
+                              or (e_mom1 gt mom1_thresh), mom1_ct)
+           if mom1_ct gt 0 then begin
+              mom1[blank_mom1] = !values.f_nan
+              e_mom1[blank_mom1] = !values.f_nan
+           endif
 
-        fin_map = total(finite(pbcor)) gt 0
-        blank_ind = where(fin_map eq 0)
+           tpeak_mask = mask
+           sz = size(mask)
+           for kk = 0, sz[3]-1 do $
+              tpeak_mask[*,*,kk] = total(mask[*,*,kk]) ge 1
 
-        tpeak = max(pbcor*tpeak_mask, dim=3, /nan)
-        tpeak[blank_ind] = !values.f_nan
-        tpeak_hdr = twod_head(hdr)
-        sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+           fin_map = total(finite(pbcor)) gt 0
+           blank_ind = where(fin_map eq 0)
 
-        writefits, dir+ $
-                   gal+'_co21_tpeak.fits', tpeak, tpeak_hdr
+           tpeak = max(pbcor*tpeak_mask, dim=3, /nan)
+           tpeak[blank_ind] = !values.f_nan
+           tpeak_hdr = twod_head(hdr)
+           sxaddpar, tpeak_hdr, 'BUNIT', 'K'
 
-        tpeak_12p5 = max(smooth(pbcor,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
-        tpeak_12p5[blank_ind] = !values.f_nan
-        tpeak_hdr = twod_head(hdr)
-        sxaddpar, tpeak_hdr, 'BUNIT', 'K'
-        writefits, dir+ $
-                   gal+'_co21_tpeak_12p5kms.fits', tpeak_12p5, tpeak_hdr
+           writefits, dir+ $
+                      gal+'_co21_tpeak.fits', tpeak, tpeak_hdr
+
+           tpeak_12p5 = max(smooth(pbcor,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
+           tpeak_12p5[blank_ind] = !values.f_nan
+           tpeak_hdr = twod_head(hdr)
+           sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+           writefits, dir+ $
+                      gal+'_co21_tpeak_12p5kms.fits', tpeak_12p5, tpeak_hdr
+           
+           mom0_hdr = twod_head(hdr)
+           sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
+           mom0[blank_ind] = !values.f_nan
+           writefits, dir+$
+                      gal+'_co21_mom0.fits', mom0, mom0_hdr
+           writefits, dir+$
+                      gal+'_co21_emom0.fits', e_mom0, mom0_hdr
+           
+           mom1_hdr = twod_head(hdr)
+           sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
+           mom1[blank_ind] = !values.f_nan
+           writefits, dir+$
+                      gal+'_co21_mom1.fits', mom1, mom1_hdr
+           writefits, dir+$
+                      gal+'_co21_emom1.fits', e_mom1, mom1_hdr
+           
+           !p.multi = [0, 2, 2]
+           loadct, 33
+           disp, tpeak, /sq
+           disp, tpeak_12p5, /sq
+           disp, mom0, /sq
+           disp, mom1, /sq
+
+        endfor
         
-        mom0_hdr = twod_head(hdr)
-        sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
-        mom0[blank_ind] = !values.f_nan
-        writefits, dir+$
-                   gal+'_co21_mom0.fits', mom0, mom0_hdr
-        writefits, dir+$
-                   gal+'_co21_emom0.fits', e_mom0, mom0_hdr
-        
-        mom1_hdr = twod_head(hdr)
-        sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
-        mom1[blank_ind] = !values.f_nan
-        writefits, dir+$
-                   gal+'_co21_mom1.fits', mom1, mom1_hdr
-        writefits, dir+$
-                   gal+'_co21_emom1.fits', e_mom1, mom1_hdr
-        
-        !p.multi = [0, 2, 2]
-        loadct, 33
-        disp, tpeak, /sq
-        disp, tpeak_12p5, /sq
-        disp, mom0, /sq
-        disp, mom1, /sq
-
-     endfor
-     
-  endif
+     endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; SHUFFLE AND CARRY OUT A WEIGHTED SHUFFLE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_shuffle) then begin
+     if keyword_set(do_shuffle) then begin
 
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'SHUFFLING CUBES', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'SHUFFLING CUBES', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
-     dir = release_dir+'process/'
+        dir = release_dir+'process/'
 
-     n_ext = n_elements(ext_in)
+        n_ext = n_elements(ext_in)
 
-     for ii = 0, n_final_gals-1 do begin
+        for ii = 0, n_final_gals-1 do begin
 
-        gal = final_gals[ii]
+           gal = final_gals[ii]
 
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
+           if n_elements(just) gt 0 then $
+              if total(just eq final_gals[ii]) eq 0 then continue
 
-        mom1 = $
-           readfits(dir+gal+'_co21_mom1.fits', mom1_hdr)
-        cube = $
-           readfits(dir+gal+'_co21_correct.fits', cube_hdr)
-        make_axes, cube_hdr, vaxis=vaxis, /vonly
+           mom1 = $
+              readfits(dir+gal+'_co21_mom1.fits', mom1_hdr)
+           cube = $
+              readfits(dir+gal+'_co21_correct.fits', cube_hdr)
+           make_axes, cube_hdr, vaxis=vaxis, /vonly
 
-        deltav = abs(vaxis[1]-vaxis[0])
-        new_vaxis = findgen(201)*deltav*0.5
-        new_vaxis -= mean(new_vaxis)
-        
-        shuffled_cube = $
-           shuffle( $
-           spec=cube $
-           , vaxis=vaxis $
-           , zero=mom1*1d3 $
-           , target_vaxis=new_vaxis)
+           deltav = abs(vaxis[1]-vaxis[0])
+           new_vaxis = findgen(201)*deltav*0.5
+           new_vaxis -= mean(new_vaxis)
+           
+           shuffled_cube = $
+              shuffle( $
+              spec=cube $
+              , vaxis=vaxis $
+              , zero=mom1*1d3 $
+              , target_vaxis=new_vaxis)
 
-        shuffle_hdr = cube_hdr
-        sxaddpar, shuffle_hdr, 'NAXIS3', n_elements(new_vaxis)
-        sxaddpar, shuffle_hdr, 'CDELT3', new_vaxis[1]-new_vaxis[0]
-        sxaddpar, shuffle_hdr, 'CRVAL3', new_vaxis[0]
-        sxaddpar, shuffle_hdr, 'CRPIX3', 1
-        
-        writefits, dir+gal+'_co21_shuffle.fits' $
-                   , shuffled_cube, shuffle_hdr  
+           shuffle_hdr = cube_hdr
+           sxaddpar, shuffle_hdr, 'NAXIS3', n_elements(new_vaxis)
+           sxaddpar, shuffle_hdr, 'CDELT3', new_vaxis[1]-new_vaxis[0]
+           sxaddpar, shuffle_hdr, 'CRVAL3', new_vaxis[0]
+           sxaddpar, shuffle_hdr, 'CRPIX3', 1
+           
+           writefits, dir+gal+'_co21_shuffle.fits' $
+                      , shuffled_cube, shuffle_hdr  
 
-        disp, max(shuffled_cube,dim=2,/nan)
+           disp, max(shuffled_cube,dim=2,/nan)
 
-     endfor
+        endfor
 
-  endif
+     endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COMPILE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_compile) then begin
+     if keyword_set(do_compile) then begin
 
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'COMPILE A RELEASE', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     
-     dir = '../release/v0p5/'
-
-     ext_in = $
-        ['_co21_correct.fits' $
-         ,'_co21_resid_round.fits' $
-         ,'_co21_flat_round_smoothed_mask.fits' $
-         ,'_co21_flat_round_mask.fits' $
-         ,'_large_mask.fits' $
-         ,'_co21_shuffle.fits' $
-         ,'_co21_mom0.fits' $
-         ,'_co21_emom0.fits' $
-         ,'_co21_mom1.fits' $
-         ,'_co21_emom1.fits' $
-         ,'_co21_tpeak.fits' $
-         ,'_co21_tpeak_12p5kms.fits' $
-         ,'_tp_k.fits' $
-        ]
-
-     ext_out = $
-        ['_co21.fits' $
-         ,'_co21_resid.fits' $
-         ,'_co21_smoothedmask.fits' $
-         ,'_co21_brightmask.fits' $
-         ,'_co21_widemask.fits' $
-         ,'_co21_shuffled.fits' $
-         ,'_co21_mom0.fits' $
-         ,'_co21_emom0.fits' $
-         ,'_co21_mom1.fits' $
-         ,'_co21_emom1.fits' $
-         ,'_co21_tpeak.fits' $
-         ,'_co21_tpeak_12p5kms.fits' $
-         ,'_co21_tp.fits' $
-        ]
-
-     n_ext = n_elements(ext_in)
-
-     for ii = 0, n_final_gals-1 do begin
-
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'COMPILE A RELEASE', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
         
-        gal = final_gals[ii]
+        dir = '../release/v0p5/'
 
-        print, 'Copying '+gal
+        ext_in = $
+           ['_co21_correct.fits' $
+            ,'_co21_resid_round.fits' $
+            ,'_co21_flat_round_smoothed_mask.fits' $
+            ,'_co21_flat_round_mask.fits' $
+            ,'_large_mask.fits' $
+            ,'_co21_shuffle.fits' $
+            ,'_co21_mom0.fits' $
+            ,'_co21_emom0.fits' $
+            ,'_co21_mom1.fits' $
+            ,'_co21_emom1.fits' $
+            ,'_co21_tpeak.fits' $
+            ,'_co21_tpeak_12p5kms.fits' $
+            ,'_tp_k.fits' $
+           ]
 
-        for jj = 0, n_ext-1 do begin
+        ext_out = $
+           ['_co21.fits' $
+            ,'_co21_resid.fits' $
+            ,'_co21_smoothedmask.fits' $
+            ,'_co21_brightmask.fits' $
+            ,'_co21_widemask.fits' $
+            ,'_co21_shuffled.fits' $
+            ,'_co21_mom0.fits' $
+            ,'_co21_emom0.fits' $
+            ,'_co21_mom1.fits' $
+            ,'_co21_emom1.fits' $
+            ,'_co21_tpeak.fits' $
+            ,'_co21_tpeak_12p5kms.fits' $
+            ,'_co21_tp.fits' $
+           ]
 
-           spawn, 'rm -rf '+dir+'delivery/'+gal+ext_out[jj]
+        n_ext = n_elements(ext_in)
 
-           spawn, 'cp '+dir+'process/'+gal+ext_in[jj]+' '+dir+'delivery/'+gal+ext_out[jj]
+        for ii = 0, n_final_gals-1 do begin
+
+           if n_elements(just) gt 0 then $
+              if total(just eq final_gals[ii]) eq 0 then continue
+           
+           gal = final_gals[ii]
+
+           print, 'Copying '+gal
+
+           for jj = 0, n_ext-1 do begin
+
+              spawn, 'rm -rf '+dir+'delivery/'+gal+ext_out[jj]
+
+              spawn, 'cp '+dir+'process/'+gal+ext_in[jj]+' '+dir+'delivery/'+gal+ext_out[jj]
+
+           endfor
 
         endfor
 
-     endfor
-
-  endif
+     endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; INFORMATIONAL
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_test) then begin
-     
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'TEST', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+     if keyword_set(do_test) then begin
+        
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'TEST', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
 
-     dir = '../release/v0p5/process/'
+        dir = '../release/v0p5/process/'
 
-     for ii = 0, n_final_gals-1 do begin
+        for ii = 0, n_final_gals-1 do begin
 
-        gal = final_gals[ii]
+           gal = final_gals[ii]
 
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
+           if n_elements(just) gt 0 then $
+              if total(just eq final_gals[ii]) eq 0 then continue
 
-        h = headfits(dir+gal+'_co21_pbcorr_round_trimmed.fits')
-        s = gal_data(dirs[ii])
-        current_res = s.dist_mpc*!dtor*sxpar(h, 'BMAJ')*1d6
-        print, gal, ' starts at resolution ', current_res
+           h = headfits(dir+gal+'_co21_pbcorr_round_trimmed.fits')
+           s = gal_data(dirs[ii])
+           current_res = s.dist_mpc*!dtor*sxpar(h, 'BMAJ')*1d6
+           print, gal, ' starts at resolution ', current_res
 
-     endfor
-     
-  endif
+        endfor
+        
+     endif
 
-end
+  end
