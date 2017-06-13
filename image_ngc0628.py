@@ -36,7 +36,7 @@ calibrated_files = {'12m_1':dir_12m+'uid___A002_X5b2f01_X3f.ms.split.cal.M74/',
                     '7m_10':dir_7m+'uid___A002_X8204db_X4f.ms.split.cal',
                     }
 
-clean_mask_file = '../clean_masks/ngc0628_co21_widemask.fits'
+clean_mask_file = '../clean_masks/ngc0628_co21_clean_mask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -141,7 +141,7 @@ if special_concat:
 
 if script_image_cube:
 
-    do_use_pbmask = True
+    do_use_pbmask = False
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
@@ -159,7 +159,7 @@ if script_image_cube:
     cube_root_12m = 'ngc0628_co21_12m'
 
     do_image_7m = True
-    do_image_combo = False
-    do_image_12m = False
+    do_image_combo = True
+    do_image_12m = True
 
     execfile('../scripts/phangsImagingPipeline.py')

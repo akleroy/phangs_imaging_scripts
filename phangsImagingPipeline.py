@@ -64,11 +64,11 @@ if do_image_combo:
     
     imstat_7m = imstat(cube_root_7m+'.residual')
     multiscale_threshold = str(4.0*(imstat_7m['medabsdevmed'][0]/0.6745))+'Jy/beam'
-
+    snr_thresh = 4.0
+    singlescale_threshold = None
+   
     smallscalebias = 0.6
     outerscale = 12.0
-
-    snr_thresh = 4.0
     execfile('../scripts/imageMultiscale.py')   
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -89,7 +89,8 @@ if do_image_12m:
     multiscale_threshold = str(4.0*(imstat_7m['medabsdevmed'][0]/0.6745))+'Jy/beam'
     outerscale = 6.2
     smallscalebias = 0.6
-
     snr_thresh = 4.0
+    singlescale_threshold = None
+
     execfile('../scripts/imageMultiscale.py')
 

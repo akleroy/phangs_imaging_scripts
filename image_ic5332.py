@@ -17,6 +17,8 @@ calibrated_files = {
     , '12m':'../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ba/group.uid___A001_X2fe_X2bb/member.uid___A001_X2fe_X2bc/calibrated/calibrated_final.ms'
     }
 
+clean_mask_file = '../clean_masks/ic5332_co21_clean_mask.fits'
+
 # --------------------------------------
 # Overall control flow
 # --------------------------------------
@@ -93,7 +95,7 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_use_pbmask = True
+    do_use_pbmask = False
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
@@ -111,7 +113,7 @@ if script_image_cube:
     cube_root_12m = 'ic5332_co21_12m'
 
     do_image_7m = True
-    do_image_combo = False
-    do_image_12m = False
+    do_image_combo = True
+    do_image_12m = True
 
     execfile('../scripts/phangsImagingPipeline.py')
