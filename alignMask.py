@@ -62,7 +62,7 @@ imregrid(imagename=mask_root+'_temp.image',
          output=mask_root+'_temp_align.image', 
          asvelocity=True,
          interpolation='nearest',         
-         replicate=True,
+         replicate=False,
          overwrite=True)
 
 im_head = imhead(cube_root+'.image')

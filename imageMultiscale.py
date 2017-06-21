@@ -68,14 +68,14 @@ except NameError:
     do_read_in_clean_mask = False
 
 try:
-    do_clean
+    do_multiscale_clean
 except NameError:
-    do_clean = True
+    do_multiscale_clean = True
 
 try:
     do_revert_to_multiscale
 except NameError:
-    revert_to_multiscale = False
+    do_revert_to_multiscale = False
 
 try:
     do_singlescale
@@ -271,7 +271,7 @@ if do_make_dirty_cube:
     niter = 0
     do_reset = True
     do_callclean = True
-    do_savecopy = True    
+    do_savecopy = True
 
     bkup_ext = "dirty"
     logfile = cube_root+"_dirty.log"
@@ -389,20 +389,29 @@ if do_multiscale_clean:
 
     # Calculate the scales to use
 
-    try:
-        outerscale
-    except NameError:
-        outerscale = oversamp*cell_size*4.5
-        print "Defaulting to an outer scale of "+str(outerscale)+" for multiscale."
-    
-    if outerscale != None:
-        outerscale_in_pix = ceil(outerscale / cell_size)
-        scales = [0]
-        for factor in range(10):
-            scale = oversamp*2.0**(0.5*factor)
-            if scale < outerscale_in_pix:
-                scales.append(int(round(scale)))
-    print "I will use scales: ", str(scales)
+    #try:
+    #    outerscale
+    #except NameError:
+    #    outerscale = oversamp*cell_size*4.5
+    #    print "Defaulting to an outer scale of "+str(outerscale)+" for multiscale."
+
+    #if outerscale != None:
+    #    outerscale_in_pix = ceil(outerscale / cell_size)
+    #    scales_as_pix = [0]
+    #    scales_as_angle = [0.0]
+    #    for factor in range(10):
+    #        scale = oversamp*2.0**(factor)
+    #        if scale < outerscale_in_pix:
+    #            scales_as_pix.append(int(round(scale)))
+    #            scales_as_angle.append(scale*cell_size)
+                
+    scales_as_pix = []
+    for scale in scales_as_angle:
+        scales_as_pix.append(int(scale/cell_size))
+
+    print "I will use the following scales: "
+    print "... as pixels: ", str(scales_as_pix)
+    print "... as arcseconds: ", str(scales_as_angle)
 
     # Calculate the threshold for cleaning
 
@@ -472,12 +481,14 @@ if do_multiscale_clean:
         restoringbeam = 'common'
         niter = this_niter
 
-        do_savecopy = True
+        do_savecopy = False
         bkup_ext = "multiscaleloop"+str(loop)        
 
         print ""
         print "CALLING MULTISCALE CLEAN."
         print ""
+
+        scales = scales_as_pix
 
         execfile('../scripts/callClean.py')
 
@@ -641,7 +652,7 @@ if do_singlescale_clean:
         restoringbeam = 'common'
         niter = this_niter
 
-        do_savecopy = True
+        do_savecopy = False
         bkup_ext = "singlescaleloop"+str(loop)        
 
         print ""

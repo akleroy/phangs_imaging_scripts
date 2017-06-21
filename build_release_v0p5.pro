@@ -699,7 +699,7 @@ pro build_release_v0p5 $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
 
      dir = release_dir+'process/'
-     target_res = [60, 80, 120, 500, 750]
+     target_res = [45, 60, 80, 100, 120, 500, 750]
      n_res = n_elements(target_res)
      tol = 0.1
 

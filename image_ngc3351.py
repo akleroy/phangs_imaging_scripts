@@ -15,7 +15,7 @@ vwidth_kms = 500
 calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X27b/group.uid___A001_X2fb_X27c/member.uid___A001_X2fb_X27d/calibrated/calibrated_final.ms',                
                     '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X27b/group.uid___A001_X2fb_X27c/member.uid___A001_X2fb_X27f/calibrated/calibrated_final.ms'}
 
-clean_mask_file = '../clean_masks/ngc3351_clean_mask.fits'
+clean_mask_file = '../clean_masks/ngc3351_co21_clean_mask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -93,11 +93,11 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_use_pbmask = True
+    do_use_pbmask = False
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
-    max_loop = 10
+    max_loop = 20
     pb_limit = 0.25
     uvtaper = None    
     

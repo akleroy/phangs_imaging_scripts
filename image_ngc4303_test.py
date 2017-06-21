@@ -6,15 +6,17 @@
 # User inputs
 # --------------------------------------
 
-out_root = 'ngc4254north'
+out_root = 'ngc4303'
 tag = '956'
-phase_center = 'J2000 12h18m49.6 +14d26m04'
-source_vel_kms = 2407
+phase_center = 'J2000 12h21m54.9s +04d28m25'
+source_vel_kms = 1566
 vwidth_kms = 500
 
-calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29b/calibrated/calibrated_final.ms',
-                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29d/calibrated/calibrated_final.ms',
+calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/member.uid___A001_X2fb_X2af/calibrated/calibrated_final.ms',
+                    '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/member.uid___A001_X2fb_X2b1/calibrated/calibrated_final.ms',
                     }
+
+clean_mask_file = '../clean_masks/ngc4303_co21_clean_mask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -30,8 +32,6 @@ script_extract_continuum = False
 
 # Image data
 script_image_cube = True
-
-clean_mask_file = '../clean_masks/ngc4254_co21_clean_mask.fits'
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -94,24 +94,30 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_use_pbmask = False
+    do_use_pbmask = True
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
-    max_loop = 20
+    max_loop = 10
     pb_limit = 0.25
     uvtaper = None    
     
-    input_vis_7m = 'ngc4254north_7m_co21.ms'
-    cube_root_7m = 'ngc4254north_co21_7m'
+    input_vis_7m = 'ngc4303_7m_co21.ms'
+    cube_root_7m = 'ngc4303_co21_7m'
 
-    input_vis_combo = 'ngc4254north_956_co21.ms'
-    cube_root_combo = 'ngc4254north_co21_12m+7m'
+    input_vis = 'ngc4303_7m_co21.ms'
+    cube_root = 'ngc4303_co21_7m'
+    snr_thresh = 4.0
 
-    input_vis_12m = 'ngc4254north_12m_co21.ms'
-    cube_root_12m = 'ngc4254north_co21_12m'
+    execfile('../scripts/imageInsideOut.py')
 
-    do_image_7m = True
+    input_vis_combo = 'ngc4303_956_co21.ms'
+    cube_root_combo = 'ngc4303_co21_12m+7m'
+
+    input_vis_12m = 'ngc4303_12m_co21.ms'
+    cube_root_12m = 'ngc4303_co21_12m'
+
+    do_image_7m = False
     do_image_combo = False
     do_image_12m = False
 

@@ -145,7 +145,7 @@ if script_image_cube:
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
-    max_loop = 10
+    max_loop = 20
     pb_limit = 0.25
     uvtaper = None    
     
@@ -159,7 +159,7 @@ if script_image_cube:
     cube_root_12m = 'ngc0628_co21_12m'
 
     do_image_7m = True
-    do_image_combo = True
-    do_image_12m = True
+    do_image_combo = False
+    do_image_12m = False
 
     execfile('../scripts/phangsImagingPipeline.py')

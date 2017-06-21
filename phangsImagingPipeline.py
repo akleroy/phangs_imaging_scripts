@@ -32,19 +32,34 @@ if do_image_7m:
 
     do_make_dirty_cube = True
     do_revert_to_dirty = False
+
     if do_use_pbmask == False:
         do_read_in_clean_mask = True
-    do_multiscale_clean = True
-    do_revert_to_multiscale = False
+    else:
+        do_read_in_clean_mask = False
+
+    try:
+        do_multiscale_clean
+    except:
+        do_multiscale_clean = True
+
     do_singlescale_clean = True
     do_postprocess = True
     
-    smallscalebias = 0.6
-    outerscale = 15.
+    try:
+        smallscalebias_7m
+    except NameError:
+        smallscalebias = 0.6
+    else:
+        smallscalebias = smallscalebias_7m
 
-    snr_thresh = 3.0
-    multiscale_delta_thresh = 0.02
-    singlescale_delta_thresh = 0.005
+    try:
+        snr_thresh
+    except NameError:
+        snr_thresh = 0.0
+    multiscale_delta_thresh = 0.01
+    scales_as_angle = [0, 5, 10]
+
     execfile('../scripts/imageMultiscale.py')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -62,13 +77,32 @@ if do_image_combo:
     input_vis = input_vis_combo
     cube_root = cube_root_combo
     
-    imstat_7m = imstat(cube_root_7m+'.residual')
-    multiscale_threshold = str(4.0*(imstat_7m['medabsdevmed'][0]/0.6745))+'Jy/beam'
-    snr_thresh = 4.0
-    singlescale_threshold = None
-   
-    smallscalebias = 0.6
-    outerscale = 12.0
+    do_make_dirty_cube = True
+    do_revert_to_dirty = False
+
+    if do_use_pbmask == False:
+        do_read_in_clean_mask = True
+    else:
+        do_read_in_clean_mask = False
+
+    try:
+        do_multiscale_clean
+    except:
+        do_multiscale_clean = True
+
+    do_singlescale_clean = True
+    do_postprocess = True
+
+    try:
+        smallscalebias_combo
+    except NameError:
+        smallscalebias = 0.6
+    else:
+        smallscalebias = smallscalebias_combo
+    snr_thresh = 0.0
+    multiscale_delta_thresh = 0.01    
+    scales_as_angle = [0, 1, 2.5, 5, 10]
+
     execfile('../scripts/imageMultiscale.py')   
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -86,11 +120,34 @@ if do_image_12m:
     input_vis = input_vis_12m
     cube_root = cube_root_12m
 
-    multiscale_threshold = str(4.0*(imstat_7m['medabsdevmed'][0]/0.6745))+'Jy/beam'
-    outerscale = 6.2
-    smallscalebias = 0.6
-    snr_thresh = 4.0
-    singlescale_threshold = None
+    do_make_dirty_cube = True
+    do_revert_to_dirty = False
+
+    if do_use_pbmask == False:
+        do_read_in_clean_mask = True
+    else:
+        do_read_in_clean_mask = False
+
+    try:
+        do_multiscale_clean
+    except:
+        do_multiscale_clean = True
+
+    do_singlescale_clean = True
+    do_postprocess = True
+
+    try:
+        smallscalebias_12m
+    except NameError:
+        smallscalebias = 0.6
+    else:
+        smallscalebias = smallscalebias_12m
+
+    #outerscale = 6.2
+
+    snr_thresh = 0.0
+    delta_thresh = 0.01
+    scales_as_angle = [0, 1, 2.5, 5.]
 
     execfile('../scripts/imageMultiscale.py')
 

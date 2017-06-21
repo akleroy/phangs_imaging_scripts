@@ -31,7 +31,7 @@ script_extract_continuum = False
 # Image data
 script_image_cube = True
 
-clean_mask_file = '../clean_masks/ngc4254_co21_widemask.fits'
+clean_mask_file = '../clean_masks/ngc4254_co21_clean_mask.fits'
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # EXTRACTION
@@ -94,11 +94,11 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_use_pbmask = True
+    do_use_pbmask = False
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
-    max_loop = 10
+    max_loop = 20
     pb_limit = 0.25
     uvtaper = None    
     

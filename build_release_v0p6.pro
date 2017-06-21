@@ -768,8 +768,8 @@ pro build_release_v0p6 $
               sxaddpar, target_hdr, 'CTYPE1', 'RA---SIN'
               sxdelpar, target_hdr, 'CRVAL1'
               sxaddpar, target_hdr, 'CRVAL1', double((merge_ra[merge_ind]*1.0)[0])
-              sxdelpar, target_hdr, 'NAXIS1'
-              sxaddpar, target_hdr, 'NAXIS1', npix_ra[0]*1.0
+              sxdelpar, target_hdr, 'NAXIS1'              
+              sxaddpar, target_hdr, 'NAXIS1', long(npix_ra[0]), after='NAXIS'
               sxdelpar, target_hdr, 'CRPIX1'
               sxaddpar, target_hdr, 'CRPIX1', crpix_ra[0]*1.0
 
@@ -777,7 +777,7 @@ pro build_release_v0p6 $
               sxdelpar, target_hdr, 'CRVAL2'
               sxaddpar, target_hdr, 'CRVAL2', double((merge_dec[merge_ind]*1.0)[0])
               sxdelpar, target_hdr, 'NAXIS2'
-              sxaddpar, target_hdr, 'NAXIS2', npix_dec[0]*1.0
+              sxaddpar, target_hdr, 'NAXIS2', long(npix_dec[0]), after='NAXIS1'
               sxdelpar, target_hdr, 'CRPIX2'
               sxaddpar, target_hdr, 'CRPIX2', crpix_dec[0]*1.0
               
@@ -839,8 +839,6 @@ pro build_release_v0p6 $
               disp, max(new_part1, dim=3, /nan), max=1
               disp, max(new_part2, dim=3, /nan), max=1
               
-              stop
-
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; WRITE TO DISK
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -990,13 +988,17 @@ pro build_release_v0p6 $
 
         ppbeam = calc_pixperbeam(hdr=hdr)
 
+        fac = 1.0
+        if gals[ii] eq 'ngc1672' then $
+           fac = 0.25
+
         make_cprops_mask $
            , indata=cube $
            , inrms = rms_cube $
            , lo_thresh = 2 $
            , hi_thresh = 5. $
            , hi_nchan = 2 $
-           , min_area = ppbeam $
+           , min_area = fac*ppbeam $
            , outmask=mask
 
         conv_with_gauss $
@@ -1005,7 +1007,7 @@ pro build_release_v0p6 $
            , target = [1,1,0.] * 20.0 $
            , out_data=out_mask $
            , /perbeam        
-        mask = out_mask ge 1.0
+        mask = out_mask ge 0.5
 
         conv_with_gauss $
            , data=cube $
@@ -1044,28 +1046,30 @@ pro build_release_v0p6 $
            , /perbeam        
         tp_mask = out_tp_mask ge 1.0
 
-        mask = mask or tp_mask
-        mask = grow_mask(mask, iters=1, /z_only)
+        mask = (mask + tp_mask) ge 1
+        mask = grow_mask(mask, iters=3, /z_only)
+        if gals[ii] eq 'ngc1672' then $
+           mask = grow_mask(mask, iters=5, /z_only)
         mask = grow_mask(mask, iters=5, /xy_only)
 
         !p.multi=[0,2,2]
 
         loadct, 33
-        disp, max(cube, dim=3, /nan)
+        disp, max(cube, dim=3, /nan), /xs, /ys
         contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         loadct, 33
-        disp, max(cube, dim=2, /nan)
+        disp, max(cube, dim=2, /nan), /xs, /ys
         contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         loadct, 33
-        disp, max(cube, dim=1, /nan)
+        disp, max(cube, dim=1, /nan), /xs, /ys
         contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         sxaddpar, hdr, 'BUNIT', 'MASK'
         writefits $
            , dir+gals[ii]+'_co21_clean_mask.fits' $
-           , mask*1.0, hdr
+           , float(mask*1.0), hdr
         
      endfor
 

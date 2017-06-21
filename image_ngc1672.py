@@ -16,7 +16,7 @@ calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X27
                     '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X271/group.uid___A001_X2fb_X272/member.uid___A001_X2fb_X275/calibrated/calibrated_final.ms'
                     }
 
-clean_mask_file = '../clean_masks/ngc1672_co21_widemask.fits'
+clean_mask_file = '../clean_masks/ngc1672_co21_clean_mask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -94,11 +94,11 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_use_pbmask = True
+    do_use_pbmask = False
     linetag = 'co21'
-    specmode = 'cube'    
+    specmode = 'cube'
     restfreq_ghz = line_list[linetag]
-    max_loop = 10
+    max_loop = 20
     pb_limit = 0.25
     uvtaper = None    
     
@@ -111,8 +111,11 @@ if script_image_cube:
     input_vis_12m = 'ngc1672_12m_co21.ms'
     cube_root_12m = 'ngc1672_co21_12m'
 
-    do_image_7m = True
-    do_image_combo = False
-    do_image_12m = False
+    smallscalebias_7m = 0.8
+    do_image_7m = False
+    smallscalebias_combo = 0.8
+    do_image_combo = True
+    smallscalebias_12m = 0.8
+    do_image_12m = True
 
     execfile('../scripts/phangsImagingPipeline.py')

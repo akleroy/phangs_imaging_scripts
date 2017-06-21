@@ -16,7 +16,7 @@ vwidth_kms = 700
 calibrated_files = {'12m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X287/calibrated/uid___A002_Xaf5c32_X6d2.ms.split.cal',
                     '7m':'../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X289/calibrated/calibrated_final.ms'}
 
-clean_mask_file = '../clean_masks/ngc3627_co21_widemask.fits'
+clean_mask_file = '../clean_masks/ngc3627_co21_clean_mask.fits'
 
 # --------------------------------------
 # Overall control flow
@@ -94,11 +94,11 @@ if script_extract_continuum:
 
 if script_image_cube:
 
-    do_use_pbmask = True
+    do_use_pbmask = False
     linetag = 'co21'
     specmode = 'cube'    
     restfreq_ghz = line_list[linetag]
-    max_loop = 10
+    max_loop = 20
     pb_limit = 0.25
     uvtaper = None    
     
@@ -111,8 +111,21 @@ if script_image_cube:
     input_vis_12m = 'ngc3627north_12m_co21.ms'
     cube_root_12m = 'ngc3627north_co21_12m'
 
+    # Custom call for the 7m here due to divergence.
+    smallscalebias_7m = 0.6
+    snr_thresh = 4.0
     do_image_7m = True
     do_image_combo = False
+    do_image_12m = False
+    do_multiscale_clean = True
+    execfile('../scripts/phangsImagingPipeline.py')
+    do_multiscale_clean = True
+    do_image_7m = False
+
+    snr_thresh = 0.0
+    smallscalebias_combo = 0.6
+    do_image_combo = False
+    smallscalebias_12m = 0.6
     do_image_12m = False
 
     execfile('../scripts/phangsImagingPipeline.py')
