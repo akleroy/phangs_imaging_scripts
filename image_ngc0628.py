@@ -158,8 +158,8 @@ if script_image_cube:
     input_vis_12m = 'ngc0628_12m_co21.ms'
     cube_root_12m = 'ngc0628_co21_12m'
 
-    do_image_7m = True
+    do_image_7m = False
     do_image_combo = False
-    do_image_12m = False
+    do_image_12m = True
 
     execfile('../scripts/phangsImagingPipeline.py')

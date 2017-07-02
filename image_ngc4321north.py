@@ -30,7 +30,7 @@ script_extract_co21 = False
 script_extract_c18o21 = False
 script_extract_continuum = False
 
-# Image data
+# Image data>
 script_image_cube = True
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -111,8 +111,12 @@ if script_image_cube:
     input_vis_12m = 'ngc4321north_12m_co21.ms'
     cube_root_12m = 'ngc4321north_co21_12m'
 
-    do_image_7m = True
-    do_image_combo = False
-    do_image_12m = False
+    do_image_7m = False
+    do_image_combo = True
+    do_image_12m = True
+
+    smallscalebias_7m = 0.6
+    smallscalebias_combo = 0.8
+    smallscalebias_12m = 0.8
 
     execfile('../scripts/phangsImagingPipeline.py')

@@ -57,7 +57,17 @@ if do_image_7m:
         snr_thresh
     except NameError:
         snr_thresh = 0.0
-    multiscale_delta_thresh = 0.01
+
+    try:
+        multiscale_delta_thresh
+    except NameError:
+        multiscale_delta_thresh = 0.01
+
+    try:
+        singlescale_delta_thresh
+    except NameError:
+        singlescale_delta_thresh = 0.01
+
     scales_as_angle = [0, 5, 10]
 
     execfile('../scripts/imageMultiscale.py')
@@ -99,8 +109,22 @@ if do_image_combo:
         smallscalebias = 0.6
     else:
         smallscalebias = smallscalebias_combo
-    snr_thresh = 0.0
-    multiscale_delta_thresh = 0.01    
+
+    try:
+        snr_thresh
+    except NameError:
+        snr_thresh = 0.0
+
+    try:
+        multiscale_delta_thresh
+    except NameError:
+        multiscale_delta_thresh = 0.01
+
+    try:
+        singlescale_delta_thresh
+    except NameError:
+        singlescale_delta_thresh = 0.01
+
     scales_as_angle = [0, 1, 2.5, 5, 10]
 
     execfile('../scripts/imageMultiscale.py')   
@@ -143,11 +167,22 @@ if do_image_12m:
     else:
         smallscalebias = smallscalebias_12m
 
-    #outerscale = 6.2
+    try:
+        snr_thresh
+    except NameError:
+        snr_thresh = 0.0
 
-    snr_thresh = 0.0
-    delta_thresh = 0.01
-    scales_as_angle = [0, 1, 2.5, 5.]
+    try:
+        multiscale_delta_thresh
+    except NameError:
+        multiscale_delta_thresh = 0.01
+
+    try:
+        singlescale_delta_thresh
+    except NameError:
+        singlescale_delta_thresh = 0.01
+
+    scales_as_angle = [0, 1, 2.5, 5]
 
     execfile('../scripts/imageMultiscale.py')
 

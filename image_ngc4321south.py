@@ -106,13 +106,17 @@ if script_image_cube:
     cube_root_7m = 'ngc4321south_co21_7m'
 
     input_vis_combo = 'ngc4321south_956_co21.ms'
-    cube_root_combo = 'ngc4321south_co21_12m'
+    cube_root_combo = 'ngc4321south_co21_12m+7m'
 
     input_vis_12m = 'ngc4321south_12m_co21.ms'
     cube_root_12m = 'ngc4321south_co21_12m'
 
-    do_image_7m = True
+    do_image_7m = False
     do_image_combo = False
-    do_image_12m = False
+    do_image_12m = True
+
+    smallscalebias_7m = 0.6
+    smallscalebias_combo = 0.8
+    smallscalebias_12m = 0.8
 
     execfile('../scripts/phangsImagingPipeline.py')

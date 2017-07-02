@@ -114,7 +114,7 @@ if script_image_cube:
     # Custom call for the 7m here due to divergence.
     smallscalebias_7m = 0.6
     snr_thresh = 4.0
-    do_image_7m = True
+    do_image_7m = False
     do_image_combo = False
     do_image_12m = False
     do_multiscale_clean = True
@@ -124,8 +124,8 @@ if script_image_cube:
 
     snr_thresh = 0.0
     smallscalebias_combo = 0.6
-    do_image_combo = False
+    do_image_combo = True
     smallscalebias_12m = 0.6
-    do_image_12m = False
+    do_image_12m = True
 
     execfile('../scripts/phangsImagingPipeline.py')

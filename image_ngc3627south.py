@@ -112,7 +112,7 @@ if script_image_cube:
     cube_root_12m = 'ngc3627south_co21_12m'
 
     do_image_7m = True
-    do_image_combo = False
-    do_image_12m = False
+    do_image_combo = True
+    do_image_12m = True
 
     execfile('../scripts/phangsImagingPipeline.py')
