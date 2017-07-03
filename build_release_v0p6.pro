@@ -14,7 +14,6 @@ pro build_release_v0p6 $
    , correct=do_correct $
    , convolve=do_conv_to_res $
    , compile=do_compile
-
 ;+
 ;
 ; Scripts to build the imaged data into a data release.

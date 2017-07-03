@@ -3,12 +3,12 @@
 gal_list = [
     'ic5332',
     'ngc0628',
-    'ngc1087',
-    'ngc1300',
-    'ngc1385',
-    'ngc1433',
-    'ngc1512',
-    'ngc1566',
+    #'ngc1087',
+    #'ngc1300',
+    #'ngc1385',
+    #'ngc1433',
+    #'ngc1512',
+    #'ngc1566',
     'ngc1672',
     'ngc2835',
     'ngc3351',
@@ -38,7 +38,7 @@ for gal in gal_list:
 for gal in gal_list:
     print "Feathering "+gal    
     feather(imagename=gal+'_co21_12m+7m_feathered.image',
-            highres=gal+'_co21_12m+7mflat_round.image',
+            highres=gal+'_co21_12m+7m_flat_round.image',
             lowres=gal+'_tp_tapered_12m+7m.image')
 
 for gal in gal_list:
