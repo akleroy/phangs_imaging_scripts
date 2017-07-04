@@ -3,8 +3,9 @@
 # column 3: target area Dec center (degrees)
 # column 4: target area RA extent (arcsec)
 # column 4: target area Dec extent (arcsec)
-ngc3627	 170.0623508	12.9915378	240	380
-ngc4254	 184.706682	14.416509	320	320
-ngc4321	 185.728463   	15.821818	320	320
-ngc5068	 199.728375  	-21.039111	380	320
-ngc6744	 287.442083  	-63.857528	300	400
+# column 5: total power is the same for both (i.e., copy don't merge)
+ngc3627	 170.0623508	12.9915378	240	380 	 1
+ngc4254	 184.706682	14.416509	320	320	 1
+ngc4321	 185.728463   	15.821818	320	320	 1
+ngc5068	 199.728375  	-21.039111	380	320	 1
+ngc6744	 287.442083  	-63.857528	300	400	 0

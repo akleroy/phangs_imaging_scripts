@@ -514,7 +514,7 @@ pro build_release_v0p6 $
         if n_elements(just) gt 0 then $
            if total(just eq gals[ii]) eq 0 then continue
 
-        message, 'Copying data to feather '+gals[ii], /info
+        message, 'Copying data from feathered '+gals[ii], /info
 
         if total(gals[ii] eq two_part) eq 0 then begin                 
            galname = [gals[ii]]
@@ -607,8 +607,8 @@ pro build_release_v0p6 $
      dir = release_dir+'process/'
      
      readcol $
-        , 'twopart_fields.txt', format='A,F,F,F,F' $
-        , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec $
+        , 'twopart_fields.txt', format='A,F,F,F,F,I' $
+        , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec, merge_copy_tp $
         , comment='#'
 
      in_dir = release_dir+'process/'
@@ -848,7 +848,84 @@ pro build_release_v0p6 $
 
            endfor
 
-; Add a TP alignment step here?
+; MERGE THE TOTAL POWER - USUALLY JUST A COPYING STEP
+
+           part1 = readfits(in_dir+galname[0]+'_tp_k.fits', part1_hdr)
+           part2 = readfits(in_dir+galname[1]+'_tp_k.fits', part2_hdr)
+           target_hdr = part1_hdr
+           
+           merge_ind = where(gals[ii] eq strcompress(merge_name,/rem) $
+                             , merge_ct)
+           if merge_ct eq 0 then begin
+              message, 'Failed to find a match in the merge table. Stopping.', /info
+              stop
+           endif
+           if merge_copy_tp[merge_ind] then begin
+              writefits, out_dir+gals[ii]+'_tp_k.fits' $
+                         , part1, part1_hdr
+           endif else begin
+              target_hdr = part1_hdr
+              cdelt = abs(sxpar(target_hdr,'CDELT1'))
+
+              npix_ra = abs(ceil(merge_dra[merge_ind]/3600. / cdelt))
+              crpix_ra = npix_ra/2.0
+
+              npix_dec = abs(ceil(merge_ddec[merge_ind]/3600. / cdelt))
+              crpix_dec = npix_dec/2.0
+
+              sxaddpar, target_hdr, 'CTYPE1', 'RA---SIN'
+              sxdelpar, target_hdr, 'CRVAL1'
+              sxaddpar, target_hdr, 'CRVAL1', double((merge_ra[merge_ind]*1.0)[0])
+              sxdelpar, target_hdr, 'NAXIS1'              
+              sxaddpar, target_hdr, 'NAXIS1', long(npix_ra[0]), after='NAXIS'
+              sxdelpar, target_hdr, 'CRPIX1'
+              sxaddpar, target_hdr, 'CRPIX1', crpix_ra[0]*1.0
+
+              sxaddpar, target_hdr, 'CTYPE2', 'DEC--SIN'  
+              sxdelpar, target_hdr, 'CRVAL2'
+              sxaddpar, target_hdr, 'CRVAL2', double((merge_dec[merge_ind]*1.0)[0])
+              sxdelpar, target_hdr, 'NAXIS2'
+              sxaddpar, target_hdr, 'NAXIS2', long(npix_dec[0]), after='NAXIS1'
+              sxdelpar, target_hdr, 'CRPIX2'
+              sxaddpar, target_hdr, 'CRPIX2', crpix_dec[0]*1.0
+              
+              cube_hastrom $
+                 , data = part1 $
+                 , hdr_in = part1_hdr $
+                 , target_hdr = target_hdr $
+                 , outcube = new_part1 $
+                 , outhdr = new_part1_hdr $
+                 , missing=!values.f_nan
+              
+              cube_hastrom $
+                 , data = part2 $
+                 , hdr_in = part2_hdr $
+                 , target_hdr = target_hdr $
+                 , outcube = new_part2 $
+                 , outhdr = new_part2_hdr $
+                 , missing=!values.f_nan
+              
+              cube_out = new_part1*!values.f_nan
+              
+              cov_part1 = finite(new_part1)
+              cov_part2 = finite(new_part2)
+
+              ind = where(cov_part1 eq 1 and cov_part2 eq 0, ct)
+              if ct gt 0 then $
+                 cube_out[ind] = new_part1[ind]
+              
+              ind = where(cov_part1 eq 0 and cov_part2 eq 1, ct)
+              if ct gt 0 then $
+                 cube_out[ind] = new_part2[ind]
+              
+              ind = where(cov_part1 eq 1 and cov_part2 eq 1, ct)
+              if ct gt 0 then $
+                 cube_out[ind] = (new_part1[ind] + new_part2[ind])/2.0
+              
+              writefits, out_dir+gals[ii]+'_tp_k.fits' $
+                         , cube_out, target_hdr
+
+           endelse           
 
         endfor
         
@@ -1085,54 +1162,80 @@ pro build_release_v0p6 $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
      
      dir = release_dir+'process/'
-     target_res = [60, 80, 120, 500, 750]
+     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
      n_res = n_elements(target_res)
      tol = 0.1
 
-     for ii = 0, n_final_gals-1 do begin
-        
+     s = gal_data(gals)
+
+     for ii = 0, n_gals-1 do begin
+
+        dir = release_dir+'process/'
+
+        message, '', /info
+        message, "Convolving the cubes for "+gals[ii], /info
+        message, '', /info
+
         if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-        
-        gal = final_gals[ii]
-        
-        ext_to_convolve = $
-           ['_co21_flat_round' $
-            , '_co21_pbcorr_round' $
-            , '_co21_resid_round' $
-            , '_co21_feather_pbcorr']
-        n_ext = n_elements(ext_to_convolve)
+           if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
+
+        for kk = 0, 1 do begin
+
+           if kk eq 0 then begin
+              array = '_7m+tp'
+           endif
            
-        for jj = 0, n_ext-1 do begin        
-           
-           cube = readfits(dir+gal+ext_to_convolve[jj]+'_correct.fits', hdr)           
-           s = gal_data(dirs[ii])
-           sxaddpar, hdr, 'DIST', s.dist_mpc, 'MPC / USED IN CONVOLUTION'           
-           current_res = s.dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
-           
-           for kk = 0, n_res -1 do begin
-              
-              res_str = strcompress(str(target_res[kk]),/rem)+'pc'
-              out_name = dir+strlowcase(gal)+ext_to_convolve[jj]+'_'+res_str+'.fits'
-              target_res_as = target_res[kk]/(s.dist_mpc*1d6)/!dtor*3600.d
-              
-              if current_res gt (1.0+tol)*target_res[jj] then begin
-                 print, strupcase(gal)+": Resolution too coarse. Skipping."
+           if kk eq 1 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
                  continue
-              endif
+              if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
+                 continue
+           endif
+        
+           print, "ARRAY == ", array
+
+           gal = gals[ii]
+        
+           ext_to_process = $
+              ['_flat_round_k' $
+               , '_pbcorr_round_k']
+           n_ext = n_elements(ext_to_process)
+           
+           for jj = 0, n_ext-1 do begin                   
               
-              if abs(current_res - target_res[kk])/target_res[kk] lt tol then begin
-                 print, strupcase(gal)+": I will call ", current_res, " ", target_res[kk]
-                 writefits, out_name, cube, hdr           
-              endif else begin                 
-                 print, strupcase(gal)+": I will convolve ", current_res, " to ", target_res[kk]
-                 conv_with_gauss $
-                    , data=cube $
-                    , hdr=hdr $
-                    , target_beam=target_res_as*[1,1,0] $
-                    , out_file=out_name              
-              endelse
+              cube = readfits(dir+strlowcase(gal)+ $
+                              '_co21'+array+ext_to_process[jj]+'.fits', hdr)           
+              sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'           
+              current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
               
+              for zz = 0, n_res -1 do begin
+                 
+                 res_str = strcompress(str(target_res[zz]),/rem)+'pc'
+                 out_name = dir+strlowcase(gal)+ $
+                            '_co21'+array+ext_to_process[jj]+'_'+res_str+'.fits'
+                 target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                 
+                 if current_res_pc gt (1.0+tol)*target_res[zz] then begin
+                    print, strupcase(gal)+": Resolution too coarse. Skipping."
+                    continue
+                 endif
+                 
+                 if abs(current_res_pc - target_res[zz])/target_res[zz] lt tol then begin
+                    print, strupcase(gal)+": I will call ", current_res_pc, " ", target_res[zz]
+                    writefits, out_name, cube, hdr
+                 endif else begin                 
+                    print, strupcase(gal)+": I will convolve ", current_res_pc $
+                           , " to ", target_res[zz]
+                    conv_with_gauss $
+                       , data=cube $
+                       , hdr=hdr $
+                       , target_beam=target_res_as*[1,1,0] $
+                       , out_file=out_name
+                 endelse
+              
+              endfor
+
            endfor
            
         endfor
@@ -1327,6 +1430,7 @@ pro build_release_v0p6 $
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
      
      if keyword_set(do_collapse) then begin
+        
 
         message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
         message, 'COLLAPSE INTO MOMENTS', /info
