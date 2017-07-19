@@ -659,7 +659,7 @@ pro build_release_v0p5 $
 
      for ii = 0, n_final_gals-1 do begin
 
-        if n_elements(just) gt 0 then $
+        if n_elemadmiients(just) gt 0 then $
            if total(just eq final_gals[ii]) eq 0 then continue
         
         gal = final_gals[ii]

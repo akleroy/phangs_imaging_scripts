@@ -13,6 +13,7 @@ pro build_release_v0p6 $
    , clean_mask=do_clean_mask $
    , correct=do_correct $
    , convolve=do_conv_to_res $
+   , noise=do_noise $
    , compile=do_compile
 ;+
 ;
@@ -708,43 +709,51 @@ pro build_release_v0p6 $
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
               beam1 = sxpar(part1_hdr, 'BMAJ')
-              beam2 = sxpar(part2_hdr, 'BMAJ')
+              beam2 = sxpar(part2_hdr, 'BMAJ')              
 
-              if beam1 gt beam2 then begin
-                 target_bmaj = beam1
-                 conv_with_gauss $
-                    , data=part2 $
-                    , hdr=part2_hdr $
-                    , target =[1,1,0.]*target_bmaj $
-                    , out_data=new_part2 $
-                    , out_hdr=new_part2_hdr $
-                    , /perbeam
-                 nan_ind = where(finite(part2) eq 0, nan_ct)
-                 if nan_ct gt 0 then new_part2[nan_ind] = !values.f_nan
-                 part2 = new_part2
-                 part2_hdr = new_part2_hdr
-                 target_hdr = part2_hdr                 
-              endif
+              pix = abs(sxpar(part2_hdr,'CDELT1'))
+              target_bmaj = sqrt((beam1 > beam2)^2+pix^2)*3600.
+              
+              conv_with_gauss $
+                 , data=part1 $
+                 , hdr=part1_hdr $
+                 , target =[1,1,0.]*target_bmaj $
+                 , out_data=new_part1 $
+                 , out_hdr=new_part1_hdr $
+                 , /perbeam $
+                 , worked=worked
+              if worked eq 0 then begin
+                 message, 'Problem with convolution in merging.', /info
+                 stop
+              endif 
 
-              if beam2 gt beam1 then begin
-                 target_bmaj = beam2
-                 conv_with_gauss $
-                    , data=part1 $
-                    , hdr=part1_hdr $
-                    , target =[1,1,0.]*target_bmaj $
-                    , out_data=new_part1 $
-                    , out_hdr=new_part1_hdr $
-                    , /perbeam
-                 nan_ind = where(finite(part1) eq 0, nan_ct)
-                 if nan_ct gt 0 then new_part1[nan_ind] = !values.f_nan
-                 part1 = new_part1
-                 part1_hdr = new_part1_hdr
-                 target_hdr = part1_hdr
-              endif
+              nan_ind = where(finite(part1) eq 0, nan_ct)
+              if nan_ct gt 0 then new_part1[nan_ind] = !values.f_nan
+              part1 = new_part1
+              part1_hdr = new_part1_hdr
 
-              if beam2 eq beam1 then begin
-                 target_hdr = part1_hdr
-              endif
+              conv_with_gauss $
+                 , data=part2 $
+                 , hdr=part2_hdr $
+                 , target =[1,1,0.]*target_bmaj $
+                 , out_data=new_part2 $
+                 , out_hdr=new_part2_hdr $
+                 , /perbeam $
+                 , worked=worked
+              if worked eq 0 then begin
+                 message, 'Problem with convolution in merging.', /info
+                 stop
+              endif 
+              
+              nan_ind = where(finite(part2) eq 0, nan_ct)
+              if nan_ct gt 0 then new_part2[nan_ind] = !values.f_nan
+              part2 = new_part2
+              part2_hdr = new_part2_hdr
+
+              target_hdr = part1_hdr
+
+              print, "Beam 1, Beam 2, Target Beam: ", beam1*3600., beam2*3600, target_bmaj
+              print, "Beam in target header: ", sxpar(target_hdr, 'bmaj')*3600.
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; GENERATE A NEW TARGET HEADER AND ALIGN TO THE TARGET
@@ -1023,6 +1032,7 @@ pro build_release_v0p6 $
                 
                  cube = readfits(out_file, hdr)           
                  jtok = calc_jtok(hdr=hdr)
+                 cube *= jtok
                  sxaddpar, hdr, 'BUNIT', 'K'
                  writefits $
                     , dir+galname[zz]+'_co21'+array+ext_to_process[jj]+"_k.fits" $
@@ -1255,45 +1265,95 @@ pro build_release_v0p6 $
         message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
         dir = release_dir+'process/'
+        target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+        n_res = n_elements(target_res)
 
-        for ii = 0, n_final_gals-1 do begin
+        for ii = 0, n_gals-1 do begin
 
-           message, 'Estimating noise for '+final_gals[ii], /info
+           message, 'Estimating noise for '+gals[ii], /info
 
            if n_elements(just) gt 0 then $
-              if total(just eq final_gals[ii]) eq 0 then continue
-           
-           gal = final_gals[ii]
+              if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
 
-           ext = $
-              ['_co21_flat_round' $
-               , '_co21_flat_round_smoothed' $
-               , '_co21_feather_pbcorr' $
-               , '_co21_feather_pbcorr_smoothed' $
-              ]
-           n_ext = n_elements(ext)
+           for kk = 0, 1 do begin
 
-           for jj = 0, n_ext-1 do begin
-
-              fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
-
-              if fct eq 0 then begin
-                 message, "No file found for "+fname, /info
-                 continue
+              if kk eq 0 then begin
+                 array = '_7m+tp'
               endif
+           
+              if kk eq 1 then begin
+                 array = '_12m+7m+tp'
+                 if keyword_set(only_7m) then $
+                    continue
+                 if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
+                    continue
+              endif
+        
+              print, "ARRAY == ", array
 
-              cube = readfits(fname, cube_hdr)
-              
-              make_noise_cube $
-                 , cube_in = cube $
-                 , out_cube = rms_cube $
-                 , box = 21 $
-                 , /twod_only $
-                 , /show $
-                 , /iterate
-              
-              writefits, dir+gal+ext[jj]+'_noise.fits', rms_cube, cube_hdr
+              gal = gals[ii]
+        
+              ext_to_process = $
+                 ['_flat_round_k' $
+                  , '_pbcorr_round_k']
+              n_ext = n_elements(ext_to_process)
+           
+              for jj = 0, n_ext-1 do begin
 
+                 fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                     +ext_to_process[jj]+'.fits', count=fct)
+
+                 if fct eq 0 then begin
+                    message, "No file found for "+fname, /info
+                    continue
+                 endif
+
+                 cube = readfits(fname, cube_hdr)
+              
+                 make_noise_cube $
+                    , cube_in = cube $
+                    , out_cube = rms_cube $
+                    , box = 21 $
+                    , /twod_only $
+                    , /show $
+                    , /iterate
+                 
+                 outfile = dir+strlowcase(gal)+'_co21'+array $
+                           +ext_to_process[jj]+'_noise.fits'
+                 writefits, outfile, rms_cube, cube_hdr
+
+                 for zz = 0, n_res - 1 do begin
+
+                    res_str = strcompress(str(target_res[zz]),/rem)+'pc'
+                    print, "Resolution "+res_str
+
+                    fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                        +ext_to_process[jj]+ $
+                                        '_'+res_str+'.fits', count=fct)
+                    
+                    if fct eq 0 then begin
+                       message, "No file found for "+fname, /info
+                       continue
+                    endif                    
+
+                    cube = readfits(fname, cube_hdr)
+              
+                    make_noise_cube $
+                       , cube_in = cube $
+                       , out_cube = rms_cube $
+                       , box = 21 $
+                       , /twod_only $
+                       , /show $
+                       , /iterate
+
+                    outfile = dir+strlowcase(gal)+'_co21'+array $
+                              +ext_to_process[jj]+'_'+res_str+'_noise.fits'
+                    writefits, outfile, rms_cube, cube_hdr
+
+                 endfor
+
+              endfor
+              
            endfor
 
         endfor
