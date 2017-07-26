@@ -63,6 +63,9 @@ if script_extract_continuum:
 # --------------------------------------
 
 if special_concat:
+
+    #12CO
+
     files_to_concat = []
     for this_tag in calibrated_files.keys():
         if this_tag[0:2] == '7m':
@@ -78,6 +81,28 @@ if special_concat:
         if this_tag[0:3] == '12m':
             files_to_concat.append(out_root+'_'+this_tag+'_co21.ms')
     out_file = out_root+'_12m_co21.ms'
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')
+    concat(vis=files_to_concat,
+           concatvis=out_file)
+
+    # CONT
+
+    files_to_concat = []
+    for this_tag in calibrated_files.keys():
+        if this_tag[0:2] == '7m':
+            files_to_concat.append(out_root+'_'+this_tag+'_cont.ms')
+    out_file = out_root+'_7m_cont.ms'
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')
+    concat(vis=files_to_concat,
+           concatvis=out_file)
+
+    files_to_concat = []
+    for this_tag in calibrated_files.keys():
+        if this_tag[0:3] == '12m':
+            files_to_concat.append(out_root+'_'+this_tag+'_cont.ms')
+    out_file = out_root+'_12m_cont.ms'
     os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.flagversions')
     concat(vis=files_to_concat,

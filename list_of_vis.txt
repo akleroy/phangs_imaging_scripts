@@ -1,0 +1,192 @@
+# column 1: galaxy (and directory name)
+# column 2: measurement set
+ic5332	 ic5332_12m_co21.ms
+ic5332	 ic5332_7m_co21.ms
+ic5332	 ic5332_925_co21.ms
+ic5332	 ic5332_12m_c18o21.ms
+ic5332	 ic5332_7m_c18o21.ms
+ic5332	 ic5332_925_c18o21.ms
+ic5332	 ic5332_12m_cont.ms
+ic5332	 ic5332_7m_cont.ms
+ic5332	 ic5332_925_cont.ms
+#
+ngc0628	 ngc0628_12m_co21.ms
+ngc0628	 ngc0628_7m_co21.ms
+ngc0628	 ngc0628_650_co21.ms
+#ngc0628	 ngc0628_12m_cont.ms
+#ngc0628	 ngc0628_7m_cont.ms
+ngc0628	 ngc0628_650_cont.ms
+#
+ngc1087	 ngc1087_7m_co21.ms
+ngc1087	 ngc1087_7m_c18o21.ms
+ngc1087	 ngc1087_7m_cont.ms
+#
+ngc1300	 ngc1300_7m_co21.ms
+ngc1300	 ngc1300_7m_c18o21.ms
+ngc1300	 ngc1300_7m_cont.ms
+#
+ngc1385	 ngc1385_7m_co21.ms
+ngc1385	 ngc1385_7m_c18o21.ms
+ngc1385	 ngc1385_7m_cont.ms
+#
+ngc1433	 ngc1433_7m_co21.ms
+ngc1433	 ngc1433_7m_c18o21.ms
+ngc1433	 ngc1433_7m_cont.ms
+#
+ngc1512	 ngc1512_7m_co21.ms
+ngc1512	 ngc1512_7m_c18o21.ms
+ngc1512	 ngc1512_7m_cont.ms
+#
+ngc1566	 ngc1566_7m_co21.ms
+ngc1566	 ngc1566_7m_c18o21.ms
+ngc1566	 ngc1566_7m_cont.ms
+#
+ngc1672	 ngc1672_12m_co21.ms
+ngc1672	 ngc1672_7m_co21.ms
+ngc1672	 ngc1672_956_co21.ms
+ngc1672	 ngc1672_12m_c18o21.ms
+ngc1672	 ngc1672_7m_c18o21.ms
+ngc1672	 ngc1672_956_c18o21.ms
+ngc1672	 ngc1672_12m_cont.ms
+ngc1672	 ngc1672_7m_cont.ms
+ngc1672	 ngc1672_956_cont.ms
+#
+ngc2835	 ngc2835_12m_co21.ms
+ngc2835	 ngc2835_7m_co21.ms
+ngc2835	 ngc2835_925_co21.ms
+ngc2835	 ngc2835_12m_c18o21.ms
+ngc2835	 ngc2835_7m_c18o21.ms
+ngc2835	 ngc2835_925_c18o21.ms
+ngc2835	 ngc2835_12m_cont.ms
+ngc2835	 ngc2835_7m_cont.ms
+ngc2835	 ngc2835_925_cont.ms
+#
+ngc3351	 ngc3351_12m_co21.ms
+ngc3351	 ngc3351_7m_co21.ms
+ngc3351	 ngc3351_956_co21.ms
+ngc3351	 ngc3351_12m_c18o21.ms
+ngc3351	 ngc3351_7m_c18o21.ms
+ngc3351	 ngc3351_956_c18o21.ms
+ngc3351	 ngc3351_12m_cont.ms
+ngc3351	 ngc3351_7m_cont.ms
+ngc3351	 ngc3351_956_cont.ms
+#
+ngc3627	 ngc3627north_12m_co21.ms
+ngc3627	 ngc3627north_7m_co21.ms
+ngc3627	 ngc3627north_956_co21.ms
+ngc3627	 ngc3627north_12m_c18o21.ms
+ngc3627	 ngc3627north_7m_c18o21.ms
+ngc3627	 ngc3627north_956_c18o21.ms
+ngc3627	 ngc3627north_12m_cont.ms
+ngc3627	 ngc3627north_7m_cont.ms
+ngc3627	 ngc3627north_956_cont.ms
+#
+ngc3627	 ngc3627south_12m_co21.ms
+ngc3627	 ngc3627south_7m_co21.ms
+ngc3627	 ngc3627south_956_co21.ms
+ngc3627	 ngc3627south_12m_c18o21.ms
+ngc3627	 ngc3627south_7m_c18o21.ms
+ngc3627	 ngc3627south_956_c18o21.ms
+ngc3627	 ngc3627south_12m_cont.ms
+ngc3627	 ngc3627south_7m_cont.ms
+ngc3627	 ngc3627south_956_cont.ms
+#
+ngc4254	 ngc4254north_12m_co21.ms
+ngc4254	 ngc4254north_7m_co21.ms
+ngc4254	 ngc4254north_956_co21.ms
+ngc4254	 ngc4254north_12m_c18o21.ms
+ngc4254	 ngc4254north_7m_c18o21.ms
+ngc4254	 ngc4254north_956_c18o21.ms
+ngc4254	 ngc4254north_12m_cont.ms
+ngc4254	 ngc4254north_7m_cont.ms
+ngc4254	 ngc4254north_956_cont.ms
+#
+ngc4254	 ngc4254south_12m_co21.ms
+ngc4254	 ngc4254south_7m_co21.ms
+ngc4254	 ngc4254south_956_co21.ms
+ngc4254	 ngc4254south_12m_c18o21.ms
+ngc4254	 ngc4254south_7m_c18o21.ms
+ngc4254	 ngc4254south_956_c18o21.ms
+ngc4254	 ngc4254south_12m_cont.ms
+ngc4254	 ngc4254south_7m_cont.ms
+ngc4254	 ngc4254south_956_cont.ms
+#
+ngc4303	 ngc4303_12m_co21.ms
+ngc4303	 ngc4303_7m_co21.ms
+ngc4303	 ngc4303_956_co21.ms
+ngc4303	 ngc4303_12m_c18o21.ms
+ngc4303	 ngc4303_7m_c18o21.ms
+ngc4303	 ngc4303_956_c18o21.ms
+ngc4303	 ngc4303_12m_cont.ms
+ngc4303	 ngc4303_7m_cont.ms
+ngc4303	 ngc4303_956_cont.ms
+#
+ngc4321	 ngc4321north_12m_co21.ms
+ngc4321	 ngc4321north_7m_co21.ms
+ngc4321	 ngc4321north_956_co21.ms
+ngc4321	 ngc4321north_12m_c18o21.ms
+ngc4321	 ngc4321north_7m_c18o21.ms
+ngc4321	 ngc4321north_956_c18o21.ms
+ngc4321	 ngc4321north_12m_cont.ms
+ngc4321	 ngc4321north_7m_cont.ms
+ngc4321	 ngc4321north_956_cont.ms
+#
+ngc4321	 ngc4321south_12m_co21.ms
+ngc4321	 ngc4321south_7m_co21.ms
+ngc4321	 ngc4321south_956_co21.ms
+ngc4321	 ngc4321south_12m_c18o21.ms
+ngc4321	 ngc4321south_7m_c18o21.ms
+ngc4321	 ngc4321south_956_c18o21.ms
+ngc4321	 ngc4321south_12m_cont.ms
+ngc4321	 ngc4321south_7m_cont.ms
+ngc4321	 ngc4321south_956_cont.ms
+#
+ngc4535	 ngc4535_12m_co21.ms
+ngc4535	 ngc4535_7m_co21.ms
+ngc4535	 ngc4535_956_co21.ms
+ngc4535	 ngc4535_12m_c18o21.ms
+ngc4535	 ngc4535_7m_c18o21.ms
+ngc4535	 ngc4535_956_c18o21.ms
+ngc4535	 ngc4535_12m_cont.ms
+ngc4535	 ngc4535_7m_cont.ms
+ngc4535	 ngc4535_956_cont.ms
+#
+ngc5068	 ngc5068north_12m_co21.ms
+ngc5068	 ngc5068north_7m_co21.ms
+ngc5068	 ngc5068north_925_co21.ms
+ngc5068	 ngc5068north_12m_c18o21.ms
+ngc5068	 ngc5068north_7m_c18o21.ms
+ngc5068	 ngc5068north_925_c18o21.ms
+ngc5068	 ngc5068north_12m_cont.ms
+ngc5068	 ngc5068north_7m_cont.ms
+ngc5068	 ngc5068north_925_cont.ms
+#
+ngc5068	 ngc5068south_12m_co21.ms
+ngc5068	 ngc5068south_7m_co21.ms
+ngc5068	 ngc5068south_925_co21.ms
+ngc5068	 ngc5068south_12m_c18o21.ms
+ngc5068	 ngc5068south_7m_c18o21.ms
+ngc5068	 ngc5068south_925_c18o21.ms
+ngc5068	 ngc5068south_12m_cont.ms
+ngc5068	 ngc5068south_7m_cont.ms
+ngc5068	 ngc5068south_925_cont.ms
+#
+ngc6744	 ngc6744north_12m_co21.ms
+ngc6744	 ngc6744north_7m_co21.ms
+ngc6744	 ngc6744north_956_co21.ms
+ngc6744	 ngc6744north_12m_c18o21.ms
+ngc6744	 ngc6744north_7m_c18o21.ms
+ngc6744	 ngc6744north_956_c18o21.ms
+ngc6744	 ngc6744north_12m_cont.ms
+ngc6744	 ngc6744north_7m_cont.ms
+ngc6744	 ngc6744north_956_cont.ms
+#
+ngc6744	 ngc6744south_12m_co21.ms
+ngc6744	 ngc6744south_7m_co21.ms
+ngc6744	 ngc6744south_956_co21.ms
+ngc6744	 ngc6744south_12m_c18o21.ms
+ngc6744	 ngc6744south_7m_c18o21.ms
+ngc6744	 ngc6744south_956_c18o21.ms
+ngc6744	 ngc6744south_12m_cont.ms
+ngc6744	 ngc6744south_7m_cont.ms
+ngc6744	 ngc6744south_956_cont.ms
