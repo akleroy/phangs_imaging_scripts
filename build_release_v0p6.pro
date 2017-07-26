@@ -14,7 +14,10 @@ pro build_release_v0p6 $
    , correct=do_correct $
    , convolve=do_conv_to_res $
    , noise=do_noise $
-   , compile=do_compile
+   , mask=do_masks $
+   , compile=do_compile $
+   , collapse=do_collapse
+
 ;+
 ;
 ; Scripts to build the imaged data into a data release.
@@ -1029,7 +1032,7 @@ pro build_release_v0p6 $
                        , outfile = out_file $
                        , factor = 2
                  endif
-                
+                 
                  cube = readfits(out_file, hdr)           
                  jtok = calc_jtok(hdr=hdr)
                  cube *= jtok
@@ -1041,7 +1044,7 @@ pro build_release_v0p6 $
               endfor
 
            endfor
-        
+           
         endfor
 
      endfor
@@ -1053,7 +1056,7 @@ pro build_release_v0p6 $
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
   if keyword_set(do_clean_mask) then begin
-          
+     
      for ii = 0, n_gals-1 do begin
         
         message, "Making clean mask for "+gals[ii], /info
@@ -1166,7 +1169,7 @@ pro build_release_v0p6 $
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
   if keyword_set(do_conv_to_res) then begin
-        
+     
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      message, 'CONVOLVING TO PHYSICAL RESOLUTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
@@ -1202,11 +1205,11 @@ pro build_release_v0p6 $
               if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
                  continue
            endif
-        
+           
            print, "ARRAY == ", array
 
            gal = gals[ii]
-        
+           
            ext_to_process = $
               ['_flat_round_k' $
                , '_pbcorr_round_k']
@@ -1243,7 +1246,7 @@ pro build_release_v0p6 $
                        , target_beam=target_res_as*[1,1,0] $
                        , out_file=out_name
                  endelse
-              
+                 
               endfor
 
            endfor
@@ -1251,65 +1254,93 @@ pro build_release_v0p6 $
         endfor
         
      endfor
-        
+     
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; ESTIMATE NOISE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-     if keyword_set(do_noise) then begin
+  if keyword_set(do_noise) then begin
 
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-        message, 'ESTIMATE NOISE', /info
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'ESTIMATE NOISE', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
-        dir = release_dir+'process/'
-        target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
-        n_res = n_elements(target_res)
+     dir = release_dir+'process/'
+     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+     n_res = n_elements(target_res)
 
-        for ii = 0, n_gals-1 do begin
+     for ii = 0, n_gals-1 do begin
 
-           message, 'Estimating noise for '+gals[ii], /info
+        message, 'Estimating noise for '+gals[ii], /info
 
-           if n_elements(just) gt 0 then $
-              if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
+        if n_elements(just) gt 0 then $
+           if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
 
-           for kk = 0, 1 do begin
+        for kk = 0, 1 do begin
 
-              if kk eq 0 then begin
-                 array = '_7m+tp'
-              endif
+           if kk eq 0 then begin
+              array = '_7m+tp'
+           endif
            
-              if kk eq 1 then begin
-                 array = '_12m+7m+tp'
-                 if keyword_set(only_7m) then $
-                    continue
-                 if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
-                    continue
-              endif
-        
-              print, "ARRAY == ", array
-
-              gal = gals[ii]
-        
-              ext_to_process = $
-                 ['_flat_round_k' $
-                  , '_pbcorr_round_k']
-              n_ext = n_elements(ext_to_process)
+           if kk eq 1 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
+                 continue
+           endif
            
-              for jj = 0, n_ext-1 do begin
+           print, "ARRAY == ", array
+
+           gal = gals[ii]
+           
+           ext_to_process = $
+              ['_flat_round_k' $
+               , '_pbcorr_round_k']
+           n_ext = n_elements(ext_to_process)
+           
+           for jj = 0, n_ext-1 do begin
+
+              fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                  +ext_to_process[jj]+'.fits', count=fct)
+
+              if fct eq 0 then begin
+                 message, "No file found for "+fname, /info
+                 continue
+              endif
+
+              cube = readfits(fname, cube_hdr)
+              
+              make_noise_cube $
+                 , cube_in = cube $
+                 , out_cube = rms_cube $
+                 , box = 21 $
+                 , /twod_only $
+                 , /show $
+                 , /iterate
+              
+              outfile = dir+strlowcase(gal)+'_co21'+array $
+                        +ext_to_process[jj]+'_noise.fits'
+              writefits, outfile, rms_cube, cube_hdr
+
+              for zz = 0, n_res - 1 do begin
+
+                 res_str = strcompress(str(target_res[zz]),/rem)+'pc'
+                 print, "Resolution "+res_str
 
                  fname = file_search(dir+strlowcase(gal)+'_co21'+array $
-                                     +ext_to_process[jj]+'.fits', count=fct)
-
+                                     +ext_to_process[jj]+ $
+                                     '_'+res_str+'.fits', count=fct)
+                 
                  if fct eq 0 then begin
                     message, "No file found for "+fname, /info
                     continue
-                 endif
+                 endif                    
 
                  cube = readfits(fname, cube_hdr)
-              
+                 
                  make_noise_cube $
                     , cube_in = cube $
                     , out_cube = rms_cube $
@@ -1317,425 +1348,442 @@ pro build_release_v0p6 $
                     , /twod_only $
                     , /show $
                     , /iterate
-                 
+
                  outfile = dir+strlowcase(gal)+'_co21'+array $
-                           +ext_to_process[jj]+'_noise.fits'
+                           +ext_to_process[jj]+'_'+res_str+'_noise.fits'
                  writefits, outfile, rms_cube, cube_hdr
 
-                 for zz = 0, n_res - 1 do begin
-
-                    res_str = strcompress(str(target_res[zz]),/rem)+'pc'
-                    print, "Resolution "+res_str
-
-                    fname = file_search(dir+strlowcase(gal)+'_co21'+array $
-                                        +ext_to_process[jj]+ $
-                                        '_'+res_str+'.fits', count=fct)
-                    
-                    if fct eq 0 then begin
-                       message, "No file found for "+fname, /info
-                       continue
-                    endif                    
-
-                    cube = readfits(fname, cube_hdr)
-              
-                    make_noise_cube $
-                       , cube_in = cube $
-                       , out_cube = rms_cube $
-                       , box = 21 $
-                       , /twod_only $
-                       , /show $
-                       , /iterate
-
-                    outfile = dir+strlowcase(gal)+'_co21'+array $
-                              +ext_to_process[jj]+'_'+res_str+'_noise.fits'
-                    writefits, outfile, rms_cube, cube_hdr
-
-                 endfor
-
               endfor
-              
-           endfor
 
+           endfor
+           
         endfor
 
-     endif
+     endfor
+
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; BUILD MASKS
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  if keyword_set(do_masks) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'BUILD MASKS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+
+     dir = release_dir+'process/'
+     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+     n_res = n_elements(target_res)
      
-     if keyword_set(do_masks) then begin
+     for ii = 0, n_gals-1 do begin
 
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-        message, 'BUILD MASKS', /info
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'Building a mask for '+gals[ii], /info
 
-        dir = release_dir+'process/'
-        
-        for ii = 0, n_final_gals-1 do begin
+        if n_elements(just) gt 0 then $
+           if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
 
-           if n_elements(just) gt 0 then $
-              if total(just eq final_gals[ii]) eq 0 then continue
+        for kk = 0, 1 do begin
+
+           if kk eq 0 then begin
+              array = '_7m+tp'
+           endif
            
-           gal = final_gals[ii]
+           if kk eq 1 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
+                 continue
+           endif
            
-; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-; MAKE MASKS FOR BOTH RESOLUTIONS
-; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-           ext = $
-              ['_co21_flat_round' $
-               , '_co21_flat_round_smoothed' $
-               , '_co21_feather_pbcorr' $
-               , '_co21_feather_pbcorr_smoothed' $
-              ]
-           n_ext = n_elements(ext)
+           print, "ARRAY == ", array
+           
+           gal = gals[ii]
+           
+           ext_to_process = $
+              ['_flat_round_k']
+           n_ext = n_elements(ext_to_process)
            
            for jj = 0, n_ext-1 do begin
-              
-              fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
 
-              if fct eq 0 then begin
-                 message, "No file found for "+fname, /info
-                 continue
-              endif
+              for zz = 0, n_res do begin
 
-              cube = readfits(dir+gal+ext[jj]+'.fits', cube_hdr)
-              rms_cube = readfits(dir+gal+ext[jj]+'_noise.fits', noise_hdr)
+                 if zz lt n_res then begin
+                    res_str = '_'+strcompress(str(target_res[zz]),/rem)+'pc'
+                    print, "Resolution "+res_str
+                 endif else begin
+                    res_str = ''
+                    print, "Native resolution"
+                 endelse
+                 
+                 fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                     +ext_to_process[jj] $
+                                     +res_str+'.fits', count=fct)
+                 
+                 if fct eq 0 then continue
 
-              ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+                 rms_name = $
+                    file_search(dir+strlowcase(gal)+'_co21'+array $
+                                +ext_to_process[jj] $
+                                +res_str+'_noise.fits', count=noise_ct)
 
-              make_cprops_mask $
-                 , indata=cube $
-                 , inrms = rms_cube $
-                 , lo_thresh = 2 $
-                 , hi_thresh = 3 $
-                 , hi_nchan = 3 $
-                 , min_area = ppbeam $
-                 , outmask=mask
-              
-              !p.multi=[0,2,1]
-              loadct, 33
-              disp, max(cube, dim=3, /nan)
-              contour, max(mask, dim=3), lev=[1], /overplot
+                 if noise_ct eq 0 then continue
 
-              disp, max(cube, dim=2, /nan)
-              contour, max(mask, dim=2), lev=[1], /overplot
-              
-              mask_hdr = cube_hdr
-              sxaddpar, mask_hdr, 'BUNIT', 'MASK'
-              writefits, dir+gal+ext[jj]+'_mask.fits', mask, mask_hdr
+                 cube = readfits(fname, cube_hdr)
+                 
+                 rms_cube = readfits(rms_name, noise_hdr)
 
-           endfor   
+                 ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+                 
+                 make_cprops_mask $
+                    , indata=cube $
+                    , inrms = rms_cube $
+                    , lo_thresh = 2 $
+                    , hi_thresh = 3.5 $
+                    , hi_nchan = 3 $
+                    , min_area = ppbeam $
+                    , outmask=mask
 
-; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-; COMBINE THE MASKS
-; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-           
-           first = 1B
-           for jj = 0, n_ext-1 do begin
-              
-              fname = file_search(dir+gal+ext[jj]+'.fits', count=fct)
-              
-              if fct eq 0 then begin
-                 message, "No file found for "+fname, /info
-                 continue
-              endif
-              
-              this_mask = readfits(dir+gal+ext[jj]+'_mask.fits', mask_hdr)
-              
-              if first then begin
-                 joint_mask = this_mask
-                 first = 0B
-              endif else begin
-                 joint_mask = (joint_mask + this_mask) ge 1
-                 writefits, dir+gal+'_joint_mask.fits', joint_mask, mask_hdr 
-              endelse
+                 !p.multi=[0,2,1]
+                 viridis
+                 disp, max(cube, dim=3, /nan)
+                 contour, max(mask, dim=3), lev=[1], /overplot
+                 
+                 disp, max(cube, dim=2, /nan)
+                 contour, max(mask, dim=2), lev=[1], /overplot
+                 
+                 mask_hdr = cube_hdr
+                 sxaddpar, mask_hdr, 'BUNIT', 'MASK'
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_mask' $
+                            +res_str+'.fits' $
+                            , mask, mask_hdr
+                 
+              endfor
+
            endfor
-           
-; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-; SMOOTH THE JOINT MASK TO MAKE A CLEAN MASK
-; -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-           target_hdr = headfits(dir+gal + '_co21_flat_round_smoothed.fits')
-           target_bmaj = sxpar(target_hdr, 'BMAJ')*3600.*3.
-
-           conv_with_gauss $
-              , data = joint_mask*1.0 $
-              , hdr=mask_hdr $
-              , target = [1.,1.,0.]*target_bmaj $
-              , out_data= smooth_mask $
-              , /perbeam
-           smooth_mask = smooth_mask gt 1.0
-           
-           !p.multi=[0,2,1]
-           loadct, 33
-           disp, max(cube, dim=3, /nan)
-           contour, max(smooth_mask, dim=3), lev=[1], /overplot
-           
-           disp, max(cube, dim=2, /nan)
-           contour, max(smooth_mask, dim=2), lev=[1], /overplot
-           
-;        print, "This is the candidate clean mask. Hit key to continue."
-;        ch = get_kbrd(1)
-           
-           writefits, dir+gal+'_large_mask.fits', smooth_mask, mask_hdr
-           
         endfor
-        
-     endif
+
+     endfor
+     
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COLLAPSE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  if keyword_set(do_collapse) then begin
      
-     if keyword_set(do_collapse) then begin
-        
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'COLLAPSE INTO MOMENTS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-        message, 'COLLAPSE INTO MOMENTS', /info
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     dir = release_dir+'process/'
+     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+     n_res = n_elements(target_res)
 
-        dir = release_dir+'process/'
-        
-        for ii = 0, n_final_gals-1 do begin
+     for ii = 0, n_gals-1 do begin
 
-           if n_elements(just) gt 0 then $
-              if total(just eq final_gals[ii]) eq 0 then continue
-           
-           gal = final_gals[ii]
+        message, 'Collapsing '+gals[ii], /info
 
-           fname = file_search(dir+gal+'_co21_feather_pbcorr.fits', count=fct)        
-           if fct eq 0 or $
-              gal eq 'ngc1087' or $
-              gal eq 'ngc4254' or $
-              gal eq 'ngc5068' $
-           then begin
-              pbcor = readfits(dir+gal+'_co21_pbcorr_round.fits', hdr)
-           endif else begin
-              pbcor = readfits(fname, hdr)
-           endelse
+        if n_elements(just) gt 0 then $
+           if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
 
-           mask = readfits(dir+gal+'_joint_mask.fits', mask_hdr)
+        for kk = 0, 1 do begin
 
-           jtok = calc_jtok(hdr=hdr)
-           pbcor *= jtok
-           sxaddpar, hdr, 'BUNIT', 'K'
-           sxaddpar, hdr, 'JTOK', jtok
-           writefits, dir+gal+'_co21_correct.fits', pbcor, hdr
-
-           collapse_cube $
-              , cube=pbcor $
-              , hdr=hdr $
-              , mask=mask $
-              , mom0 = mom0 $
-              , e_mom0 = e_mom0 $
-              , mom1 = mom1 $
-              , e_mom1 = e_mom1
-
-           blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
-                              or (e_mom1 gt mom1_thresh), mom1_ct)
-           if mom1_ct gt 0 then begin
-              mom1[blank_mom1] = !values.f_nan
-              e_mom1[blank_mom1] = !values.f_nan
+           if kk eq 0 then begin
+              array = '_7m+tp'
            endif
-
-           tpeak_mask = mask
-           sz = size(mask)
-           for kk = 0, sz[3]-1 do $
-              tpeak_mask[*,*,kk] = total(mask[*,*,kk]) ge 1
-
-           fin_map = total(finite(pbcor)) gt 0
-           blank_ind = where(fin_map eq 0)
-
-           tpeak = max(pbcor*tpeak_mask, dim=3, /nan)
-           tpeak[blank_ind] = !values.f_nan
-           tpeak_hdr = twod_head(hdr)
-           sxaddpar, tpeak_hdr, 'BUNIT', 'K'
-
-           writefits, dir+ $
-                      gal+'_co21_tpeak.fits', tpeak, tpeak_hdr
-
-           tpeak_12p5 = max(smooth(pbcor,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
-           tpeak_12p5[blank_ind] = !values.f_nan
-           tpeak_hdr = twod_head(hdr)
-           sxaddpar, tpeak_hdr, 'BUNIT', 'K'
-           writefits, dir+ $
-                      gal+'_co21_tpeak_12p5kms.fits', tpeak_12p5, tpeak_hdr
            
-           mom0_hdr = twod_head(hdr)
-           sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
-           mom0[blank_ind] = !values.f_nan
-           writefits, dir+$
-                      gal+'_co21_mom0.fits', mom0, mom0_hdr
-           writefits, dir+$
-                      gal+'_co21_emom0.fits', e_mom0, mom0_hdr
+           if kk eq 1 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
+                 continue
+           endif
            
-           mom1_hdr = twod_head(hdr)
-           sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
-           mom1[blank_ind] = !values.f_nan
-           writefits, dir+$
-                      gal+'_co21_mom1.fits', mom1, mom1_hdr
-           writefits, dir+$
-                      gal+'_co21_emom1.fits', e_mom1, mom1_hdr
+           print, "ARRAY == ", array
            
-           !p.multi = [0, 2, 2]
-           loadct, 33
-           disp, tpeak, /sq
-           disp, tpeak_12p5, /sq
-           disp, mom0, /sq
-           disp, mom1, /sq
+           gal = gals[ii]
+           
+           ext_to_process = $
+              ['_pbcorr_round_k']
+           n_ext = n_elements(ext_to_process)
+           
+           for jj = 0, n_ext-1 do begin
 
+              for zz = 0, n_res do begin
+
+                 if zz lt n_res then begin
+                    res_str = '_'+strcompress(str(target_res[zz]),/rem)+'pc'
+                    print, "Resolution "+res_str
+                 endif else begin
+                    res_str = ''
+                    print, "Native resolution"
+                 endelse
+                 
+                 fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                     +ext_to_process[jj] $
+                                     +res_str+'.fits', count=fct)
+                 
+                 if fct eq 0 then continue
+
+                 rms_name = $
+                    file_search(dir+strlowcase(gal)+'_co21'+array $
+                                +ext_to_process[jj] $
+                                +res_str+'_noise.fits', count=noise_ct)
+
+                 if noise_ct eq 0 then continue
+
+                 cube = readfits(fname, cube_hdr)
+                 
+                 rms_cube = readfits(rms_name, noise_hdr)
+
+                 ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+
+; Want to use a mask bigger than some size, deal with that here.
+
+;                 if then begin
+
+;                 endif else begin
+
+;                 endelse
+
+                 mask = readfits(dir+strlowcase(gal)+'_co21'+array $
+                                 +'mask' $
+                                 +res_str+'.fits' $
+                                 , mask, mask_hdr)
+
+                 collapse_cube $
+                    , cube=cube $
+                    , hdr=cube_hdr $
+                    , mask=mask $
+                    , noise=rms_cube $
+                    , mom0 = mom0 $
+                    , e_mom0 = e_mom0 $
+                    , mom1 = mom1 $
+                    , e_mom1 = e_mom1 $
+                    , mom2 = mom2 $
+                    , e_mom2 = e_mom2 $
+                    , ew = ew $
+                    , e_ew = e_ew $
+                    , var = var $
+                    , e_var = e_var $
+                    , tpeak = tpeak
+
+                 blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
+                                    or (e_mom1 gt mom1_thresh), mom1_ct)
+                 if mom1_ct gt 0 then begin
+                    mom1[blank_mom1] = !values.f_nan
+                    e_mom1[blank_mom1] = !values.f_nan
+                 endif
+
+                 tpeak_mask = mask
+                 sz = size(mask)
+                 for pp = 0, sz[3]-1 do $
+                    tpeak_mask[*,*,pp] = total(mask[*,*,pp]) ge 1
+
+                 tpeak = max(cube*tpeak_mask, dim=3, /nan)
+;                 tpeak[blank_ind] = !values.f_nan
+                 tpeak_hdr = twod_head(cube_hdr)
+                 sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+
+;              writefits, dir+ $
+;                         gal+'_co21_tpeak.fits', tpeak, tpeak_hdr
+
+                 tpeak_12p5 = max(smooth(cube,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
+;                 tpeak_12p5[blank_ind] = !values.f_nan
+                 tpeak_hdr = twod_head(cube_hdr)
+                 sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+
+;              writefits, dir+ $
+;                         gal+'_co21_tpeak_12p5kms.fits', tpeak_12p5, tpeak_hdr
+                 
+                 mom0_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
+;                 mom0[blank_ind] = !values.f_nan
+
+;              writefits, dir+$
+;                         gal+'_co21_mom0.fits', mom0, mom0_hdr
+;              writefits, dir+$
+;                         gal+'_co21_emom0.fits', e_mom0, mom0_hdr
+                 
+                 mom1_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
+;                 mom1[blank_ind] = !values.f_nan
+
+;              writefits, dir+$
+;                         gal+'_co21_mom1.fits', mom1, mom1_hdr
+;              writefits, dir+$
+;                         gal+'_co21_emom1.fits', e_mom1, mom1_hdr
+                 
+                 !p.multi = [0, 2, 2]
+                 loadct, 33
+                 disp, tpeak, /sq
+                 disp, tpeak_12p5, /sq
+                 disp, mom0, /sq
+                 disp, mom1, /sq
+
+              endfor
+
+           endfor
+           
         endfor
-        
-     endif
+
+     endfor
+
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; SHUFFLE AND CARRY OUT A WEIGHTED SHUFFLE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-     if keyword_set(do_shuffle) then begin
+  if keyword_set(do_shuffle) then begin
 
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-        message, 'SHUFFLING CUBES', /info
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'SHUFFLING CUBES', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
-        dir = release_dir+'process/'
+     dir = release_dir+'process/'
 
-        n_ext = n_elements(ext_in)
+     n_ext = n_elements(ext_in)
 
-        for ii = 0, n_final_gals-1 do begin
+     for ii = 0, n_final_gals-1 do begin
 
-           gal = final_gals[ii]
+        gal = final_gals[ii]
 
-           if n_elements(just) gt 0 then $
-              if total(just eq final_gals[ii]) eq 0 then continue
+        if n_elements(just) gt 0 then $
+           if total(just eq final_gals[ii]) eq 0 then continue
 
-           mom1 = $
-              readfits(dir+gal+'_co21_mom1.fits', mom1_hdr)
-           cube = $
-              readfits(dir+gal+'_co21_correct.fits', cube_hdr)
-           make_axes, cube_hdr, vaxis=vaxis, /vonly
+        mom1 = $
+           readfits(dir+gal+'_co21_mom1.fits', mom1_hdr)
+        cube = $
+           readfits(dir+gal+'_co21_correct.fits', cube_hdr)
+        make_axes, cube_hdr, vaxis=vaxis, /vonly
 
-           deltav = abs(vaxis[1]-vaxis[0])
-           new_vaxis = findgen(201)*deltav*0.5
-           new_vaxis -= mean(new_vaxis)
-           
-           shuffled_cube = $
-              shuffle( $
-              spec=cube $
-              , vaxis=vaxis $
-              , zero=mom1*1d3 $
-              , target_vaxis=new_vaxis)
+        deltav = abs(vaxis[1]-vaxis[0])
+        new_vaxis = findgen(201)*deltav*0.5
+        new_vaxis -= mean(new_vaxis)
+        
+        shuffled_cube = $
+           shuffle( $
+           spec=cube $
+           , vaxis=vaxis $
+           , zero=mom1*1d3 $
+           , target_vaxis=new_vaxis)
 
-           shuffle_hdr = cube_hdr
-           sxaddpar, shuffle_hdr, 'NAXIS3', n_elements(new_vaxis)
-           sxaddpar, shuffle_hdr, 'CDELT3', new_vaxis[1]-new_vaxis[0]
-           sxaddpar, shuffle_hdr, 'CRVAL3', new_vaxis[0]
-           sxaddpar, shuffle_hdr, 'CRPIX3', 1
-           
-           writefits, dir+gal+'_co21_shuffle.fits' $
-                      , shuffled_cube, shuffle_hdr  
+        shuffle_hdr = cube_hdr
+        sxaddpar, shuffle_hdr, 'NAXIS3', n_elements(new_vaxis)
+        sxaddpar, shuffle_hdr, 'CDELT3', new_vaxis[1]-new_vaxis[0]
+        sxaddpar, shuffle_hdr, 'CRVAL3', new_vaxis[0]
+        sxaddpar, shuffle_hdr, 'CRPIX3', 1
+        
+        writefits, dir+gal+'_co21_shuffle.fits' $
+                   , shuffled_cube, shuffle_hdr  
 
-           disp, max(shuffled_cube,dim=2,/nan)
+        disp, max(shuffled_cube,dim=2,/nan)
 
-        endfor
+     endfor
 
-     endif
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COMPILE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-     if keyword_set(do_compile) then begin
+  if keyword_set(do_compile) then begin
 
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-        message, 'COMPILE A RELEASE', /info
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'COMPILE A RELEASE', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     dir = '../release/v0p5/'
+
+     ext_in = $
+        ['_co21_correct.fits' $
+         ,'_co21_resid_round.fits' $
+         ,'_co21_flat_round_smoothed_mask.fits' $
+         ,'_co21_flat_round_mask.fits' $
+         ,'_large_mask.fits' $
+         ,'_co21_shuffle.fits' $
+         ,'_co21_mom0.fits' $
+         ,'_co21_emom0.fits' $
+         ,'_co21_mom1.fits' $
+         ,'_co21_emom1.fits' $
+         ,'_co21_tpeak.fits' $
+         ,'_co21_tpeak_12p5kms.fits' $
+         ,'_tp_k.fits' $
+        ]
+
+     ext_out = $
+        ['_co21.fits' $
+         ,'_co21_resid.fits' $
+         ,'_co21_smoothedmask.fits' $
+         ,'_co21_brightmask.fits' $
+         ,'_co21_widemask.fits' $
+         ,'_co21_shuffled.fits' $
+         ,'_co21_mom0.fits' $
+         ,'_co21_emom0.fits' $
+         ,'_co21_mom1.fits' $
+         ,'_co21_emom1.fits' $
+         ,'_co21_tpeak.fits' $
+         ,'_co21_tpeak_12p5kms.fits' $
+         ,'_co21_tp.fits' $
+        ]
+
+     n_ext = n_elements(ext_in)
+
+     for ii = 0, n_final_gals-1 do begin
+
+        if n_elements(just) gt 0 then $
+           if total(just eq final_gals[ii]) eq 0 then continue
         
-        dir = '../release/v0p5/'
+        gal = final_gals[ii]
 
-        ext_in = $
-           ['_co21_correct.fits' $
-            ,'_co21_resid_round.fits' $
-            ,'_co21_flat_round_smoothed_mask.fits' $
-            ,'_co21_flat_round_mask.fits' $
-            ,'_large_mask.fits' $
-            ,'_co21_shuffle.fits' $
-            ,'_co21_mom0.fits' $
-            ,'_co21_emom0.fits' $
-            ,'_co21_mom1.fits' $
-            ,'_co21_emom1.fits' $
-            ,'_co21_tpeak.fits' $
-            ,'_co21_tpeak_12p5kms.fits' $
-            ,'_tp_k.fits' $
-           ]
+        print, 'Copying '+gal
 
-        ext_out = $
-           ['_co21.fits' $
-            ,'_co21_resid.fits' $
-            ,'_co21_smoothedmask.fits' $
-            ,'_co21_brightmask.fits' $
-            ,'_co21_widemask.fits' $
-            ,'_co21_shuffled.fits' $
-            ,'_co21_mom0.fits' $
-            ,'_co21_emom0.fits' $
-            ,'_co21_mom1.fits' $
-            ,'_co21_emom1.fits' $
-            ,'_co21_tpeak.fits' $
-            ,'_co21_tpeak_12p5kms.fits' $
-            ,'_co21_tp.fits' $
-           ]
+        for jj = 0, n_ext-1 do begin
 
-        n_ext = n_elements(ext_in)
+           spawn, 'rm -rf '+dir+'delivery/'+gal+ext_out[jj]
 
-        for ii = 0, n_final_gals-1 do begin
-
-           if n_elements(just) gt 0 then $
-              if total(just eq final_gals[ii]) eq 0 then continue
-           
-           gal = final_gals[ii]
-
-           print, 'Copying '+gal
-
-           for jj = 0, n_ext-1 do begin
-
-              spawn, 'rm -rf '+dir+'delivery/'+gal+ext_out[jj]
-
-              spawn, 'cp '+dir+'process/'+gal+ext_in[jj]+' '+dir+'delivery/'+gal+ext_out[jj]
-
-           endfor
+           spawn, 'cp '+dir+'process/'+gal+ext_in[jj]+' '+dir+'delivery/'+gal+ext_out[jj]
 
         endfor
 
-     endif
+     endfor
+
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; INFORMATIONAL
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-     if keyword_set(do_test) then begin
-        
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-        message, 'TEST', /info
-        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+  if keyword_set(do_test) then begin
+     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'TEST', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
 
-        dir = '../release/v0p5/process/'
+     dir = '../release/v0p5/process/'
 
-        for ii = 0, n_final_gals-1 do begin
+     for ii = 0, n_final_gals-1 do begin
 
-           gal = final_gals[ii]
+        gal = final_gals[ii]
 
-           if n_elements(just) gt 0 then $
-              if total(just eq final_gals[ii]) eq 0 then continue
+        if n_elements(just) gt 0 then $
+           if total(just eq final_gals[ii]) eq 0 then continue
 
-           h = headfits(dir+gal+'_co21_pbcorr_round_trimmed.fits')
-           s = gal_data(dirs[ii])
-           current_res = s.dist_mpc*!dtor*sxpar(h, 'BMAJ')*1d6
-           print, gal, ' starts at resolution ', current_res
+        h = headfits(dir+gal+'_co21_pbcorr_round_trimmed.fits')
+        s = gal_data(dirs[ii])
+        current_res = s.dist_mpc*!dtor*sxpar(h, 'BMAJ')*1d6
+        print, gal, ' starts at resolution ', current_res
 
-        endfor
-        
-     endif
+     endfor
+     
+  endif
 
-  end
+end
