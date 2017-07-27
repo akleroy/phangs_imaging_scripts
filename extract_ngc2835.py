@@ -36,7 +36,7 @@ if script_extract_co21:
 # C18O 2-1
 linetag = 'c18o21'
 restfreq_ghz = line_list[linetag]
-chan_dv_kms = 5.0
+chan_dv_kms = 6.0
 
 if script_extract_c18o21:
     do_copy = False
