@@ -13,8 +13,8 @@ ic5332	 ic5332_925_cont.ms
 ngc0628	 ngc0628_12m_co21.ms
 ngc0628	 ngc0628_7m_co21.ms
 ngc0628	 ngc0628_650_co21.ms
-#ngc0628	 ngc0628_12m_cont.ms
-#ngc0628	 ngc0628_7m_cont.ms
+ngc0628	 ngc0628_12m_cont.ms
+ngc0628	 ngc0628_7m_cont.ms
 ngc0628	 ngc0628_650_cont.ms
 #
 ngc1087	 ngc1087_7m_co21.ms

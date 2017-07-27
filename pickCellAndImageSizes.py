@@ -1,5 +1,7 @@
 import numpy as np
 
+# Read the list of visibilities
+
 infile = open('list_of_vis.txt', 'r')
 
 dir_list = []
@@ -18,12 +20,38 @@ while True:
 
 infile.close()
 
+# Read the override file allowing use specifications
+
+infile = open('override_image_params.txt', 'r')
+
+override_dict = {}
+while True:
+    line = infile.readline()    
+    if len(line) == 0:
+        break
+    if line[0] == '#':
+        continue
+    words = line.split()
+    if len(words) < 3:
+        continue
+    vis_override = words[0]
+    param_override = words[1]
+    value_override = words[2]
+    if override_dict.has_key(vis_override) == False:
+        override_dict[vis_override] = {}
+    override_dict[vis_override][param_override] = value_override
+
+infile.close()
+
+# Define an oversampling factor
+
 try:
     oversamp
 except NameError:
     oversamp = 5
 
 # Valid image sizes are even and multiples of 3, 5, 7
+
 valid_sizes = []
 for ii in range(10):
     for kk in range(3):
@@ -32,11 +60,15 @@ for ii in range(10):
 valid_sizes.sort()
 valid_sizes = np.array(valid_sizes)
 
+# Write header
+
 outfile = open('image_params.txt', 'w')
 outfile.write('# column 1: visibility file\n')
 outfile.write('# column 2: cell size string\n')
 outfile.write('# column 3: x pixel imsize\n')
 outfile.write('# column 4: y pixel imsize\n')
+
+# Loop over files
 
 for ii in range(len(vis_list)):
     
@@ -74,12 +106,24 @@ for ii in range(len(vis_list)):
     image_size = [int(cells_x), int(cells_y)]
     cell_size_string = str(cell_size)+'arcsec'
 
+    x_size_string = str(image_size[0])
+    y_size_string = str(image_size[1])
+
+    # Check for overrides
+    if override_dict.has_key(this_vis):
+        if override_dict.has_key('cell_size'):
+            cell_size_string = override_dict[this_vis]['cell_size']
+        if override_dict.has_key('x_size'):
+            x_size_string = override_dict[this_vis]['x_size']
+        if override_dict.has_key('y_size'):
+            y_size_string = override_dict[this_vis]['y_size']
+
     # Write to a text file
     line_out = ''
     line_out += this_vis+' '
     line_out += cell_size_string+' '
-    line_out += str(image_size[0])+' '
-    line_out += str(image_size[1])+' '
+    line_out += x_size_string+' '
+    line_out += y_size_string+' '
     line_out += '\n'
 
     outfile.write(line_out)
