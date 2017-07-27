@@ -1,3 +1,8 @@
+#
+# Rick now this needs to run in 4.7.2 as analysisUtils doesn't parse
+# MS files in CASA 5 yet.
+#
+
 import numpy as np
 
 # Read the list of visibilities
@@ -12,7 +17,7 @@ while True:
         break
     if line[0] == '#':
         continue
-    words = line.split()    
+    words = line.split()
     if len(words) < 2:
         continue
     dir_list.append(words[0])
