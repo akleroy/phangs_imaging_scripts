@@ -204,6 +204,8 @@ if do_callclean:
         os.system('rm -rf '+cube_root+'.pb')
         os.system('rm -rf '+cube_root+'.psf')
         os.system('rm -rf '+cube_root+'.residual')
+        os.system('rm -rf '+cube_root+'.weight')
+        os.system('rm -rf '+cube_root+'.sumwt')
         
     try:
         logfile
@@ -293,6 +295,8 @@ if do_savecopy:
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.pb')
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.psf')
         os.system('rm -rf '+cube_root+'_'+bkup_ext+'.residual')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.weight')
+        os.system('rm -rf '+cube_root+'_'+bkup_ext+'.sumwt')
         
         os.system('cp -r '+cube_root+'.image '+cube_root+'_'+bkup_ext+'.image')
         os.system('cp -r '+cube_root+'.model '+cube_root+'_'+bkup_ext+'.model')
@@ -300,6 +304,8 @@ if do_savecopy:
         os.system('cp -r '+cube_root+'.pb '+cube_root+'_'+bkup_ext+'.pb')
         os.system('cp -r '+cube_root+'.psf '+cube_root+'_'+bkup_ext+'.psf')
         os.system('cp -r '+cube_root+'.residual '+cube_root+'_'+bkup_ext+'.residual')
+        os.system('cp -r '+cube_root+'.psf '+cube_root+'_'+bkup_ext+'.weight')
+        os.system('cp -r '+cube_root+'.residual '+cube_root+'_'+bkup_ext+'.sumwt')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # TIMER

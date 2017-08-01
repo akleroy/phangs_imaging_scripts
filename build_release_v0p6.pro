@@ -1078,6 +1078,8 @@ pro build_release_v0p6 $
         ppbeam = calc_pixperbeam(hdr=hdr)
 
         fac = 1.0
+        if gals[ii] eq 'ngc1566' then $
+           fac = 0.25
         if gals[ii] eq 'ngc1672' then $
            fac = 0.25
 
@@ -1141,7 +1143,7 @@ pro build_release_v0p6 $
            mask = grow_mask(mask, iters=5, /z_only)
         mask = grow_mask(mask, iters=5, /xy_only)
 
-        !p.multi=[0,2,2]
+        !p.multi=[0,3,2]
 
         loadct, 33
         disp, max(cube, dim=3, /nan), /xs, /ys
@@ -1153,6 +1155,18 @@ pro build_release_v0p6 $
 
         loadct, 33
         disp, max(cube, dim=1, /nan), /xs, /ys
+        contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
+
+        loadct, 33
+        disp, max(cube*(mask eq 0), dim=3, /nan), /xs, /ys
+        contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
+
+        loadct, 33
+        disp, max(cube*(mask eq 0), dim=2, /nan), /xs, /ys
+        contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
+
+        loadct, 33
+        disp, max(cube*(mask eq 0), dim=1, /nan), /xs, /ys
         contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         sxaddpar, hdr, 'BUNIT', 'MASK'

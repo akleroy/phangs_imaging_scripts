@@ -1,0 +1,167 @@
+************************************************************************
+2015.1.00956.S
+************************************************************************
+--------------------------------------------------------------------
+DELIVERED DATA
+--------------------------------------------------------------------
+
+- science_goal.uid___A001_X2fb_X271/group.uid___A001_X2fb_X272/
+- target:  NGC 1672
+- Main Array: member.uid___A001_X2fb_X273/
+- ACA 7m: member.uid___A001_X2fb_X275
+
+- science_goal.uid___A001_X2fb_X27b/group.uid___A001_X2fb_X27c/
+- target: NGC 3351
+- Main Array: member.uid___A001_X2fb_X27d
+- ACA 7m: member.uid___A001_X2fb_X27f
+
+- science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/
+- target: NGC 3627 (part 1)
+- Main Array: member.uid___A001_X2fb_X287
+- ACA 7m: member.uid___A001_X2fb_X289
+
+- science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/
+- target: NGC 3627 (part 2)
+- Main Array: member.uid___A001_X2fb_X291
+- ACA 7m: member.uid___A001_X2fb_X293
+
+- science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/
+- target: NGC 4254 (part 1)
+- Main Array: member.uid___A001_X2fb_X29b
+- ACA 7m: member.uid___A001_X2fb_X29d
+
+- science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/
+- target: NGC 4254 (part 2)
+- Main Array: member.uid___A001_X2fb_X2a5
+- ACA 7m: member.uid___A001_X2fb_X2a7
+
+- science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/
+- target: NGC 4303
+- Main Array: member.uid___A001_X2fb_X2af/
+- ACA 7m: member.uid___A001_X2fb_X2b1
+
+- science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/
+- target: NGC 4321 (part 1)
+- Main Array: member.uid___A001_X2fb_X2b9
+- ACA 7m: member.uid___A001_X2fb_X2bb
+
+- science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/
+- target: NGC 4321 (part 2)
+- Main Array: member.uid___A001_X2fb_X2c3/
+- ACA 7m: member.uid___A001_X2fb_X2c5
+
+- science_goal.uid___A001_X2fb_X2cb/group.uid___A001_X2fb_X2cc/
+- target: NGC 4535
+- Main Array: member.uid___A001_X2fb_X2cd
+- ACA 7m: member.uid___A001_X2fb_X2cf
+
+- science_goal.uid___A001_X2fb_X2df/group.uid___A001_X2fb_X2e0/
+- target: NGC6744 (part 1)
+- Main Array: member.uid___A001_X2fb_X2e1
+- ACA 7m: member.uid___A001_X2fb_X2e3
+
+- science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/
+- target: NGC6744 (part 2)
+- Main Array: member.uid___A001_X2fb_X2d7
+- ACA 7m: member.uid___A001_X2fb_X2d9
+
+************************************************************************
+2015.1.00925.S
+************************************************************************
+
+--------------------------------------------------------------------
+DELIVERED DATA
+--------------------------------------------------------------------
+
+- science_goal.uid___A001_X2fe_X2ba/group.uid___A001_X2fe_X2bb/
+- target: IC 5332
+- Main Array: member.uid___A001_X2fe_X2bc
+- ACA 7m: member.uid___A001_X2fe_X2be
+
+- science_goal.uid___A001_X2fe_X2c4/group.uid___A001_X2fe_X2c5/
+- target: NGC 1087
+- ACA 7m: member.uid___A001_X2fe_X2c8
+
+- science_goal.uid___A001_X2fe_X2f6/group.uid___A001_X2fe_X2f7/
+- target: NGC 1300 (part 1)
+- ACA 7m: member.uid___A001_X2fe_X2fa
+
+- science_goal.uid___A001_X2fe_X2ec/group.uid___A001_X2fe_X2ed/
+- target: NGC 1300 (part 2)
+- ACA 7m: member.uid___A001_X2fe_X2f0
+
+- science_goal.uid___A001_X2fe_X2ce/group.uid___A001_X2fe_X2cf/
+- target: NGC 1385
+- ACA 7m: member.uid___A001_X2fe_X2d2
+ 
+- science_goal.uid___A001_X2fe_X300/group.uid___A001_X2fe_X301/
+- target: NGC 1433 (part 1)
+- ACA 7m: member.uid___A001_X2fe_X304
+
+- science_goal.uid___A001_X2fe_X30a/group.uid___A001_X2fe_X30b/
+- target: NGC 1433 (part 2)
+- ACA 7m: member.uid___A001_X2fe_X30e
+
+- science_goal.uid___A001_X2fe_X2d8/
+- target: NGC 1512
+- main array: TBD
+- ACA 7m: group.uid___A001_X2fe_X2d9/member.uid___A001_X2fe_X2dc/
+
+- science_goal.uid___A001_X2fe_X31e
+- target: NGC 1566 (part 1)
+- ACA 7m: group.uid___A001_X2fe_X31f/member.uid___A001_X2fe_X322/
+
+- science_goal.uid___A001_X2fe_X314
+- target: NGC 1566 (part 2)
+- ACA 7m: group.uid___A001_X2fe_X315/member.uid___A001_X2fe_X318/
+
+- science_goal.uid___A001_X2fe_X2e2/group.uid___A001_X2fe_X2e3/
+- target: NGC 2835
+- Main Array: member.uid___A001_X2fe_X2e4
+- ACA 7m: member.uid___A001_X2fe_X2e6
+
+- science_goal.uid___A001_X2fe_X328/group.uid___A001_X2fe_X329/
+- target: NGC 5068 (South)
+- Main Array: member.uid___A001_X2fe_X32a
+- ACA 7m: member.uid___A001_X2fe_X32c
+
+- science_goal.uid___A001_X2fe_X332/group.uid___A001_X2fe_X333/
+- target: NGC 5068 (North)
+- Main Array: member.uid___A001_X2fe_X334
+- ACA 7m: member.uid___A001_X2fe_X336
+
+--------------------------------------------------------------------
+NOT DELIVERED YET BUT EXPECTED BASED ON PROJECT TRACKER
+--------------------------------------------------------------------
+
+12M - NGC 1512
+
+--------------------------------------------------------------------
+
+************************************************************************
+2013.1.01161.S
+************************************************************************
+--------------------------------------------------------------------
+PUBLIC ARCHIVE DATA DOWNLOADED
+--------------------------------------------------------------------
+
+- science_goal.uid___A001_X12f_X315/group.uid___A001_X12f_X316/
+- target: NGC 1365 (whole bar)
+- Main Array: member.uid___A001_X12f_X317
+- Main Array: member.uid___A001_X12f_X319  
+- ACA 7m: member.uid___A001_X12f_X31b  
+- TP: member.uid___A001_X12f_X31d
+
+- science_goal.uid___A001_X12f_X31f/group.uid___A001_X12f_X320/
+- target: NGC 1365 (central region)
+- Main Array: member.uid___A001_X12f_X321/
+
+************************************************************************
+2013.1.00803.S
+************************************************************************
+
+- science_goal.uid___A001_X121_X174/group.uid___A001_X121_X175/
+- target: NGC 5128 (Centaurus A)
+- Main Array: member.uid___A001_X121_X176  
+- ACA 7m: member.uid___A001_X121_X178  
+- TP: member.uid___A001_X148_X121

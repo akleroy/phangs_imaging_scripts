@@ -1,0 +1,27 @@
+# column 1: galaxy data set name
+# column 2: clean mask location
+ic5332	    	../clean_masks/ic5332_co21_clean_mask.fits
+ngc0628	 	../clean_masks/ngc0628_co21_clean_mask.fits
+ngc1087	 	../clean_masks/ngc1087_co21_clean_mask.fits
+ngc1300	 	../clean_masks/ngc1300_co21_clean_mask.fits
+ngc1365		../clean_masks/ngc1365_co21_clean_mask.fits
+ngc1385		../clean_masks/ngc1385_co21_clean_mask.fits
+ngc1433		../clean_masks/ngc1433_co21_clean_mask.fits
+ngc1512	 	../clean_masks/ngc1512_co21_clean_mask.fits
+ngc1566	 	../clean_masks/ngc1566_co21_clean_mask.fits
+ngc1672	 	../clean_masks/ngc1672_co21_clean_mask.fits
+ngc2835	 	../clean_masks/ngc2835_co21_clean_mask.fits
+ngc3351	 	../clean_masks/ngc3351_co21_clean_mask.fits
+ngc3627north 	../clean_masks/ngc3627_co21_clean_mask.fits
+ngc3627south	../clean_masks/ngc3627_co21_clean_mask.fits
+ngc4254north	../clean_masks/ngc4254_co21_clean_mask.fits
+ngc4254south	../clean_masks/ngc4254_co21_clean_mask.fits
+ngc4303		../clean_masks/ngc4303_co21_clean_mask.fits
+ngc4321north	../clean_masks/ngc4321_co21_clean_mask.fits
+ngc4321south	../clean_masks/ngc4321_co21_clean_mask.fits
+ngc4535		../clean_masks/ngc4535_co21_clean_mask.fits
+ngc5068north	../clean_masks/ngc5068_co21_clean_mask.fits
+ngc5068south	../clean_masks/ngc5068_co21_clean_mask.fits
+ngc5128		../clean_masks/ngc5128_co21_clean_mask.fits
+ngc6744north	../clean_masks/ngc6744_co21_clean_mask.fits
+ngc6744south	../clean_masks/ngc6744_co21_clean_mask.fits

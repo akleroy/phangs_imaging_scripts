@@ -19,7 +19,7 @@ input_vis_12m = 'ngc4254south_12m_co21.ms'
 cube_root_12m = 'ngc4254south_co21_12m'
 
 do_image_7m = True
-do_image_combo = True
-do_image_12m = True
+do_image_combo = False
+do_image_12m = False
 
 execfile('../scripts/phangsImagingPipeline.py')

@@ -1,0 +1,36 @@
+NGC 1300
+--------
+
+The pb_limit = 0.75 creates a patchy pattern, implying uneven
+sensitivity across the mosaic. Lowered the pb_limit to 0.5 in this
+case to get a better coverage.
+
+This is expected because this is one of the two part mosaics from the
+7m that we're currently imaging jointly for convenience.
+
+NGC 1433
+--------
+
+As above - two part jointly imaged mosaic.
+
+NGC 1566
+--------
+
+As above - two part jointly imaged mosaic.
+
+NGC 3627
+--------
+
+Divergence is a recurring problem. In the north part, the 7m alone
+diverges. I will try shifting the frequency grid and removing the
+clean mask.
+
+NGC 4321
+--------
+
+The south part shows some pathological residuals. Trying to shift the
+weight a little bit towards small scales. Just a shift to
+smallscalebias=0.7 seems good enough.
+
+
+

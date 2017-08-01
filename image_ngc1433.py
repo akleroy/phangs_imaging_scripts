@@ -6,7 +6,7 @@ linetag = 'co21'
 specmode = 'cube'    
 restfreq_ghz = line_list[linetag]
 max_loop = 20
-pb_limit = 0.25
+pb_limit = 0.5
 uvtaper = None    
 
 input_vis_7m = 'ngc1433_7m_co21.ms'
