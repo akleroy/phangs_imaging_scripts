@@ -1558,6 +1558,8 @@ pro build_release_v0p6 $
                  rms_cube = readfits(rms_name, noise_hdr)
 
                  ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+                 
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 ; Want to use a mask bigger than some size, deal with that here.
 
@@ -1566,9 +1568,11 @@ pro build_release_v0p6 $
 ;                 endif else begin
 
 ;                 endelse
+                 
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
                  mask = readfits(dir+strlowcase(gal)+'_co21'+array $
-                                 +'mask' $
+                                 +'_mask' $
                                  +res_str+'.fits' $
                                  , mask, mask_hdr)
 
