@@ -7,10 +7,11 @@ import numpy as np
 
 # Read the list of visibilities
 
-infile = open('list_of_vis.txt', 'r')
+infile = open('../scripts/imaging_key.txt', 'r')
 
-dir_list = []
 vis_list = []
+dir_list = []
+
 while True:
     line  = infile.readline()    
     if len(line) == 0:
@@ -18,10 +19,21 @@ while True:
     if line[0] == '#':
         continue
     words = line.split()
-    if len(words) < 2:
+    if len(words) < 6:
         continue
-    dir_list.append(words[0])
-    vis_list.append(words[1])
+
+    this_vis = words[0]
+    this_cube_root = words[1]
+    split_cube_root = this_cube_root.split('_')
+    this_out_root = split_cube_root[0]
+ 
+    if this_out_root.find('north') != -1:
+        dir_list.append(this_out_root[0:this_out_root.find('north')])
+    elif this_out_root.find('south') != -1:
+        dir_list.append(this_out_root[0:this_out_root.find('south')])
+    else:
+        dir_list.append(this_out_root)
+    vis_list.append(this_vis)
 
 infile.close()
 

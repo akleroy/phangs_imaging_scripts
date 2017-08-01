@@ -147,6 +147,16 @@ except NameError:
     print "I will assume a desire velocity width of 500km/s."
     vwidth_kms = 500
 
+try:
+    use_contsub
+except NameError:
+    print "I will NOT look for a continuum subtracted version."
+    use_contsub = False
+
+contsub_string = ''
+if use_contsub:
+    contsub_string = '.contsub'
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # COPY DATA FROM ITS ORIGINAL LOCATION
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -162,7 +172,7 @@ if do_copy:
         out_file = out_root+'_'+this_tag+'_copied.ms'
         os.system('rm -rf '+out_file)
         os.system('rm -rf '+out_file+'.flagversions')
-        command = 'cp -r '+in_file+' '+out_file
+        command = 'cp -r '+in_file+contsub_string+' '+out_file
         print command
         os.system(command)
 
@@ -279,7 +289,7 @@ if do_extract:
         print "START VELOCITY: ", start_vel_string
         print "NUMBER OF CHANNELS: ", str(nchan)
         print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
-    
+
         # .........................................
         # Regrid
         # .........................................

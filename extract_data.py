@@ -130,7 +130,8 @@ if script_copy:
 # --------------------------------------
 
 if script_contsub:
-    pass
+    lines_to_flag = lines_co+lines_13co+lines_c18o
+    execfile('../scripts/subtractContinuum.py')
 
 # --------------------------------------
 # Extract line data
@@ -145,6 +146,7 @@ if script_extract_co21:
     do_split = False
     do_extract = True
     do_combine = True
+    use_contsub = script_contsub
     execfile('../scripts/extractLineData.py')
 
 if script_extract_c18o21:
@@ -192,7 +194,7 @@ if script_special_concat:
 
         files_to_concat = []
         for this_tag in calibrated_files.keys():
-            if this_tag[0:2] == '7m':
+            if this_tag[0:3] == '7m_':
                 files_to_concat.append(out_root+'_'+this_tag+line_stub)
         if len(files_to_concat) > 0:
             out_file = out_root+'_7m'+line_stub
@@ -203,7 +205,7 @@ if script_special_concat:
 
         files_to_concat = []
         for this_tag in calibrated_files.keys():
-            if this_tag[0:3] == '12m':
+            if this_tag[0:4] == '12m_':
                 files_to_concat.append(out_root+'_'+this_tag+line_stub)
         if len(files_to_concat) > 0:
             out_file = out_root+'_12m'+line_stub
