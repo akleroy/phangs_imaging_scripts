@@ -23,6 +23,8 @@ ngc1087_7m_cont.ms 1.0arcsec 240 256
 ngc1300_7m_co21.ms 1.0arcsec 384 288 
 ngc1300_7m_c18o21.ms 1.25arcsec 300 240 
 ngc1300_7m_cont.ms 1.25arcsec 300 240 
+ngc1365_7m_co21.ms 1.0arcsec 360 240 
+ngc1365_7m_cont.ms 1.0arcsec 360 240 
 ngc1385_7m_co21.ms 1.0arcsec 240 256 
 ngc1385_7m_c18o21.ms 1.25arcsec 180 200 
 ngc1385_7m_cont.ms 1.25arcsec 180 200 

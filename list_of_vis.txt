@@ -25,6 +25,9 @@ ngc1300	 ngc1300_7m_co21.ms
 ngc1300	 ngc1300_7m_c18o21.ms
 ngc1300	 ngc1300_7m_cont.ms
 #
+ngc1365	 ngc1365_7m_co21.ms
+ngc1365	 ngc1365_7m_cont.ms
+#
 ngc1385	 ngc1385_7m_co21.ms
 ngc1385	 ngc1385_7m_c18o21.ms
 ngc1385	 ngc1385_7m_cont.ms

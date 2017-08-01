@@ -65,7 +65,7 @@ while True:
     if line[0] == '#':
         continue
     words = line.split()
-    if len(words) < 8:
+    if len(words) < 9:
         continue
 
     this_out_root = words[0]
@@ -74,8 +74,9 @@ while True:
     this_extract_co21 = words[3]
     this_extract_c18o21 = words[4]
     this_extract_continuum = words[5]
-    this_deltav_co21 = float(words[6])
-    this_deltav_c18o21 = float(words[7])
+    this_special_concat = words[6]
+    this_deltav_co21 = float(words[7])
+    this_deltav_c18o21 = float(words[8])
     
     if this_out_root == out_root:
         script_copy = (this_copy == 'True')
@@ -83,6 +84,7 @@ while True:
         script_extract_co21 = (this_extract_co21 == 'True')
         script_extract_c18o21 = (this_extract_c18o21 == 'True')
         script_extract_continuum = (this_extract_continuum == 'True')
+        script_special_concat = (this_special_concat == 'True')
         deltav_co21 = this_deltav_co21
         deltav_c18o21 = this_deltav_c18o21
 
@@ -167,3 +169,45 @@ if script_extract_continuum:
     do_statwt = True
     lines_to_flag = lines_co+lines_13co+lines_c18o
     execfile('../scripts/extractContinuum.py')
+
+# --------------------------------------
+# Some special concatenation
+# --------------------------------------
+
+if script_special_concat:
+
+    for line_stub in ['_co21.ms', '_c18o21.ms', '_cont.ms']:
+
+        if line_stub == '_co21.ms':
+            if script_extract_co21 == False:
+                continue
+
+        if line_stub == '_c18o21.ms':
+            if script_extract_c18o21 == False:
+                continue
+
+        if line_stub == '_cont.ms':
+            if script_extract_continuum == False:
+                continue
+
+        files_to_concat = []
+        for this_tag in calibrated_files.keys():
+            if this_tag[0:2] == '7m':
+                files_to_concat.append(out_root+'_'+this_tag+line_stub)
+        if len(files_to_concat) > 0:
+            out_file = out_root+'_7m'+line_stub
+            os.system('rm -rf '+out_file)
+            os.system('rm -rf '+out_file+'.flagversions')
+            concat(vis=files_to_concat,
+                   concatvis=out_file)
+
+        files_to_concat = []
+        for this_tag in calibrated_files.keys():
+            if this_tag[0:3] == '12m':
+                files_to_concat.append(out_root+'_'+this_tag+line_stub)
+        if len(files_to_concat) > 0:
+            out_file = out_root+'_12m'+line_stub
+            os.system('rm -rf '+out_file)
+            os.system('rm -rf '+out_file+'.flagversions')
+            concat(vis=files_to_concat,
+               concatvis=out_file)

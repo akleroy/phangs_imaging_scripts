@@ -4,30 +4,31 @@
 # column 4: extract the 12co21?
 # column 5: extract the c18o21?
 # column 6: extract the continuum?
-# column 7: channel width for the co21
-# column 8: channel width for the c18o21
-ic5332	    	 True	False	True	True	True	2.5	6.0
-ngc0628	    	 True	False	True	False	True	2.5	6.0
-ngc1087	    	 True	False	True	True	True	2.5	6.0
-ngc1300	    	 True	False	True	True	True	2.5	6.0
-ngc1365		 True	False	True	False	True	2.5	6.0
-ngc1385	    	 True	False	True	True	True	2.5	6.0
-ngc1433	    	 True	False	True	True	True	2.5	6.0
-ngc1512	    	 True	False	True	True	True	2.5	6.0
-ngc1566	    	 True	False	True	True	True	2.5	6.0
-ngc1672	    	 True	False	True	True	True	2.5	6.0
-ngc2835	    	 True	False	True	True	True	2.5	6.0
-ngc3351	    	 True	False	True	True	True	2.5	6.0
-ngc3627north	 True	False	True	True	True	2.5	6.0
-ngc3627south	 True	False	True	True	True	2.5	6.0
-ngc4254north	 True	False	True	True	True	2.5	6.0
-ngc4254south	 True	False	True	True	True	2.5	6.0
-ngc4303		 True	False	True	True	True	2.5	6.0
-ngc4321north	 True	False	True	True	True	2.5	6.0
-ngc4321south	 True	False	True	True	True	2.5	6.0
-ngc4535		 True	False	True	True	True	2.5	6.0
-ngc5068north	 True	False	True	True	True	2.5	6.0
-ngc5068south	 True	False	True	True	True	2.5	6.0
-ngc5128		 True	True	True	False	True	2.5	6.0
-ngc6744north	 True	False	True	True	True	2.5	6.0
-ngc6744south	 True	False	True	True	True	2.5	6.0
+# column 7: concatenate after the fact
+# column 8: channel width for the co21
+# column 9: channel width for the c18o21
+ic5332	    	 True	False	True	True	True	False	2.5	6.0
+ngc0628	    	 True	False	True	False	True	True	2.5	6.0
+ngc1087	    	 True	False	True	True	True	False	2.5	6.0
+ngc1300	    	 True	False	True	True	True	True	2.5	6.0
+ngc1365		 True	False	True	False	True	False	2.5	6.0
+ngc1385	    	 True	False	True	True	True	False	2.5	6.0
+ngc1433	    	 True	False	True	True	True	True	2.5	6.0
+ngc1512	    	 True	False	True	True	True	False	2.5	6.0
+ngc1566	    	 True	False	True	True	True	True	2.5	6.0
+ngc1672	    	 True	False	True	True	True	False	2.5	6.0
+ngc2835	    	 True	False	True	True	True	False	2.5	6.0
+ngc3351	    	 True	False	True	True	True	False	2.5	6.0
+ngc3627north	 True	False	True	True	True	False	2.5	6.0
+ngc3627south	 True	False	True	True	True	False	2.5	6.0
+ngc4254north	 True	False	True	True	True	False	2.5	6.0
+ngc4254south	 True	False	True	True	True	False	2.5	6.0
+ngc4303		 True	False	True	True	True	False	2.5	6.0
+ngc4321north	 True	False	True	True	True	False	2.5	6.0
+ngc4321south	 True	False	True	True	True	False	2.5	6.0
+ngc4535		 True	False	True	True	True	False	2.5	6.0
+ngc5068north	 True	False	True	True	True	False	2.5	6.0
+ngc5068south	 True	False	True	True	True	False	2.5	6.0
+ngc5128		 True	True	True	False	True	False	2.5	6.0
+ngc6744north	 True	False	True	True	True	False	2.5	6.0
+ngc6744south	 True	False	True	True	True	False	2.5	6.0
