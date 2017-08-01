@@ -1,3 +1,4 @@
 ipython*.log
 casa*.log
 *~
+*.pyc
