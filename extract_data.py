@@ -90,7 +90,6 @@ infile.close()
 
 infile = open('../scripts/mosaic_definitions.txt', 'r')
 
-tag = None
 while True:
     line  = infile.readline()    
     if len(line) == 0:
