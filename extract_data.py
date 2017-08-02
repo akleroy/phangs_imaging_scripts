@@ -158,6 +158,7 @@ if script_extract_c18o21:
     do_split = False
     do_extract = True
     do_combine = True
+    use_contsub = script_contsub
     execfile('../scripts/extractLineData.py')
 
 # --------------------------------------

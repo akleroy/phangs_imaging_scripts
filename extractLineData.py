@@ -155,6 +155,7 @@ except NameError:
 
 contsub_string = ''
 if use_contsub:
+    print "I will use the continuum subtracted version of the data."
     contsub_string = '.contsub'
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -172,7 +173,7 @@ if do_copy:
         out_file = out_root+'_'+this_tag+'_copied.ms'
         os.system('rm -rf '+out_file)
         os.system('rm -rf '+out_file+'.flagversions')
-        command = 'cp -r '+in_file+contsub_string+' '+out_file
+        command = 'cp -r '+in_file+' '+out_file
         print command
         os.system(command)
 
@@ -232,7 +233,7 @@ if do_extract:
 
     for this_tag in calibrated_files.keys():
 
-        this_infile = out_root+'_'+this_tag+'.ms'
+        this_infile = out_root+'_'+this_tag+'.ms'+contsub_string
         this_outfile = out_root+'_'+this_tag+'_'+linetag+'.ms'
 
         print "... extracting line data for "+this_infile

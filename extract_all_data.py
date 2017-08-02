@@ -1,6 +1,6 @@
 import os
 
-only = ['ngc1365','ngc5128']
+only = ['ngc5128']
 skip = []
 
 infile = open('../scripts/extraction_key.txt', 'r')

@@ -2,3 +2,4 @@ ipython*.log
 casa*.log
 *~
 *.pyc
+*.last

@@ -95,6 +95,7 @@ for ii in range(len(dir_list)):
     
     input_vis = input_vis_list[ii]
     cube_root = cube_root_list[ii]
+    linetag = linetag_list[ii]
     array = array_list[ii]
     pb_limit = pb_limit_list[ii]
     smallscalebias = smallscalebias_list[ii]

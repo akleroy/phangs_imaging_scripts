@@ -75,6 +75,39 @@ do_image = True
 if abort:
     do_image = False
 
+specmode = 'cube'
+max_loop = 20
+uvtaper = None
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Look up the source
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+infile = open('../scripts/mosaic_definitions.txt', 'r')
+
+while True:
+    line  = infile.readline()    
+    if len(line) == 0:
+        break
+    if line[0] == '#':
+        continue
+    words = line.split()
+    if len(words) < 5:
+        continue
+
+    this_out_root = words[0]
+    this_ra = words[1]
+    this_dec = words[2]
+    this_vsys = words[3]
+    this_deltav = words[4]
+    
+    if this_out_root == out_root:
+        phase_center = 'J2000 '+this_ra+' '+this_dec
+        source_vel_kms = float(this_vsys)
+        vwidth_kms = float(this_deltav)
+
+infile.close()
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Image
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

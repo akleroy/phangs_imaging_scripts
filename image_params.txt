@@ -11,6 +11,8 @@ ngc0628_650_co21.ms 0.1arcsec 4608 4608
 ngc1087_7m_co21.ms 1.0arcsec 240 256 
 ngc1300_7m_co21.ms 1.0arcsec 384 288 
 ngc1365_7m_co21.ms 1.0arcsec 360 240 
+ngc1365_12m_co21.ms 0.15arcsec 1920 1280 
+ngc1365_1161_co21.ms 0.15arcsec 2304 1440 
 ngc1385_7m_co21.ms 1.0arcsec 240 256 
 ngc1433_7m_co21.ms 1.0arcsec 384 256 
 ngc1512_7m_co21.ms 1.0arcsec 320 320 
@@ -50,3 +52,16 @@ ngc4535_12m_co21.ms 0.2arcsec 960 1280
 ngc4535_956_co21.ms 0.25arcsec 960 1200 
 ngc5068north_7m_co21.ms 1.0arcsec 320 240 
 ngc5068north_12m_co21.ms 0.15arcsec 1800 1280 
+ngc5068north_925_co21.ms 0.15arcsec 2304 1536 
+ngc5068south_7m_co21.ms 1.0arcsec 320 240 
+ngc5068south_12m_co21.ms 0.15arcsec 1800 1280 
+ngc5068south_925_co21.ms 0.15arcsec 2304 1536 
+ngc5128_7m_co21.ms 1.0arcsec 384 320 
+ngc5128_12m_co21.ms 0.1arcsec 3600 2880 
+ngc5128_803_co21.ms 0.1arcsec 3840 3072 
+ngc6744north_7m_co21.ms 1.0arcsec 360 240 
+ngc6744north_12m_co21.ms 0.15arcsec 2304 1152 
+ngc6744north_956_co21.ms 0.15arcsec 2304 1440 
+ngc6744south_7m_co21.ms 1.0arcsec 360 240 
+ngc6744south_12m_co21.ms 0.15arcsec 2304 1152 
+ngc6744south_956_co21.ms 0.15arcsec 2304 1440 
