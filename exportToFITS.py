@@ -76,6 +76,11 @@ if do_export:
                fitsimage=cube_root+'_residual.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
+
+    exportfits(imagename=cube_root+'.mask',
+               fitsimage=cube_root+'_mask.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
     
     exportfits(imagename=cube_root+'.pb',
                fitsimage=cube_root+'_pb.fits',

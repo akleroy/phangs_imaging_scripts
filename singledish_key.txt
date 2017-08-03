@@ -4,6 +4,7 @@ ic5332	    	../singledish/data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits
 ngc0628		../singledish/data/ALMA_TP.M74.v0p2_rebin.fits
 ngc1087	 	../singledish/data/ALMA_TP.NGC_1087.CO21.v0p2.casa.fits
 ngc1300		../singledish/data/ALMA_TP.NGC_1300.CO21.v0p2.image.VLSRK.casa.fits
+ngc1365		../singledish/data/ALMA_TP.NGC1365.CO21.v0p2.image.casa.fits
 ngc1385		../singledish/data/ALMA_TP.NGC_1385.CO21.v0p2.image.VLSRK.casa.fits
 ngc1433		../singledish/data/ALMA_TP.NGC_1433.CO21.v0p2.casa.fits
 ngc1512		../singledish/data/ALMA_TP.NGC_1512.CO21.v0p2.image.VLSRK.fits

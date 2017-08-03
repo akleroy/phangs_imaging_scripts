@@ -143,4 +143,4 @@ if do_image:
     multiscale_delta_thresh = 0.01
     singlescale_delta_thresh = 0.01
 
-    execfile('../scripts/imageMultiscale.py')
+    execfile('../scripts/imageMultiscale2.py')

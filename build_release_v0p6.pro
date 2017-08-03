@@ -11,7 +11,6 @@ pro build_release_v0p6 $
    , merge=do_merge $
    , sanitize=do_sanitize $
    , clean_mask=do_clean_mask $
-   , correct=do_correct $
    , convolve=do_conv_to_res $
    , noise=do_noise $
    , mask=do_masks $
@@ -36,6 +35,7 @@ pro build_release_v0p6 $
       , 'ngc0628' $
       , 'ngc1087' $
       , 'ngc1300' $
+      , 'ngc1365' $
       , 'ngc1385' $
       , 'ngc1433' $
       , 'ngc1512' $
@@ -54,6 +54,7 @@ pro build_release_v0p6 $
 
   has_12m = $
      ['ic5332' $
+;     , 'ngc1365' $
       , 'ngc0628' $
       , 'ngc1672' $
       , 'ngc2835' $
@@ -64,6 +65,7 @@ pro build_release_v0p6 $
       , 'ngc4321' $
       , 'ngc4535' $
       , 'ngc5068' $
+;     , 'ngc5128' $
       , 'ngc6744' $
      ]
 
@@ -79,6 +81,9 @@ pro build_release_v0p6 $
 
   mom1_thresh = 2.5d
   mom0_thresh = 3.0d
+
+  target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+  n_res = n_elements(target_res)
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; RESET THE DIRECTORY STRUCTURE
@@ -1189,8 +1194,6 @@ pro build_release_v0p6 $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
      
      dir = release_dir+'process/'
-     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
-     n_res = n_elements(target_res)
      tol = 0.1
 
      s = gal_data(gals)
@@ -1282,8 +1285,6 @@ pro build_release_v0p6 $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      dir = release_dir+'process/'
-     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
-     n_res = n_elements(target_res)
 
      for ii = 0, n_gals-1 do begin
 
@@ -1388,8 +1389,6 @@ pro build_release_v0p6 $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      dir = release_dir+'process/'
-     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
-     n_res = n_elements(target_res)
      
      for ii = 0, n_gals-1 do begin
 
@@ -1496,8 +1495,6 @@ pro build_release_v0p6 $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      dir = release_dir+'process/'
-     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
-     n_res = n_elements(target_res)
 
      for ii = 0, n_gals-1 do begin
 
@@ -1593,12 +1590,9 @@ pro build_release_v0p6 $
                     , e_var = e_var $
                     , tpeak = tpeak
 
-                 blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
-                                    or (e_mom1 gt mom1_thresh), mom1_ct)
-                 if mom1_ct gt 0 then begin
-                    mom1[blank_mom1] = !values.f_nan
-                    e_mom1[blank_mom1] = !values.f_nan
-                 endif
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; PEAK TEMPERATURE IN ONE AND FIVE CHANNELS
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
                  tpeak_mask = mask
                  sz = size(mask)
@@ -1609,35 +1603,62 @@ pro build_release_v0p6 $
 ;                 tpeak[blank_ind] = !values.f_nan
                  tpeak_hdr = twod_head(cube_hdr)
                  sxaddpar, tpeak_hdr, 'BUNIT', 'K'
-
-;              writefits, dir+ $
-;                         gal+'_co21_tpeak.fits', tpeak, tpeak_hdr
+                 
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_tpeak'+res_str+'.fits' $
+                            , tpeak, tpeak_hdr
 
                  tpeak_12p5 = max(smooth(cube,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
 ;                 tpeak_12p5[blank_ind] = !values.f_nan
                  tpeak_hdr = twod_head(cube_hdr)
                  sxaddpar, tpeak_hdr, 'BUNIT', 'K'
 
-;              writefits, dir+ $
-;                         gal+'_co21_tpeak_12p5kms.fits', tpeak_12p5, tpeak_hdr
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_tpeak12p5kms'+res_str+'.fits' $
+                            , tpeak_12p5, tpeak_hdr
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MOMENT 0
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  
                  mom0_hdr = twod_head(cube_hdr)
                  sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
 ;                 mom0[blank_ind] = !values.f_nan
 
-;              writefits, dir+$
-;                         gal+'_co21_mom0.fits', mom0, mom0_hdr
-;              writefits, dir+$
-;                         gal+'_co21_emom0.fits', e_mom0, mom0_hdr
-                 
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_mom0'+res_str+'.fits' $
+                            , mom0, mom0_hdr
+
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_emom0'+res_str+'.fits' $
+                            , e_mom0, mom0_hdr
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MOMENT 1
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+                 blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
+                                    or (e_mom1 gt mom1_thresh), mom1_ct)
+                 if mom1_ct gt 0 then begin
+                    mom1[blank_mom1] = !values.f_nan
+                    e_mom1[blank_mom1] = !values.f_nan
+                 endif
+
                  mom1_hdr = twod_head(cube_hdr)
                  sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
 ;                 mom1[blank_ind] = !values.f_nan
 
-;              writefits, dir+$
-;                         gal+'_co21_mom1.fits', mom1, mom1_hdr
-;              writefits, dir+$
-;                         gal+'_co21_emom1.fits', e_mom1, mom1_hdr
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_mom1'+res_str+'.fits' $
+                            , mom1, mom1_hdr
+
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_emom1'+res_str+'.fits' $
+                            , e_mom1, mom1_hdr
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; DISPLAY
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  
                  !p.multi = [0, 2, 2]
                  loadct, 33
@@ -1657,59 +1678,6 @@ pro build_release_v0p6 $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; SHUFFLE AND CARRY OUT A WEIGHTED SHUFFLE
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  if keyword_set(do_shuffle) then begin
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'SHUFFLING CUBES', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-
-     dir = release_dir+'process/'
-
-     n_ext = n_elements(ext_in)
-
-     for ii = 0, n_final_gals-1 do begin
-
-        gal = final_gals[ii]
-
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-
-        mom1 = $
-           readfits(dir+gal+'_co21_mom1.fits', mom1_hdr)
-        cube = $
-           readfits(dir+gal+'_co21_correct.fits', cube_hdr)
-        make_axes, cube_hdr, vaxis=vaxis, /vonly
-
-        deltav = abs(vaxis[1]-vaxis[0])
-        new_vaxis = findgen(201)*deltav*0.5
-        new_vaxis -= mean(new_vaxis)
-        
-        shuffled_cube = $
-           shuffle( $
-           spec=cube $
-           , vaxis=vaxis $
-           , zero=mom1*1d3 $
-           , target_vaxis=new_vaxis)
-
-        shuffle_hdr = cube_hdr
-        sxaddpar, shuffle_hdr, 'NAXIS3', n_elements(new_vaxis)
-        sxaddpar, shuffle_hdr, 'CDELT3', new_vaxis[1]-new_vaxis[0]
-        sxaddpar, shuffle_hdr, 'CRVAL3', new_vaxis[0]
-        sxaddpar, shuffle_hdr, 'CRPIX3', 1
-        
-        writefits, dir+gal+'_co21_shuffle.fits' $
-                   , shuffled_cube, shuffle_hdr  
-
-        disp, max(shuffled_cube,dim=2,/nan)
-
-     endfor
-
-  endif
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; COMPILE
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
@@ -1719,89 +1687,98 @@ pro build_release_v0p6 $
      message, 'COMPILE A RELEASE', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
-     dir = '../release/v0p5/'
+     in_dir = release_dir+'process/'
+     out_dir = release_dir+'delivery/'
 
-     ext_in = $
-        ['_co21_correct.fits' $
-         ,'_co21_resid_round.fits' $
-         ,'_co21_flat_round_smoothed_mask.fits' $
-         ,'_co21_flat_round_mask.fits' $
-         ,'_large_mask.fits' $
-         ,'_co21_shuffle.fits' $
-         ,'_co21_mom0.fits' $
-         ,'_co21_emom0.fits' $
-         ,'_co21_mom1.fits' $
-         ,'_co21_emom1.fits' $
-         ,'_co21_tpeak.fits' $
-         ,'_co21_tpeak_12p5kms.fits' $
-         ,'_tp_k.fits' $
+     ext_to_process = $
+        ['_flat_round_k' $
+         ,'_pbcorr_round_k' $
+         ,'_mask' $
+         ,'_mom0' $
+         ,'_emom0' $
+         ,'_mom1' $
+         ,'_emom1' $
+         ,'_tpeak' $
+         ,'_tpeak12p5kms' $
         ]
 
-     ext_out = $
-        ['_co21.fits' $
-         ,'_co21_resid.fits' $
-         ,'_co21_smoothedmask.fits' $
-         ,'_co21_brightmask.fits' $
-         ,'_co21_widemask.fits' $
-         ,'_co21_shuffled.fits' $
-         ,'_co21_mom0.fits' $
-         ,'_co21_emom0.fits' $
-         ,'_co21_mom1.fits' $
-         ,'_co21_emom1.fits' $
-         ,'_co21_tpeak.fits' $
-         ,'_co21_tpeak_12p5kms.fits' $
-         ,'_co21_tp.fits' $
-        ]
+     n_ext = n_elements(ext_to_process)
 
-     n_ext = n_elements(ext_in)
+     for ii = 0, n_gals-1 do begin
 
-     for ii = 0, n_final_gals-1 do begin
+        message, '-------------------------------------', /info
+        message, 'Compiling files for '+gals[ii], /info
+        message, '-------------------------------------', /info
 
         if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-        
-        gal = final_gals[ii]
+           if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
 
-        print, 'Copying '+gal
+        for kk = 0, 1 do begin
 
-        for jj = 0, n_ext-1 do begin
+           if kk eq 0 then begin
+              array = '_7m+tp'
+           endif
+           
+           if kk eq 1 then begin
+              array = '_12m+7m+tp'
+              if keyword_set(only_7m) then $
+                 continue
+              if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
+                 continue
+           endif
+           
+           gal = gals[ii]
+                      
+           for jj = 0, n_ext-1 do begin
 
-           spawn, 'rm -rf '+dir+'delivery/'+gal+ext_out[jj]
+              for zz = 0, n_res do begin
 
-           spawn, 'cp '+dir+'process/'+gal+ext_in[jj]+' '+dir+'delivery/'+gal+ext_out[jj]
+                 if zz lt n_res then begin
+                    res_str = '_'+strcompress(str(target_res[zz]),/rem)+'pc'
+                 endif else begin
+                    res_str = ''
+                 endelse
+                 
+                 file_name = $
+                    strlowcase(gal)+'_co21'+array $
+                    +ext_to_process[jj] $
+                    +res_str+'.fits'
+                 fname = file_search(in_dir+file_name, count=fct)
+                 
+                 if fct eq 0 then continue
 
+                 infile = fname
+                 outfile = out_dir+file_name
+                 
+                 spawn, 'rm -rf '+outfile
+                 spawn, 'cp '+infile+' '+outfile
+                 print, '... ', outfile
+
+;                LAZY BUT SHOULD WORK TO ALSO COPY NOISE FILES
+
+                 file_name = $
+                    strlowcase(gal)+'_co21'+array $
+                    +ext_to_process[jj] $
+                    +res_str+'_noise.fits'
+                 fname = file_search(in_dir+file_name, count=fct)
+                 
+                 if fct eq 0 then continue
+
+                 infile = fname
+                 outfile = out_dir+file_name
+                 
+                 spawn, 'rm -rf '+outfile
+                 spawn, 'cp '+infile+' '+outfile
+                 print, '... ', outfile
+
+              endfor
+
+           endfor
+           
         endfor
-
+        
      endfor
 
-  endif
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; INFORMATIONAL
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-  if keyword_set(do_test) then begin
-     
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'TEST', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
-
-     dir = '../release/v0p5/process/'
-
-     for ii = 0, n_final_gals-1 do begin
-
-        gal = final_gals[ii]
-
-        if n_elements(just) gt 0 then $
-           if total(just eq final_gals[ii]) eq 0 then continue
-
-        h = headfits(dir+gal+'_co21_pbcorr_round_trimmed.fits')
-        s = gal_data(dirs[ii])
-        current_res = s.dist_mpc*!dtor*sxpar(h, 'BMAJ')*1d6
-        print, gal, ' starts at resolution ', current_res
-
-     endfor
-     
   endif
 
 end

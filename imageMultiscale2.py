@@ -2,6 +2,8 @@
 # program. Search on this to find areas where some clean up or a next
 # logical step could be worked out.
 
+import numpy as np
+
 tested_versions = ['4.6.0','4.7.0','4.7.1','4.7.2']
 this_version = (casa['build']['version']).split('-')[0]
 if this_version not in tested_versions:
@@ -102,14 +104,19 @@ except NameError:
     scales_to_use = [0,2,4,8,16,32,64]
 
 try:
-    snr_thresh 
+    multiscale_snr_thresh 
 except NameError:
-    snr_thresh = 4.0
+    multiscale_snr_thresh = 4.0
+
+try:
+    singlescale_snr_thresh 
+except NameError:
+    singlescale_snr_thresh = 1.0
 
 try:
     max_loop
 except NameError:
-    max_loop = 10
+    max_loop = 20
 
 try:
     single_scale_niter_per_chan
@@ -379,7 +386,7 @@ if do_multiscale_clean:
 
     if multiscale_threshold == None:
         execfile('../scripts/statCleanCube.py')    
-        this_threshold = snr_thresh* \
+        this_threshold = multiscale_snr_thresh* \
             imstat_residual['medabsdevmed'][0]/0.6745
         multiscale_threshold = str(this_threshold)+'Jy/beam'
     print "I will use threshold: ", multiscale_threshold
@@ -547,6 +554,34 @@ if do_singlescale_clean:
     execfile('../scripts/statCleanCube.py')    
     rms = imstat_residual['medabsdevmed'][0]/0.6745    
 
+    header = imhead(cube_root+'.image')
+    ia.open(cube_root+'.image')
+    cube = ia.getchunk()
+    ia.close()
+    
+    ia.open(cube_root+".mask")
+    big_mask = ia.getchunk()
+    ia.close()
+
+    if header['axisnames'][2] == 'Frequency':
+        spec_axis = 2
+    else:
+        spec_axis = 3
+
+    mask = (cube > 3.0*rms)
+    new_mask = \
+        (mask + np.roll(mask,1,axis=spec_axis) + \
+             np.roll(mask,-1,axis=spec_axis)) >= 1
+    mask = new_mask*big_mask
+
+    ia.open(cube_root+".mask")
+    ia.putchunk(mask)
+    ia.close()
+
+    new_mask = ''
+    mask = ''
+    cube = 0.0
+
     print ""
     print "... Now I will proceed cleaning those."
     print ""
@@ -559,7 +594,7 @@ if do_singlescale_clean:
         singlescale_threshold = None
 
     if singlescale_threshold == None:
-        this_threshold = snr_thresh*rms
+        this_threshold = singlescale_snr_thresh*rms
         singlescale_threshold = str(this_threshold)+'Jy/beam'
     print "I will use threshold: ", singlescale_threshold
     threshold = singlescale_threshold

@@ -65,3 +65,13 @@ importfits(fitsimage='ALMA_TP.NGC_1566.CO21.v0p2.gildas.blanked.fits',
 exportfits(imagename='ALMA_TP.NGC_1566.CO21.v0p2.gildas.image',
            fitsimage='ALMA_TP.NGC_1566.CO21.v0p2.casa.fits',
            velocity=True, dropdeg=True, overwrite=True)
+
+# redo export
+
+importfits(fitsimage='ALMA_TP.NGC1365.CO21.v0p2.image.fits',
+           imagename='ALMA_TP.NGC1365.CO21.v0p2.image',
+           overwrite=True)
+
+exportfits(imagename='ALMA_TP.NGC1365.CO21.v0p2.image',
+           fitsimage='ALMA_TP.NGC1365.CO21.v0p2.image.casa.fits',
+           velocity=True, dropdeg=True, overwrite=True)

@@ -1,12 +1,13 @@
 NGC 1300
 --------
 
-The pb_limit = 0.75 creates a patchy pattern, implying uneven
-sensitivity across the mosaic. Lowered the pb_limit to 0.5 in this
-case to get a better coverage.
+Two part mosaic. Will need to separate when we get the new 12m data.
 
-This is expected because this is one of the two part mosaics from the
-7m that we're currently imaging jointly for convenience.
+NGC 1365
+--------
+
+Divergence mostly goes away with a clean mask in place, but in a few
+places the residuals look pathological, still.
 
 NGC 1433
 --------
@@ -17,6 +18,14 @@ NGC 1566
 --------
 
 As above - two part jointly imaged mosaic.
+
+This one shows some evidence in the 7m residuals of needing a bigger
+clean mask at the edges of the spatial extent.
+
+NGC 1672
+--------
+
+The central mask could probably be extended a bit more in velocity.
 
 NGC 3627
 --------

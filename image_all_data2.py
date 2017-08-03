@@ -1,6 +1,6 @@
 import os
 
-only_target = ['ic5332']
+only_target = ['ngc1365']
 skip_target = []
 
 only_array = ['7m']
@@ -106,6 +106,6 @@ for ii in range(len(dir_list)):
     clean_mask = clean_mask_list[ii]
     singlescale_snr_thresh = singlescale_snr_thresh_list[ii]
 
-    execfile('../scripts/phangsImagingPipeline.py')
+    execfile('../scripts/phangsImagingPipeline2.py')
 
 os.chdir('../scripts/')
