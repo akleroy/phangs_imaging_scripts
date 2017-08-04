@@ -1,6 +1,6 @@
 import os
 
-only_target = ['ngc1365']
+only_target = ['ngc3627north','ngc3627south']
 skip_target = []
 
 only_array = ['7m']

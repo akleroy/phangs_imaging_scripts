@@ -30,9 +30,10 @@ The central mask could probably be extended a bit more in velocity.
 NGC 3627
 --------
 
-Divergence is a recurring problem. In the north part, the 7m alone
-diverges. I will try shifting the frequency grid and removing the
-clean mask.
+The north went fine. I shifted the center and am rerunning.
+
+The south suffers from some pathological divergence. Invesitgating.
+
 
 NGC 4321
 --------
