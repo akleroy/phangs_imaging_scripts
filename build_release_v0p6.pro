@@ -14,8 +14,8 @@ pro build_release_v0p6 $
    , convolve=do_conv_to_res $
    , noise=do_noise $
    , mask=do_masks $
-   , compile=do_compile $
-   , collapse=do_collapse
+   , collapse=do_collapse $
+   , compile=do_compile
 
 ;+
 ;

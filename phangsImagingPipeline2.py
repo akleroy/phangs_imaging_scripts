@@ -66,6 +66,39 @@ except NameError:
     print "Single scale S/N threshold defaulting to 4."
     singlescale_snr_thresh = 4.0
 
+try:
+    do_make_dirty_cube
+except NameError:
+    do_make_dirty_cube = True
+
+try:
+    do_revert_to_dirty
+except NameError:
+    do_revert_to_dirty = False
+
+try:
+    do_multiscale_clean 
+except NameError:
+    do_multiscale_clean = True
+
+try:
+    do_singlescale_clean 
+except NameError:
+    do_singlescale_clean = True
+
+try:
+    do_postprocess
+except NameError:
+    do_postprocess = True
+
+do_image = True
+if abort:
+    do_image = False
+
+specmode = 'cube'
+max_loop = 20
+uvtaper = None
+
 # Look up the scales to use
 if array == '7m':
     scales_as_angle = [0, 5, 10]
@@ -76,14 +109,6 @@ elif array == '12m+7m':
 else:
     print "Array unrecognized. Aborting."
     abort = True
-
-do_image = True
-if abort:
-    do_image = False
-
-specmode = 'cube'
-max_loop = 20
-uvtaper = None
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Look up the source
@@ -126,19 +151,12 @@ if do_image:
     print "+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+"
     print ""
 
-    do_make_dirty_cube = True
-    do_revert_to_dirty = False
-
     if (clean_mask == "None") or (clean_mask == None):
         do_read_in_clean_mask = False
         do_use_pbmask = True
     else:
         do_read_in_clean_mask = True
         clean_mask_file = '../clean_masks/'+clean_mask
-
-    do_multiscale_clean = True
-    do_singlescale_clean = True
-    do_postprocess = True
     
     multiscale_delta_thresh = 0.01
     singlescale_delta_thresh = 0.01

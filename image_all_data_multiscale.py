@@ -1,3 +1,5 @@
+# Carry out only the multiscale part of the imaging
+
 import os
 
 only_target = []
@@ -105,6 +107,12 @@ for ii in range(len(dir_list)):
     multiscale_snr_thresh = multiscale_snr_thresh_list[ii]
     clean_mask = clean_mask_list[ii]
     singlescale_snr_thresh = singlescale_snr_thresh_list[ii]
+    
+    do_make_dirty_cube = True
+    do_revert_to_dirty = False
+    do_multiscale_clean = True
+    do_singlescale_clean = False
+    do_postprocess = True
 
     execfile('../scripts/phangsImagingPipeline2.py')
 
