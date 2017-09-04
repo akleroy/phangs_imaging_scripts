@@ -2,7 +2,7 @@
 
 import os
 
-only_target = []
+only_target = ['ngc1365']
 skip_target = []
 
 only_array = ['12m+7m']

@@ -628,14 +628,14 @@ pro build_release_v0p6 $
         if n_elements(just) gt 0 then $
            if total(just eq gals[ii]) eq 0 then continue
 
-        message, 'Copying data to feather '+gals[ii], /info
-
         if total(gals[ii] eq two_part) eq 0 then begin                 
            continue
         endif else begin
            galname = [gals[ii]+'north', gals[ii]+'south']
         endelse
         message, 'Merging '+gals[ii], /info
+
+        message, 'Merging multiple parts for '+gals[ii], /info
 
         for kk = 0, 4 do begin
            
@@ -830,6 +830,10 @@ pro build_release_v0p6 $
                  , outhdr = new_pbcube2_hdr $
                  , missing=!values.f_nan
               pb_cube2 = new_pbcube2
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MERGE THE TWO PARTS
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
               cube_out = new_part1*!values.f_nan
               
@@ -1071,7 +1075,7 @@ pro build_release_v0p6 $
         if n_elements(just) gt 0 then $
            if total(just eq gals[ii]) eq 0 then continue
 
-        cube = readfits(dir+gals[ii]+'_co21_7m+tp_pbcorr_round_k.fits', hdr)
+        cube = readfits(dir+gals[ii]+'_co21_7m+tp_flat_round_k.fits', hdr)
         
         make_noise_cube $
            , cube_in = cube $
@@ -1083,6 +1087,8 @@ pro build_release_v0p6 $
         ppbeam = calc_pixperbeam(hdr=hdr)
 
         fac = 1.0
+        if gals[ii] eq 'ngc1365' then $
+           fac = 0.25
         if gals[ii] eq 'ngc1566' then $
            fac = 0.25
         if gals[ii] eq 'ngc1672' then $
@@ -1144,7 +1150,11 @@ pro build_release_v0p6 $
 
         mask = (mask + tp_mask) ge 1
         mask = grow_mask(mask, iters=3, /z_only)
+        if gals[ii] eq 'ngc1365' then $
+           mask = grow_mask(mask, iters=5, /z_only)
         if gals[ii] eq 'ngc1672' then $
+           mask = grow_mask(mask, iters=10, /z_only)
+        if gals[ii] eq 'ngc3627' then $
            mask = grow_mask(mask, iters=5, /z_only)
         mask = grow_mask(mask, iters=5, /xy_only)
 
@@ -1179,6 +1189,9 @@ pro build_release_v0p6 $
            , dir+gals[ii]+'_co21_clean_mask.fits' $
            , float(mask*1.0), hdr
         
+        print, "Clean mask for "+gals[ii]+". Key to continue."
+        test = get_kbrd(1)
+
      endfor
 
   endif

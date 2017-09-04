@@ -9,100 +9,100 @@
 #
 ic5332_7m_co21.ms		ic5332_co21_7m			0.25	4.0	0.6	ic5332_co21_clean_mask.fits	1.0      None
 ic5332_12m_co21.ms		ic5332_co21_12m			0.25	4.0	0.6	ic5332_co21_clean_mask.fits	1.0	 None
-ic5332_925_co21.ms		ic5332_co21_12m+7m		0.25	4.0	0.6	ic5332_co21_clean_mask.fits	1.0	 None
+ic5332_925_co21.ms		ic5332_co21_12m+7m		0.25	4.0	0.8	ic5332_co21_clean_mask.fits	1.0	 None
 #
 ngc0628_7m_co21.ms		ngc0628_co21_7m			0.25	4.0	0.6	ngc0628_co21_clean_mask.fits	1.0      None
 ngc0628_12m_co21.ms		ngc0628_co21_12m		0.25	4.0	0.6	ngc0628_co21_clean_mask.fits	1.0	 None
-ngc0628_650_co21.ms		ngc0628_co21_12m+7m		0.25	4.0	0.6	ngc0628_co21_clean_mask.fits	1.0	 None
+ngc0628_650_co21.ms		ngc0628_co21_12m+7m		0.25	4.0	0.8	ngc0628_co21_clean_mask.fits	1.0	 None
 #
 ngc1087_7m_co21.ms		ngc1087_co21_7m			0.25	4.0	0.6	ngc1087_co21_clean_mask.fits	1.0      None
 #ngc1087_12m_co21.ms		ngc1087_co21_12m		0.25	4.0	0.6	ngc1087_co21_clean_mask.fits	1.0	 None
-#ngc1087_925_co21.ms		ngc1087_co21_12m+7m		0.25	4.0	0.6	ngc1087_co21_clean_mask.fits	1.0	 None
+#ngc1087_925_co21.ms		ngc1087_co21_12m+7m		0.25	4.0	0.8	ngc1087_co21_clean_mask.fits	1.0	 None
 #
 ngc1300_7m_co21.ms		ngc1300_co21_7m			0.25	4.0	0.6	ngc1300_co21_clean_mask.fits	1.0      None
 #ngc1300_12m_co21.ms		ngc1300_co21_12m		0.25	4.0	0.6	ngc1300_co21_clean_mask.fits	1.0	 None
-#ngc1300_925_co21.ms		ngc1300_co21_12m+7m		0.25	4.0	0.6	ngc1300_co21_clean_mask.fits	1.0	 None
+#ngc1300_925_co21.ms		ngc1300_co21_12m+7m		0.25	4.0	0.8	ngc1300_co21_clean_mask.fits	1.0	 None
 #
 ngc1365_7m_co21.ms		ngc1365_co21_7m			0.25	4.0	0.7	ngc1365_co21_clean_mask.fits	1.0      None
-ngc1365_12m_co21.ms		ngc1365_co21_12m		0.25	4.0	0.6	ngc1365_co21_clean_mask.fits	1.0	 None
-ngc1365_1161_co21.ms		ngc1365_co21_12m+7m		0.25	4.0	0.6	ngc1365_co21_clean_mask.fits	1.0	 None
+ngc1365_12m_co21.ms		ngc1365_co21_12m		0.25	4.0	0.8	ngc1365_co21_clean_mask.fits	1.0	 None
+ngc1365_1161_co21.ms		ngc1365_co21_12m+7m		0.75	4.0	0.9	ngc1365_co21_clean_mask.fits	1.0	 None
 #
 ngc1385_7m_co21.ms		ngc1385_co21_7m			0.25	4.0	0.6	ngc1385_co21_clean_mask.fits	1.0      None
 #ngc1385_12m_co21.ms		ngc1385_co21_12m		0.25	4.0	0.6	ngc1385_co21_clean_mask.fits	1.0	 None
-#ngc1385_925_co21.ms		ngc1385_co21_12m+7m		0.25	4.0	0.6	ngc1385_co21_clean_mask.fits	1.0	 None
+#ngc1385_925_co21.ms		ngc1385_co21_12m+7m		0.25	4.0	0.8	ngc1385_co21_clean_mask.fits	1.0	 None
 #
 ngc1433_7m_co21.ms		ngc1433_co21_7m			0.25	4.0	0.6	ngc1433_co21_clean_mask.fits	1.0      None
 #ngc1433_12m_co21.ms		ngc1433_co21_12m		0.25	4.0	0.6	ngc1433_co21_clean_mask.fits	1.0	 None
-#ngc1433_925_co21.ms		ngc1433_co21_12m+7m		0.25	4.0	0.6	ngc1433_co21_clean_mask.fits	1.0	 None
+#ngc1433_925_co21.ms		ngc1433_co21_12m+7m		0.25	4.0	0.8	ngc1433_co21_clean_mask.fits	1.0	 None
 #
 ngc1512_7m_co21.ms		ngc1512_co21_7m			0.25	4.0	0.6	ngc1512_co21_clean_mask.fits	1.0      None
 #ngc1512_12m_co21.ms		ngc1512_co21_12m		0.25	4.0	0.6	ngc1512_co21_clean_mask.fits	1.0	 None
-#ngc1512_925_co21.ms		ngc1512_co21_12m+7m		0.25	4.0	0.6	ngc1512_co21_clean_mask.fits	1.0	 None
+#ngc1512_925_co21.ms		ngc1512_co21_12m+7m		0.25	4.0	0.8	ngc1512_co21_clean_mask.fits	1.0	 None
 #
 ngc1566_7m_co21.ms		ngc1566_co21_7m			0.25	4.0	0.6	ngc1566_co21_clean_mask.fits	1.0      None
 #ngc1566_12m_co21.ms		ngc1566_co21_12m		0.25	4.0	0.6	ngc1566_co21_clean_mask.fits	1.0	 None
-#ngc1566_925_co21.ms		ngc1566_co21_12m+7m		0.25	4.0	0.6	ngc1566_co21_clean_mask.fits	1.0	 None
+#ngc1566_925_co21.ms		ngc1566_co21_12m+7m		0.25	4.0	0.8	ngc1566_co21_clean_mask.fits	1.0	 None
 #
 ngc1672_7m_co21.ms		ngc1672_co21_7m			0.25	4.0	0.6	ngc1672_co21_clean_mask.fits	1.0	 None
 ngc1672_12m_co21.ms		ngc1672_co21_12m		0.25	4.0	0.6	ngc1672_co21_clean_mask.fits	1.0	 None
-ngc1672_956_co21.ms		ngc1672_co21_12m+7m		0.25	4.0	0.6	ngc1672_co21_clean_mask.fits	1.0	 None
+ngc1672_956_co21.ms		ngc1672_co21_12m+7m		0.25	4.0	0.8	ngc1672_co21_clean_mask.fits	1.0	 None
 #
 ngc2835_7m_co21.ms		ngc2835_co21_7m			0.25	4.0	0.6	ngc2835_co21_clean_mask.fits	1.0	 None
 ngc2835_12m_co21.ms		ngc2835_co21_12m		0.25	4.0	0.6	ngc2835_co21_clean_mask.fits	1.0	 None
-ngc2835_925_co21.ms		ngc2835_co21_12m+7m		0.25	4.0	0.6	ngc2835_co21_clean_mask.fits	1.0	 None
+ngc2835_925_co21.ms		ngc2835_co21_12m+7m		0.25	4.0	0.8	ngc2835_co21_clean_mask.fits	1.0	 None
 #
 ngc3351_7m_co21.ms		ngc3351_co21_7m			0.25	4.0	0.6	ngc3351_co21_clean_mask.fits	1.0	 None
 ngc3351_12m_co21.ms		ngc3351_co21_12m		0.25	4.0	0.6	ngc3351_co21_clean_mask.fits	1.0	 None
-ngc3351_956_co21.ms		ngc3351_co21_12m+7m		0.25	4.0	0.6	ngc3351_co21_clean_mask.fits	1.0	 None
+ngc3351_956_co21.ms		ngc3351_co21_12m+7m		0.25	4.0	0.8	ngc3351_co21_clean_mask.fits	1.0	 None
 #				
 ngc3627north_7m_co21.ms		ngc3627north_co21_7m		0.25	4.0	0.6	ngc3627_co21_clean_mask.fits	1.0	 None
 ngc3627north_12m_co21.ms	ngc3627north_co21_12m		0.25	4.0	0.6	ngc3627_co21_clean_mask.fits	1.0	 None
-ngc3627north_956_co21.ms	ngc3627north_co21_12m+7m	0.25	4.0	0.6	ngc3627_co21_clean_mask.fits	1.0	 None
+ngc3627north_956_co21.ms	ngc3627north_co21_12m+7m	0.25	4.0	0.8	ngc3627_co21_clean_mask.fits	1.0	 None
 #
 ngc3627south_7m_co21.ms		ngc3627south_co21_7m		0.25	4.0	0.6	ngc3627_co21_clean_mask.fits	1.0	 None
 ngc3627south_12m_co21.ms	ngc3627south_co21_12m		0.25	4.0	0.6	ngc3627_co21_clean_mask.fits	1.0	 None
-ngc3627south_956_co21.ms	ngc3627south_co21_12m+7m	0.25	4.0	0.6	ngc3627_co21_clean_mask.fits	1.0	 None
+ngc3627south_956_co21.ms	ngc3627south_co21_12m+7m	0.25	4.0	0.8	ngc3627_co21_clean_mask.fits	1.0	 None
 #
 ngc4254north_7m_co21.ms		ngc4254north_co21_7m		0.25	4.0	0.6	ngc4254_co21_clean_mask.fits	1.0	 None
 ngc4254north_12m_co21.ms	ngc4254north_co21_12m		0.25	4.0	0.6	ngc4254_co21_clean_mask.fits	1.0	 None
-ngc4254north_956_co21.ms	ngc4254north_co21_12m+7m	0.25	4.0	0.6	ngc4254_co21_clean_mask.fits	1.0	 None
+ngc4254north_956_co21.ms	ngc4254north_co21_12m+7m	0.25	4.0	0.8	ngc4254_co21_clean_mask.fits	1.0	 None
 #
 ngc4254south_7m_co21.ms		ngc4254south_co21_7m		0.25	4.0	0.6	ngc4254_co21_clean_mask.fits	1.0	 None
 ngc4254south_12m_co21.ms	ngc4254south_co21_12m		0.25	4.0	0.6	ngc4254_co21_clean_mask.fits	1.0	 None
-ngc4254south_956_co21.ms	ngc4254south_co21_12m+7m	0.25	4.0	0.6	ngc4254_co21_clean_mask.fits	1.0	 None
+ngc4254south_956_co21.ms	ngc4254south_co21_12m+7m	0.25	4.0	0.8	ngc4254_co21_clean_mask.fits	1.0	 None
 #
 ngc4303_7m_co21.ms		ngc4303_co21_7m			0.25	4.0	0.6	ngc4303_co21_clean_mask.fits	1.0	 None
 ngc4303_12m_co21.ms		ngc4303_co21_12m		0.25	4.0	0.6	ngc4303_co21_clean_mask.fits	1.0	 None
-ngc4303_956_co21.ms		ngc4303_co21_12m+7m		0.25	4.0	0.6	ngc4303_co21_clean_mask.fits	1.0	 None
+ngc4303_956_co21.ms		ngc4303_co21_12m+7m		0.25	4.0	0.8	ngc4303_co21_clean_mask.fits	1.0	 None
 #
 ngc4321north_7m_co21.ms		ngc4321north_co21_7m		0.25	4.0	0.6	ngc4321_co21_clean_mask.fits	1.0	 None
 ngc4321north_12m_co21.ms	ngc4321north_co21_12m		0.25	4.0	0.6	ngc4321_co21_clean_mask.fits	1.0	 None
-ngc4321north_956_co21.ms	ngc4321north_co21_12m+7m	0.25	4.0	0.6	ngc4321_co21_clean_mask.fits	1.0	 None
+ngc4321north_956_co21.ms	ngc4321north_co21_12m+7m	0.25	4.0	0.8	ngc4321_co21_clean_mask.fits	1.0	 None
 #
 ngc4321south_7m_co21.ms		ngc4321south_co21_7m		0.25	4.0	0.6	ngc4321_co21_clean_mask.fits	1.0	 None
 ngc4321south_12m_co21.ms	ngc4321south_co21_12m		0.25	4.0	0.6	ngc4321_co21_clean_mask.fits	1.0	 None
-ngc4321south_956_co21.ms	ngc4321south_co21_12m+7m	0.25	4.0	0.6	ngc4321_co21_clean_mask.fits	1.0	 None
+ngc4321south_956_co21.ms	ngc4321south_co21_12m+7m	0.25	4.0	0.8	ngc4321_co21_clean_mask.fits	1.0	 None
 #
 ngc4535_7m_co21.ms		ngc4535_co21_7m			0.25	4.0	0.6	ngc4535_co21_clean_mask.fits	1.0	 None
 ngc4535_12m_co21.ms		ngc4535_co21_12m		0.25	4.0	0.6	ngc4535_co21_clean_mask.fits	1.0	 None
-ngc4535_956_co21.ms		ngc4535_co21_12m+7m		0.25	4.0	0.6	ngc4535_co21_clean_mask.fits	1.0	 None
+ngc4535_956_co21.ms		ngc4535_co21_12m+7m		0.25	4.0	0.8	ngc4535_co21_clean_mask.fits	1.0	 None
 #
 ngc5068north_7m_co21.ms		ngc5068north_co21_7m		0.25	4.0	0.6	ngc5068_co21_clean_mask.fits	1.0	 None
 ngc5068north_12m_co21.ms	ngc5068north_co21_12m		0.25	4.0	0.6	ngc5068_co21_clean_mask.fits	1.0	 None
-ngc5068north_925_co21.ms	ngc5068north_co21_12m+7m	0.25	4.0	0.6	ngc5068_co21_clean_mask.fits	1.0	 None
+ngc5068north_925_co21.ms	ngc5068north_co21_12m+7m	0.5	4.0	0.8	ngc5068_co21_clean_mask.fits	1.0	 None
 #
 ngc5068south_7m_co21.ms		ngc5068south_co21_7m		0.25	4.0	0.6	ngc5068_co21_clean_mask.fits	1.0	 None
 ngc5068south_12m_co21.ms	ngc5068south_co21_12m		0.25	4.0	0.6	ngc5068_co21_clean_mask.fits	1.0	 None
-ngc5068south_925_co21.ms	ngc5068south_co21_12m+7m	0.25	4.0	0.6	ngc5068_co21_clean_mask.fits	1.0	 None
+ngc5068south_925_co21.ms	ngc5068south_co21_12m+7m	0.5	4.0	0.8	ngc5068_co21_clean_mask.fits	1.0	 None
 #
 ngc5128_7m_co21.ms		ngc5128_co21_7m			0.25	4.0	0.6	None				1.0	 None
 ngc5128_12m_co21.ms		ngc5128_co21_12m		0.25	4.0	0.6	None				1.0	 None
-ngc5128_803_co21.ms		ngc5128_co21_12m+7m		0.25	4.0	0.6	None				1.0	 None
+ngc5128_803_co21.ms		ngc5128_co21_12m+7m		0.50	4.0	0.8	None				1.0	 None
 #
 ngc6744north_7m_co21.ms		ngc6744north_co21_7m		0.25	4.0	0.6	ngc6744_co21_clean_mask.fits	1.0	 None
 ngc6744north_12m_co21.ms	ngc6744north_co21_12m		0.25	4.0	0.6	ngc6744_co21_clean_mask.fits	1.0	 None
-ngc6744north_956_co21.ms	ngc6744north_co21_12m+7m	0.25	4.0	0.6	ngc6744_co21_clean_mask.fits	1.0	 None
+ngc6744north_956_co21.ms	ngc6744north_co21_12m+7m	0.50	4.0	0.8	ngc6744_co21_clean_mask.fits	1.0	 None
 #
 ngc6744south_7m_co21.ms		ngc6744south_co21_7m		0.25	4.0	0.6	ngc6744_co21_clean_mask.fits	1.0	 None
 ngc6744south_12m_co21.ms	ngc6744south_co21_12m		0.25	4.0	0.6	ngc6744_co21_clean_mask.fits	1.0	 None
-ngc6744south_956_co21.ms	ngc6744south_co21_12m+7m	0.25	4.0	0.6	ngc6744_co21_clean_mask.fits	1.0	 None
+ngc6744south_956_co21.ms	ngc6744south_co21_12m+7m	0.50	4.0	0.8	ngc6744_co21_clean_mask.fits	1.0	 None
