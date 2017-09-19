@@ -1077,6 +1077,34 @@ pro build_release_v0p6 $
 
         cube = readfits(dir+gals[ii]+'_co21_7m+tp_flat_round_k.fits', hdr)
         
+        hires_name = file_search(dir+gals[ii]+'_co21_12m+7m+tp_flat_round_k.fits', count=hires_ct)
+        if hires_ct eq 1 then begin
+           hires = readfits(hires_name, hires_hdr)
+           rms_hires = mad(hires)
+           ppbeam = calc_pixperbeam(hdr=hires_hdr)
+           make_cprops_mask $
+              , indata=hires $
+              , inrms = rms_hires $
+              , lo_thresh = 2 $
+              , hi_thresh = 5. $
+              , hi_nchan = 2 $
+              , min_area = 1.0*ppbeam $
+              , outmask=hires_mask
+           conv_with_gauss $
+              , data=hires_mask*1.0 $
+              , hdr=hires_hdr $
+              , target = [1,1,0.] * 20.0 $
+              , out_data=out_hires_mask $
+              , /perbeam        
+           hires_mask = out_hires_mask ge 0.5          
+           cube_hastrom $
+              , data=hires_mask $
+              , hdr=hires_hdr $
+              , target=hdr $
+              , outcube=out_hires_mask
+           hires_mask = out_hires_mask gt 0.5
+        endif
+
         make_noise_cube $
            , cube_in = cube $
            , out_cube = rms_cube $
@@ -1148,7 +1176,11 @@ pro build_release_v0p6 $
            , /perbeam        
         tp_mask = out_tp_mask ge 1.0
 
-        mask = (mask + tp_mask) ge 1
+        if hires_ct eq 1 then $
+           mask = (hires_mask + mask + tp_mask) ge 1 $
+        else $
+           mask = (mask + tp_mask) ge 1
+
         mask = grow_mask(mask, iters=3, /z_only)
         if gals[ii] eq 'ngc1365' then $
            mask = grow_mask(mask, iters=5, /z_only)
@@ -1161,15 +1193,15 @@ pro build_release_v0p6 $
         !p.multi=[0,3,2]
 
         loadct, 33
-        disp, max(cube, dim=3, /nan), /xs, /ys
+        disp, max(cube, dim=3, /nan), /xs, /ys, max=0.1
         contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         loadct, 33
-        disp, max(cube, dim=2, /nan), /xs, /ys
+        disp, max(cube, dim=2, /nan), /xs, /ys, max=0.1
         contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         loadct, 33
-        disp, max(cube, dim=1, /nan), /xs, /ys
+        disp, max(cube, dim=1, /nan), /xs, /ys, max=0.1
         contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
 
         loadct, 33
@@ -1190,7 +1222,7 @@ pro build_release_v0p6 $
            , float(mask*1.0), hdr
         
         print, "Clean mask for "+gals[ii]+". Key to continue."
-        test = get_kbrd(1)
+        ;test = get_kbrd(1)
 
      endfor
 

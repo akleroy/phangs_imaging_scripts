@@ -1,9 +1,9 @@
 import os
 
-only_target = []
+only_target = ['ngc1566','ngc1672','ngc3627']
 skip_target = []
 
-only_array = ['12m+7m']
+only_array = ['7m']
 skip_array = []
 
 infile = open('../scripts/imaging_key.txt', 'r')
