@@ -1521,10 +1521,46 @@ pro build_release_v0p6 $
                  
               endfor
 
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MAKE HYBRID MASKS
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+;             Read the low resolution mask - 500 pc to start, could
+;                                            make 1 kpc in the future?
+
+              fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                  +'_mask_500pc.fits', count=fct)
+              if fct eq 0 then continue
+              mask_lores = readfits(fname)
+
+              for zz = 0, n_res do begin
+
+                 if zz lt n_res then begin
+                    res_str = '_'+strcompress(str(target_res[zz]),/rem)+'pc'
+                    print, "Resolution "+res_str
+                 endif else begin
+                    res_str = ''
+                    print, "Native resolution"
+                 endelse
+                 
+                 fname = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                     +'_mask' $
+                                     +res_str+'.fits', count=fct)
+                 
+                 if fct eq 0 then continue
+                 mask_hires = readfits(fname, mask_hdr)
+                 
+                 hybrid = mask_hires or mask_lores
+
+                 writefits, dir+strlowcase(gal)+'_co21'+array+'_hybridmask' $
+                            +res_str+'.fits', hybrid, mask_hdr
+                 
+              endfor
+              
            endfor
-
+           
         endfor
-
+        
      endfor
      
   endif
@@ -1601,23 +1637,17 @@ pro build_release_v0p6 $
 
                  ppbeam = calc_pixperbeam(hdr=cube_hdr)         
                  
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-; Want to use a mask bigger than some size, deal with that here.
-
-;                 if then begin
-
-;                 endif else begin
-
-;                 endelse
-                 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-                 mask = readfits(dir+strlowcase(gal)+'_co21'+array $
-                                 +'_mask' $
-                                 +res_str+'.fits' $
+                 mask_file = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                         +'_hybridmask' $
+                                         +res_str+'.fits', count=mask_ct)
+                 if mask_ct eq 0 then begin                    
+                    mask_file = file_search(dir+strlowcase(gal)+'_co21'+array $
+                                            +'_mask' $
+                                            +res_str+'.fits', count=mask_ct)
+                 endif
+                 mask = readfits(mask_file $
                                  , mask, mask_hdr)
-
+                 
                  collapse_cube $
                     , cube=cube $
                     , hdr=cube_hdr $
