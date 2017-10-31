@@ -146,6 +146,7 @@ def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
 def copy_data(gal=None,
               just_proj=None,
               just_ms=None,
+              just_array=None,
               do_split=True,
               do_statwt=True,
               quiet=False):
@@ -195,7 +196,11 @@ def copy_data(gal=None,
                     else:
                         if this_ms != just_ms:
                             continue
-            
+ 
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+           
             in_file = proj_specific_key[this_ms]
 
             if do_split:
@@ -241,6 +246,7 @@ def copy_data(gal=None,
 def concat_ms_for_line(gal=None,
                        just_proj=None,
                        just_ms=None,
+                       just_array=None,
                        line='co21',
                        do_statwt=True,
                        do_chan0=True,
@@ -265,7 +271,39 @@ def concat_ms_for_line(gal=None,
         return
     gal_specific_key = ms_key[gal]
 
-    # TBD
+    files_to_concat = []
+
+    for this_proj in gal_specific_key.keys():
+        if just_proj != None:
+            if type(just_proj) == type([]):
+                if just_proj.count(this_proj) == 0:
+                    continue
+            else:
+                if this_proj != just_proj:
+                    continue
+
+        proj_specific_key = gal_specific_key[this_proj]
+        for this_ms in proj_specific_key.keys():
+            if just_ms != None:
+                if type(just_ms) == type([]):
+                    if just_ms.count(this_ms) == 0:
+                        continue
+                    else:
+                        if this_ms != just_ms:
+                            continue
+            
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+
+            this_in_file = proj_specific_key[this_ms]
+            if os.path.isdir(this_in_file) == False:
+                continue
+            files_to_concat.append(this_in_file)
+
+    if len(files_to_concat) == 0:
+        print "No files to concatenate found. Returning."
+        return
 
     # Concatenate all of the relevant files
 
@@ -562,6 +600,7 @@ def extract_line_for_galaxy(
     gal=None,
     just_proj=None,
     just_ms=None,
+    just_array=None,
     line='co21',
     vsys=0.0,
     vwidth=500.,
@@ -620,6 +659,10 @@ def extract_line_for_galaxy(
                         if this_ms != just_ms:
                             continue
             
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+            
             in_file = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'
             out_file = gal+'_'+this_proj+'_'+this_ms+'_'+line+'.ms'    
 
@@ -639,30 +682,30 @@ def extract_line_for_galaxy(
 
 def extract_phangs_lines(   
     gal=None,
-    just_proj=None,
-    just_ms=None,
+    just_array=None,
     quiet=False
     ):
     """
     Extract all phangs lines and continuum for a galaxy.
     """
 
-    extract_line_for_galaxy(   
-        gal=gal,
-        line='co21',
-        chan_width=2.5,    
-        quiet=quiet
-        )
+    for line in ['co21', 'c18o21']:
 
-    extract_line_for_galaxy(   
-        gal=gal,
-        line='c18o21',
-        chan_width=6.0, 
-        quiet=quiet
-        )
+        extract_line_for_galaxy(   
+            gal=gal,
+            just_array=just_array,
+            line=line,
+            chan_width=2.5,    
+            quiet=quiet
+            )
+
+        concat_ms_for_line(
+            gal=gal,
+            just_array=just_array,
+            line=line,
+            do_statwt=True,
+            do_chan0=True)
     
-    # could add sio5to4 once I have some more disk space
-
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to extract continuum from a measurement set
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
