@@ -751,10 +751,26 @@ def contsub(
 
     return
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Routines related to masking
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+def extract_continuum(
+    in_file=None,
+    out_file=None,
+    lines_to_flag=None,
+    gal=None,
+    vsys=0.0,
+    vwidth=500.,
+    quiet=False):
+    """
+    Extract a continuum measurement set, flagging any specified lines.
+    """
+    pass
 
+def concat_continuum(
+    ):
+    """
+    Concatenate continuum data sets.
+    """
+    pass
+    
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to image the data
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
