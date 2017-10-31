@@ -668,10 +668,11 @@ def extract_phangs_lines(
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 def contsub(
-    gal=None,
-    just_proj=None,
-    just_ms=None,
+    in_file=None,
     lines_to_flag=None,
+    gal=None,
+    vsys=0.0,
+    vwidth=500.,
     quiet=False    
     ):
     """
@@ -679,7 +680,76 @@ def contsub(
     figures out channels corresponding to spectral lines for a suite
     of bright lines.
     """
-    pass
+
+    sol_kms = 2.99e5
+
+    # Set up the input file
+
+    if os.path.isdir(in_file) == False:
+        if quiet == False:
+            print "Input file not found."
+        return
+
+    # pull the parameters from the galaxy in the mosaic file
+
+    if gal != None:
+        mosaic_parms = read_mosaic_key()
+        if mosaic_parms.has_key(gal):
+            vsys = mosaic_parms[gal]['vsys']
+            vwidth = mosaic_parms[gal]['vwidth']
+
+    # set the list of lines to flag
+
+    if lines_to_flag == None:
+        lines_to_flag = line_list.lines_co + line_list.lines_13co + line_list.lines_c18o
+
+    vm = au.ValueMapping(in_file)
+
+    spw_flagging_string = ''
+    first = True
+    for spw in vm.spwInfo.keys():
+        this_spw_string = str(spw)+':0'
+        if first:
+            spw_flagging_string += this_spw_string
+            first = False
+        else:
+            spw_flagging_string += ','+this_spw_string            
+
+    for line in lines_to_flag:
+        rest_linefreq_ghz = line_list[line]
+
+        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
+        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
+        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
+
+        spw_list = au.getScienceSpwsForFrequency(this_infile,
+                                                 shifted_linefreq_hz)
+        if spw_list == []:
+            continue
+
+        print "Found overlap for "+line
+        for this_spw in spw_list:
+            freq_ra = vm.spwInfo[this_spw]['chanFreqs']
+            chan_ra = np.arange(len(freq_ra))
+            to_flag = (freq_ra >= lo_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
+            to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
+            low_chan = np.min(chan_ra[to_flag])
+            hi_chan = np.max(chan_ra[to_flag])                
+            this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
+            if first:
+                spw_flagging_string += this_spw_string
+                first = False
+            else:
+                spw_flagging_string += ','+this_spw_string
+
+    print "... proposed channels to avoid "+spw_flagging_string
+
+    os.system('rm -rf '+in_file+'.contsub')
+    uvcontsub(vis=in_file,
+              fitspw=spw_flagging_string,
+              excludechans=True)
+
+    return
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines related to masking
