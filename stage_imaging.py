@@ -11,8 +11,7 @@ import analysisUtils as au
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # ... process only these galaxies
-#only = ['ngc1317','ngc1546','ngc4207','ngc4694']
-only = 'ngc1317'
+only = ['ngc1317','ngc1546','ngc4207','ngc4694']
 
 # ... skip these galaxies
 skip = []

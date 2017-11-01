@@ -3,6 +3,7 @@
 
 import os
 import numpy as np
+import glob
 
 # Other PHANGS scripts
 import line_list
@@ -181,8 +182,39 @@ def read_override_image_params(
 
 def read_imaging_key(fname='../scripts/imaging_key.txt'):
     """
+    Read the key used to guide PHANGS imaging.
     """
-    pass
+    infile = open(fname, 'r')
+    
+    imaging_key = {}
+
+    while True:
+        line  = infile.readline()    
+        if len(line) == 0:
+            break
+        if line[0] == '#':
+            continue
+        words = line.split()
+        if len(words) < 7:
+            continue
+
+        this_input_vis = words[0]
+        this_cube_root = words[1]
+        this_pb_limit = words[2]
+        this_multiscale_snr_thresh = words[3]
+        this_smallscalebias = words[4]
+        this_clean_mask = words[5]
+        this_singlescale_snr_thresh = words[6]
+
+        imaging_key[this_input_vis] = {}
+        imaging_key[this_input_vis]['cube_root'] = this_cube_root
+        imaging_key[this_input_vis]['pb_limit'] = this_pb_limit
+        imaging_key[this_input_vis]['multiscale_thresh'] = this_multiscale_snr_thresh
+        imaging_key[this_input_vis]['smallscalebias'] = this_smallscalebias
+        imaging_key[this_input_vis]['clean_mask'] = this_clean_mask
+        imaging_key[this_input_vis]['singlescale_thresh'] = this_singlescale_snr_thresh
+
+    infile.close()
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
@@ -312,6 +344,7 @@ def concat_line_for_gal(
     just_ms=None,
     just_array=None,
     line='co21',
+    tag='',
     do_statwt=True,
     do_chan0=True,
     quiet=False):
@@ -370,7 +403,10 @@ def concat_line_for_gal(
 
     # Concatenate all of the relevant files
 
-    out_file =  gal+'_'+line+'.ms'
+    if tag != '':
+        out_file =  gal+'_'+tag+'_'+line+'.ms'
+    else:
+        out_file =  gal+'_'+line+'.ms'
 
     os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.flagversions')
@@ -502,12 +538,39 @@ def extract_phangs_lines(
             quiet=quiet
             )
 
-        concat_line_for_gal(
-            gal=gal,
-            just_array=just_array,
-            line=line,
-            do_statwt=True,
-            do_chan0=True)
+        if just_array != '12m':
+            concat_line_for_gal(
+                gal=gal,
+                just_array='7m',
+                tag='7m',
+                line=line,
+                do_statwt=True,
+                do_chan0=True)
+
+        if just_array != '7m':
+            concat_line_for_gal(
+                gal=gal,
+                just_array='12m',
+                tag='12m',
+                line=line,
+                do_statwt=True,
+                do_chan0=True)
+
+        has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
+        has_12m = len(glob.glob(gal+'*12m*'+line+'*')) > 0
+        if has_12m == False or has_7m == False:
+            continue
+
+        if just_array == None:
+
+            concat_line_for_gal(
+                gal=gal,
+                just_array = None,
+                tag='12m+7m',
+                line=line,
+                do_statwt=True,
+                do_chan0=True)
+            
 
     if quiet == False:
         print "--------------------------------------------------------"
@@ -541,9 +604,26 @@ def extract_phangs_continuum(
         quiet=quiet
         )
 
-    concat_cont_for_gal(
-        gal=gal,
-        just_array=just_array)
+    if just_array != '12m':
+        concat_cont_for_gal(
+            gal=gal,
+            just_array = '7m',
+            tag = '7m')
+
+    if just_array != '7m':
+        concat_cont_for_gal(
+            gal=gal,
+            just_array = '12m',
+            tag = '12m')
+
+    has_7m = len(glob.glob(gal+'*7m*cont*')) > 0
+    has_12m = len(glob.glob(gal+'*12m*cont*')) > 0
+
+    if just_array == None and has_7m and has_12m:
+        concat_cont_for_gal(
+            gal=gal,
+            just_array = None,
+            tag = '12m+7m')
 
     if quiet == False:
         print "--------------------------------------------------------"
