@@ -1,0 +1,13 @@
+# Directory mapping key - include only nonstandard mapping
+# Column 1: name of data set (e.g., ngc3627north)
+# Column 2: name of directory that this goes in (e.g., ngc3627)
+ngc3627north	 ngc3627
+ngc3627south	 ngc3627
+ngc4254north	 ngc4254
+ngc4254south	 ngc4254
+ngc4321north	 ngc4321
+ngc4321south	 ngc4321
+ngc5068north	 ngc5068
+ngc5068south	 ngc5068
+ngc6744north	 ngc6744
+ngc6744south	 ngc6744

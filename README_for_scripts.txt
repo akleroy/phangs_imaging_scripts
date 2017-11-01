@@ -63,7 +63,7 @@ a single target, we can either reflect these in the ms_file_key as,
 e.g., 7m_1 7m_2 and so on OR we can concatenate them in to a single
 data set. 
 
-I have been doing the latter (concatenation) for the cases prior to
+I have been doing the latter (concatenation) for the cases PRIOR to
 the large program. To do this, I copy the script
 
 combineCalibrated.py
@@ -94,4 +94,48 @@ After you have the data calibrated, you need to:
   file includes the phase centers and velocities to be used in
   imaging and line extraction.
 
+Now you should be read to run the script
 
+stage_imaging.py
+
+This is a script that you are intended to edit according to your
+current needs (aside: this means you should only check it in to github
+when you are actually editing the functionality).
+
+When you run stage imaging it will try to do four things:
+
+1) copy the calibrated data in to the directory where you are going to image.
+
+2) run any custom scripts for that individual galaxy. This isn't
+implemented right now, but will eventually allow handling of things
+like post-calibration flagging or (e.g., for 5128) continuum
+subtraction or similar stuff.
+
+3) extract lines from all of the individual measurement sets and then
+concatenate them into a single measurement set for each spectral line.
+
+4) extract continuum measurements sets from each individual
+measurement set and then concatenate them into a single measurement
+set for each spectral line.
+
+You can turn these steps on and off at the top of stage_imaging.
+
+There you can also specify which array you want to stage (7m, 12m or
+both). And you can specify which galaxies to skip or a list of which
+galaxies to consider.
+
+At the end of this, you should have files that look like this:
+
+gal_co21.ms
+gal_co21_chan0.ms
+gal_c18o21.ms
+gal_c18o21_chan0.ms
+gal_cont.ms
+
+As well as a bunch of intermediate files. Those files above will be
+used for imaging. Note that some galaxies will lack the c18o21.
+
+IMAGING
+
+Right now this still uses the script infrarestructure
+(image_all_data.py etc.) - I'm working on updating this to 

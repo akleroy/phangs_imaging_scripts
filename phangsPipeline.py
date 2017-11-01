@@ -1,4 +1,5 @@
-# NB: CASA doesn't always include the pwd in the module search path.
+# NB: CASA doesn't always include the pwd in the module search path. I
+# had to modify my init.py file to get this to import.
 
 import os
 import numpy as np
@@ -13,6 +14,7 @@ from statwt import statwt
 from mstransform import mstransform
 from concat import concat
 from uvcontsub import uvcontsub
+from flagdata import flagdata
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Interface to the text file keys that steer the process
@@ -20,7 +22,8 @@ from uvcontsub import uvcontsub
 
 def read_ms_key(fname='../scripts/ms_file_key.txt'):
     """
-    Read the measurement set key into a big dictionary.
+    Read the measurement set key into a big dictionary. This maps
+    locations of reduced files to galaxy, project, and data set name.
     """
     infile = open(fname, 'r')
 
@@ -53,7 +56,11 @@ def read_ms_key(fname='../scripts/ms_file_key.txt'):
 
 def read_dir_key(fname='../scripts/dir_key.txt'):
     """
-    Read the directory key, which gives us a general way to sort out which MS files go in which directory.
+    Read the directory key, which gives us a general way to sort out
+    which MS files go in which directory. This is relevant mainly for
+    cases where multiple science goals target a single galaxy. In
+    those cases, we want the whole galaxy in one directory. This gives
+    a way to map, e.g., ngc3627north to ngc3627/
     """
     infile = open(fname, 'r')
     
@@ -79,7 +86,7 @@ def read_dir_key(fname='../scripts/dir_key.txt'):
 
 def dir_for_gal(gal=None):
     """
-    Return the working directory given a galaxy name.
+    Return the working directory given a galaxy name. See above.
     """
 
     if gal == None:
@@ -106,7 +113,11 @@ def list_gal_names():
 
 def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     """
-    Read the file containing the centers and velocities for each source.
+    Read the file containing the centers and velocities for each
+    mosaic. Note that for cases where the galaxy is observed several
+    times, the RA and DEC refer to the intended center of the mosaic,
+    NOT the center of the galaxy. In other cases, we tend use the NED
+    center.
     """
     infile = open(fname, 'r')
 
@@ -140,8 +151,11 @@ def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     return mosaic_key
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Routines to move data around
+# Routines to move data around.
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# All of these know about the PHANGS keys. They're called as part of
+# the pipeline to set up the imaging.
 
 def copy_data(gal=None,
               just_proj=None,
@@ -178,6 +192,13 @@ def copy_data(gal=None,
         print "START: Copying data from original location."
         print "--------------------------------------------------------"
 
+        print "Galaxy: ", gal
+        if just_array != None: print "Project: ", just_proj
+        if just_array != None: print "Measurements Set: ", just_ms
+        if just_array != None: print "Array: ", just_array
+
+    # Loop over files in the measurement set key
+
     for this_proj in gal_specific_key.keys():
         if just_proj != None:
             if type(just_proj) == type([]):
@@ -201,7 +222,9 @@ def copy_data(gal=None,
                 if this_ms.count(just_array) == 0:
                     continue
            
-            in_file = proj_specific_key[this_ms]
+            # Set up a copy command, overwriting previous versions
+
+            in_file = proj_specific_key[this_ms]            
 
             if do_split:
                 copied_file = gal+'_'+this_proj+'_'+this_ms+'_copied.ms'
@@ -216,42 +239,48 @@ def copy_data(gal=None,
             var = os.system(command)    
             print var
 
-            if do_split == False:
-                continue
+            # Call split and statwt if desired (default is yes)
 
-            out_file = gal+'_'+this_proj+'_'+this_ms+'.ms'
+            if do_split:
 
-            os.system('rm -rf '+out_file)
-            os.system('rm -rf '+out_file+'.flagversions')
+                if quiet == False:
+                    print "Splitting out science target data."
 
-            split(vis=copied_file
-                  , intent ='OBSERVE_TARGET#ON_SOURCE'
-                  , datacolumn='DATA'
-                  , outputvis=out_file)        
+                out_file = gal+'_'+this_proj+'_'+this_ms+'.ms'
 
-            os.system('rm -rf '+copied_file)
-            os.system('rm -rf '+copied_file+'.flagversions')
+                os.system('rm -rf '+out_file)
+                os.system('rm -rf '+out_file+'.flagversions')
 
-            if do_statwt == False:
-                continue
+                split(vis=copied_file
+                      , intent ='OBSERVE_TARGET#ON_SOURCE'
+                      , datacolumn='DATA'
+                      , outputvis=out_file)        
 
-            statwt(vis=out_file,
-                   datacolumn='DATA')
+                os.system('rm -rf '+copied_file)
+                os.system('rm -rf '+copied_file+'.flagversions')
+
+            if do_statwt:
+
+                if quiet == False:
+                    print "Using statwt to re-weight the data."
+
+                statwt(vis=out_file,
+                       datacolumn='DATA')
 
     if quiet ==False:
         print "--------------------------------------------------------"
         print "END: Copying data from original location."
         print "--------------------------------------------------------"
 
-def concat_ms_for_line(gal=None,
-                       just_proj=None,
-                       just_ms=None,
-                       just_array=None,
-                       line='co21',
-                       do_statwt=True,
-                       do_chan0=True,
-                       quiet=False):
-
+def concat_line_for_gal(
+    gal=None,
+    just_proj=None,
+    just_ms=None,
+    just_array=None,
+    line='co21',
+    do_statwt=True,
+    do_chan0=True,
+    quiet=False):
     """
     Combine all measurement sets for one line and one galaxy.
     """
@@ -296,7 +325,7 @@ def concat_ms_for_line(gal=None,
                 if this_ms.count(just_array) == 0:
                     continue
 
-            this_in_file = proj_specific_key[this_ms]
+            this_in_file = gal+'_'+this_proj+'_'+this_ms+'_'+line+'.ms'    
             if os.path.isdir(this_in_file) == False:
                 continue
             files_to_concat.append(this_in_file)
@@ -307,7 +336,7 @@ def concat_ms_for_line(gal=None,
 
     # Concatenate all of the relevant files
 
-    out_file =  gal+'_'+tag+'_'+line+'.ms'
+    out_file =  gal+'_'+line+'.ms'
 
     os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.flagversions')
@@ -326,7 +355,7 @@ def concat_ms_for_line(gal=None,
     if do_chan0 == False:
         return
     
-    chan0_vis = gal+'_'+tag+'_'+line+'_chan0.ms'
+    chan0_vis = gal+'_'+line+'_chan0.ms'
 
     os.system('rm -rf '+chan0_vis)
     os.system('rm -rf '+chan0_vis+'.flagversions')
@@ -335,6 +364,157 @@ def concat_ms_for_line(gal=None,
           , spw=''
           , outputvis=chan0_vis
           , width=10000)
+
+def concat_cont_for_gal(
+    gal=None,
+    just_proj=None,
+    just_ms=None,
+    just_array=None,
+    ):
+    """
+    Concatenate continuum data sets.
+    """
+    pass
+
+    # Identify the data sets to combine
+
+    if gal == None:
+        if quiet == False:
+            print "Please specify a galaxy."
+        return
+
+    ms_key = read_ms_key()
+
+    if ms_key.has_key(gal) == False:
+        if quiet == False:
+            print "Galaxy "+gal+" not found in the measurement set key."
+        return
+    gal_specific_key = ms_key[gal]
+
+    files_to_concat = []
+
+    for this_proj in gal_specific_key.keys():
+        if just_proj != None:
+            if type(just_proj) == type([]):
+                if just_proj.count(this_proj) == 0:
+                    continue
+            else:
+                if this_proj != just_proj:
+                    continue
+
+        proj_specific_key = gal_specific_key[this_proj]
+        for this_ms in proj_specific_key.keys():
+            if just_ms != None:
+                if type(just_ms) == type([]):
+                    if just_ms.count(this_ms) == 0:
+                        continue
+                    else:
+                        if this_ms != just_ms:
+                            continue
+            
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+
+            this_in_file = gal+'_'+this_proj+'_'+this_ms+'_cont.ms'
+            if os.path.isdir(this_in_file) == False:
+                continue
+            files_to_concat.append(this_in_file)
+
+    if len(files_to_concat) == 0:
+        print "No files to concatenate found. Returning."
+        return
+
+    # Concatenate all of the relevant files
+
+    out_file =  gal+'_cont.ms'
+
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')
+
+    concat(vis=files_to_concat,
+           concatvis=out_file)
+
+def extract_phangs_lines(   
+    gal=None,
+    just_array=None,
+    ext='',
+    quiet=False
+    ):
+    """
+    Extract all phangs lines and continuum for a galaxy.
+    """
+
+    # Could add sio54, which is generally covered in PHANGS but almost
+    # always likely to be a nondetection.
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "START: Extracting spectral lines from data set."
+        print "--------------------------------------------------------"
+
+    chan_width = {}
+    chan_width['co21'] = 2.5
+    chan_width['c18o21'] = 6.0
+
+    for line in ['co21', 'c18o21']:
+
+        extract_line_for_galaxy(   
+            gal=gal,
+            just_array=just_array,
+            line=line,
+            ext=ext,
+            chan_width=chan_width[line],    
+            quiet=quiet
+            )
+
+        concat_line_for_gal(
+            gal=gal,
+            just_array=just_array,
+            line=line,
+            do_statwt=True,
+            do_chan0=True)
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "END: Extracting spectral lines from data set."
+        print "--------------------------------------------------------"
+
+def extract_phangs_continuum(   
+    gal=None,
+    just_array=None,
+    ext='',
+    quiet=False
+    ):
+    """
+    Extract all phangs lines and continuum for a galaxy.
+    """
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "START: Extracting continuum from data set."
+        print "--------------------------------------------------------"
+
+    lines_to_flag = line_list.lines_co+line_list.lines_13co+line_list.lines_c18o
+
+    extract_continuum_for_galaxy(   
+        gal=gal,
+        just_array=just_array,
+        lines_to_flag=lines_to_flag,
+        ext=ext,
+        do_statwt=True,
+        do_collapse=True,
+        quiet=quiet
+        )
+
+    concat_cont_for_gal(
+        gal=gal,
+        just_array=just_array)
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "END: Extracting continuum from data set."
+        print "--------------------------------------------------------"
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to extract lines from a measurement set
@@ -346,7 +526,8 @@ def list_lines_in_ms(
     gal=None,
     ):    
     """
-    List the lines likely to be present in a measurement set.
+    List the lines likely to be present in a measurement set. This can
+    be a general purpose utility.
     """
 
     sol_kms = 2.99e5
@@ -390,7 +571,7 @@ def chanwidth_for_line(
     quiet=False):
     """
     Return the coarsest channel width among spectral windows that
-    overlap a line.
+    overlap a line. This can be a general purpose utility.
     """
 
     # pull the parameters from the galaxy in the mosaic file
@@ -462,7 +643,9 @@ def extract_line(in_file=None,
                  quiet=False):
     """
     Extract a spectral line from a measurement set and regrid onto a
-    new velocity grid with the desired spacing.
+    new velocity grid with the desired spacing. This doesn't
+    necessarily need the PHANGS keys in place and may be a general
+    purpose utility.
     """
 
     sol_kms = 2.99e5
@@ -531,8 +714,13 @@ def extract_line(in_file=None,
     # Figure out how much averaging is needed to reach the target resolution
 
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
+    current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)    
     target_width_hz = chan_width/sol_kms*restfreq_ghz*1e9
     rebin_factor = min(target_width_hz / chan_width_hz)
+
+    if current_chan_width_kms > chan_width:
+        print "Requested channel width is smaller than the starting width. Returning."
+        return
     
     if rebin_factor < 2:
         chanbin = 1
@@ -551,6 +739,7 @@ def extract_line(in_file=None,
         print "LINE TAG: ", line
         print "REST FREQUENCY: ", restfreq_string
         print "SPECTRAL WINDOWS: ", spw_list
+        print "STARTING CHANNEL WIDTH: ", current_chan_width_kms
         print "TARGET CHANNEL WIDTH: ", chan_dv_string
         print "SUPPLIED SOURCE VELOCITY: ", str(vsys)
         print "DESIRED VELOCITY WIDTH: ", str(vwidth)
@@ -609,7 +798,9 @@ def extract_line_for_galaxy(
     quiet=False
     ):
     """
-    Extract a given line for all data sets for a galaxy.
+    Extract a given line for all data sets for a galaxy. This knows
+    about the PHANGS measurement set keys and is specific to our
+    projects.
     """
     
     if gal == None:
@@ -679,32 +870,6 @@ def extract_line_for_galaxy(
                          quiet=quiet)            
 
     return
-
-def extract_phangs_lines(   
-    gal=None,
-    just_array=None,
-    quiet=False
-    ):
-    """
-    Extract all phangs lines and continuum for a galaxy.
-    """
-
-    for line in ['co21', 'c18o21']:
-
-        extract_line_for_galaxy(   
-            gal=gal,
-            just_array=just_array,
-            line=line,
-            chan_width=2.5,    
-            quiet=quiet
-            )
-
-        concat_ms_for_line(
-            gal=gal,
-            just_array=just_array,
-            line=line,
-            do_statwt=True,
-            do_chan0=True)
     
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to extract continuum from a measurement set
@@ -759,7 +924,7 @@ def contsub(
             spw_flagging_string += ','+this_spw_string            
 
     for line in lines_to_flag:
-        rest_linefreq_ghz = line_list[line]
+        rest_linefreq_ghz = line_list.line_list[line]
 
         shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
         hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
@@ -801,18 +966,207 @@ def extract_continuum(
     gal=None,
     vsys=0.0,
     vwidth=500.,
+    do_statwt=True,
+    do_collapse=True,
     quiet=False):
     """
-    Extract a continuum measurement set, flagging any specified lines.
+    Extract a continuum measurement set, flagging any specified lines,
+    reweighting using statwt, and then collapsing to a single "channel
+    0" measurement.
     """
-    pass
 
-def concat_continuum(
+    sol_kms = 2.99e5
+
+    # Set up the input file
+
+    if os.path.isdir(in_file) == False:
+        if quiet == False:
+            print "Input file not found."
+        return
+
+    # pull the parameters from the galaxy in the mosaic file
+
+    if gal != None:
+        mosaic_parms = read_mosaic_key()
+        if mosaic_parms.has_key(gal):
+            vsys = mosaic_parms[gal]['vsys']
+            vwidth = mosaic_parms[gal]['vwidth']
+
+    # set the list of lines to flag
+
+    if lines_to_flag == None:
+        lines_to_flag = line_list.lines_co + line_list.lines_13co + line_list.lines_c18o
+
+    # Make a continuum copy of the data
+
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')
+
+    command = 'cp -r -H '+in_file+' '+out_file
+    print command
+    var = os.system(command)
+    print var
+    
+    # Figure out the line channels and flag them
+
+    vm = au.ValueMapping(out_file)
+
+    spw_flagging_string = ''
+    first = True
+    for spw in vm.spwInfo.keys():
+        this_spw_string = str(spw)+':0'
+        if first:
+            spw_flagging_string += this_spw_string
+            first = False
+        else:
+            spw_flagging_string += ','+this_spw_string            
+
+    for line in lines_to_flag:
+        rest_linefreq_ghz = line_list.line_list[line]
+
+        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
+        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
+        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
+
+        spw_list = au.getScienceSpwsForFrequency(out_file,
+                                                 shifted_linefreq_hz)
+        if spw_list == []:
+            continue
+
+        print "Found overlap for "+line
+        for this_spw in spw_list:
+            freq_ra = vm.spwInfo[this_spw]['chanFreqs']
+            chan_ra = np.arange(len(freq_ra))
+            to_flag = (freq_ra >= lo_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
+            to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
+            low_chan = np.min(chan_ra[to_flag])
+            hi_chan = np.max(chan_ra[to_flag])                
+            this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
+            if first:
+                spw_flagging_string += this_spw_string
+                first = False
+            else:
+                spw_flagging_string += ','+this_spw_string
+        
+    print "... proposed flagging "+spw_flagging_string
+
+    if spw_flagging_string != '':
+        flagdata(vis=out_file,
+                 spw=spw_flagging_string,
+                 )
+        
+    if do_statwt:
+        print "... deriving emprical weights using STATWT."
+        statwt(vis=out_file,
+               datacolumn='DATA')
+
+    if do_collapse:
+        print "... Collapsing the continuum to a single channel."
+
+        os.system('rm -rf '+out_file+'.temp_copy')
+        os.system('rm -rf '+out_file+'.temp_copy.flagversions')
+
+        command = 'mv '+out_file+' '+out_file+'.temp_copy'
+        print command
+        var = os.system(command)
+        print var
+
+        command = 'mv '+out_file+'.flagversions '+out_file+'.temp_copy.flagversions'
+        print command
+        var = os.system(command)
+        print var
+
+        split(vis=out_file+'.temp_copy',
+              outputvis=out_file,
+              width=10000,
+              datacolumn='DATA',
+              keepflags=False)        
+
+        os.system('rm -rf '+out_file+'.temp_copy')
+        os.system('rm -rf '+out_file+'.temp_copy.flagversions')
+        
+    return    
+
+def extract_continuum_for_galaxy(   
+    gal=None,
+    just_proj=None,
+    just_ms=None,
+    just_array=None,
+    lines_to_flag=None,
+    ext='',
+    do_statwt=True,
+    do_collapse=True,
+    quiet=False
     ):
     """
-    Concatenate continuum data sets.
+    Extract continuum for all data sets for a galaxy. This knows about
+    the PHANGS measurement set keys and is specific to our projects.
     """
-    pass
+    
+    if gal == None:
+        if quiet == False:
+            print "Please specify a galaxy."
+        return
+
+    ms_key = read_ms_key()
+
+    if ms_key.has_key(gal) == False:
+        if quiet == False:
+            print "Galaxy "+gal+" not found in the measurement set key."
+        return
+    gal_specific_key = ms_key[gal]
+
+    # Look up the galaxy specific parameters
+
+    mosaic_parms = read_mosaic_key()
+    if mosaic_parms.has_key(gal):
+        vsys = mosaic_parms[gal]['vsys']
+        vwidth = mosaic_parms[gal]['vwidth']
+
+    # Change to the right directory
+
+    this_dir = dir_for_gal(gal)
+    os.chdir(this_dir)
+
+    # Loop over all projects and measurement sets
+
+    for this_proj in gal_specific_key.keys():
+
+        if just_proj != None:
+            if type(just_proj) == type([]):
+                if just_proj.count(this_proj) == 0:
+                    continue
+            else:
+                if this_proj != just_proj:
+                    continue
+
+        proj_specific_key = gal_specific_key[this_proj]
+        for this_ms in proj_specific_key.keys():
+            if just_ms != None:
+                if type(just_ms) == type([]):
+                    if just_ms.count(this_ms) == 0:
+                        continue
+                    else:
+                        if this_ms != just_ms:
+                            continue
+            
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+            
+            in_file = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'
+            out_file = gal+'_'+this_proj+'_'+this_ms+'_cont.ms'
+
+            extract_continuum(
+                in_file=in_file,
+                out_file=out_file,
+                lines_to_flag=lines_to_flag,
+                gal=gal,
+                do_statwt=do_statwt,
+                do_collapse=do_collapse)
+
+    return
+
     
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to image the data
