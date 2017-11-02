@@ -425,7 +425,10 @@ def concat_line_for_gal(
     if do_chan0 == False:
         return
     
-    chan0_vis = gal+'_'+line+'_chan0.ms'
+    if tag != '':
+        chan0_vis = gal+'_'+tag+'_'+line+'_chan0.ms'
+    else:
+        chan0_vis = gal+'_'+line+'_chan0.ms'
 
     os.system('rm -rf '+chan0_vis)
     os.system('rm -rf '+chan0_vis+'.flagversions')
@@ -440,6 +443,7 @@ def concat_cont_for_gal(
     just_proj=None,
     just_ms=None,
     just_array=None,
+    tag='',
     ):
     """
     Concatenate continuum data sets.
@@ -497,7 +501,10 @@ def concat_cont_for_gal(
 
     # Concatenate all of the relevant files
 
-    out_file =  gal+'_cont.ms'
+    if tag != '':
+        out_file =  gal+'_'+tag+'_cont.ms'
+    else:
+        out_file =  gal+'_cont.ms'
 
     os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.flagversions')
@@ -1285,6 +1292,9 @@ def extract_continuum_for_galaxy(
 # Routines to characterize measurement sets
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+# TBD: move the lookup outside the program below and make a separate
+# program so that the estimate_cell_and_imsize can be used generally.
+
 def estimate_cell_and_imsize(
     in_file=None,    
     oversamp=5
@@ -1357,6 +1367,31 @@ def estimate_cell_and_imsize(
 
     return cell_size_string, x_size_string, y_size_string
 
+# TBD: Add the baseline data extractor to make plots (extract_uv_plots.py)
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Routines to characterize and manipulate cubes
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# TBD: Add the stats and noise measurement (statCleanCube)
+
+# TBD: Add mask reprojection and combination (makeMask)
+
+# TBD: Add export to fits routines (postProcessCubes)
+
+# TBD: Add a routine to actually write the feathering scripts? (feather_script_12m and feather_script_7m)
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to image the data
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# TBD: Add clean call (callClean)
+
+# TBD: Add dirty map creation (imageMultiscale and imageMultiscale2)
+
+# TBD: Add multiscale imaging (imageMultiscale and imageMultiscale2)
+
+# TBD: Add single scale imaging (imageMultiscale and imageMultiscale2)
+
+# TBD: Add the "recipe" level routines used in the actual imaging (phangsImagingPipeline and phangsImagingPipeline2)
+
