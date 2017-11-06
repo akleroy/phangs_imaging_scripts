@@ -1451,6 +1451,21 @@ def replace_cube_with_copy(
     os.system('cp -r '+from_root+'.psf '+to_root+'.weight')
     os.system('cp -r '+from_root+'.residual '+to_root+'.sumwt')
 
+def align_mask(    
+    ):
+    """
+    Align a mask to a target astrometry. Some klugy steps to make
+    things work most of the time.
+    """
+    pass
+
+def add_pb_cutoff_to_mask(
+    ):
+    """
+    Multiply a primary beam map by an aligned mask to add a primary
+    beam cutoff to a CASA image that will be used as a mask.
+    """
+    pass
 
 # TBD: Add mask reprojection and combination (makeMask)
 
@@ -1597,13 +1612,43 @@ def call_clean(
     if logfile != None:
         casalog.setlogfile(oldlogfile)
 
+def make_dirty_map():
+    """
+    Create a dirty map from a visibility set.
+    """
+    pass
 
+def multiscale_clean():
+    """
+    Carry out one iteration of multiscale clean.
+    """
+    pass
 
-# TBD: Add dirty map creation (imageMultiscale and imageMultiscale2)
+def multiscale_loop():
+    """
+    Carry out an iterative multiscale clean until a convergence criteria is met.
+    """
+    pass
 
-# TBD: Add multiscale imaging (imageMultiscale and imageMultiscale2)
+def singlescale_clean():
+    """
+    Carry out one iteration of single scale clean.
+    """
+    pass
 
-# TBD: Add single scale imaging (imageMultiscale and imageMultiscale2)
+def singlescale_loop():
+    """
+    Carry out an iterative single scale clean until a convergence criteria is met.
+    """
+    pass
+
+def phangsImagingRecipe():
+    """
+    The end-to-end PHANGS imaging recipe. Dirty image -> mask
+    alignment -> lightly masked multiscale clean -> heavily masked
+    single scale clean -> export.
+    """
+    pass
 
 # TBD: Add the "recipe" level routines used in the actual imaging (phangsImagingPipeline and phangsImagingPipeline2)
 
