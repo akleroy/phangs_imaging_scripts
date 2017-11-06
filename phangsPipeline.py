@@ -16,6 +16,9 @@ from mstransform import mstransform
 from concat import concat
 from uvcontsub import uvcontsub
 from flagdata import flagdata
+from imstat import imstat
+from tclean import tclean
+from exportfits import exportfits
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Interface to the text file keys that steer the process
@@ -1292,8 +1295,30 @@ def extract_continuum_for_galaxy(
 # Routines to characterize measurement sets
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# TBD: move the lookup outside the program below and make a separate
-# program so that the estimate_cell_and_imsize can be used generally.
+def pick_phangs_cell_and_imsize(
+    in_file=None,
+    oversamp=5
+    ):
+    """
+    Wraps estimate_cell_and_imsize and also allows our custom
+    overrides.
+    """
+
+    cell_size_string, x_size_string, y_size_string = \
+        estimate_cell_and_imsize(in_file, oversamp)
+
+    override_dict = read_override_image_params()
+
+    # Check for overrides
+    if override_dict.has_key(in_file):
+        if override_dict.has_key('cell_size'):
+            cell_size_string = override_dict[this_vis]['cell_size']
+        if override_dict.has_key('x_size'):
+            x_size_string = override_dict[this_vis]['x_size']
+        if override_dict.has_key('y_size'):
+            y_size_string = override_dict[this_vis]['y_size']    
+
+    return cell_size_string, x_size_string, y_size_string
 
 def estimate_cell_and_imsize(
     in_file=None,    
@@ -1308,8 +1333,6 @@ def estimate_cell_and_imsize(
     if os.path.isdir(in_file) == False:
         print "File not found."
         return
-
-    override_dict = read_override_image_params()
     
     valid_sizes = []
     for ii in range(10):
@@ -1356,15 +1379,6 @@ def estimate_cell_and_imsize(
     x_size_string = str(image_size[0])
     y_size_string = str(image_size[1])
 
-    # Check for overrides
-    if override_dict.has_key(in_file):
-        if override_dict.has_key('cell_size'):
-            cell_size_string = override_dict[this_vis]['cell_size']
-        if override_dict.has_key('x_size'):
-            x_size_string = override_dict[this_vis]['x_size']
-        if override_dict.has_key('y_size'):
-            y_size_string = override_dict[this_vis]['y_size']
-
     return cell_size_string, x_size_string, y_size_string
 
 # TBD: Add the baseline data extractor to make plots (extract_uv_plots.py)
@@ -1373,11 +1387,114 @@ def estimate_cell_and_imsize(
 # Routines to characterize and manipulate cubes
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# TBD: Add the stats and noise measurement (statCleanCube)
+def stat_clean_cube(cube_file=None):
+    """
+    Calculate statistics for an image cube.
+    """
+    if cube_file == None:
+        print "No cube file specified. Returning"
+        return
+    imstat_dict = imstat(cube_file)
+    
+    return imstat_dict
+
+def save_copy_of_cube(
+    input_root=None,
+    output_root=None):
+    """
+    Copy a cube to a new name. Used to make a backup copy. Overwrites
+    the previous cube of that name.
+    """
+
+    wipe_cube(output_root)
+    
+    os.system('cp -r '+input_root+'.image '+output_root+'.image')
+    os.system('cp -r '+input_root+'.model '+output_root+'.model')
+    os.system('cp -r '+input_root+'.mask '+output_root+'.mask')
+    os.system('cp -r '+input_root+'.pb '+output_root+'.pb')
+    os.system('cp -r '+input_root+'.psf '+output_root+'.psf')
+    os.system('cp -r '+input_root+'.residual '+output_root+'.residual')
+    os.system('cp -r '+input_root+'.psf '+output_root+'.weight')
+    os.system('cp -r '+input_root+'.residual '+output_root+'.sumwt')
+
+def wipe_cube(
+    cube_root=None):
+    """
+    Wipe files associated with a cube.
+    """
+    if cube_root == None:
+        return
+    os.system('rm -rf '+cube_root+'.image')
+    os.system('rm -rf '+cube_root+'.model')
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('rm -rf '+cube_root+'.pb')
+    os.system('rm -rf '+cube_root+'.psf')
+    os.system('rm -rf '+cube_root+'.residual')
+    os.system('rm -rf '+cube_root+'.weight')
+    os.system('rm -rf '+cube_root+'.sumwt')
+
+def replace_cube_with_copy(
+    to_root=None,
+    from_root=None):
+    """
+    Replace a cube with a copy.
+    """
+
+    wipe_cube(to_root)
+
+    os.system('cp -r '+from_root+'.image '+to_root+'.image')
+    os.system('cp -r '+from_root+'.model '+to_root+'.model')
+    os.system('cp -r '+from_root+'.mask '+to_root+'.mask')
+    os.system('cp -r '+from_root+'.pb '+to_root+'.pb')
+    os.system('cp -r '+from_root+'.psf '+to_root+'.psf')
+    os.system('cp -r '+from_root+'.residual '+to_root+'.residual')
+    os.system('cp -r '+from_root+'.psf '+to_root+'.weight')
+    os.system('cp -r '+from_root+'.residual '+to_root+'.sumwt')
+
 
 # TBD: Add mask reprojection and combination (makeMask)
 
+
 # TBD: Add export to fits routines (postProcessCubes)
+
+def export_to_fits(
+    cube_root=None):
+    """
+    Export the various products associated with a CASA cube to FITS.
+    """
+    
+    exportfits(imagename=cube_root+'.image',
+               fitsimage=cube_root+'.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
+
+    exportfits(imagename=cube_root+'_dirty.image',
+               fitsimage=cube_root+'_dirty.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
+
+    exportfits(imagename=cube_root+'.model',
+               fitsimage=cube_root+'_model.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
+
+    exportfits(imagename=cube_root+'.residual',
+               fitsimage=cube_root+'_residual.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
+
+    exportfits(imagename=cube_root+'.mask',
+               fitsimage=cube_root+'_mask.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
+    
+    exportfits(imagename=cube_root+'.pb',
+               fitsimage=cube_root+'_pb.fits',
+               velocity=True, overwrite=True, dropstokes=True, 
+               dropdeg=True, bitpix=bitpix)
+
+    return
+
 
 # TBD: Add a routine to actually write the feathering scripts? (feather_script_12m and feather_script_7m)
 
@@ -1385,7 +1502,102 @@ def estimate_cell_and_imsize(
 # Routines to image the data
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# TBD: Add clean call (callClean)
+def call_clean(
+    vis = None,
+    image_root = None,
+    phase_center = "",
+    image_size = None,
+    cell_size = None,
+    restfreq_ghz = -1.0,
+    calcres=True,
+    calcpsf=True,
+    specmode = 'cube',
+    deconvolver = 'hogbom',
+    threshold = '0.0mJy/beam',
+    scales = [0],
+    smallscalebias = 0.9,    
+    briggs_weight = 0.5,
+    niter = 0,
+    cycle_niter = 200,
+    minpsffraction = 0.5,
+    pb_limit = 0.25,
+    uv_taper_string = '',
+    restoringbeam = '',
+    usemask='user',
+    mask=0.0,
+    interactive = False,
+    reset = False,
+    logfile = None,
+    ):
+    """
+    Tclean wrapper with sane defaults. Wrapped by our other calls.
+    """
+    
+    if vis == None:
+        print "No visibility. Returning."
+        return    
+
+    if os.path.isdir(vis) == False:
+        print "Visibility file not found. Returning."
+        return
+
+    if restfreq_ghz < 0:
+        restfreq_str = ''
+    else:
+        restfreq_str = str(restfreq_ghz)+'GHz'
+
+    if logfile != None:
+        oldlogfile = casalog.logfile()
+        casalog.setlogfile(logfile)
+
+    if reset:
+        wipe_cube(image_root)
+
+    tclean(vis=vis,
+           imagename=image_root,
+           # Spatial axes
+           phasecenter=phase_center,
+           cell=cell_size,
+           imsize=image_size,
+           gridder='mosaic',
+           # Spectral axis
+           specmode=specmode,
+           restfreq=restfreq_str,
+           outframe='lsrk',
+           veltype='radio',
+           # Workflow
+           calcres=calcres,
+           calcpsf=calcpsf,
+           # Deconvolver
+           deconvolver=deconvolver,
+           scales=scales,
+           smallscalebias=smallscalebias,
+           pblimit=pb_limit,
+           normtype='flatnoise',
+           # Restoring beam
+           restoringbeam=restoringbeam,
+           # U-V plane gridding
+           weighting='briggs',
+           robust=briggs_weight,
+           uvtaper=uv_taper_string,
+           # Stopping criterion
+           niter=niter,
+           threshold=threshold,
+           cycleniter=cycle_niter,
+           cyclefactor=3.0,
+           minpsffraction=minpsffraction,
+           # Mask
+           usemask=usemask,
+           mask=mask,
+           pbmask=pb_limit,
+           # UI
+           interactive=False,
+           )
+
+    if logfile != None:
+        casalog.setlogfile(oldlogfile)
+
+
 
 # TBD: Add dirty map creation (imageMultiscale and imageMultiscale2)
 
