@@ -16,6 +16,7 @@ from mstransform import mstransform
 from concat import concat
 from uvcontsub import uvcontsub
 from flagdata import flagdata
+from imhead import imhead
 from imstat import imstat
 from tclean import tclean
 from exportfits import exportfits
@@ -1451,26 +1452,97 @@ def replace_cube_with_copy(
     os.system('cp -r '+from_root+'.psf '+to_root+'.weight')
     os.system('cp -r '+from_root+'.residual '+to_root+'.sumwt')
 
-def align_mask(    
+def import_and_align_mask(  
+    in_file=None,
+    out_file=None,
+    template=None,
     ):
     """
     Align a mask to a target astrometry. Some klugy steps to make
     things work most of the time.
     """
-    pass
 
-def add_pb_cutoff_to_mask(
+    # Import from FITS (could make optional)
+    os.system('rm -rf '+out_file+'.temp_copy')
+    importfits(fitsimage=in_file, 
+               imagename=out_file+'.temp_copy'
+               , overwrite=True)
+
+    # Align to the template grid
+    os.system('rm -rf '+out_file+'.temp_aligned')
+    imregrid(imagename=out_file+'.temp_copy', 
+             template=template, 
+             output=out_file+'.temp_aligned', 
+             asvelocity=True,
+             interpolation='nearest',         
+             replicate=False,
+             overwrite=True)
+
+    # Make an EXACT copy of the template, avoids various annoying edge cases
+    os.system('rm -rf '+out_file)
+    os.system('cp -r '+template+' '+out_file)
+    
+    hdr = imhead(template)
+
+    # Pull the data out of the aligned mask and place it in the output file
+    ia.open(out_file+'.temp_aligned')
+    mask = ia.getchunk(dropdeg=True)
+    ia.close()
+
+    # Need to make sure this works for two dimensional cases, too.
+    if (hdr['axisnames'][3] == 'Frequency') and \
+            (hdr['ndim'] == 4):    
+        ia.open(outfile)
+        data = ia.getchunk(dropdeg=False)
+        data[:,:,0,:] = mask
+        ia.putchunk(data)
+        ia.close()
+    elif (hdr['axisnames'][2] == 'Frequency') and \
+            (hdr['ndim'] == 4):    
+        ia.open(mask_root+'.mask')
+        data = ia.getchunk(dropdeg=False)
+        data[:,:,:,0] = mask
+        ia.putchunk(data)
+        ia.close()
+    else:
+        print "ALERT! Did not find a case."
+
+    os.system('rm -rf '+out_file+'.temp_copy')
+    os.system('rm -rf '+out_file+'.temp_aligned')
+    return
+
+def apply_additional_mask(
+    old_mask_file=None,
+    new_mask_file=None,
+    new_thresh=0.0,
+    operation='AND'
     ):
     """
-    Multiply a primary beam map by an aligned mask to add a primary
-    beam cutoff to a CASA image that will be used as a mask.
+    Combine a mask with another mask on the same grid and some
+    threshold. Can run AND/OR operations. Can be used to apply primary
+    beam based masks by setting the PB file to new_mask_file and the
+    pb_limit as new_thresh.
     """
-    pass
+    if root_mask == None:
+        print "Specify a cube root file name."
+        return
+    
+    ia.open(new_mask_file)
+    new_mask = ia.getchunk()
+    ia.close()
 
-# TBD: Add mask reprojection and combination (makeMask)
+    ia.open(old_mask_file)
+    mask = ia.getchunk()
+    if operation == "AND":
+        mask *= (new_mask > new_thresh)
+    else:
+        mask = (mask + (new_mask > new_thresh)) >= 1.0
+    ia.putchunk(mask)
+    ia.close()
 
+    return
 
-# TBD: Add export to fits routines (postProcessCubes)
+# TBD: Add mask creation steps used in our single scale imaging recipes.
 
 def export_to_fits(
     cube_root=None):
@@ -1510,125 +1582,283 @@ def export_to_fits(
 
     return
 
-
 # TBD: Add a routine to actually write the feathering scripts? (feather_script_12m and feather_script_7m)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to image the data
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-def call_clean(
-    vis = None,
-    image_root = None,
-    phase_center = "",
-    image_size = None,
-    cell_size = None,
-    restfreq_ghz = -1.0,
-    calcres=True,
-    calcpsf=True,
-    specmode = 'cube',
-    deconvolver = 'hogbom',
-    threshold = '0.0mJy/beam',
-    scales = [0],
-    smallscalebias = 0.9,    
-    briggs_weight = 0.5,
-    niter = 0,
-    cycle_niter = 200,
-    minpsffraction = 0.5,
-    pb_limit = 0.25,
-    uv_taper_string = '',
-    restoringbeam = '',
-    usemask='user',
-    mask=0.0,
-    interactive = False,
-    reset = False,
-    logfile = None,
-    ):
-    """
-    Tclean wrapper with sane defaults. Wrapped by our other calls.
-    """
+class CleanCall:
     
-    if vis == None:
-        print "No visibility. Returning."
-        return    
+    def __init__(self):
+        self.vis = None
+        self.image_root = None
+        self.phase_center = ""
+        self.image_size = None
+        self.cell_size = None
+        self.restfreq_ghz = -1.0
+        self.calcres = True
+        self.calcpsf = True
+        self.specmode = 'cube'
+        self.deconvolver = 'hogbom'
+        self.threshold = '0.0mJy/beam'
+        self.scales_as_pix = [0]
+        self.smallscalebias = 0.9
+        self.briggs_weight = 0.5
+        self.niter = 0
+        self.cycle_niter = 200
+        self.minpsffraction = 0.5
+        self.pblimit = 0.25
+        self.uvtaper = None
+        self.restoringbeam = ''
+        self.usemask = 'user'
+        self.mask = 0.0
+        self.interactive = False
+        self.rest = False
+        self.logfile = None
 
-    if os.path.isdir(vis) == False:
-        print "Visibility file not found. Returning."
-        return
+    def execute(self):
+        """
+        Execute the clean call.
+        """
+    
+        if self.vis == None:
+            print "No visibility. Returning."
+            return    
 
-    if restfreq_ghz < 0:
-        restfreq_str = ''
-    else:
-        restfreq_str = str(restfreq_ghz)+'GHz'
+        if os.path.isdir(self.vis) == False:
+            print "Visibility file not found. Returning."
+            return
+        
+        if self.cell_size == None or self.image_size == None:
+            print "Estimating cell and image size."
+            estimate_cell_and_imsize(vis, oversamp=5)
 
-    if logfile != None:
-        oldlogfile = casalog.logfile()
-        casalog.setlogfile(logfile)
+        if self.restfreq_ghz < 0:
+            restfreq_str = ''
+        else:
+            restfreq_str = str(restfreq_ghz)+'GHz'
 
-    if reset:
-        wipe_cube(image_root)
+        if self.logfile != None:
+            oldlogfile = casalog.logfile()
+            casalog.setlogfile(logfile)
 
-    tclean(vis=vis,
-           imagename=image_root,
-           # Spatial axes
-           phasecenter=phase_center,
-           cell=cell_size,
-           imsize=image_size,
-           gridder='mosaic',
-           # Spectral axis
-           specmode=specmode,
-           restfreq=restfreq_str,
-           outframe='lsrk',
-           veltype='radio',
-           # Workflow
-           calcres=calcres,
-           calcpsf=calcpsf,
-           # Deconvolver
-           deconvolver=deconvolver,
-           scales=scales,
-           smallscalebias=smallscalebias,
-           pblimit=pb_limit,
-           normtype='flatnoise',
-           # Restoring beam
-           restoringbeam=restoringbeam,
-           # U-V plane gridding
-           weighting='briggs',
-           robust=briggs_weight,
-           uvtaper=uv_taper_string,
-           # Stopping criterion
-           niter=niter,
-           threshold=threshold,
-           cycleniter=cycle_niter,
-           cyclefactor=3.0,
-           minpsffraction=minpsffraction,
-           # Mask
-           usemask=usemask,
-           mask=mask,
-           pbmask=pb_limit,
-           # UI
-           interactive=False,
-           )
+        if self.uvtaper == None:
+            uv_taper_string = ''
+        else:
+            uv_taper_string = [str(uvtaper)+'arcsec',str(uvtaper)+'arcsec','0deg']
 
-    if logfile != None:
-        casalog.setlogfile(oldlogfile)
+        if self.reset:
+            print "Wiping previous versions of the cube."
+            wipe_cube(image_root)
 
-def make_dirty_map():
+        tclean(vis=vis,
+               imagename=self.image_root,
+               phasecenter=self.phase_center,
+               cell=self.cell_size,
+               imsize=self.image_size,
+               gridder='mosaic',
+               # Spectral axis
+               specmode=self.specmode,
+               restfreq=restfreq_str,
+               outframe='lsrk',
+               veltype='radio',
+               # Workflow
+               calcres=self.calcres,
+               calcpsf=self.calcpsf,
+               # Deconvolver
+               deconvolver=self.deconvolver,
+               scales=self.scales_as_pix,
+               smallscalebias=self.smallscalebias,
+               pblimit=self.pb_limit,
+               normtype='flatnoise',
+               # Restoring beam
+               restoringbeam=self.restoringbeam,
+               # U-V plane gridding
+               weighting='briggs',
+               robust=self.briggs_weight,
+               uvtaper=uv_taper_string,
+               # Stopping criterion
+               niter=self.niter,
+               threshold=self.threshold,
+               cycleniter=self.cycle_niter,
+               cyclefactor=3.0,
+               minpsffraction=self.minpsffraction,
+               # Mask
+               usemask=self..usemask,
+               mask=self.mask,
+               pbmask=self.pb_limit,
+               # UI
+               interactive=self.interactive,
+               )
+
+        if logfile != None:
+            casalog.setlogfile(oldlogfile)
+
+def make_dirty_map(
+    clean_call = None,    
+    ):
     """
     Create a dirty map from a visibility set.
     """
-    pass
 
-def multiscale_clean():
-    """
-    Carry out one iteration of multiscale clean.
-    """
-    pass
+    if type(clean_call) != type(cleanCall()):
+        print "Supply a valid clean call."
 
-def multiscale_loop():
+    clean_call.niter = 0
+    clean_call.reset = True
+    clean_call.usemask = 'pb'
+    clean_call.logfile = image_root+'_dirty.log'
+    
+    clean_call.execute()
+    
+    clean_call.rest = False
+    clean_call.usemask = 'user'
+    clean_call.logfile = None
+
+    save_copy_of_cube(
+        input_root=clean_call.image_root,
+        output_root=clean_call.image_root+'_dirty')
+
+def multiscale_loop(
+    clean_call = None,
+    scales_as_angle=[],
+    record_file=None,
+    delta_flux_threshold=0.02,
+    absolute_threshold=None,
+    snr_threshold=4.0,
+    stop_at_negative=True,
+    max_loop = 20
+    ):
     """
-    Carry out an iterative multiscale clean until a convergence criteria is met.
+    Carry out an iterative multiscale clean until a convergence
+    criteria is met.
     """
-    pass
+
+    if type(clean_call) != type(cleanCall()):
+        print "Supply a valid clean call."
+    
+    # Figure out the scales to use in pixel units
+
+    cell_as_num = float((cell_size.split('arcsec'))[0])
+    scales_as_pix = []
+    for scale in scales_as_angle:
+        scales_as_pix.append(int(scale/cell_as_num))
+    
+    print "I will use the following scales: "
+    print "... as pixels: ", str(scales_as_pix)
+    print "... as arcseconds: ", str(scales_as_angle)
+    
+    clean_call.deconvolver = 'multiscale'
+    clean_call.scales_as_pix = scales_as_pix
+
+   # Note the number of channels, which is used in setting the number
+   # of iterations that we give to an individual clean call.
+
+    vm = au.ValueMapping(clean_call.vis)
+    nchan = vm.spwInfo[0]['numChannels']
+
+    # Figure out the number of iterations we will use. Note that this
+    # step is highly tunable, and can still be improved as we go
+    # forward.
+
+    base_niter = 10*nchan
+    base_cycle_niter = 100
+    loop = 1
+
+    # Initialize our tracking of the flux in the model
+
+    model_flux = 0.0
+
+    # Open the text record if desired
+
+    if record_file != None:
+        f = open(record_file,'w')
+        f.write("# column 1: loop type\n")
+        f.write("# column 2: loop number\n")
+        f.write("# column 3: supplied threshold\n")
+        f.write("# column 4: model flux at end of this clean\n")
+        f.write("# column 5: fractional change in flux (current-previous)/current\n")
+        f.write("# column 6: number of iterations allocated (not necessarily used)\n")
+        f.close()
+
+    # Run the main loop
+
+    proceed = True
+    while proceed == True and loop <= max_loop:
+
+        # Figure out how many iterations to give clean.
+
+        if loop > 5:
+            factor = 5
+        else:
+            factor = (loop-1)
+        
+        clean_call.niter = base_niter*(2**factor)
+        clean_call.cycle_niter = base_cycle_niter*factor
+        clean_call.logfile = cube_root+"_loop_"+str(loop)+"_multiscale.log"
+
+        # Set the threshold for the clean call.
+
+        if snr_threshold != None:
+            resid_stats = stat_clean_cube(clean_call.image_root+'.residual')        
+            current_noise = resid_stats['medabsdevmed'][0]/0.6745
+            clean_call.threshold = str(current_noise*snr_threshold)+'Jy/beam'
+        elif absolute_threshold != None:
+            clean_call.threshold = absolute_threshold
+
+        # Execute the clean call.
+
+        clean_call.execute()
+
+        # Record the new model flux and check for convergence. A nice
+        # way to improve this would be to calculate the flux per
+        # iteration.
+
+        model_stats = stat_clean_cube(clean_call.image_root+'.model')
+
+        prev_flux = model_flux
+        model_flux = model_stats['sum'][0]
+
+        delta_flux = (model_flux-prev_flux)/model_flux
+
+        if delta_flux_threshold > 0.0:
+            proceed = \
+                (delta_flux > delta_flux_threshold)
+
+        if stop_at_negative:
+            if model_flux < 0.0:
+                proceed = False
+            
+        # Print some results
+                
+        print ""
+        print "******************************"
+        print "MULTISCALE CLEAN LOOP "+str(loop)
+        print "... threshold "+clean_call.threshold
+        print "... old flux "+str(prev_flux)
+        print "... new flux "+str(model_flux)
+        print "... fractional change "+str(delta_flux)+ \
+            " compare to stopping criterion of "+str(delta_flux_thresh)
+        print "... proceed? "+str(proceed)
+        print "******************************"
+        print ""
+
+        if record_file != None:
+            line = 'MULTISCALE '+str(loop)+ \
+                ' '+clean_call.threshold+' '+str(this_flux)+ \
+                ' '+str(delta_flux) + ' ' + str(this_niter)+ '\n' 
+            f = open(loop_record_file,'a')
+            f.write(line)
+            f.close()
+
+        if proceed == False:
+            break
+        loop += 1
+
+    save_copy_of_cube(
+        input_root=clean_call.image_root,
+        output_root=clean_call.image_root+'_multiscale')
 
 def singlescale_clean():
     """
@@ -1642,13 +1872,128 @@ def singlescale_loop():
     """
     pass
 
-def phangsImagingRecipe():
+def phangsImagingRecipe(
+    gal=None,
+    array='7m',
+    product='co21',
+    make_dirty_image=False,
+    revert_to_dirty=False,
+    read_in_clean_mask=False,
+    run_multiscale_clean=False,
+    revert_to_multiscale=False,
+    make_singlescale_mask=False,
+    run_singlescale_clean=False,
+    export_to_fits=False
+    ):
     """
     The end-to-end PHANGS imaging recipe. Dirty image -> mask
     alignment -> lightly masked multiscale clean -> heavily masked
     single scale clean -> export.
     """
-    pass
 
-# TBD: Add the "recipe" level routines used in the actual imaging (phangsImagingPipeline and phangsImagingPipeline2)
+    mosaic_key = read_mosaic_key()            
+    this_ra = mosaic_key[gal]['rastring']
+    this_dec = mosaic_key[gal]['decstring']
+    phase_center = 'J2000 '+this_ra+' '+this_dec            
 
+    this_dir = dir_for_gal(gal)
+    os.chdir(this_dir)
+
+    vis = gal+'_'+array+'_'+product+'.ms'
+    image_root = gal+'_'+array+'_'+product
+
+    if os.path.isdir(vis) == False:
+        print "Visibility data not found. Returning."
+        return
+
+    if product == 'co21':
+        specmode = 'cube'
+        restfreq_ghz = line_list.line_list['co21']
+
+    if product == 'co21_chan0':
+        specmode = 'mfs'
+        restfreq_ghz = line_list.line_list['co21']
+
+    if product == 'c18o21':
+        specmode = 'cube'
+        restfreq_ghz = line_list.line_list['c18o21']
+
+    if product == 'c18o21_chan0':
+        specmode = 'mfs'
+        restfreq_ghz = line_list.line_list['c18o21']
+
+    if product == 'cont':
+        specmode = 'mfs'
+        restfreq_ghz = -1.0
+
+    cell_size, x_size, y_size = \
+        pick_phangs_cell_and_imsize(vis)
+    image_size = [int(x_size), int(y_size)]
+
+    if make_dirty_image:
+        print ""
+        print "MAKING THE DIRTY IMAGE."
+        print ""
+
+        make_dirty_map(
+            vis=vis,
+            image_root=image_root,
+            specmode=specmode,
+            restfreq_ghz=restfreq_ghz,
+            robust=0.5,
+            pblimit=0.25,
+            uvtaper=None,
+            phase_center=phase_center,
+            cell_size=cell_size,
+            image_size=image_size,
+            )
+
+    if revert_to_dirty:
+        print ""
+        print "RESETING THE IMAGING TO THE DIRTY IMAGE."
+        print ""
+
+        replace_cube_with_copy(
+            to_root=image_root,
+            from_root=image_root+'_dirty')
+
+    if read_in_clean_mask:
+        print ""
+        print "READING IN THE CLEAN MASK."
+        print ""
+
+    if run_multiscale_clean:
+        print ""
+        print "RUNNING THE MULTISCALE CLEAN."
+        print ""
+
+        pass
+
+    if revert_to_multiscale:
+        print ""
+        print "RESETING THE IMAGING TO THE OUTPUT OF MULTISCALE CLEAN."
+        print ""
+
+        replace_cube_with_copy(
+            to_root=image_root,
+            from_root=image_root+'_multiscale')
+
+    if make_singlescale_mask:
+        print ""
+        print "MAKING THE MASK FOR SINGLE SCALE CLEAN."
+        print ""
+
+    if run_singlescale_clean:
+        print ""
+        print "RUNNING THE SINGLE SCALE CLEAN."
+        print ""
+
+    if export_to_fits:
+        print ""
+        print "EXPORTING PRODUCTS TO FITS."
+        print ""
+        export_to_fits(image_root)
+        export_to_fits(image_root+'_dirty')
+        export_to_fits(image_root+'_multiscale')
+
+    return
