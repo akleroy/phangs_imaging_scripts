@@ -1603,6 +1603,7 @@ class CleanCall:
         self.deconvolver = 'hogbom'
         self.threshold = '0.0mJy/beam'
         self.scales_as_pix = [0]
+        self.scales_as_angle = None
         self.smallscalebias = 0.9
         self.briggs_weight = 0.5
         self.niter = 0
@@ -1685,7 +1686,7 @@ class CleanCall:
                cyclefactor=3.0,
                minpsffraction=self.minpsffraction,
                # Mask
-               usemask=self..usemask,
+               usemask=self.usemask,
                mask=self.mask,
                pbmask=self.pb_limit,
                # UI
@@ -1712,7 +1713,7 @@ def make_dirty_map(
     
     clean_call.execute()
     
-    clean_call.rest = False
+    clean_call.reset = False
     clean_call.usemask = 'user'
     clean_call.logfile = None
 
@@ -1722,7 +1723,6 @@ def make_dirty_map(
 
 def multiscale_loop(
     clean_call = None,
-    scales_as_angle=[],
     record_file=None,
     delta_flux_threshold=0.02,
     absolute_threshold=None,
@@ -1743,7 +1743,7 @@ def multiscale_loop(
 
     cell_as_num = float((cell_size.split('arcsec'))[0])
     scales_as_pix = []
-    for scale in scales_as_angle:
+    for scale in clean_call.scales_as_angle:
         scales_as_pix.append(int(scale/cell_as_num))
     
     print "I will use the following scales: "
@@ -1791,7 +1791,6 @@ def singlescale_loop(
         print "Supply a valid clean call."
         
     clean_call.deconvolver = 'hogbom'
-    clean_call.scales_as_pix = [0]
 
     # Call the loop
 
@@ -1910,7 +1909,7 @@ def clean_loop(
             if model_flux < 0.0:
                 proceed = False
             
-        # Print some results
+        # Print output
                 
         print ""
         print "******************************"
@@ -1923,6 +1922,8 @@ def clean_loop(
         print "... proceed? "+str(proceed)
         print "******************************"
         print ""
+
+        # Record to log
 
         if record_file != None:
             line = 'LOOP '+str(loop)+ \
@@ -1938,10 +1939,86 @@ def clean_loop(
 
     return
 
+def buildPhangsCleanCall(
+    gal=None,
+    array='7m',
+    product='co21',    
+    ):
+    """
+    Build a clean call.
+    """
+
+    # Change to the relevant directory
+
+    this_dir = dir_for_gal(gal)
+    os.chdir(this_dir)
+
+    # Initialize the call
+
+    clean_call = cleanCall()
+
+    # Look up the center and shape of the mosaic
+
+    mosaic_key = read_mosaic_key()
+    this_ra = mosaic_key[gal]['rastring']
+    this_dec = mosaic_key[gal]['decstring']
+    phase_center = 'J2000 '+this_ra+' '+this_dec
+
+    cell_size, x_size, y_size = \
+        pick_phangs_cell_and_imsize(vis)
+    image_size = [int(x_size), int(y_size)]
+
+    clean_call.cell_size = cell_size
+    clean_call.image_size = image_size
+
+    # Set the files needed
+
+    clean_call.vis = gal+'_'+array+'_'+product+'.ms'
+    if os.path.isdir(clean_call.vis) == False:
+        print "Visibility data not found. Returning empty."
+        return
+
+    clean_call.image_root = gal+'_'+array+'_'+product
+
+    # Look up the line and data product
+
+    if product == 'co21':
+        clean_call.specmode = 'cube'
+        clean_call.restfreq_ghz = line_list.line_list['co21']
+
+    if product == 'co21_chan0':
+        clean_call.specmode = 'mfs'
+        clean_call.restfreq_ghz = line_list.line_list['co21']
+
+    if product == 'c18o21':
+        clean_call.specmode = 'cube'
+        clean_call.restfreq_ghz = line_list.line_list['c18o21']
+
+    if product == 'c18o21_chan0':
+        clean_call.specmode = 'mfs'
+        clean_call.restfreq_ghz = line_list.line_list['c18o21']
+
+    if product == 'cont':
+        clean_call.specmode = 'mfs'
+        clean_call.restfreq_ghz = -1.0
+
+    # Set angular scales to be used in multiscale clean
+
+    if array == '7m':
+        clean_call.scales_as_angle = [0, 5, 10]
+    elif array == '12m':
+        clean_call.scales_as_angle = [0, 1, 2.5, 5]
+    elif array == '12m+7m':
+        clean_call.scales_as_angle = [0, 1, 2.5, 5, 10]
+
+    # Return
+
+    return clean_call
+
 def phangsImagingRecipe(
     gal=None,
     array='7m',
-    product='co21',
+    product='co21',    
     make_dirty_image=False,
     revert_to_dirty=False,
     read_in_clean_mask=False,
@@ -1957,62 +2034,18 @@ def phangsImagingRecipe(
     single scale clean -> export.
     """
 
-    mosaic_key = read_mosaic_key()            
-    this_ra = mosaic_key[gal]['rastring']
-    this_dec = mosaic_key[gal]['decstring']
-    phase_center = 'J2000 '+this_ra+' '+this_dec            
-
-    this_dir = dir_for_gal(gal)
-    os.chdir(this_dir)
-
-    vis = gal+'_'+array+'_'+product+'.ms'
-    image_root = gal+'_'+array+'_'+product
-
-    if os.path.isdir(vis) == False:
-        print "Visibility data not found. Returning."
-        return
-
-    if product == 'co21':
-        specmode = 'cube'
-        restfreq_ghz = line_list.line_list['co21']
-
-    if product == 'co21_chan0':
-        specmode = 'mfs'
-        restfreq_ghz = line_list.line_list['co21']
-
-    if product == 'c18o21':
-        specmode = 'cube'
-        restfreq_ghz = line_list.line_list['c18o21']
-
-    if product == 'c18o21_chan0':
-        specmode = 'mfs'
-        restfreq_ghz = line_list.line_list['c18o21']
-
-    if product == 'cont':
-        specmode = 'mfs'
-        restfreq_ghz = -1.0
-
-    cell_size, x_size, y_size = \
-        pick_phangs_cell_and_imsize(vis)
-    image_size = [int(x_size), int(y_size)]
-
+    clean_call = buildPhangsCleanCall(
+        gal=gal,
+        array=array,
+        product=product,
+        )
+    
     if make_dirty_image:
         print ""
         print "MAKING THE DIRTY IMAGE."
         print ""
 
-        make_dirty_map(
-            vis=vis,
-            image_root=image_root,
-            specmode=specmode,
-            restfreq_ghz=restfreq_ghz,
-            robust=0.5,
-            pblimit=0.25,
-            uvtaper=None,
-            phase_center=phase_center,
-            cell_size=cell_size,
-            image_size=image_size,
-            )
+        make_dirty_map(clean_call)
 
     if revert_to_dirty:
         print ""
@@ -2033,7 +2066,15 @@ def phangsImagingRecipe(
         print "RUNNING THE MULTISCALE CLEAN."
         print ""
 
-        pass
+        multiscale_loop(
+            clean_call = clean_call,
+            record_file = clean_call.image_root+'_multiscale_record.txt',
+            delta_flux_threshold=0.02,
+            absolute_threshold=None,
+            snr_threshold=4.0,
+            stop_at_negative=True,
+            max_loop = 20
+            )
 
     if revert_to_multiscale:
         print ""
@@ -2053,6 +2094,16 @@ def phangsImagingRecipe(
         print ""
         print "RUNNING THE SINGLE SCALE CLEAN."
         print ""
+
+        singlescale_loop(
+            clean_call = clean_call,
+            record_file = clean_call.image_root+'_singlescale_record.txt',
+            delta_flux_threshold=0.02,
+            absolute_threshold=None,
+            snr_threshold=4.0,
+            stop_at_negative=True,
+            max_loop = 20
+            )
 
     if export_to_fits:
         print ""
