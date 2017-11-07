@@ -1731,9 +1731,10 @@ def multiscale_loop(
     max_loop = 20
     ):
     """
-    Carry out an iterative multiscale clean until a convergence
-    criteria is met.
+    Carry out an iterative multiscale clean loop.
     """
+    
+    # Check that we have a vile clean call
 
     if type(clean_call) != type(cleanCall()):
         print "Supply a valid clean call."
@@ -1751,6 +1752,78 @@ def multiscale_loop(
     
     clean_call.deconvolver = 'multiscale'
     clean_call.scales_as_pix = scales_as_pix
+
+    # Call the loop
+
+    clean_loop(
+        clean_call=clean_call,
+        record_file=record_file,
+        delta_flux_threshold=0.02,
+        absolute_threshold=None,
+        snr_threshold=4.0,
+        stop_at_negative=True,
+        max_loop = 20        
+        )
+
+    # Save a copy
+
+    save_copy_of_cube(
+        input_root=clean_call.image_root,
+        output_root=clean_call.image_root+'_multiscale')
+
+def singlescale_loop(
+    clean_call = None,
+    scales_as_angle=[],
+    record_file=None,
+    delta_flux_threshold=0.02,
+    absolute_threshold=None,
+    snr_threshold=4.0,
+    stop_at_negative=True,
+    max_loop = 20
+    ):
+    """
+    Carry out an iterative multiscale clean loop.
+    """
+    
+    # Check that we have a vile clean call
+
+    if type(clean_call) != type(cleanCall()):
+        print "Supply a valid clean call."
+        
+    clean_call.deconvolver = 'hogbom'
+    clean_call.scales_as_pix = [0]
+
+    # Call the loop
+
+    clean_loop(
+        clean_call=clean_call,
+        record_file=record_file,
+        delta_flux_threshold=0.02,
+        absolute_threshold=None,
+        snr_threshold=4.0,
+        stop_at_negative=True,
+        max_loop = 20        
+        )
+
+    # Save a copy
+
+    save_copy_of_cube(
+        input_root=clean_call.image_root,
+        output_root=clean_call.image_root+'_singlescale')
+
+def clean_loop(
+    clean_call = None,
+    record_file=None,
+    log_ext=None,
+    delta_flux_threshold=0.02,
+    absolute_threshold=None,
+    snr_threshold=4.0,
+    stop_at_negative=True,
+    max_loop = 20
+    ):
+    """
+    Carry out an iterative clean until a convergence criteria is met.
+    """
 
    # Note the number of channels, which is used in setting the number
    # of iterations that we give to an individual clean call.
@@ -1796,8 +1869,7 @@ def multiscale_loop(
         
         clean_call.niter = base_niter*(2**factor)
         clean_call.cycle_niter = base_cycle_niter*factor
-        clean_call.logfile = cube_root+"_loop_"+str(loop)+"_multiscale.log"
-
+        
         # Set the threshold for the clean call.
 
         if snr_threshold != None:
@@ -1807,8 +1879,16 @@ def multiscale_loop(
         elif absolute_threshold != None:
             clean_call.threshold = absolute_threshold
 
+        # Set the log file
+
+        if log_ext != None:
+            clean_call.logfile = cube_root+"_loop_"+str(loop)+"_"+log_ext+".log"
+        else:
+            clean_call.logfile = None
+
         # Execute the clean call.
 
+        clean_call.reset = False
         clean_call.execute()
 
         # Record the new model flux and check for convergence. A nice
@@ -1834,7 +1914,7 @@ def multiscale_loop(
                 
         print ""
         print "******************************"
-        print "MULTISCALE CLEAN LOOP "+str(loop)
+        print "CLEAN LOOP "+str(loop)
         print "... threshold "+clean_call.threshold
         print "... old flux "+str(prev_flux)
         print "... new flux "+str(model_flux)
@@ -1845,7 +1925,7 @@ def multiscale_loop(
         print ""
 
         if record_file != None:
-            line = 'MULTISCALE '+str(loop)+ \
+            line = 'LOOP '+str(loop)+ \
                 ' '+clean_call.threshold+' '+str(this_flux)+ \
                 ' '+str(delta_flux) + ' ' + str(this_niter)+ '\n' 
             f = open(loop_record_file,'a')
@@ -1856,21 +1936,7 @@ def multiscale_loop(
             break
         loop += 1
 
-    save_copy_of_cube(
-        input_root=clean_call.image_root,
-        output_root=clean_call.image_root+'_multiscale')
-
-def singlescale_clean():
-    """
-    Carry out one iteration of single scale clean.
-    """
-    pass
-
-def singlescale_loop():
-    """
-    Carry out an iterative single scale clean until a convergence criteria is met.
-    """
-    pass
+    return
 
 def phangsImagingRecipe(
     gal=None,
