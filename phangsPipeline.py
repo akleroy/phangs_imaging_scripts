@@ -155,8 +155,9 @@ def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     
     return mosaic_key
 
-def read_override_image_params(
-    fname='../scripts/override_image_params.txt'):
+def read_override_mosaic_params(
+    fname='../scripts/override_mosaic_params.txt'
+    ):
     """
     Read hand set overrides for cell and image sizes.
     """
@@ -184,41 +185,35 @@ def read_override_image_params(
 
     return override_dict
 
-def read_imaging_key(fname='../scripts/imaging_key.txt'):
+def read_override_imaging_params(
+    fname='../scripts/override_imaging_params.txt'
+    ):
     """
-    Read the key used to guide PHANGS imaging.
+    Read hand set overrides for imaging parameters.
     """
-    infile = open(fname, 'r')
-    
-    imaging_key = {}
 
+    infile = open(fname, 'r')
+
+    override_dict = {}
     while True:
-        line  = infile.readline()    
+        line = infile.readline()    
         if len(line) == 0:
             break
         if line[0] == '#':
             continue
         words = line.split()
-        if len(words) < 7:
+        if len(words) < 3:
             continue
-
-        this_input_vis = words[0]
-        this_cube_root = words[1]
-        this_pb_limit = words[2]
-        this_multiscale_snr_thresh = words[3]
-        this_smallscalebias = words[4]
-        this_clean_mask = words[5]
-        this_singlescale_snr_thresh = words[6]
-
-        imaging_key[this_input_vis] = {}
-        imaging_key[this_input_vis]['cube_root'] = this_cube_root
-        imaging_key[this_input_vis]['pb_limit'] = this_pb_limit
-        imaging_key[this_input_vis]['multiscale_thresh'] = this_multiscale_snr_thresh
-        imaging_key[this_input_vis]['smallscalebias'] = this_smallscalebias
-        imaging_key[this_input_vis]['clean_mask'] = this_clean_mask
-        imaging_key[this_input_vis]['singlescale_thresh'] = this_singlescale_snr_thresh
-
+        vis_override = words[0]
+        param_override = words[1]
+        value_override = words[2]
+        if override_dict.has_key(vis_override) == False:
+            override_dict[vis_override] = {}
+        override_dict[vis_override][param_override] = value_override
+            
     infile.close()
+
+    return override_dict
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
@@ -1308,7 +1303,7 @@ def pick_phangs_cell_and_imsize(
     cell_size_string, x_size_string, y_size_string = \
         estimate_cell_and_imsize(in_file, oversamp)
 
-    override_dict = read_override_image_params()
+    override_dict = read_override_mosaic_params()
 
     # Check for overrides
     if override_dict.has_key(in_file):
@@ -1588,7 +1583,7 @@ def export_to_fits(
 # Routines to image the data
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-class CleanCall:
+class cleanCall:
     
     def __init__(self):
         self.vis = None
@@ -1613,7 +1608,7 @@ class CleanCall:
         self.uvtaper = None
         self.restoringbeam = ''
         self.usemask = 'user'
-        self.mask = 0.0
+        self.mask = ''
         self.interactive = False
         self.rest = False
         self.logfile = None
@@ -1633,16 +1628,17 @@ class CleanCall:
         
         if self.cell_size == None or self.image_size == None:
             print "Estimating cell and image size."
-            estimate_cell_and_imsize(vis, oversamp=5)
+            estimate_cell_and_imsize(self.vis, oversamp=5)
 
         if self.restfreq_ghz < 0:
             restfreq_str = ''
         else:
-            restfreq_str = str(restfreq_ghz)+'GHz'
+            restfreq_str = str(self.restfreq_ghz)+'GHz'
 
         if self.logfile != None:
-            oldlogfile = casalog.logfile()
-            casalog.setlogfile(logfile)
+            #oldlogfile = casalog.logfile()
+            #casalog.setlogfile(self.logfile)
+            pass
 
         if self.uvtaper == None:
             uv_taper_string = ''
@@ -1651,9 +1647,9 @@ class CleanCall:
 
         if self.reset:
             print "Wiping previous versions of the cube."
-            wipe_cube(image_root)
+            wipe_cube(self.image_root)
 
-        tclean(vis=vis,
+        tclean(vis=self.vis,
                imagename=self.image_root,
                phasecenter=self.phase_center,
                cell=self.cell_size,
@@ -1671,7 +1667,7 @@ class CleanCall:
                deconvolver=self.deconvolver,
                scales=self.scales_as_pix,
                smallscalebias=self.smallscalebias,
-               pblimit=self.pb_limit,
+               pblimit=self.pblimit,
                normtype='flatnoise',
                # Restoring beam
                restoringbeam=self.restoringbeam,
@@ -1688,13 +1684,14 @@ class CleanCall:
                # Mask
                usemask=self.usemask,
                mask=self.mask,
-               pbmask=self.pb_limit,
+               pbmask=self.pblimit,
                # UI
                interactive=self.interactive,
                )
 
-        if logfile != None:
-            casalog.setlogfile(oldlogfile)
+        if self.logfile != None:
+            #casalog.setlogfile(oldlogfile)
+            pass
 
 def make_dirty_map(
     clean_call = None,    
@@ -1709,7 +1706,7 @@ def make_dirty_map(
     clean_call.niter = 0
     clean_call.reset = True
     clean_call.usemask = 'pb'
-    clean_call.logfile = image_root+'_dirty.log'
+    clean_call.logfile = clean_call.image_root+'_dirty.log'
     
     clean_call.execute()
     
@@ -1943,6 +1940,7 @@ def buildPhangsCleanCall(
     gal=None,
     array='7m',
     product='co21',    
+    tag='',
     ):
     """
     Build a clean call.
@@ -1957,20 +1955,6 @@ def buildPhangsCleanCall(
 
     clean_call = cleanCall()
 
-    # Look up the center and shape of the mosaic
-
-    mosaic_key = read_mosaic_key()
-    this_ra = mosaic_key[gal]['rastring']
-    this_dec = mosaic_key[gal]['decstring']
-    phase_center = 'J2000 '+this_ra+' '+this_dec
-
-    cell_size, x_size, y_size = \
-        pick_phangs_cell_and_imsize(vis)
-    image_size = [int(x_size), int(y_size)]
-
-    clean_call.cell_size = cell_size
-    clean_call.image_size = image_size
-
     # Set the files needed
 
     clean_call.vis = gal+'_'+array+'_'+product+'.ms'
@@ -1978,7 +1962,24 @@ def buildPhangsCleanCall(
         print "Visibility data not found. Returning empty."
         return
 
-    clean_call.image_root = gal+'_'+array+'_'+product
+    if tag == '':
+        clean_call.image_root = gal+'_'+array+'_'+product
+    else:
+        clean_call.image_root = gal+'_'+array+'_'+product+'_'+tag
+
+    # Look up the center and shape of the mosaic
+
+    mosaic_key = read_mosaic_key()
+    this_ra = mosaic_key[gal]['rastring']
+    this_dec = mosaic_key[gal]['decstring']
+    clean_call.phase_center = 'J2000 '+this_ra+' '+this_dec
+
+    cell_size, x_size, y_size = \
+        pick_phangs_cell_and_imsize(clean_call.vis)
+    image_size = [int(x_size), int(y_size)]
+
+    clean_call.cell_size = cell_size
+    clean_call.image_size = image_size
 
     # Look up the line and data product
 
@@ -2005,17 +2006,35 @@ def buildPhangsCleanCall(
     # Set angular scales to be used in multiscale clean
 
     if array == '7m':
+        clean_call.pblimit = 0.25
+        clean_call.smallscalebias = 0.6
         clean_call.scales_as_angle = [0, 5, 10]
     elif array == '12m':
+        clean_call.smallscalebias = 0.6
         clean_call.scales_as_angle = [0, 1, 2.5, 5]
     elif array == '12m+7m':
+        clean_call.smallscalebias = 0.8
         clean_call.scales_as_angle = [0, 1, 2.5, 5, 10]
+
+    # Look up overrides in the imaging parameters
+    override_dict = read_override_imaging_params()
+
+    if override_dict.has_key(clean_call.image_root):
+        this_override_dict = override_dic[clean_call.image_root]
+
+        if this_override_dict.has_key('smallscalebias'):
+            clean_call.smallscale_bias = this_override_dict['smallscalebias']
+        if override_dict.has_key('x_size'):
+            x_size_string = override_dict[this_vis]['x_size']
+        if override_dict.has_key('y_size'):
+            y_size_string = override_dict[this_vis]['y_size']    
 
     # Return
 
     return clean_call
 
 def phangsImagingRecipe(
+    clean_call = None,
     gal=None,
     array='7m',
     product='co21',    
@@ -2034,11 +2053,12 @@ def phangsImagingRecipe(
     single scale clean -> export.
     """
 
-    clean_call = buildPhangsCleanCall(
-        gal=gal,
-        array=array,
-        product=product,
-        )
+    if clean_call == None:
+        clean_call = buildPhangsCleanCall(
+            gal=gal,
+            array=array,
+            product=product,
+            )
     
     if make_dirty_image:
         print ""
@@ -2054,12 +2074,21 @@ def phangsImagingRecipe(
 
         replace_cube_with_copy(
             to_root=image_root,
-            from_root=image_root+'_dirty')
+            from_root=clean_call.image_root+'_dirty')
 
     if read_in_clean_mask:
         print ""
         print "READING IN THE CLEAN MASK."
         print ""
+
+        clean_mask_file = '../clean_masks/'+gal+'_co21_clean_mask.fits'
+        
+
+        import_and_align_mask(
+            in_file=clean_mask_file,
+            out_file=clean_call.image_root+'.mask',
+            template=clean_call.image_root+'.image',
+            )
 
     if run_multiscale_clean:
         print ""
