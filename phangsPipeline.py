@@ -1650,9 +1650,8 @@ class cleanCall:
             restfreq_str = str(self.restfreq_ghz)+'GHz'
 
         if self.logfile != None:
-            #oldlogfile = casalog.logfile()
-            #casalog.setlogfile(self.logfile)
-            pass
+            oldlogfile = casalog.logfile()
+            casalog.setlogfile(self.logfile)
 
         if self.uvtaper == None:
             uv_taper_string = ''
@@ -1704,8 +1703,7 @@ class cleanCall:
                )
 
         if self.logfile != None:
-            #casalog.setlogfile(oldlogfile)
-            pass
+            casalog.setlogfile(oldlogfile)
 
 def make_dirty_map(
     clean_call = None,    
