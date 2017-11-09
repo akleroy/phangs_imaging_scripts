@@ -3,6 +3,7 @@
 
 import os
 import numpy as np
+import scipy.ndimage as ndimage
 import glob
 
 # Other PHANGS scripts
@@ -1551,7 +1552,78 @@ def apply_additional_mask(
 
     return
 
-# TBD: Add mask creation steps used in our single scale imaging recipes.
+def signal_mask(
+    cube_root=None,
+    out_file=None,
+    operation='AND',
+    high_snr = 4.0,
+    low_snr = 2.0,
+    ):
+    """
+    A simple signal mask creation routine used to make masks on the
+    fly during imaging. Leverages CASA statistics and scipy.
+    """
+    
+    if os.path.isdir(cube_root+'.image') == False:
+        print 'Need CUBE_ROOT.image to be an image file.'
+        print 'Returning. Generalize the code if you want different syntax.'
+        return
+
+    if operation == 'AND' or operation == 'OR':
+        if os.path.isdir(cube_root+'.mask') == True:
+            ia.open(cube_root+'.mask')
+            old_mask = ia.getchunk()
+            ia.close()
+        else:
+            print "Operation AND/OR requested but no previous mask found."
+            print "... will set operation=NEW."
+            operation = 'NEW'    
+
+    if os.path.isdir(cube_root+'.residual') == True:
+        stats = stat_clean_cube(cube_root+'.residual')
+    else:
+        stats = stat_clean_cube(cube_root+'.image')
+    rms = stats['medabsdevmed'][0]/0.6745
+    hi_thresh = high_snr*rms
+    low_thresh = low_snr*rms
+
+    header = imhead(cube_root+'.image')
+    if header['axisnames'][2] == 'Frequency':
+        spec_axis = 2
+    else:
+        spec_axis = 3
+
+    ia.open(cube_root+'.image')
+    cube = ia.getchunk()
+    ia.close()
+
+    hi_mask = (cube > hi_thresh*rms)
+    mask = \
+        (hi_mask + np.roll(hi_mask,1,axis=spec_axis) + \
+             np.roll(hi_mask,-1,axis=spec_axis)) >= 1
+
+    if high_snr > low_snr:
+        lo_mask = (cube > lo_thresh*rms)
+        rolled_low_mask = \
+            (lo_mask + np.roll(lo_mask,1,axis=spec_axis) + \
+                 np.roll(lo_mask,-1,axis=spec_axis)) >= 1
+        mask = ndimage.binary_dilation(hi_mask, 
+                                       mask=rolled_low_mask, 
+                                       iterations=-1)
+
+    if operation == 'AND':
+        mask = new_mask*old_mask
+    if operation == 'OR':
+        mask = (new_mask + old_mask) > 0
+    if operation == 'NEW':
+        mask = new_mask
+
+    os.system('rm -rf '+cube_root+'.mask')
+    os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
+    ia.open(cube_root+'.mask')
+    ia.putchunk(mask)
+    ia.close()
+
 
 def export_to_fits(
     cube_root=None):
@@ -2095,7 +2167,6 @@ def phangsImagingRecipe(
 
         clean_mask_file = '../clean_masks/'+gal+'_co21_clean_mask.fits'
         
-
         import_and_align_mask(
             in_file=clean_mask_file,
             out_file=clean_call.image_root+'.mask',
@@ -2131,6 +2202,8 @@ def phangsImagingRecipe(
         print "MAKING THE MASK FOR SINGLE SCALE CLEAN."
         print ""
 
+        
+
     if run_singlescale_clean:
         print ""
         print "RUNNING THE SINGLE SCALE CLEAN."
@@ -2141,7 +2214,7 @@ def phangsImagingRecipe(
             record_file = clean_call.image_root+'_singlescale_record.txt',
             delta_flux_threshold=0.02,
             absolute_threshold=None,
-            snr_threshold=4.0,
+            snr_threshold=1.0,
             stop_at_negative=True,
             max_loop = 20
             )
