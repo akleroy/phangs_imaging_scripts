@@ -1,3 +1,4 @@
+# IN USE BY THE DATA PRODUCT PIPELINE
 # column 1: galaxy name
 # column 2: target area RA center (degrees)
 # column 3: target area Dec center (degrees)

@@ -11,14 +11,14 @@ import analysisUtils as au
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # ... process only these galaxies
-only = ['ngc1317','ngc1546','ngc4207','ngc4694']
+only = []
 
 # ... skip these galaxies
-skip = []
+skip = ['ngc0628','ngc1317','ngc1546','ngc4207','ngc4694']
 
 # ... set this to '12m' or '7m' to stage data only for those
 # arrays. Leave it as None to process all data.
-just_array = None 
+just_array = '7m'
 
 # ... set these variables to indicate what steps of the script should
 # be performed
