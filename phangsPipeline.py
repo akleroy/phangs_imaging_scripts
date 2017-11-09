@@ -853,7 +853,7 @@ def extract_line(in_file=None,
     target_width_hz = chan_width/sol_kms*restfreq_ghz*1e9
     rebin_factor = min(target_width_hz / chan_width_hz)
 
-    if current_chan_width_kms > chan_width:
+    if max(current_chan_width_kms) > chan_width:
         print "Requested channel width is smaller than the starting width. Returning."
         return
     
@@ -903,7 +903,6 @@ def extract_line(in_file=None,
     mstransform(vis=out_file+'.temp',
                 outputvis=out_file,
                 datacolumn='DATA',
-                combinespws=True,
                 regridms=True,
                 mode='velocity',
                 interpolation='cubic',
