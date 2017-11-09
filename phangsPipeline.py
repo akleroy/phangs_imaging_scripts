@@ -9,6 +9,7 @@ import glob
 import line_list
 
 # CASA imports
+from taskinit import *
 import analysisUtils as au
 from split import split
 from statwt import statwt
@@ -315,10 +316,23 @@ def copy_data(gal=None,
 
                 os.system('rm -rf '+out_file)
                 os.system('rm -rf '+out_file+'.flagversions')
+                
+                # If present, use the corrected column. If not, then
+                # use the data column.
+                mytb = au.createCasaTool(tbtool)
+                mytb.open(copied_file)
+                colnames = mytb.colnames()
+                if colnames.count('CORRECTED_DATA') == 1:
+                    print "Data has a CORRECTED column. Will use that."
+                    use_column = 'CORRECTED'
+                else:
+                    print "Data lacks a CORRECTED column. Will use DATA column."
+                    use_column = 'DATA'
+                mytb.close()
 
                 split(vis=copied_file
                       , intent ='OBSERVE_TARGET#ON_SOURCE'
-                      , datacolumn='DATA'
+                      , datacolumn=use_column
                       , outputvis=out_file)        
 
                 os.system('rm -rf '+copied_file)
@@ -1738,17 +1752,17 @@ def multiscale_loop(
     
     # Figure out the scales to use in pixel units
 
-    cell_as_num = float((cell_size.split('arcsec'))[0])
+    cell_as_num = float((clean_call.cell_size.split('arcsec'))[0])
     scales_as_pix = []
     for scale in clean_call.scales_as_angle:
         scales_as_pix.append(int(scale/cell_as_num))
-    
-    print "I will use the following scales: "
-    print "... as pixels: ", str(scales_as_pix)
-    print "... as arcseconds: ", str(scales_as_angle)
-    
+        
     clean_call.deconvolver = 'multiscale'
     clean_call.scales_as_pix = scales_as_pix
+
+    print "I will use the following scales: "
+    print "... as pixels: ", str(clean_call.scales_as_pix)
+    print "... as arcseconds: ", str(clean_call.scales_as_angle)
 
     # Call the loop
 
@@ -1915,7 +1929,7 @@ def clean_loop(
         print "... old flux "+str(prev_flux)
         print "... new flux "+str(model_flux)
         print "... fractional change "+str(delta_flux)+ \
-            " compare to stopping criterion of "+str(delta_flux_thresh)
+            " compare to stopping criterion of "+str(delta_flux_threshold)
         print "... proceed? "+str(proceed)
         print "******************************"
         print ""
@@ -1924,9 +1938,9 @@ def clean_loop(
 
         if record_file != None:
             line = 'LOOP '+str(loop)+ \
-                ' '+clean_call.threshold+' '+str(this_flux)+ \
-                ' '+str(delta_flux) + ' ' + str(this_niter)+ '\n' 
-            f = open(loop_record_file,'a')
+                ' '+clean_call.threshold+' '+str(model_flux)+ \
+                ' '+str(delta_flux) + ' ' + str(clean_call.niter)+ '\n' 
+            f = open(record_file,'a')
             f.write(line)
             f.close()
 
