@@ -1,5 +1,5 @@
 # NB: CASA doesn't always include the pwd in the module search path. I
-# had to modify my init.py file to get this to import.
+# had to modify my init.py file to get this to import. See the README.
 
 import os
 import numpy as np
@@ -9,19 +9,24 @@ import glob
 # Other PHANGS scripts
 import line_list
 
+# Analysis utilities
+import analysisUtils as au
+
 # CASA imports
 from taskinit import *
-import analysisUtils as au
-from split import split
-from statwt import statwt
-from mstransform import mstransform
+
 from concat import concat
-from uvcontsub import uvcontsub
+from exportfits import exportfits
 from flagdata import flagdata
 from imhead import imhead
 from imstat import imstat
+from imregrid import imregrid
+from importfits import importfits
+from mstransform import mstransform
+from split import split
+from statwt import statwt
 from tclean import tclean
-from exportfits import exportfits
+from uvcontsub import uvcontsub
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Interface to the text file keys that steer the process
@@ -1494,25 +1499,26 @@ def import_and_align_mask(
     hdr = imhead(template)
 
     # Pull the data out of the aligned mask and place it in the output file
-    ia.open(out_file+'.temp_aligned')
-    mask = ia.getchunk(dropdeg=True)
-    ia.close()
+    myia = au.createCasaTool(iatool)
+    myia.open(out_file+'.temp_aligned')
+    mask = myia.getchunk(dropdeg=True)
+    myia.close()
 
     # Need to make sure this works for two dimensional cases, too.
     if (hdr['axisnames'][3] == 'Frequency') and \
             (hdr['ndim'] == 4):    
-        ia.open(outfile)
-        data = ia.getchunk(dropdeg=False)
+        myia.open(out_file)
+        data = myia.getchunk(dropdeg=False)
         data[:,:,0,:] = mask
-        ia.putchunk(data)
-        ia.close()
+        myia.putchunk(data)
+        myia.close()
     elif (hdr['axisnames'][2] == 'Frequency') and \
             (hdr['ndim'] == 4):    
-        ia.open(mask_root+'.mask')
-        data = ia.getchunk(dropdeg=False)
+        myia.open(mask_root+'.mask')
+        data = myia.getchunk(dropdeg=False)
         data[:,:,:,0] = mask
-        ia.putchunk(data)
-        ia.close()
+        myia.putchunk(data)
+        myia.close()
     else:
         print "ALERT! Did not find a case."
 
@@ -1535,19 +1541,20 @@ def apply_additional_mask(
     if root_mask == None:
         print "Specify a cube root file name."
         return
-    
-    ia.open(new_mask_file)
-    new_mask = ia.getchunk()
-    ia.close()
 
-    ia.open(old_mask_file)
-    mask = ia.getchunk()
+    myia = au.createCasaTool(iatool)    
+    myia.open(new_mask_file)
+    new_mask = myia.getchunk()
+    myia.close()
+
+    myia.open(old_mask_file)
+    mask = myia.getchunk()
     if operation == "AND":
         mask *= (new_mask > new_thresh)
     else:
         mask = (mask + (new_mask > new_thresh)) >= 1.0
-    ia.putchunk(mask)
-    ia.close()
+    myia.putchunk(mask)
+    myia.close()
 
     return
 
@@ -1568,11 +1575,12 @@ def signal_mask(
         print 'Returning. Generalize the code if you want different syntax.'
         return
 
+    myia = au.createCasaTool(iatool)
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root+'.mask') == True:
-            ia.open(cube_root+'.mask')
-            old_mask = ia.getchunk()
-            ia.close()
+            myia.open(cube_root+'.mask')
+            old_mask = myia.getchunk()
+            myia.close()
         else:
             print "Operation AND/OR requested but no previous mask found."
             print "... will set operation=NEW."
@@ -1592,37 +1600,36 @@ def signal_mask(
     else:
         spec_axis = 3
 
-    ia.open(cube_root+'.image')
-    cube = ia.getchunk()
-    ia.close()
+    myia.open(cube_root+'.image')
+    cube = myia.getchunk()
+    myia.close()
 
-    hi_mask = (cube > hi_thresh*rms)
+    hi_mask = (cube > hi_thresh)
     mask = \
         (hi_mask + np.roll(hi_mask,1,axis=spec_axis) + \
              np.roll(hi_mask,-1,axis=spec_axis)) >= 1
 
     if high_snr > low_snr:
-        lo_mask = (cube > lo_thresh*rms)
+        low_mask = (cube > low_thresh)
         rolled_low_mask = \
-            (lo_mask + np.roll(lo_mask,1,axis=spec_axis) + \
-                 np.roll(lo_mask,-1,axis=spec_axis)) >= 1
+            (low_mask + np.roll(low_mask,1,axis=spec_axis) + \
+                 np.roll(low_mask,-1,axis=spec_axis)) >= 1
         mask = ndimage.binary_dilation(hi_mask, 
                                        mask=rolled_low_mask, 
                                        iterations=-1)
 
     if operation == 'AND':
-        mask = new_mask*old_mask
+        mask = mask*old_mask
     if operation == 'OR':
-        mask = (new_mask + old_mask) > 0
+        mask = (mask + old_mask) > 0
     if operation == 'NEW':
-        mask = new_mask
+        mask = mask
 
     os.system('rm -rf '+cube_root+'.mask')
     os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
-    ia.open(cube_root+'.mask')
-    ia.putchunk(mask)
-    ia.close()
-
+    myia.open(cube_root+'.mask')
+    myia.putchunk(mask)
+    myia.close()
 
 def export_to_fits(
     cube_root=None):
@@ -1697,6 +1704,7 @@ class cleanCall:
         self.interactive = False
         self.rest = False
         self.logfile = None
+        self.clean_mask_file = None
 
     def execute(self):
         """
@@ -1965,6 +1973,11 @@ def clean_loop(
         else:
             clean_call.logfile = None
 
+        # Save the previous version of the file
+        save_copy_of_cube(
+            input_root=clean_call.image_root,
+            output_root=clean_call.image_root+'_prev')
+
         # Execute the clean call.
 
         clean_call.reset = False
@@ -2112,6 +2125,11 @@ def buildPhangsCleanCall(
         if override_dict.has_key('y_size'):
             y_size_string = override_dict[this_vis]['y_size']    
 
+    # Define the clean mask
+    clean_file_name = '../clean_masks/'+gal+'_co21_clean_mask.fits'
+    if os.path.isfile(clean_file_name):
+        clean_call.clean_mask_file = clean_file_name
+
     # Return
 
     return clean_call
@@ -2156,21 +2174,22 @@ def phangsImagingRecipe(
         print ""
 
         replace_cube_with_copy(
-            to_root=image_root,
+            to_root=clea_call.image_root,
             from_root=clean_call.image_root+'_dirty')
 
     if read_in_clean_mask:
         print ""
         print "READING IN THE CLEAN MASK."
         print ""
-
-        clean_mask_file = '../clean_masks/'+gal+'_co21_clean_mask.fits'
         
-        import_and_align_mask(
-            in_file=clean_mask_file,
-            out_file=clean_call.image_root+'.mask',
-            template=clean_call.image_root+'.image',
-            )
+        if clean_call.clean_mask_file != None:
+            import_and_align_mask(
+                in_file=clean_call.clean_mask_file,
+                out_file=clean_call.image_root+'.mask',
+                template=clean_call.image_root+'.image',
+                )
+        else:
+            print "No clean mask defined."
 
     if run_multiscale_clean:
         print ""
@@ -2193,16 +2212,21 @@ def phangsImagingRecipe(
         print ""
 
         replace_cube_with_copy(
-            to_root=image_root,
-            from_root=image_root+'_multiscale')
+            to_root=clean_call.image_root,
+            from_root=clean_call.image_root+'_multiscale')
 
     if make_singlescale_mask:
         print ""
         print "MAKING THE MASK FOR SINGLE SCALE CLEAN."
         print ""
 
+        signal_mask(
+            cube_root=clean_call.image_root,
+            out_file=clean_call.image_root+'.mask',
+            operation='AND',
+            high_snr=4.0,
+            low_snr=2.0)
         
-
     if run_singlescale_clean:
         print ""
         print "RUNNING THE SINGLE SCALE CLEAN."
@@ -2222,8 +2246,8 @@ def phangsImagingRecipe(
         print ""
         print "EXPORTING PRODUCTS TO FITS."
         print ""
-        export_to_fits(image_root)
-        export_to_fits(image_root+'_dirty')
-        export_to_fits(image_root+'_multiscale')
+        export_to_fits(clean_call.image_root)
+        export_to_fits(clean_call.image_root+'_dirty')
+        export_to_fits(clean_call.image_root+'_multiscale')
 
     return

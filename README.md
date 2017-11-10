@@ -14,7 +14,7 @@ It runs in four steps right now:
 1) Download and calibrate the data using the observatory scripts.
 2) Stage the imaging using stage_imaging.py
 3) Image the data using image_data.py
-4) Create the higher level data products using build_releave_v0p6.pro
+4) Create the higher level data products using build_release_v0p6.pro
 
 Parts 1-3 run in CASA. Parts 2-3 depend on phangsPipeline.py and use
 the analysisUtils. Part 4 runs in IDL with a stop in CASA to feather.

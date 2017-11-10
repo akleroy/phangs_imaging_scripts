@@ -9,7 +9,7 @@ import analysisUtils as au
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # ... process only these galaxies
-only = ['ngc1317','ngc1546','ngc4207','ngc4694']
+only = ['ngc0628']
 
 # ... skip these galaxies
 skip = []
@@ -28,12 +28,12 @@ just_product = ['co21']
  
 make_dirty_image=True
 revert_to_dirty=False
-read_in_clean_mask=False
+read_in_clean_mask=True
 run_multiscale_clean=True
 revert_to_multiscale=False
-make_singlescale_mask=False
-run_singlescale_clean=False
-export_to_fits=False
+make_singlescale_mask=True
+run_singlescale_clean=True
+export_to_fits=True
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop
