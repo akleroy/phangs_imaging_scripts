@@ -1632,11 +1632,12 @@ def signal_mask(
     myia.close()
 
 def export_to_fits(
-    cube_root=None):
+    cube_root=None,
+    bitpix=-32):
     """
     Export the various products associated with a CASA cube to FITS.
     """
-    
+
     exportfits(imagename=cube_root+'.image',
                fitsimage=cube_root+'.fits',
                velocity=True, overwrite=True, dropstokes=True, 
@@ -2146,7 +2147,7 @@ def phangsImagingRecipe(
     revert_to_multiscale=False,
     make_singlescale_mask=False,
     run_singlescale_clean=False,
-    export_to_fits=False
+    do_export_to_fits=False
     ):
     """
     The end-to-end PHANGS imaging recipe. Dirty image -> mask
@@ -2242,7 +2243,7 @@ def phangsImagingRecipe(
             max_loop = 20
             )
 
-    if export_to_fits:
+    if do_export_to_fits:
         print ""
         print "EXPORTING PRODUCTS TO FITS."
         print ""
