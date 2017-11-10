@@ -1643,11 +1643,6 @@ def export_to_fits(
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
 
-    exportfits(imagename=cube_root+'_dirty.image',
-               fitsimage=cube_root+'_dirty.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-
     exportfits(imagename=cube_root+'.model',
                fitsimage=cube_root+'_model.fits',
                velocity=True, overwrite=True, dropstokes=True, 
