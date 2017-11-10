@@ -1794,7 +1794,9 @@ def make_dirty_map(
     clean_call.reset = True
     clean_call.usemask = 'pb'
     clean_call.logfile = clean_call.image_root+'_dirty.log'
-    
+
+    clean_call.calcres = True
+    clean_call.calcpsf = True
     clean_call.execute()
     
     clean_call.reset = False
@@ -1832,6 +1834,8 @@ def multiscale_loop(
         
     clean_call.deconvolver = 'multiscale'
     clean_call.scales_as_pix = scales_as_pix
+    clean_call.calcres = False
+    clean_call.calcpsf = False
 
     print "I will use the following scales: "
     print "... as pixels: ", str(clean_call.scales_as_pix)
@@ -1875,6 +1879,8 @@ def singlescale_loop(
         print "Supply a valid clean call."
         
     clean_call.deconvolver = 'hogbom'
+    clean_call.calcres = False
+    clean_call.calcpsf = False
 
     # Call the loop
 
