@@ -1881,10 +1881,10 @@ def singlescale_loop(
     clean_loop(
         clean_call=clean_call,
         record_file=record_file,
-        delta_flux_threshold=0.02,
-        absolute_threshold=None,
-        snr_threshold=4.0,
-        stop_at_negative=True,
+        delta_flux_threshold=delta_flux_threshold,
+        absolute_threshold=absolute_threshold,
+        snr_threshold=snr_threshold,
+        stop_at_negative=stop_at_negative,
         max_loop = 20        
         )
 
