@@ -19,9 +19,11 @@ from concat import concat
 from exportfits import exportfits
 from flagdata import flagdata
 from imhead import imhead
+from immath import immath
 from imstat import imstat
 from imregrid import imregrid
 from importfits import importfits
+from makemask import makemask
 from mstransform import mstransform
 from split import split
 from statwt import statwt
@@ -1494,8 +1496,9 @@ def import_and_align_mask(
 
     # Make an EXACT copy of the template, avoids various annoying edge cases
     os.system('rm -rf '+out_file)
-    os.system('cp -r '+template+' '+out_file)
-    
+    myim = au.createCasaTool(imtool)
+    myim.mask(image=template, mask=out_file)
+
     hdr = imhead(template)
 
     # Pull the data out of the aligned mask and place it in the output file
@@ -1506,14 +1509,14 @@ def import_and_align_mask(
 
     # Need to make sure this works for two dimensional cases, too.
     if (hdr['axisnames'][3] == 'Frequency') and \
-            (hdr['ndim'] == 4):    
+            (hdr['ndim'] == 4):
         myia.open(out_file)
         data = myia.getchunk(dropdeg=False)
         data[:,:,0,:] = mask
         myia.putchunk(data)
         myia.close()
     elif (hdr['axisnames'][2] == 'Frequency') and \
-            (hdr['ndim'] == 4):    
+            (hdr['ndim'] == 4):
         myia.open(mask_root+'.mask')
         data = myia.getchunk(dropdeg=False)
         data[:,:,:,0] = mask
@@ -1800,7 +1803,7 @@ def make_dirty_map(
     clean_call.execute()
     
     clean_call.reset = False
-    clean_call.usemask = 'user'
+    clean_call.usemask = 'pb'
     clean_call.logfile = None
 
     save_copy_of_cube(
@@ -1846,11 +1849,11 @@ def multiscale_loop(
     clean_loop(
         clean_call=clean_call,
         record_file=record_file,
-        delta_flux_threshold=0.02,
-        absolute_threshold=None,
-        snr_threshold=4.0,
-        stop_at_negative=True,
-        max_loop = 20        
+        delta_flux_threshold=delta_flux_threshold,
+        absolute_threshold=absolute_threshold,
+        snr_threshold=snr_threshold,
+        stop_at_negative=stop_at_negative,
+        max_loop = max_loop      
         )
 
     # Save a copy
@@ -1891,7 +1894,7 @@ def singlescale_loop(
         absolute_threshold=absolute_threshold,
         snr_threshold=snr_threshold,
         stop_at_negative=stop_at_negative,
-        max_loop = 20        
+        max_loop = max_loop      
         )
 
     # Save a copy
@@ -1984,6 +1987,9 @@ def clean_loop(
 
         clean_call.reset = False
         clean_call.execute()
+
+        clean_call.niter = 0
+        clean_call.cycle_niter = 200
 
         # Record the new model flux and check for convergence. A nice
         # way to improve this would be to calculate the flux per
@@ -2176,7 +2182,7 @@ def phangsImagingRecipe(
         print ""
 
         replace_cube_with_copy(
-            to_root=clea_call.image_root,
+            to_root=clean_call.image_root,
             from_root=clean_call.image_root+'_dirty')
 
     if read_in_clean_mask:
@@ -2198,6 +2204,7 @@ def phangsImagingRecipe(
         print "RUNNING THE MULTISCALE CLEAN."
         print ""
 
+        #clean_call.interactive = True
         multiscale_loop(
             clean_call = clean_call,
             record_file = clean_call.image_root+'_multiscale_record.txt',

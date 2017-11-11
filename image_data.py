@@ -9,7 +9,7 @@ import analysisUtils as au
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # ... process only these galaxies
-only = ['ngc0628']
+only = []
 
 # ... skip these galaxies
 skip = []
@@ -78,7 +78,7 @@ for gal in gals:
                 array=array,
                 product=product,
                 tag='')
-            
+
             pp.phangsImagingRecipe(
                 clean_call=clean_call,
                 make_dirty_image=make_dirty_image,
@@ -88,6 +88,6 @@ for gal in gals:
                 revert_to_multiscale=revert_to_multiscale,
                 make_singlescale_mask=make_singlescale_mask,
                 run_singlescale_clean=run_singlescale_clean,
-                export_to_fits=export_to_fits,
+                do_export_to_fits=export_to_fits,
                 )
             
