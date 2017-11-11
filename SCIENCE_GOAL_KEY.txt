@@ -6,15 +6,60 @@
 DELIVERED DATA
 --------------------------------------------------------------------
 
+- science_goal.uid___A001_X1284_X28a9/group.uid___A001_X1284_X28aa/
+- target: IC 5273
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X28ad
+
+- science_goal.uid___A001_X1284_X289f/group.uid___A001_X1284_X28a0/
+- target: NGC 0685
+- Main Array: 
+- ACA 7m: member.uid___A001_X1284_X28a3
+
+- science_goal.uid___A001_X1284_X288b/group.uid___A001_X1284_X288c/
+- target: NGC 1097 (which one?)
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X288f
+
 - science_goal.uid___A001_X1284_X2881/group.uid___A001_X1284_X2882/
 - target: NGC 1317
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2885
 
+- science_goal.uid___A001_X1284_X2877/group.uid___A001_X1284_X2878/
+- target: NGC 1511
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X287b
+
 - science_goal.uid___A001_X1284_X286d/group.uid___A001_X1284_X286e/
 - target: NGC 1546
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2871
+
+- science_goal.uid___A001_X1284_X284f/group.uid___A001_X1284_X2850/
+- target: NGC 1792
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X2853
+
+- science_goal.uid___A001_X1284_X283b/group.uid___A001_X1284_X283c/
+- target: NGC 1809
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X283f
+
+- science_goal.uid___A001_X1284_X2831/group.uid___A001_X1284_X2832/
+- target: NGC 2090
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X2835/product/
+
+- science_goal.uid___A001_X1284_X2813/group.uid___A001_X1284_X2814/
+- target: NGC 2775
+- Main Array: 
+- ACA 7m: member.uid___A001_X1284_X2817
+
+- science_goal.uid___A001_X1284_X2827/group.uid___A001_X1284_X2828/
+- target: NGC 2283
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X282b
 
 - science_goal.uid___A001_X1284_X275f/group.uid___A001_X1284_X2760/
 - target: NGC 4207
@@ -25,6 +70,16 @@ DELIVERED DATA
 - target: NGC 4694
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X26cd
+
+- science_goal.uid___A001_X1284_X2683/group.uid___A001_X1284_X2684/
+- target: NGC 5134
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X2687/product/
+
+- science_goal.uid___A001_X1284_X263d/group.uid___A001_X1284_X263e/
+- target: NGC 7456
+- Main Array:
+- ACA 7m: member.uid___A001_X1284_X2641
 
 ************************************************************************
 2015.1.00956.S
