@@ -2124,7 +2124,7 @@ def buildPhangsCleanCall(
     override_dict = read_override_imaging_params()
 
     if override_dict.has_key(clean_call.image_root):
-        this_override_dict = override_dic[clean_call.image_root]
+        this_override_dict = override_dict[clean_call.image_root]
 
         if this_override_dict.has_key('smallscalebias'):
             clean_call.smallscale_bias = this_override_dict['smallscalebias']

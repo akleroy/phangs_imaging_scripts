@@ -12,8 +12,13 @@ import analysisUtils as au
 only = []
 
 # ... skip these galaxies
-skip = []
-
+skip = \
+    ['ic5332',
+     'ngc0628',
+     'ngc1087',
+     'ngc1300',
+     'ngc1317',
+     ]
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 just_array = ['7m']
