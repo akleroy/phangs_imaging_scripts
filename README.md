@@ -145,14 +145,16 @@ when you are actually editing the functionality).
 
 When you run stage imaging it will try to do three things:
 
-1) copy the calibrated data in to the directory where you are going to image.
+1) Make the directory for imaging if it doesn't already exist.
 
-2) extract lines from all of the individual measurement sets. Then
+2) copy the calibrated data in to the directory where you are going to image.
+
+3) extract lines from all of the individual measurement sets. Then
 concatenate them into a single measurement set for each spectral line
 on a shared velocity grid to be used for imaging. Also make "channel
 0" measurement sets.
 
-3) Extract continuum measurements sets from each individual
+4) Extract continuum measurements sets from each individual
 measurement set and then concatenate them into a single measurement
 set for each spectral line.
 
