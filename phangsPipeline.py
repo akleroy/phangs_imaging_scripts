@@ -227,7 +227,7 @@ def read_override_imaging_params(
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
+    
 # All of these know about the PHANGS keys. They're called as part of
 # the pipeline to set up the imaging.
 
@@ -259,6 +259,12 @@ def copy_data(gal=None,
     # Change to the right directory
 
     this_dir = dir_for_gal(gal)
+    
+    # Make the directory if it's missing
+    if os.path.isdir(this_dir) == False:
+        print "Directory "+this_dir+" not found. Making it."
+        os.system('mkdir '+this_dir)
+    
     os.chdir(this_dir)
 
     if quiet == False:
