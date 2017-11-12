@@ -11,10 +11,13 @@ import analysisUtils as au
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # ... process only these galaxies
-only = []
+only = ['ngc0685', 'ngc1097_1', 'ngc1511', 
+        'ngc1792_1','ngc1809','ngc2090',
+        'ngc2283', 'ngc2775', 'ngc5134',
+        'ic5237','ngc7456']
 
 # ... skip these galaxies
-skip = ['ngc0628','ngc1317','ngc1546','ngc4207','ngc4694']
+skip = []
 
 # ... set this to '12m' or '7m' to stage data only for those
 # arrays. Leave it as None to process all data.
@@ -42,7 +45,7 @@ for gal in gals:
     if len(skip) > 0:
         if skip.count(gal) > 0:
             continue
-
+        
     if do_copy:
         pp.copy_data(
             gal=gal,
