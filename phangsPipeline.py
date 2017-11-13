@@ -1204,7 +1204,7 @@ def extract_continuum(
                  )
         
     if do_statwt:
-        print "... deriving emprical weights using STATWT."
+        print "... deriving empirical weights using STATWT."
         statwt(vis=out_file,
                datacolumn='DATA')
 
