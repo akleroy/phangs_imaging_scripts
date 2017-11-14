@@ -1704,7 +1704,7 @@ class cleanCall:
         self.minpsffraction = 0.5
         self.pblimit = 0.25
         self.uvtaper = None
-        self.restoringbeam = ''
+        self.restoringbeam = 'common'
         self.usemask = 'user'
         self.mask = ''
         self.interactive = False
