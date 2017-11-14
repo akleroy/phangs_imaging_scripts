@@ -76,10 +76,25 @@ DELIVERED DATA
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2817
 
+- science_goal.uid___A001_X1284_X27c3/group.uid___A001_X1284_X27c4/
+- target: NGC 3137
+- Main Array: 
+- ACA 7m: member.uid___A001_X1284_X27c7
+
+- science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/
+- target: NGC 3626
+- Main Array: 
+- ACA 7m: member.uid___A001_X1284_X276d
+
 - science_goal.uid___A001_X1284_X275f/group.uid___A001_X1284_X2760/
 - target: NGC 4207
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2763
+
+- science_goal.uid___A001_X1284_X2741/group.uid___A001_X1284_X2742/
+- target: NGC 4424
+- Main Array: 
+- ACA 7m: member.uid___A001_X1284_X2745/
 
 - science_goal.uid___A001_X1284_X26c9/group.uid___A001_X1284_X26ca/
 - target: NGC 4694
