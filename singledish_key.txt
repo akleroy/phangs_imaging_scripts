@@ -1,30 +1,31 @@
 # column 1: galaxy
 # column 2: file where the single dish map is located
-ic5332	    	../singledish/data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits
-ngc0628		../singledish/data/ALMA_TP.M74.v0p2_rebin.fits
-ngc1087	 	../singledish/data/ALMA_TP.NGC_1087.CO21.v0p2.casa.fits
-ngc1300		../singledish/data/ALMA_TP.NGC_1300.CO21.v0p2.image.VLSRK.casa.fits
-ngc1365		../singledish/data/ALMA_TP.NGC1365.CO21.v0p2.image.casa.fits
-ngc1385		../singledish/data/ALMA_TP.NGC_1385.CO21.v0p2.image.VLSRK.casa.fits
-ngc1433		../singledish/data/ALMA_TP.NGC_1433.CO21.v0p2.casa.fits
-ngc1512		../singledish/data/ALMA_TP.NGC_1512.CO21.v0p2.image.VLSRK.fits
-ngc1566		../singledish/data/ALMA_TP.NGC_1566.CO21.v0p2.casa.fits
-ngc1672		../singledish/data/ALMA_TP.NGC_1672.CO21.v0p2.image.VLSRK.fits
-ngc2835		../singledish/data/ALMA_TP.NGC_2835.CO21.v0p2.image.VLSRK.fits
-ngc3351		../singledish/data/ALMA_TP.NGC_3351.CO21.v0p2.fits
-ngc3627		../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits
-ngc3627north	../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits
-ngc3627south	../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits
-ngc4254		../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.2parts.image.VLSRK.fits
-ngc4254north	../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.2parts.image.VLSRK.fits
-ngc4254south	../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.2parts.image.VLSRK.fits
-ngc4303		../singledish/data/ALMA_TP.NGC4303.CO21.v0p2.fits
-ngc4321		../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits
-ngc4321north	../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits
-ngc4321south	../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits
-ngc4535		../singledish/data/ALMA_TP.NGC_4535.CO21.v0p2.fits
-ngc5068		../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits
-ngc5068north	../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits
-ngc5068south	../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits
-ngc6744north	../singledish/data/ALMA_TP.NGC6744.CO21.v0p2.image.VLSRK.fits
-ngc6744south	../singledish/data/ALMA_TP.NGC_6744south.CO21.v0p2.fits
+# column 3: product
+ic5332	    	../singledish/data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits			co21
+ngc0628		../singledish/data/ALMA_TP.M74.v0p2_rebin.fits					co21
+ngc1087	 	../singledish/data/ALMA_TP.NGC_1087.CO21.v0p2.casa.fits				co21
+ngc1300		../singledish/data/ALMA_TP.NGC_1300.CO21.v0p2.image.VLSRK.casa.fits		co21
+ngc1365		../singledish/data/ALMA_TP.NGC1365.CO21.v0p2.image.casa.fits			co21
+ngc1385		../singledish/data/ALMA_TP.NGC_1385.CO21.v0p2.image.VLSRK.casa.fits		co21
+ngc1433		../singledish/data/ALMA_TP.NGC_1433.CO21.v0p2.casa.fits				co21
+ngc1512		../singledish/data/ALMA_TP.NGC_1512.CO21.v0p2.image.VLSRK.fits			co21
+ngc1566		../singledish/data/ALMA_TP.NGC_1566.CO21.v0p2.casa.fits				co21
+ngc1672		../singledish/data/ALMA_TP.NGC_1672.CO21.v0p2.image.VLSRK.fits			co21
+ngc2835		../singledish/data/ALMA_TP.NGC_2835.CO21.v0p2.image.VLSRK.fits			co21
+ngc3351		../singledish/data/ALMA_TP.NGC_3351.CO21.v0p2.fits				co21
+ngc3627		../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits				co21
+ngc3627north	../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits				co21
+ngc3627south	../singledish/data/ALMA_TP.NGC_3627.CO21.v0p2.fits				co21
+ngc4254		../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.2parts.image.VLSRK.fits		co21
+ngc4254north	../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.2parts.image.VLSRK.fits		co21
+ngc4254south	../singledish/data/ALMA_TP.NGC_4254.CO21.v0p2.2parts.image.VLSRK.fits		co21
+ngc4303		../singledish/data/ALMA_TP.NGC4303.CO21.v0p2.fits				co21
+ngc4321		../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits			co21
+ngc4321north	../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits			co21
+ngc4321south	../singledish/data/ALMA_TP.NGC_4321.CO21.v0p2.image.VLSRK.fits			co21
+ngc4535		../singledish/data/ALMA_TP.NGC_4535.CO21.v0p2.fits				co21
+ngc5068		../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits		co21
+ngc5068north	../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits		co21
+ngc5068south	../singledish/data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits		co21
+ngc6744north	../singledish/data/ALMA_TP.NGC6744.CO21.v0p2.image.VLSRK.fits			co21
+ngc6744south	../singledish/data/ALMA_TP.NGC_6744south.CO21.v0p2.fits				co21

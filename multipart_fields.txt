@@ -1,0 +1,25 @@
+# IN USE BY THE DATA PRODUCT PIPELINE
+# column 1: galaxy name
+# column 2: target area RA center (degrees)
+# column 3: target area Dec center (degrees)
+# column 4: target area RA extent (arcsec)
+# column 4: target area Dec extent (arcsec)
+# column 5: total power is the same for both (i.e., copy don't merge)
+# Fill in the sizes for LP and 925 targets as we need them.
+ngc1097   41.579375  	-30.274889  	XXX	XXX	 X
+ngc1300	  49.921167  	-19.411361  	XXX	XXX	 X
+ngc1433	  55.506458  	-47.222083  	XXX	XXX	 X
+ngc1566	  65.001750  	-54.937806  	XXX	XXX	 X
+ngc1792   76.310208  	-37.980750	XXX	XXX	 X
+ngc2903   143.042125   	21.500833	XXX	XXX	 X
+ngc2997   146.411625  	-31.191083	XXX	XXX	 X
+ngc3521   166.4524208  	-0.0358639	XXX	XXX	 X
+ngc3621   169.568792  	-32.814056	XXX	XXX	 X
+ngc3627	  170.0623508	12.9915378	240	380 	 1
+ngc4254	  184.706682	14.416509	320	320	 1
+ngc4536	  188.612707    2.188137	XXX	XXX	 X
+ngc4321	  185.728463   	15.821818	320	320	 1
+ngc5068	  199.728375  	-21.039111	380	320	 1
+ngc5248	  204.383435    8.885177	XXX	XXX	 X
+ngc5643	  218.1697650 	-44.1744058	XXX	XXX	 X
+ngc6744	  287.442083  	-63.857528	300	400	 0
