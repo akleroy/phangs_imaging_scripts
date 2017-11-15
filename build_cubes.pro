@@ -1129,12 +1129,12 @@ pro build_cubes $
               continue
            endif
 
-           tp_part1 = $
+           tp1_cube = $
               readfits(tp1_infile, tp1_hdr)
 
            tp2_infile = $
               release_dir+'process/'+ $
-              gals[gal_ind[0]]+'_tp_'+ $
+              gals[gal_ind[1]]+'_tp_'+ $
               this_product+'_k.fits'
 
            test = file_search(tp2_infile, count=found)
@@ -1143,24 +1143,24 @@ pro build_cubes $
               continue
            endif
 
-           tp_part2 = $
-              readfits(tp1_infile, tp2_hdr)
+           tp2_cube = $
+              readfits(tp2_infile, tp2_hdr)
            
            if n_part eq 3 then begin
 
               tp3_infile = $
                  release_dir+'process/'+ $
-                 gals[gal_ind[0]]+'_tp_'+ $
+                 gals[gal_ind[2]]+'_tp_'+ $
                  this_product+'_k.fits'
               
-              test = file_search(tp1_infile, count=found)
+              test = file_search(tp3_infile, count=found)
               if found eq 0 then begin
                  message, 'File '+tp3_infile+' not found.', /info
                  continue
               endif
 
-              tp_part3 = $
-                 readfits(tp1_infile, tp3_hdr)
+              tp3_cube = $
+                 readfits(tp3_infile, tp3_hdr)
               
            endif
 
@@ -1169,7 +1169,7 @@ pro build_cubes $
 
            if merge_copy_tp[ii] then begin
               writefits, out_dir+merge_name[ii]+'_tp_'+this_product+'_k.fits' $
-                         , tp_part1, part1_hdr
+                         , tp1_cube, part1_hdr
            endif else begin
 
 ;          In this less common case align the different TP data sets
@@ -1183,7 +1183,7 @@ pro build_cubes $
               npix_ra = abs(ceil(merge_dra[ii]/3600. / cdelt))
               crpix_ra = npix_ra/2.0
               
-              npix_dec = abs(ceil(merge_ddec[merge_ind]/3600. / cdelt))
+              npix_dec = abs(ceil(merge_ddec[ii]/3600. / cdelt))
               crpix_dec = npix_dec/2.0
 
               sxaddpar, target_hdr, 'CTYPE1', 'RA---SIN'
@@ -1211,7 +1211,7 @@ pro build_cubes $
                  , missing=!values.f_nan
   
               cube_hastrom $
-                 , data = tp2 $
+                 , data = tp2_cube $
                  , hdr_in = tp2_hdr $
                  , target_hdr = target_hdr $
                  , outcube = new_tp2 $
@@ -1221,7 +1221,7 @@ pro build_cubes $
               if n_part eq 3 then begin
 
                  cube_hastrom $
-                    , data = tp3 $
+                    , data = tp3_cube $
                     , hdr_in = tp3_hdr $
                     , target_hdr = target_hdr $
                     , outcube = new_tp3 $
