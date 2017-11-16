@@ -58,6 +58,18 @@ pro build_cubes $
      dir_for_gal[ind] = (dir_key_dir[ii])
   endfor
 
+  fullgal_list = [dir_for_gal, gals]
+  fullgal_list = fullgal_list[sort(fullgal_list)]
+  fullgal_list = fullgal_list[uniq(fullgal_list)]
+  n_fullgals = n_elements(fullgal_list)
+
+  gal_for_fullgals = fullgal_list
+  for ii = 0, n_elements(dir_key_gal)-1 do begin
+     ind = where(dir_key_gal[ii] eq fullgal_list, ct)
+     if ct eq 0 then continue
+     gal_for_fullgals[ind] = (dir_key_dir[ii])
+  endfor
+
 ; ARRAYS
   
   array_list = ['7m', '12m', '12m+7m']
@@ -1176,7 +1188,7 @@ pro build_cubes $
 ;          on to a new grid and average them where they overlap. This
 ;          generally shouldn't yield much overlap. Those cases appear
 ;          mostly as single cubes.
-           
+              
               target_hdr = tp1_hdr
               cdelt = abs(sxpar(target_hdr,'CDELT1'))
 
@@ -1201,7 +1213,7 @@ pro build_cubes $
               sxaddpar, target_hdr, 'NAXIS2', long(npix_dec[0]), after='NAXIS1'
               sxdelpar, target_hdr, 'CRPIX2'
               sxaddpar, target_hdr, 'CRPIX2', crpix_dec[0]*1.0
-  
+              
               cube_hastrom $
                  , data = tp1_cube $
                  , hdr_in = tp1_hdr $
@@ -1209,7 +1221,7 @@ pro build_cubes $
                  , outcube = new_tp1 $
                  , outhdr = new_tp1_hdr $
                  , missing=!values.f_nan
-  
+              
               cube_hastrom $
                  , data = tp2_cube $
                  , hdr_in = tp2_hdr $
@@ -1217,7 +1229,7 @@ pro build_cubes $
                  , outcube = new_tp2 $
                  , outhdr = new_tp2_hdr $
                  , missing=!values.f_nan
-  
+              
               if n_part eq 3 then begin
 
                  cube_hastrom $
@@ -1231,7 +1243,7 @@ pro build_cubes $
               endif
 
               cube_out = new_tp1*!values.f_nan
-  
+              
               cov_tp1 = finite(new_tp1)
               cov_tp2 = finite(new_tp2)
               if n_part eq 3 then cov_tp3 = finite(new_tp3)
@@ -1289,7 +1301,7 @@ pro build_cubes $
                                         new_tp3[ind123])/3.0
                  
               endelse
-  
+              
               writefits, release_dir+'process/'+ $
                          merge_name[ii]+'_tp_'+this_product+'_k.fits' $
                          , cube_out, target_hdr
@@ -1297,7 +1309,7 @@ pro build_cubes $
            endelse               
 
         endfor
-                   
+        
      endfor
 
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
@@ -1315,77 +1327,63 @@ pro build_cubes $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      message, 'SANITIZING CUBES FOR FINAL PRODUCT CONSTRUCTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     
-     for ii = 0, n_gals-1 do begin
 
-        dir = release_dir+'process/'
+     ext_to_process = $
+        ['flat_round' $
+         , 'pbcorr_round']
+     n_ext = n_elements(ext_to_process)
 
+     for ii = 0, n_fullgals-1 do begin
+        
         if n_elements(only) gt 0 then $
            if total(only eq gals[ii]) eq 0 then continue
 
-        message, "Sanitizing the cubes for "+gals[ii], /info
+        if n_elements(skip) gt 0 then $
+           if total(skip eq gals[ii]) gt 0 then continue
 
-        for kk = 0, 4 do begin
-           
-           if kk eq 0 then begin
-              array = '_7m'
-           endif
+        this_gal = fullgal_list[ii]
 
-           if kk eq 1 then begin
-              array = '_7m+tp'
-           endif
-           
-           if kk eq 2 then begin
-              array = '_12m'
-              if keyword_set(only_7m) then $
-                 continue
-              if total(gals[ii] eq has_12m) eq 0B then $
-                 continue
-           endif
+        message, "Sanitizing cubes for "+this_gal, /info
 
-           if kk eq 3 then begin
-              array = '_12m+7m'
-              if keyword_set(only_7m) then $
-                 continue
-              if total(gals[ii] eq has_12m) eq 0B then $
-                 continue
-           endif
+        for jj = 0, n_fullarray - 1 do begin
 
-           if kk eq 4 then begin
-              array = '_12m+7m+tp'
-              if keyword_set(only_7m) then $
-                 continue
-              if total(gals[ii] eq has_12m) eq 0B then $
-                 continue
-           endif
+           this_array = fullarray_list[jj]
+           if n_elements(just_array) gt 0 then $
+              if total(just_array eq this_array) eq 0 then continue
 
-           ext_to_process = $
-              ['_flat_round' $
-               , '_pbcorr_round']
-           n_ext = n_elements(ext_to_process)
-           
-           if total(gals[ii] eq two_part) eq 0 then begin                 
-              galname = [gals[ii]]
-           endif else begin
-              galname = [gals[ii], gals[ii]+'north', gals[ii]+'south']
-           endelse
+           for kk = 0, n_product-1 do begin
+              
+              this_product = product_list[kk]
 
-           for zz = 0, n_elements(galname)-1 do begin
+              for ll = 0, n_ext-1 do begin
 
-              for jj = 0, n_ext-1 do begin
+                 this_ext = ext_to_process[ll]
 
-                 in_cube = dir+galname[zz]+'_co21'+array+ext_to_process[jj]+".fits"
-                 out_file = dir+galname[zz]+'_co21'+array+ext_to_process[jj]+"_trimmed.fits"
+                 in_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+this_product+ $
+                    '_'+this_ext+'.fits'
+
+                 test = file_search(in_file, count=found)
+                 if found eq 0 then begin
+                    message, 'File '+in_file+' not found.', /info
+                    continue
+                 endif
+
+                 out_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+this_product+ $
+                    '_'+this_ext+'_trimmed.fits'
                  
-                 message, '... cube '+in_cube, /info
+                 message, '... cube '+in_file, /info
                  cube_trim $
-                    , data = in_cube $
+                    , data = in_file $
                     , outfile = out_file
-
+                 
                  test = headfits(out_file)
                  pix_per_beam = abs(sxpar(test, 'BMAJ') /  sxpar(test, 'CDELT1'))
                  print, "I calculated "+str(pix_per_beam)+" pixels per beam."
-
+                 
                  if pix_per_beam gt 6 then begin
                     print, "... I will rebin."
                     cube_hrebin $
@@ -1399,13 +1397,15 @@ pro build_cubes $
                  cube *= jtok
                  sxaddpar, hdr, 'BUNIT', 'K'
                  writefits $
-                    , dir+galname[zz]+'_co21'+array+ext_to_process[jj]+"_k.fits" $
+                    , release_dir+'process/'+$
+                    this_gal+'_'+this_array+'_'+this_product+ $
+                    '_'+this_ext+'_k.fits' $
                     , cube, hdr
-
+                 
               endfor
 
            endfor
-           
+
         endfor
 
      endfor
@@ -1423,87 +1423,99 @@ pro build_cubes $
   if keyword_set(do_conv_to_res) then begin
      
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'CONVOLVING TO PHYSICAL RESOLUTION', /info
+     message, 'CONVOLVING TO FIXED PHYSICAL RESOLUTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
      
      dir = release_dir+'process/'
      tol = 0.1
 
-     s = gal_data(gals)
+     s = gal_data(gal_for_fullgals)
 
-     for ii = 0, n_gals-1 do begin
-
-        dir = release_dir+'process/'
-
-        message, '', /info
-        message, "Convolving the cubes for "+gals[ii], /info
-        message, '', /info
-
+     ext_to_process = $
+        ['flat_round_k' $
+         , 'pbcorr_round_k']
+     n_ext = n_elements(ext_to_process)
+     
+     for ii = 0, n_fullgals-1 do begin
+        
         if n_elements(only) gt 0 then $
-           if total(strlowcase(only) eq strlowcase(gals[ii])) eq 0 then continue
+           if total(only eq gals[ii]) eq 0 then continue
 
-        for kk = 0, 1 do begin
+        if n_elements(skip) gt 0 then $
+           if total(skip eq gals[ii]) gt 0 then continue
 
-           if kk eq 0 then begin
-              array = '_7m+tp'
-           endif
-           
-           if kk eq 1 then begin
-              array = '_12m+7m+tp'
-              if keyword_set(only_7m) then $
-                 continue
-              if total(strlowcase(gals[ii]) eq strlowcase(has_12m)) eq 0B then $
-                 continue
-           endif
-           
-           print, "ARRAY == ", array
+        this_gal = fullgal_list[ii]
 
-           gal = gals[ii]
-           
-           ext_to_process = $
-              ['_flat_round_k' $
-               , '_pbcorr_round_k']
-           n_ext = n_elements(ext_to_process)
-           
-           for jj = 0, n_ext-1 do begin                   
+        message, "Convolving the cubes for "+this_gal, /info
+
+        for jj = 0, n_fullarray - 1 do begin
+
+           this_array = fullarray_list[jj]
+           if n_elements(just_array) gt 0 then $
+              if total(just_array eq this_array) eq 0 then continue
+
+           for kk = 0, n_product-1 do begin
               
-              cube = readfits(dir+strlowcase(gal)+ $
-                              '_co21'+array+ext_to_process[jj]+'.fits', hdr)           
-              sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'           
-              current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
-              
-              for zz = 0, n_res -1 do begin
+              this_product = product_list[kk]
+
+              for ll = 0, n_ext-1 do begin
+
+                 this_ext = ext_to_process[ll]
                  
-                 res_str = strcompress(str(target_res[zz]),/rem)+'pc'
-                 out_name = dir+strlowcase(gal)+ $
-                            '_co21'+array+ext_to_process[jj]+'_'+res_str+'.fits'
-                 target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                 in_file = release_dir+'process/'+ $
+                           this_gal+'_'+this_array+'_'+ $
+                           this_product+'_'+this_ext+'.fits'
                  
-                 if current_res_pc gt (1.0+tol)*target_res[zz] then begin
-                    print, strupcase(gal)+": Resolution too coarse. Skipping."
+                 test = file_search(in_file, count=found)
+                 if found eq 0 then begin
+                    message, 'File '+in_file+' not found.', /info
                     continue
-                 endif
+                 endif                 
+
+                 cube = readfits(in_file, hdr)
+
+                 sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'
+                 current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
                  
-                 if abs(current_res_pc - target_res[zz])/target_res[zz] lt tol then begin
-                    print, strupcase(gal)+": I will call ", current_res_pc, " ", target_res[zz]
-                    writefits, out_name, cube, hdr
-                 endif else begin                 
-                    print, strupcase(gal)+": I will convolve ", current_res_pc $
-                           , " to ", target_res[zz]
-                    conv_with_gauss $
-                       , data=cube $
-                       , hdr=hdr $
-                       , target_beam=target_res_as*[1,1,0] $
-                       , out_file=out_name
-                 endelse
+                 for zz = 0, n_res -1 do begin
+                    
+                    res_str = strcompress(str(target_res[zz]),/rem)+'pc'
+                    out_file = release_dir+'process/'+ $
+                               this_gal+'_'+this_array+'_'+ $
+                               this_product+'_'+this_ext+'_'+res_str+'.fits'
+                    target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                    
+                    if current_res_pc gt (1.0+tol)*target_res[zz] then begin
+                       print, strupcase(this_gal)+": Resolution too coarse. Skipping."
+                       continue
+                    endif
+                    
+                    if abs(current_res_pc - target_res[zz])/target_res[zz] lt tol then begin
+                       print, strupcase(this_gal)+": I will call ", current_res_pc, " ", target_res[zz]
+                       writefits, out_file, cube, hdr
+                    endif else begin
+                       print, strupcase(this_gal)+": I will convolve ", current_res_pc $
+                              , " to ", target_res[zz]
+                       conv_with_gauss $
+                          , data=cube $
+                          , hdr=hdr $
+                          , target_beam=target_res_as*[1,1,0] $
+                          , out_file=out_file
+                    endelse
+                    
+                 endfor
                  
               endfor
-
+              
            endfor
            
         endfor
-        
+
      endfor
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'CONVOLVING TO FIXED PHYSICAL RESOLUTION', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
      
   endif
 
