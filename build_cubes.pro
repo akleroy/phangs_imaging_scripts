@@ -757,6 +757,7 @@ pro build_cubes $
         gal_ind = where(dir_for_gal eq this_merge_gal, n_part)
         if n_part lt 2 then begin
            message, 'Found less than 2 parts for '+this_merge_gal, /info
+           continue
         endif
         
         for kk = 0, n_product-1 do begin
@@ -801,20 +802,20 @@ pro build_cubes $
                     message, 'File '+pb1_infile+' not found.', /info
                     continue
                  endif
-                 pb_cube1 = readfits(pb1_infile, pb1_hdr)
+                 pb_cube1 = readfits(pb1_infile, pb1_hdr)                 
 
                  cube2_infile = $
                     release_dir+'process/'+ $
                     gals[gal_ind[1]]+'_'+ $
                     this_array+'_'+this_product+'_'+$
                     this_ext+'.fits'
-                 cube2 = readfits(cube2_infile, cube2_hdr)
 
                  test = file_search(cube2_infile, count=found)
                  if found eq 0 then begin
                     message, 'File '+cube2_infile+' not found.', /info
                     continue
                  endif
+                 cube2 = readfits(cube2_infile, cube2_hdr)
 
                  pb2_infile = $
                     release_dir+'raw/'+ $
@@ -1336,10 +1337,10 @@ pro build_cubes $
      for ii = 0, n_fullgals-1 do begin
         
         if n_elements(only) gt 0 then $
-           if total(only eq gals[ii]) eq 0 then continue
+           if total(only eq fullgal_list[ii]) eq 0 then continue
 
         if n_elements(skip) gt 0 then $
-           if total(skip eq gals[ii]) gt 0 then continue
+           if total(skip eq fullgal_list[ii]) gt 0 then continue
 
         this_gal = fullgal_list[ii]
 
@@ -1439,10 +1440,10 @@ pro build_cubes $
      for ii = 0, n_fullgals-1 do begin
         
         if n_elements(only) gt 0 then $
-           if total(only eq gals[ii]) eq 0 then continue
+           if total(only eq fullgal_list[ii]) eq 0 then continue
 
         if n_elements(skip) gt 0 then $
-           if total(skip eq gals[ii]) gt 0 then continue
+           if total(skip eq fullgal_list[ii]) gt 0 then continue
 
         this_gal = fullgal_list[ii]
 
