@@ -424,8 +424,16 @@ pro build_products $
 
                  test = file_search(mask_file, count=found)
                  if found eq 0 then begin
-                    message, 'File '+mask_file+' not found.', /info
-                    continue
+                    mask_file = $
+                       release_dir+'process/'+ $
+                       this_gal+'_'+this_array+'_'+ $
+                       this_product+'_signalmask'+ $
+                       res_str+'.fits'                    
+                    test = file_search(mask_file, count=found)
+                    if found eq 0 then begin
+                       message, 'File '+mask_file+' not found.', /info
+                       continue
+                    endif
                  endif                 
                  mask = readfits(mask_file, mask_hdr)
                  

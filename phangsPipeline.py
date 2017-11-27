@@ -1741,7 +1741,7 @@ class cleanCall:
         if self.uvtaper == None:
             uv_taper_string = ''
         else:
-            uv_taper_string = [str(uvtaper)+'arcsec',str(uvtaper)+'arcsec','0deg']
+            uv_taper_string = [str(self.uvtaper)+'arcsec',str(self.uvtaper)+'arcsec','0deg']
 
         if self.reset:
             print "Wiping previous versions of the cube."
