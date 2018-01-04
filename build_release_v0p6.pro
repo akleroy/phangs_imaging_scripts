@@ -79,8 +79,8 @@ pro build_release_v0p6 $
 
   n_gals = n_elements(gals)
 
-  mom1_thresh = 2.5d
-  mom0_thresh = 3.0d
+  mom1_thresh = 25.0d
+  mom0_thresh = 2.0d
 
   target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
   n_res = n_elements(target_res)
@@ -1632,50 +1632,48 @@ pro build_release_v0p6 $
                  if noise_ct eq 0 then continue
 
                  cube = readfits(fname, cube_hdr)
-                 
+                 blank_ind = where(total(finite(cube),3) eq 0, blank_ct)
+
                  rms_cube = readfits(rms_name, noise_hdr)
 
                  ppbeam = calc_pixperbeam(hdr=cube_hdr)         
                  
-                 mask_file = file_search(dir+strlowcase(gal)+'_co21'+array $
-                                         +'_hybridmask' $
-                                         +res_str+'.fits', count=mask_ct)
-                 if mask_ct eq 0 then begin                    
-                    mask_file = file_search(dir+strlowcase(gal)+'_co21'+array $
-                                            +'_mask' $
-                                            +res_str+'.fits', count=mask_ct)
-                 endif
-                 mask = readfits(mask_file $
-                                 , mask, mask_hdr)
-                 
-                 collapse_cube $
-                    , cube=cube $
-                    , hdr=cube_hdr $
-                    , mask=mask $
-                    , noise=rms_cube $
-                    , mom0 = mom0 $
-                    , e_mom0 = e_mom0 $
-                    , mom1 = mom1 $
-                    , e_mom1 = e_mom1 $
-                    , mom2 = mom2 $
-                    , e_mom2 = e_mom2 $
-                    , ew = ew $
-                    , e_ew = e_ew $
-                    , var = var $
-                    , e_var = e_var $
-                    , tpeak = tpeak
+                 hybridmask_file = $
+                    file_search(dir+strlowcase(gal)+'_co21'+array $
+                                +'_hybridmask' $
+                                +res_str+'.fits', count=hybridmask_ct)
+                 if hybridmask_ct gt 0 then begin
+                    hybridmask = readfits(hybridmask_file, hybridmask_hdr)
+                    has_hybrid = 1B
+                 endif else begin
+                    has_hybrid = 0B
+                 endelse
+
+                 mask_file = $
+                    file_search(dir+strlowcase(gal)+'_co21'+array $
+                                +'_mask' $
+                                +res_str+'.fits', count=mask_ct)                                     
+                 if mask_ct gt 0 then begin
+                    mask = readfits(mask_file, mask_hdr)
+                 endif else begin
+                    print, "Mask not found. Continuing."
+                    continue
+                 endelse
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; PEAK TEMPERATURE IN ONE AND FIVE CHANNELS
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-                 tpeak_mask = mask
-                 sz = size(mask)
+                 if has_hybrid then $
+                    tpeak_mask = hybridmask $
+                 else $
+                    tpeak_mask = mask
+                 sz = size(tpeak_mask)
                  for pp = 0, sz[3]-1 do $
-                    tpeak_mask[*,*,pp] = total(mask[*,*,pp]) ge 1
+                    tpeak_mask[*,*,pp] = total(tpeak_mask[*,*,pp]) ge 1
 
                  tpeak = max(cube*tpeak_mask, dim=3, /nan)
-;                 tpeak[blank_ind] = !values.f_nan
+                 if blank_ct gt 0 then tpeak[blank_ind] = !values.f_nan
                  tpeak_hdr = twod_head(cube_hdr)
                  sxaddpar, tpeak_hdr, 'BUNIT', 'K'
                  
@@ -1684,7 +1682,7 @@ pro build_release_v0p6 $
                             , tpeak, tpeak_hdr
 
                  tpeak_12p5 = max(smooth(cube,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
-;                 tpeak_12p5[blank_ind] = !values.f_nan
+                 tpeak_12p5[blank_ind] = !values.f_nan
                  tpeak_hdr = twod_head(cube_hdr)
                  sxaddpar, tpeak_hdr, 'BUNIT', 'K'
 
@@ -1693,12 +1691,60 @@ pro build_release_v0p6 $
                             , tpeak_12p5, tpeak_hdr
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; COLLAPSE THE CUBE TWICE, ONCE FOR EACH MASK
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                 
+                 if has_hybrid then begin
+                    collapse_cube $
+                       , cube=cube $
+                       , hdr=cube_hdr $
+                       , mask=hybridmask $
+                       , noise=rms_cube $
+                       , mom0 = mom0_hybrid $
+                       , e_mom0 = e_mom0_hybrid $
+                       , mom1 = mom1_hybrid $
+                       , e_mom1 = e_mom1_hybrid $
+                       , mom2 = mom2_hybrid $
+                       , e_mom2 = e_mom2_hybrid $
+                       , ew = ew_hybrid $
+                       , e_ew = e_ew_hybrid
+                 endif
+
+                 collapse_cube $
+                    , cube=cube $
+                    , hdr=cube_hdr $
+                    , mask=mask $
+                    , noise=rms_cube $
+                    , mom0 = mom0_native $
+                    , e_mom0 = e_mom0_native $
+                    , mom1 = mom1_native $
+                    , e_mom1 = e_mom1_native $
+                    , mom2 = mom2_native $
+                    , e_mom2 = e_mom2_native $
+                    , ew = ew_native $
+                    , e_ew = e_ew_native
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; MOMENT 0
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  
+                 if has_hybrid then begin
+                    mom0 = mom0_hybrid
+                    e_mom0 = e_mom0_hybrid
+                    extra_los = where(mom0_hybrid eq 0 and $
+                                      mom0_native ne 0, extra_ct)
+                    if extra_ct gt 0 then begin
+                       mom0[extra_los] = mom0_native[extra_los]
+                       e_mom0[extra_los] = e_mom0_native[extra_los]              
+                    endif
+                 endif else begin
+                    mom0 = mom0_native
+                    e_mom0 = e_mom0_native
+                 endelse
+
                  mom0_hdr = twod_head(cube_hdr)
                  sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
-;                 mom0[blank_ind] = !values.f_nan
+                 if blank_ct gt 0 then mom0[blank_ind] = !values.f_nan
 
                  writefits, dir+strlowcase(gal)+'_co21'+array $
                             +'_mom0'+res_str+'.fits' $
@@ -1712,6 +1758,20 @@ pro build_release_v0p6 $
 ; MOMENT 1
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
+                 if has_hybrid then begin
+                    mom1 = mom1_hybrid
+                    e_mom1 = e_mom1_hybrid
+                    extra_los = where(mom1_hybrid eq 0 and $
+                                      mom1_native ne 0, extra_ct)
+                    if extra_ct gt 0 then begin
+                       mom1[extra_los] = mom1_native[extra_los]
+                       e_mom1[extra_los] = e_mom1_native[extra_los]              
+                    endif
+                 endif else begin
+                    mom1 = mom1_native
+                    e_mom1 = e_mom1_native
+                 endelse
+
                  blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
                                     or (e_mom1 gt mom1_thresh), mom1_ct)
                  if mom1_ct gt 0 then begin
@@ -1721,7 +1781,7 @@ pro build_release_v0p6 $
 
                  mom1_hdr = twod_head(cube_hdr)
                  sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
-;                 mom1[blank_ind] = !values.f_nan
+                 if blank_ct gt 0 then mom1[blank_ind] = !values.f_nan
 
                  writefits, dir+strlowcase(gal)+'_co21'+array $
                             +'_mom1'+res_str+'.fits' $
@@ -1730,6 +1790,42 @@ pro build_release_v0p6 $
                  writefits, dir+strlowcase(gal)+'_co21'+array $
                             +'_emom1'+res_str+'.fits' $
                             , e_mom1, mom1_hdr
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MOMENT 2 AND EW
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+                 if has_hybrid then begin
+                    mom2 = mom2_hybrid
+                    ew = ew_hybrid
+                    extra_los = where(mom2_hybrid eq 0 and $
+                                      mom2_native ne 0, extra_ct)
+                    if extra_ct gt 0 then begin
+                       mom2[extra_los] = mom2_native[extra_los]
+                       ew[extra_los] = ew_native[extra_los]
+                    endif
+                 endif else begin
+                    mom2 = mom2_native
+                    ew = ew_native
+                 endelse
+
+                 blank_mom2 = where((mom0 le e_mom0*mom0_thresh), mom2_ct)
+                 if mom2_ct gt 0 then begin
+                    mom2[blank_mom2] = !values.f_nan
+                    ew[blank_mom2] = !values.f_nan
+                 endif
+
+                 mom2_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom2_hdr, 'BUNIT', 'KM/S'
+                 if blank_ct gt 0 then mom2[blank_ind] = !values.f_nan
+
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_mom2'+res_str+'.fits' $
+                            , mom2, mom2_hdr
+
+                 writefits, dir+strlowcase(gal)+'_co21'+array $
+                            +'_momew'+res_str+'.fits' $
+                            , ew, mom2_hdr
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; DISPLAY

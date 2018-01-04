@@ -6,6 +6,12 @@
 DELIVERED DATA
 --------------------------------------------------------------------
 
+NEW DOWNLOAD
+- 
+- target: IC 1954
+- Main Array:
+- ACA 7m:
+
 - science_goal.uid___A001_X1284_X28a9/group.uid___A001_X1284_X28aa/
 - target: IC 5273
 - Main Array:
@@ -21,6 +27,7 @@ DELIVERED DATA
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X288f
 
+EXPECTED
 - 
 - target: NGC 1097_2
 - Main Array:
@@ -40,6 +47,18 @@ DELIVERED DATA
 - target: NGC 1546
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2871
+
+NEW DOWNLOAD
+- 
+- target: NGC 1559
+- Main Array:
+- ACA 7m:
+
+EXPECTED
+- 
+- target: NGC 1637
+- Main Array:
+- ACA 7m:
 
 - science_goal.uid___A001_X1284_X284f/group.uid___A001_X1284_X2850/
 - target: NGC 1792_1
@@ -66,6 +85,12 @@ DELIVERED DATA
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X282b
 
+NEW DOWNLOAD
+- 
+- target: NGC 2566
+- Main Array:
+- ACA 7m:
+
 - science_goal.uid___A001_X1284_X2813/group.uid___A001_X1284_X2814/
 - target: NGC 2775
 - Main Array: 
@@ -76,15 +101,41 @@ DELIVERED DATA
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X2803
 
+NEW DOWNLOAD
 - 
 - target: NGC 2903_2
 - Main Array:
 - ACA 7m:
 
+EXPECTED
 - 
 - target: NGC 2903_3
 - Main Array:
 - ACA 7m:
+
+NEW DOWNLOAD
+- 
+- target: NGC 2997_1
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 2997_2
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 2997_3
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 3059
+- Main Array:
+- ACA 7m
 
 - science_goal.uid___A001_X1284_X27c3/group.uid___A001_X1284_X27c4/
 - target: NGC 3137
@@ -96,6 +147,48 @@ DELIVERED DATA
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X27bd
 
+EXPECTED
+- 
+- target: NGC 3507
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 3511
+- Main Array:
+- ACA 7m
+
+NEW DOWNLOAD
+- 
+- target: NGC 3521_1
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 3521_2
+- Main Array:
+- ACA 7m
+
+NEW DOWNLOAD
+- 
+- target: NGC 3596
+- Main Array:
+- ACA 7m
+
+NEW DOWNLOAD
+- 
+- target: NGC 3621_1
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 3621_2
+- Main Array:
+- ACA 7m
+
 - science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/
 - target: NGC 3626
 - Main Array: 
@@ -106,35 +199,125 @@ DELIVERED DATA
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2763
 
+EXPECTED
+- 
+- target: NGC 4293
+- Main Array:
+- ACA 7m
+
 - science_goal.uid___A001_X1284_X2741/group.uid___A001_X1284_X2742/
 - target: NGC 4424
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2745/
+
+NEW DOWNLOAD
+- 
+- target: NGC 4457
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 4536_1
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 4536_2
+- Main Array:
+- ACA 7m
 
 - science_goal.uid___A001_X1284_X270f/group.uid___A001_X1284_X2710/
 - target: NGC 4540
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2713/product/
 
+EXPECTED
+- 
+- target: NGC 4654
+- Main Array:
+- ACA 7m
+
 - science_goal.uid___A001_X1284_X26c9/group.uid___A001_X1284_X26ca/
 - target: NGC 4694
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X26cd
+
+NEW DOWNLOAD
+- 
+- target: NGC 4731
+- Main Array:
+- ACA 7m
+
+NEW DOWNLOAD
+- 
+- target: NGC 4781
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 4941
+- Main Array:
+- ACA 7m
+
+NEW DOWNLOAD
+- 
+- target: NGC 4951
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 5042
+- Main Array:
+- ACA 7m
 
 - science_goal.uid___A001_X1284_X2683/group.uid___A001_X1284_X2684/
 - target: NGC 5134
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X2687/
 
+EXPECTED
+- 
+- target: NGC 5248_2
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
+- target: NGC 5248_2
+- Main Array:
+- ACA 7m
+
 - science_goal.uid___A001_X1284_X2665/group.uid___A001_X1284_X2666/
 - target: NGC 5530
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2669/
 
+NEW DOWNLOAD
+- 
+- target: NGC 5643_1
+- Main Array:
+- ACA 7m
+
+NEW DOWNLOAD
+- 
+- target: NGC 5643_2
+- Main Array:
+- ACA 7m
+
 - science_goal.uid___A001_X1284_X263d/group.uid___A001_X1284_X263e/
 - target: NGC 7456
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X2641
+
+NEW DOWNLOAD
+- 
+- target: NGC 7496
+- Main Array:
+- ACA 7m
 
 ************************************************************************
 2015.1.00956.S
