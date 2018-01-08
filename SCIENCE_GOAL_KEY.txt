@@ -6,11 +6,11 @@
 DELIVERED DATA
 --------------------------------------------------------------------
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X28b3/group.uid___A001_X1284_X28b4/
 - target: IC 1954
 - Main Array:
-- ACA 7m:
+- ACA 7m: member.uid___A001_X1284_X28b7
 
 - science_goal.uid___A001_X1284_X28a9/group.uid___A001_X1284_X28aa/
 - target: IC 5273
@@ -48,11 +48,11 @@ EXPECTED
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2871
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X2863/group.uid___A001_X1284_X2864/
 - target: NGC 1559
 - Main Array:
-- ACA 7m:
+- ACA 7m: member.uid___A001_X1284_X2867
 
 EXPECTED
 - 
@@ -85,11 +85,11 @@ EXPECTED
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X282b
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X281d/group.uid___A001_X1284_X281e/
 - target: NGC 2566
 - Main Array:
-- ACA 7m:
+- ACA 7m: member.uid___A001_X1284_X2821
 
 - science_goal.uid___A001_X1284_X2813/group.uid___A001_X1284_X2814/
 - target: NGC 2775
@@ -101,11 +101,11 @@ NEW DOWNLOAD
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X2803
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X27f5/group.uid___A001_X1284_X27f6/
 - target: NGC 2903_2
 - Main Array:
-- ACA 7m:
+- ACA 7m: member.uid___A001_X1284_X27f9
 
 EXPECTED
 - 
@@ -113,11 +113,11 @@ EXPECTED
 - Main Array:
 - ACA 7m:
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/
 - target: NGC 2997_1
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X27db
 
 EXPECTED
 - 
@@ -159,11 +159,11 @@ EXPECTED
 - Main Array:
 - ACA 7m
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X279b/group.uid___A001_X1284_X279c/
 - target: NGC 3521_1
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X279f
 
 EXPECTED
 - 
@@ -171,17 +171,17 @@ EXPECTED
 - Main Array:
 - ACA 7m
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X2787/group.uid___A001_X1284_X2788/
 - target: NGC 3596
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X278b
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/
 - target: NGC 3621_1
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X2777
 
 EXPECTED
 - 
@@ -210,11 +210,11 @@ EXPECTED
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2745/
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X2737/group.uid___A001_X1284_X2738/
 - target: NGC 4457
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X273b
 
 EXPECTED
 - 
@@ -244,17 +244,17 @@ EXPECTED
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X26cd
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X26bf/group.uid___A001_X1284_X26c0/
 - target: NGC 4731
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X26c3
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X26b5/group.uid___A001_X1284_X26b6/
 - target: NGC 4781
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X26b9
 
 EXPECTED
 - 
@@ -262,11 +262,11 @@ EXPECTED
 - Main Array:
 - ACA 7m
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X2697/group.uid___A001_X1284_X2698/
 - target: NGC 4951
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X269b
 
 EXPECTED
 - 
@@ -281,7 +281,7 @@ EXPECTED
 
 EXPECTED
 - 
-- target: NGC 5248_2
+- target: NGC 5248_1
 - Main Array:
 - ACA 7m
 
@@ -296,28 +296,28 @@ EXPECTED
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2669/
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X2651/group.uid___A001_X1284_X2652/
 - target: NGC 5643_1
-- Main Array:
-- ACA 7m
+- Main Array: 
+- ACA 7m: member.uid___A001_X1284_X2655
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - CALIBRATED
+- science_goal.uid___A001_X1284_X265b/group.uid___A001_X1284_X265c/
 - target: NGC 5643_2
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X265f
 
 - science_goal.uid___A001_X1284_X263d/group.uid___A001_X1284_X263e/
 - target: NGC 7456
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X2641
 
-NEW DOWNLOAD
-- 
+NEW DOWNLOAD - RUNNING
+- science_goal.uid___A001_X1284_X2633/group.uid___A001_X1284_X2634/
 - target: NGC 7496
 - Main Array:
-- ACA 7m
+- ACA 7m: member.uid___A001_X1284_X2637
 
 ************************************************************************
 2015.1.00956.S
