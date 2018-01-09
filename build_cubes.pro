@@ -1069,7 +1069,7 @@ pro build_cubes $
                     ind3 = where(cov_part1 eq 0 and $
                                  cov_part2 eq 0 and cov_part3 eq 1, ct3)
                     if ct3 gt 0 then $
-                       cube_out[ind3] = cube2[ind3]
+                       cube_out[ind3] = cube3[ind3]
                     
                     ind12 = where(cov_part1 eq 1 and cov_part2 eq 1 and $
                                   cov_part3 eq 0, ct12)
@@ -1088,7 +1088,7 @@ pro build_cubes $
                        (pb_cube2[ind23]^2 + pb_cube3[ind23]^2)
 
                     ind13 = where(cov_part1 eq 1 and cov_part2 eq 0 and $
-                                  cov_part3 eq 1, ct23)
+                                  cov_part3 eq 1, ct13)
                     if ct13 gt 0 then $
                        cube_out[ind13] = $
                        (cube1[ind13]*pb_cube1[ind13]^2 + $
