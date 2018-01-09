@@ -6,7 +6,7 @@
 DELIVERED DATA
 --------------------------------------------------------------------
 
-NEW DOWNLOAD - CALIBRATED
+NEW DOWNLOAD - STAGED
 - science_goal.uid___A001_X1284_X28b3/group.uid___A001_X1284_X28b4/
 - target: IC 1954
 - Main Array:
