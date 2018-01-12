@@ -173,7 +173,7 @@ pro build_cubes $
                     continue
                  endif
                  
-                 spawn, 'cp '+ in_file +' '+ out_file
+                 spawn, '\cp '+ in_file +' '+ out_file
                  
               endfor
               
@@ -850,9 +850,9 @@ pro build_cubes $
                        this_array+'_'+this_product+'_'+$
                        'pb'+'.fits'
 
-                    test = file_search(pb3_file, count=found)
+                    test = file_search(pb3_infile, count=found)
                     if found eq 0 then begin
-                       message, 'File '+pb3_file+' not found.', /info
+                       message, 'File '+pb3_infile+' not found.', /info
                        continue
                     endif
                     pb_cube3 = readfits(pb3_infile, pb3_hdr)
