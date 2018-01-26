@@ -298,6 +298,12 @@ EXPECTED
 
 EXPECTED
 - 
+- target: NGC 4826
+- Main Array:
+- ACA 7m
+
+EXPECTED
+- 
 - target: NGC 4941
 - Main Array:
 - ACA 7m
