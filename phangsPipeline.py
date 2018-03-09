@@ -1914,7 +1914,8 @@ def clean_loop(
     clean_call = None,
     record_file=None,
     log_ext=None,
-    delta_flux_threshold=0.02,
+    delta_flux_threshold=0.02,    
+    absolute_delta=True,
     absolute_threshold=None,
     snr_threshold=4.0,
     stop_at_negative=True,
@@ -2008,8 +2009,10 @@ def clean_loop(
         model_flux = model_stats['sum'][0]
 
         delta_flux = (model_flux-prev_flux)/model_flux
+        if absolute_delta:
+            delta_flux = abs(delta_flux)
 
-        if delta_flux_threshold > 0.0:
+        if delta_flux_threshold >= 0.0:
             proceed = \
                 (delta_flux > delta_flux_threshold)
 
@@ -2217,7 +2220,7 @@ def phangsImagingRecipe(
         multiscale_loop(
             clean_call = clean_call,
             record_file = clean_call.image_root+'_multiscale_record.txt',
-            delta_flux_threshold=0.02,
+            delta_flux_threshold=0.01,
             absolute_threshold=None,
             snr_threshold=4.0,
             stop_at_negative=True,
@@ -2254,7 +2257,8 @@ def phangsImagingRecipe(
         singlescale_loop(
             clean_call = clean_call,
             record_file = clean_call.image_root+'_singlescale_record.txt',
-            delta_flux_threshold=0.02,
+            delta_flux_threshold=0.01,
+            absolute_delta=True,
             absolute_threshold=None,
             snr_threshold=1.0,
             stop_at_negative=True,
