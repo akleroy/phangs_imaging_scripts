@@ -2203,8 +2203,10 @@ def phangsImagingRecipe(
                 out_file=clean_call.image_root+'.mask',
                 template=clean_call.image_root+'.image',
                 )
+            clean_call.usemask = 'user'
         else:
             print "No clean mask defined."
+            clean_call.usemask = 'pb'
 
     if run_multiscale_clean:
         print ""
@@ -2242,6 +2244,7 @@ def phangsImagingRecipe(
             operation='AND',
             high_snr=4.0,
             low_snr=2.0)
+        clean_call.usemask='user'
         
     if run_singlescale_clean:
         print ""
