@@ -16,6 +16,7 @@
 import os
 import phangsPipeline as pp
 import analysisUtils as au
+import glob
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Control Flow
@@ -23,7 +24,9 @@ import analysisUtils as au
 
 # ... a text list. The script will process only these galaxies.
 
-only = ['ngc2283'] 
+# come back: 
+
+only = []
 
 # ... skip these galaxies
 
@@ -91,6 +94,8 @@ make_singlescale_mask=True
 run_singlescale_clean=True
 export_to_fits=True
 
+do_only_new = True
+
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -127,6 +132,18 @@ for gal in gals:
                     continue
 
             print gal, array, product
+
+            if do_only_new:
+                this_dir = pp.dir_for_gal(gal)
+                out_image_name = this_dir+gal+'_'+array+'_'+product+'.image'
+                has_image = len(glob.glob(out_image_name)) > 0
+                if has_image:
+                    print ""
+                    print "... You requested to only image new data."
+                    print "... I found an existing image named "+out_image_name+" ."
+                    print "... I will skip this combination of galaxy, array, and product."
+                    print ""
+                    continue
 
             clean_call = \
                 pp.buildPhangsCleanCall(
