@@ -39,10 +39,6 @@ run_scriptforpi = True
 do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Define various routines and functions
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Run the script
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
@@ -105,10 +101,6 @@ for gal in gals:
                         print command
                         os.system(command)
             
-            # edit the flagging file used for the pipeline run
-            
-            # TBD
-                        
             # run the calibration script with a non-interactive command call to CASA
 
             os.chdir('script/')
@@ -121,8 +113,31 @@ for gal in gals:
                 print "... for directory: " + this_dir
                 print "... no pipeline script found. Proceeding to next directory."
                 print ""
-            casa_command = 'casapipe-5.1.1 -c '
-            command = casa_command + pipescript_name[0]
+
+            # edit the flagging file used for the pipeline run
+            
+            if update_flags:
+                flag_files = glob.glob('calibration/*flagtemplate.txt')
+                for flag_file in flag_files:
+                    this_uid = (flag_file.replace('calibration/','')).replace('.flagtemplate.txt','')
+
+                    # restore the original flagtemplate.txt if relevant.
+
+                    # logic here to find a custom flagging file match in our scripts directory
+
+                    # logic to back up the original flagtemplate.txt and add PHANGS flags to a new one.
+                    
+
+            # Add some logic here examining pipescript_name[0] to
+            # figure out what version of CASA we should call.
+
+            # This is my aliasing casapy --pipeline for CASA 5.1.1 is
+            # casapipe-5.1.1. 
+
+            # Could add some logic to check if this alias exists?
+
+            casa_call = 'casapipe-5.1.1 -c '
+            command = casa_call + pipescript_name[0]
             if just_print_commands:
                 print "I would run: " + command
             else:
