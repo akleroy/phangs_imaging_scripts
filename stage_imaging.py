@@ -7,6 +7,7 @@
 import os
 import phangsPipeline as pp
 import analysisUtils as au
+import glob
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Control Flow
@@ -14,7 +15,7 @@ import analysisUtils as au
 
 # ... a text list. The script will process only these galaxies.
 
-only = ['ngc2283']
+only = []
 
 # ... skip these galaxies.
 
@@ -54,6 +55,7 @@ do_copy = True
 do_custom_scripts = True
 do_extract_lines = True
 do_extract_cont = True
+do_only_new = True
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop
@@ -69,7 +71,19 @@ for gal in gals:
     if len(skip) > 0:
         if skip.count(gal) > 0:
             continue
-        
+    
+    if do_only_new:        
+        this_dir = pp.dir_for_gal(gal)
+        has_12m = len(glob.glob(this_dir+gal+'*12m_co21.ms')) > 0
+        has_7m = len(glob.glob(this_dir+gal+'*7m_co21.ms')) > 0
+        if has_12m or has_7m:
+            print ""
+            print "... You requested to only stage new data."
+            print "... I found an existing file for "+gal+" ."
+            print "... I will skip that galaxy."
+            print ""
+            continue
+
     if do_copy:
         pp.copy_data(
             gal=gal,
