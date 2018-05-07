@@ -11,12 +11,6 @@ DELIVERED DATA
 - Main Array:
 - ACA 7m: member.uid___A001_X1284_X28b7
 
-TO BE OBSERVED
--
-- target: IC 1993
-- Main Array:
-- ACA 7m:  
-
 - science_goal.uid___A001_X1284_X28a9/group.uid___A001_X1284_X28aa/
 - target: IC 5273
 - Main Array:
@@ -41,12 +35,6 @@ TO BE OBSERVED
 - target: NGC 1317
 - Main Array: 
 - ACA 7m: member.uid___A001_X1284_X2885
-
-TO BE OBSERVED
--
-- target: NGC 1326
-- Main Array:
-- ACA 7m:  
 
 - science_goal.uid___A001_X1284_X2877/group.uid___A001_X1284_X2878/
 - target: NGC 1511
