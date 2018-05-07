@@ -44,6 +44,101 @@ def read_ms_key(fname='../scripts/ms_file_key.txt'):
     
     return ms_key
 
+def get_uvdata_key(gal=None,
+                   just_proj=None,
+                   just_ms=None,
+                   just_array=None,
+                   quiet=False):
+    """
+    Figure out the root directory for calibrating the uv data for a
+    galaxy. Reads from the ms_file_key and works backwards from the
+    calibrated data in that directory.
+    """
+
+    if gal == None:
+        if quiet == False:
+            print "Please specify a galaxy."
+        return None
+
+    ms_key = read_ms_key()
+    
+    # Get the measurement set for this specific galaxy
+
+    if ms_key.has_key(gal) == False:
+        if quiet == False:
+            print "Galaxy "+gal+" not found in the measurement set key."
+        return None
+    gal_specific_key = ms_key[gal]
+
+    uvdata_dict = {}
+
+    # Loop over projects in the measurement set key
+
+    for this_proj in gal_specific_key.keys():
+
+        # If a project is specificied skip all but the relevant project
+
+        if just_proj != None:
+            if type(just_proj) == type([]):
+                if just_proj.count(this_proj) == 0:
+                    continue
+            else:
+                if this_proj != just_proj:
+                    continue
+
+        proj_specific_key = gal_specific_key[this_proj]
+
+        # Loop over all measurement sets in the project key
+
+        for this_ms in proj_specific_key.keys():
+
+            if just_ms != None:
+                if type(just_ms) == type([]):
+                    if just_ms.count(this_ms) == 0:
+                        continue
+                    else:
+                        if this_ms != just_ms:
+                            continue
+ 
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+                
+            if this_ms.count('7m') == 1:
+                this_array = '7m'
+            elif this_ms.count('12m') == 1:
+                this_array = '12m'
+            else:
+                this_array = '???'
+
+            # We now have the calibrated file name
+
+            this_calibrated_file = proj_specific_key[this_ms]
+
+            components = this_calibrated_file.split('/calibrated/')
+            if len(components) != 2:
+                print ""
+                print "WARNING! Something is wrong with file "+this_calibrated_file
+                print "We assume that there is one and only one /calibrated/ in the directory."
+                print "Fix this or whatever else is going wrong and rerun. Skipping for now."
+                print ""
+                continue
+
+            this_dir = components[0]+'/'
+            this_uid = components[1]
+
+            if uvdata_dict.has_key(this_dir):
+                current_uids = uvdata_dict[this_dir]['uid']
+                if current_uids.count(this_uid) == 0:
+                    current_uids.append(this_uid)
+                    uvdata_dict[this_dir]['uid'] = current_uids
+            else:
+                uvdata_dict[this_dir] = {'gal':gal,
+                                         'array':this_array,
+                                         'uid':[this_uid]}
+
+    return uvdata_dict
+
 def read_dir_key(fname='../scripts/dir_key.txt'):
     """
     Read the directory key, which gives us a general way to sort out

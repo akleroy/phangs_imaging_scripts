@@ -32,6 +32,7 @@ overwrite_previous = True
 update_flags = False
 run_calibration = False
 just_print_commands = True
+run_scriptforpi = True
 
 # Flag sets whether to only run scripts when there is no calibrated data
 
@@ -111,7 +112,10 @@ for gal in gals:
             # run the calibration script with a non-interactive command call to CASA
 
             os.chdir('script/')
-            pipescript_name = glob.glob('*.casa_pipescript.py')
+            if run_scriptforpi == False:
+                pipescript_name = glob.glob('*.casa_pipescript.py')
+            else:
+                pipescript_name = glob.glob('*.scriptForPI.py')
             if len(pipescript_name) == 0:
                 print ""
                 print "... for directory: " + this_dir
