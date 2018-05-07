@@ -31,6 +31,10 @@ update_flags = False
 run_calibration = False
 just_print_commands = True
 
+# Flag sets whether to only run scripts when there is no calibrated data
+
+do_only_new = False
+
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Define various routines and functions
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -70,4 +74,4 @@ for gal in gals:
         # edit the flagging file used for the pipeline run
 
         # run the calibration script with a non-interactive command call to CASA
-            
+        
