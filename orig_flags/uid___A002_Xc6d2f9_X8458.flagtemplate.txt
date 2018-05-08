@@ -1,0 +1,13 @@
+#
+# User flagging commands file for the calibration pipeline
+#
+# Examples
+# Note: Do not put spaces inside the reason string !
+#
+# mode='manual' correlation='YY' antenna='DV01;DV08;DA43;DA48&DV23' spw='21:1920~2880' autocorr=False reason='bad_channels'
+# mode='manual' spw='25:0~3;122~127' reason='stage8_2'
+# mode='manual' antenna='DV07' timerange='2013/01/31/08:09:55.248~2013/01/31/08:10:01.296' reason='quack'
+#
+mode='manual' timerange='2017/11/15/11:25:21.88~2017/11/15/11:27:12.77' reason='QA2_high_scatter_bandpass'
+mode='manual' field='1' spw='22:600~630' reason='QA2_sharp_feature_phase_calib'
+mode='manual' spw='22' reason='QA2_amplitude_and_phase_solution_issues'
