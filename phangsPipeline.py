@@ -1381,6 +1381,7 @@ def signal_mask(
     operation='AND',
     high_snr = 4.0,
     low_snr = 2.0,
+    absolute = False,
     ):
     """
     A simple signal mask creation routine used to make masks on the
@@ -1421,13 +1422,19 @@ def signal_mask(
     cube = myia.getchunk()
     myia.close()
 
-    hi_mask = (cube > hi_thresh)
+    if absolute:
+        hi_mask = (np.abs(cube) > hi_thresh)
+    else:
+        hi_mask = (cube > hi_thresh)
     mask = \
         (hi_mask + np.roll(hi_mask,1,axis=spec_axis) + \
              np.roll(hi_mask,-1,axis=spec_axis)) >= 1
 
     if high_snr > low_snr:
-        low_mask = (cube > low_thresh)
+        if absolute:
+            low_mask = (np.abs(cube) > low_thresh)
+        else:
+            low_mask = (cube > low_thresh)
         rolled_low_mask = \
             (low_mask + np.roll(low_mask,1,axis=spec_axis) + \
                  np.roll(low_mask,-1,axis=spec_axis)) >= 1
@@ -1687,6 +1694,7 @@ def singlescale_loop(
     absolute_threshold=None,
     snr_threshold=4.0,
     stop_at_negative=True,
+    remask=False,
     max_loop = 20
     ):
     """
@@ -1712,6 +1720,7 @@ def singlescale_loop(
         absolute_threshold=absolute_threshold,
         snr_threshold=snr_threshold,
         stop_at_negative=stop_at_negative,
+        remask=remask,
         max_loop = max_loop      
         )
 
@@ -1730,6 +1739,7 @@ def clean_loop(
     absolute_threshold=None,
     snr_threshold=4.0,
     stop_at_negative=True,
+    remask=False,
     max_loop = 20
     ):
     """
@@ -1789,6 +1799,23 @@ def clean_loop(
             clean_call.threshold = str(current_noise*snr_threshold)+'Jy/beam'
         elif absolute_threshold != None:
             clean_call.threshold = absolute_threshold
+
+        # If requested mask at each step (this is experimental, we're
+        # seeing if it helps to avoid divergence during the deep
+        # single scale clean.)
+
+        if remask:
+            print ""
+            print "Remasking."
+            print ""
+            signal_mask(
+                cube_root=clean_call.image_root,
+                out_file=clean_call.image_root+'.mask',
+                operation='AND',
+                high_snr=4.0,
+                low_snr=2.0,
+                absolute=False)
+            clean_call.usemask='user'
 
         # Set the log file
 
@@ -1948,7 +1975,7 @@ def buildPhangsCleanCall(
         this_override_dict = override_dict[clean_call.image_root]
 
         if this_override_dict.has_key('smallscalebias'):
-            clean_call.smallscale_bias = this_override_dict['smallscalebias']
+            clean_call.smallscalebias = this_override_dict['smallscalebias']
         if override_dict.has_key('x_size'):
             x_size_string = override_dict[this_vis]['x_size']
         if override_dict.has_key('y_size'):
@@ -2057,7 +2084,8 @@ def phangsImagingRecipe(
             out_file=clean_call.image_root+'.mask',
             operation='AND',
             high_snr=4.0,
-            low_snr=2.0)
+            low_snr=2.0,
+            absolute=False) # was False
         clean_call.usemask='user'
         
     if run_singlescale_clean:
@@ -2072,7 +2100,8 @@ def phangsImagingRecipe(
             absolute_delta=True,
             absolute_threshold=None,
             snr_threshold=1.0,
-            stop_at_negative=True,
+            stop_at_negative=False, # was true
+            remask=False,
             max_loop = 20
             )
 
