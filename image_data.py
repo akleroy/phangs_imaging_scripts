@@ -27,6 +27,7 @@ import glob
 # come back: 
 
 only = []
+only = ['ngc1365']
 
 # ... skip these galaxies
 
@@ -87,14 +88,14 @@ just_product = ['co21']
 
 make_dirty_image=True
 revert_to_dirty=False
-read_in_clean_mask=True
+read_in_clean_mask=False
 run_multiscale_clean=True
 revert_to_multiscale=False
-make_singlescale_mask=True
-run_singlescale_clean=True
+make_singlescale_mask=True # True
+run_singlescale_clean=True # True
 export_to_fits=True
 
-do_only_new = True
+do_only_new = False # True
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop
@@ -151,7 +152,7 @@ for gal in gals:
                 array=array,
                 product=product,
                 tag='')
-
+        
             pp.phangsImagingRecipe(
                 clean_call=clean_call,
                 make_dirty_image=make_dirty_image,

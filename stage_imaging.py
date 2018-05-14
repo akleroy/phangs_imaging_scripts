@@ -55,7 +55,7 @@ do_copy = True
 do_custom_scripts = True
 do_extract_lines = True
 do_extract_cont = True
-do_only_new = True
+do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop

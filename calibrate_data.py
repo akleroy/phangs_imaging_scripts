@@ -39,7 +39,7 @@ run_scriptforpi = True
 do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Run the script
+# get the galaxy name and array and directory and flagging file lists
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 gals = pp.list_gal_names()
@@ -47,9 +47,37 @@ gals = pp.list_gal_names()
 array_list = ['12m', '7m']
 
 # starting directory
+
 base_dir = os.getcwd()+'/'
 
-# get the galaxy name and array and directory list
+# get a list of user flags
+
+user_flag_dir = base_dir+'user_flags/'
+
+user_flag_list = glob.glob(user_flag_dir+'*.phangs_flags.txt')
+
+user_flags = {}
+for user_flag_file in user_flag_list:
+    tokens = user_flag_file.split('user_flags/')
+    uid = (tokens[1].split('.phangs_flags.txt'))[0]
+    user_flags[uid] = user_flag_file
+
+# get a list of orig flags
+
+orig_flag_dir = base_dir+'orig_flags/'
+
+orig_flag_list = glob.glob(orig_flag_dir+'*flagtemplate.txt')
+
+orig_flags = {}
+for orig_flag_file in orig_flag_list:
+    tokens = orig_flag_file.split('orig_flags/')
+    uid = (tokens[1].split('flagtemplate.txt'))[0]
+    uid = uid[:-1]
+    orig_flags[uid] = orig_flag_file
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Run the script
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 for gal in gals:
     
@@ -118,14 +146,17 @@ for gal in gals:
             
             if update_flags:
                 flag_files = glob.glob('calibration/*flagtemplate.txt')
-                for flag_file in flag_files:
-                    this_uid = (flag_file.replace('calibration/','')).replace('.flagtemplate.txt','')
+                for flag_file in flag_files:                    
+                    this_uid = (flag_file.replace('calibration/','')).replace('flagtemplate.txt','')
 
-                    # restore the original flagtemplate.txt if relevant.
+                    # remove trailing _ or . (which one depends on cycle)
+                    this_uid = this_uid[:-1]
 
-                    # logic here to find a custom flagging file match in our scripts directory
+                    # check if we do have any user flags
+                    if user_flags.has_key(this_uid) == False:
+                        continue
 
-                    # logic to back up the original flagtemplate.txt and add PHANGS flags to a new one.
+                    # we have a match, proceed
                     
 
             # Add some logic here examining pipescript_name[0] to

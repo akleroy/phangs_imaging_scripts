@@ -43,7 +43,7 @@ def copy_data(gal=None,
               just_ms=None,
               just_array=None,
               do_split=True,
-              do_statwt=True,
+              do_statwt=False,
               quiet=False):
     """
     Copies data from its original location, which is specified in a
@@ -180,6 +180,7 @@ def concat_line_for_gal(
     line='co21',
     tag='',
     do_statwt=True,
+    spw_statwt='',
     do_chan0=True,
     quiet=False):
     """
@@ -252,7 +253,8 @@ def concat_line_for_gal(
 
     if do_statwt:
         statwt(vis=out_file,
-               datacolumn='DATA')
+               datacolumn='DATA',
+               fitswp=spw_statwt)
 
     # Collapse to form a "channel 0" measurement set
 
@@ -350,7 +352,9 @@ def extract_phangs_lines(
     gal=None,
     just_array=None,
     ext='',
-    quiet=False
+    quiet=False,
+    do_statwt=True,
+    spw_statwt='0:0~25'
     ):
     """
     Extract all phangs lines and continuum for a galaxy.
@@ -385,7 +389,8 @@ def extract_phangs_lines(
                 just_array='7m',
                 tag='7m',
                 line=line,
-                do_statwt=True,
+                do_statwt=do_statwt,
+                spw_statwt=spw_statwt,
                 do_chan0=True)
 
         if just_array != '7m':
@@ -394,7 +399,8 @@ def extract_phangs_lines(
                 just_array='12m',
                 tag='12m',
                 line=line,
-                do_statwt=True,
+                do_statwt=do_statwt,
+                spw_statwt=spw_statwt,
                 do_chan0=True)
 
         has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
@@ -409,7 +415,8 @@ def extract_phangs_lines(
                 just_array = None,
                 tag='12m+7m',
                 line=line,
-                do_statwt=True,
+                do_statwt=do_statwt,
+                spw_statwt=spw_statwt,
                 do_chan0=True)
             
 
@@ -422,7 +429,8 @@ def extract_phangs_continuum(
     gal=None,
     just_array=None,
     ext='',
-    quiet=False
+    quiet=False,
+    do_statwt=True
     ):
     """
     Extract all phangs lines and continuum for a galaxy.
@@ -435,12 +443,17 @@ def extract_phangs_continuum(
 
     lines_to_flag = line_list.lines_co+line_list.lines_13co+line_list.lines_c18o
 
+    # Best practice here isn't obvious - it's the continuum, so there
+    # are no signal free channels. I think we just have to hope that
+    # the signal does not swamp the noise during the statwt or
+    # consider turning off the statwt in high S/N continuum cases.
+
     extract_continuum_for_galaxy(   
         gal=gal,
         just_array=just_array,
         lines_to_flag=lines_to_flag,
         ext=ext,
-        do_statwt=True,
+        do_statwt=do_statwt,
         do_collapse=True,
         quiet=quiet
         )
@@ -1975,11 +1988,22 @@ def buildPhangsCleanCall(
         this_override_dict = override_dict[clean_call.image_root]
 
         if this_override_dict.has_key('smallscalebias'):
-            clean_call.smallscalebias = this_override_dict['smallscalebias']
-        if override_dict.has_key('x_size'):
-            x_size_string = override_dict[this_vis]['x_size']
-        if override_dict.has_key('y_size'):
-            y_size_string = override_dict[this_vis]['y_size']    
+            clean_call.smallscalebias = float(this_override_dict['smallscalebias'])
+        if this_override_dict.has_key('x_size'):
+            clean_call.image_size[0] = int(this_override_dict['x_size'])
+        if this_override_dict.has_key('y_size'):
+            clean_call.image_size[1] = int(this_override_dict['y_size'])
+        if this_override_dict.has_key('pblimit'):
+            clean_call.pblimit = float(this_override_dict['pblimit'])
+        if this_override_dict.has_key('scales_as_angle'):
+            scales_as_angle_string = this_override_dict['scales_as_angle']
+            tokens = scales_as_angle_string.split(',')
+            scales_as_angle = []
+            for token in tokens:
+                if token == '':
+                    continue
+                scales_as_angle.append(float(token))
+            clean_call.scales_as_angle = scales_as_angle
 
     # Define the clean mask
     clean_file_name = '../clean_masks/'+gal+'_co21_clean_mask.fits'

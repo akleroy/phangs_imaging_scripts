@@ -81,7 +81,7 @@ That should get you both the analysis utilities, which you need, and
 the phangs pipeline. Change the directories as appropriate, of course.
 
 As long as those two things import successfully, you should be able to
-run the pipeline. I use CASA 5.1 as of this writing but in general
+run the pipeline. I use CASA 5.1.1 as of this writing but in general
 just try to use the latest CASA.
 
 REDUCTION
