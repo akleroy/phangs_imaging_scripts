@@ -15,7 +15,7 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = []
+only = ['ngc5128']
 
 # ... skip these galaxies.
 

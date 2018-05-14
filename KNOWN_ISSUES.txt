@@ -1,18 +1,9 @@
 This is a current, informal list of known issues:
 
-- Current known bug: my statwts cover the line and so are
-  downweighting the centers in some cases. This may be causing some of
-  the divergence that we see. Work on broader windows and a fitspw
-  call that avoids the line in all cases.
+- The "calibrate_data" script should be functional but is not there
+  yet. The biggest issue is how to call the pipeline.
 
-- Divergence during the single scale clean can happen. NGC 1365
-  suffers from this right now. I have not identified any other
-  cases. In NGC 1365 the issue occurs in specific channels.
-
-- At least one case, NGC 5128 (Cen A) does need continuum subtraction.
-
-- The "calibrate_data" script should be functional but is not
-  tested. The flagging command handling isn't fully implemented
+- The flagging command handling isn't fully implemented
   yet. And a routine needs to be written to be sure that we back up
   the original flags. In some cases, especially Cycle 3, there are
   already user-supplied flags.
