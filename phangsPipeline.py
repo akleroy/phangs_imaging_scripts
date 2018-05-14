@@ -354,7 +354,8 @@ def extract_phangs_lines(
     ext='',
     quiet=False,
     do_statwt=True,
-    spw_statwt='0:0~25'
+    spw_statwt='0:0~25',
+    append_ext='',
     ):
     """
     Extract all phangs lines and continuum for a galaxy.
@@ -380,7 +381,8 @@ def extract_phangs_lines(
             line=line,
             ext=ext,
             chan_width=chan_width[line],    
-            quiet=quiet
+            quiet=quiet,
+            append_ext=append_ext,
             )
 
         if just_array != '12m':
@@ -418,7 +420,6 @@ def extract_phangs_lines(
                 do_statwt=do_statwt,
                 spw_statwt=spw_statwt,
                 do_chan0=True)
-            
 
     if quiet == False:
         print "--------------------------------------------------------"
@@ -430,7 +431,8 @@ def extract_phangs_continuum(
     just_array=None,
     ext='',
     quiet=False,
-    do_statwt=True
+    do_statwt=True,
+    append_ext='',
     ):
     """
     Extract all phangs lines and continuum for a galaxy.
@@ -455,7 +457,8 @@ def extract_phangs_continuum(
         ext=ext,
         do_statwt=do_statwt,
         do_collapse=True,
-        quiet=quiet
+        quiet=quiet,
+        append_ext=append_ext,
         )
 
     if just_array != '12m':
@@ -763,7 +766,8 @@ def extract_line_for_galaxy(
     vwidth=500.,
     chan_width=2.5,    
     ext='',
-    quiet=False
+    quiet=False,
+    append_ext='',
     ):
     """
     Extract a given line for all data sets for a galaxy. This knows
@@ -822,7 +826,7 @@ def extract_line_for_galaxy(
                 if this_ms.count(just_array) == 0:
                     continue
             
-            in_file = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'
+            in_file = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'+append_ext
             out_file = gal+'_'+this_proj+'_'+this_ms+'_'+line+'.ms'    
 
             lines_in_ms = list_lines_in_ms(in_file, gal=gal)
@@ -1064,7 +1068,8 @@ def extract_continuum_for_galaxy(
     ext='',
     do_statwt=True,
     do_collapse=True,
-    quiet=False
+    quiet=False,
+    append_ext='',
     ):
     """
     Extract continuum for all data sets for a galaxy. This knows about
@@ -1122,7 +1127,7 @@ def extract_continuum_for_galaxy(
                 if this_ms.count(just_array) == 0:
                     continue
             
-            in_file = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'
+            in_file = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'+append_ext
             out_file = gal+'_'+this_proj+'_'+this_ms+'_cont.ms'
 
             extract_continuum(

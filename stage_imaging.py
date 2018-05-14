@@ -92,8 +92,12 @@ for gal in gals:
             do_statwt=False,
             quiet=False)
 
+    line_ext = ''
+    cont_ext = ''
     if do_custom_scripts:
-        pass
+        scripts_for_this_gal = glob.glob('../scripts/custom_staging_scripts/'+gal+'_staging_script.py')
+        for this_script in scripts_for_this_gal:
+            execfile(this_script)
 
     if do_extract_lines:
         pp.extract_phangs_lines(
@@ -101,14 +105,16 @@ for gal in gals:
             just_array=just_array,
             quiet=False,
             do_statwt=True,
-            spw_statwt='0:0~25')
+            spw_statwt='0:0~25',
+            append_ext=line_ext)
 
     if do_extract_cont:
         pp.extract_phangs_continuum(
             gal=gal,
             just_array=just_array,
             quiet=False,
-            do_statwt=True)
+            do_statwt=True,
+            append_ext=cont_ext)
 
 
             
