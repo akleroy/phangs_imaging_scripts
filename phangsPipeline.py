@@ -254,7 +254,7 @@ def concat_line_for_gal(
     if do_statwt:
         statwt(vis=out_file,
                datacolumn='DATA',
-               fitswp=spw_statwt)
+               fitspw=spw_statwt)
 
     # Collapse to form a "channel 0" measurement set
 

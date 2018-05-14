@@ -89,7 +89,7 @@ for gal in gals:
             gal=gal,
             just_array=just_array,
             do_split=True,
-            do_statwt=True,
+            do_statwt=False,
             quiet=False)
 
     if do_custom_scripts:
@@ -99,13 +99,16 @@ for gal in gals:
         pp.extract_phangs_lines(
             gal=gal,
             just_array=just_array,
-            quiet=False)
+            quiet=False,
+            do_statwt=True,
+            spw_statwt='0:0~25')
 
     if do_extract_cont:
         pp.extract_phangs_continuum(
             gal=gal,
             just_array=just_array,
-            quiet=False)
+            quiet=False,
+            do_statwt=True)
 
 
             
