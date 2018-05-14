@@ -1,0 +1,42 @@
+This is a current, informal list of known issues:
+
+- Current known bug: my statwts cover the line and so are
+  downweighting the centers in some cases. This may be causing some of
+  the divergence that we see. Work on broader windows and a fitspw
+  call that avoids the line in all cases.
+
+- Divergence during the single scale clean can happen. NGC 1365
+  suffers from this right now. I have not identified any other
+  cases. In NGC 1365 the issue occurs in specific channels.
+
+- At least one case, NGC 5128 (Cen A) does need continuum subtraction.
+
+- The "calibrate_data" script should be functional but is not
+  tested. The flagging command handling isn't fully implemented
+  yet. And a routine needs to be written to be sure that we back up
+  the original flags. In some cases, especially Cycle 3, there are
+  already user-supplied flags.
+
+- We need calibrate_data to be able to figure out the correct CASA
+  version. There are some syntax differences and we could probably
+  grep for these and be clever. Or we could just write a list. I
+  recorded what I did in the SCIENCE_GOAL_KEY for a while.
+
+- Clean masks aren't great yet - NGC 685, 3239, 4496a, 4941, 5042, and
+  7456 are relatively faint and have visible emission outside the
+  default mask. 
+
+  NGC 1546 and 4826 are bright and need a closer look.
+
+  NGC 4731 and 5643 have some signal that may be spurious floating
+  around in the cube.
+
+  From the cycle experience we know that we should just go ahead and
+  identify the targets with very broad centers and make the clean mask
+  very generous there. This should be written in using a list of these
+  things.
+
+- It's not super clear to me for the 7m case that we actually need a
+  clean mask when we clean down to S/N ~ 4. Convergence doesn't take
+  so long and masks seem as likely to create divergence as to avoid
+  it.
