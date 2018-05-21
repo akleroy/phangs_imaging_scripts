@@ -2114,7 +2114,7 @@ def phangsImagingRecipe(
             operation='AND',
             high_snr=4.0,
             low_snr=2.0,
-            absolute=False) # was False
+            absolute=False)
         clean_call.usemask='user'
         
     if run_singlescale_clean:
@@ -2129,7 +2129,7 @@ def phangsImagingRecipe(
             absolute_delta=True,
             absolute_threshold=None,
             snr_threshold=1.0,
-            stop_at_negative=False, # was true
+            stop_at_negative=False,
             remask=False,
             max_loop = 20
             )
