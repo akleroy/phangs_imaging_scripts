@@ -61,7 +61,7 @@ pro make_clean_masks $
 
 ; SKIP
 
-  only = ['ngc5042']
+  only = []
   skip = []
 
 ; HAS A CENTRAL BRIGHT SOURCE
