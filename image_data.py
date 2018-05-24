@@ -25,99 +25,6 @@ import glob
 # ... a text list. The script will process only these galaxies.
 
 only = []
-
-if False:
-    only = ['ic1954',
-            'ic5273',
-            'ic5332',
-            'ngc0628',
-            'ngc0685',
-            'ngc1087',
-            'ngc1097_1',
-            'ngc1097_2',
-            'ngc1300',
-            'ngc1365',
-            'ngc1385',
-            'ngc1433',
-            'ngc1511',
-            'ngc1512',
-            'ngc1546',
-            'ngc1559',
-            'ngc1566',
-            'ngc1637',
-            'ngc1672',
-            'ngc1792_1',
-            'ngc1792_2',
-            'ngc1809',
-            'ngc2090',
-            'ngc2283',
-            'ngc2566',
-            'ngc2775',
-            'ngc2835',
-            'ngc2903_1',
-            'ngc2903_2',
-            'ngc2903_3',
-            'ngc2997_1',
-            'ngc2997_2',
-            'ngc2997_3',
-            'ngc3059',
-            'ngc3137',
-            'ngc3239',
-            'ngc3351',
-            'ngc3507',
-            'ngc3511',
-            'ngc3521_1', 
-            'ngc3521_2', 
-            'ngc3596', 
-            'ngc3621_1', 
-            'ngc3621_2',
-            'ngc3626']
-
-if True:
-    only = ['ngc3627north',
-            'ngc3627south',
-            'ngc4207', 
-            'ngc4254north', 
-            'ngc4254south', 
-            'ngc4293', 
-            'ngc4298', 
-            'ngc4303', 
-            'ngc4321north',
-            'ngc4321south', 
-            'ngc4424', 
-            'ngc4457', 
-            'ngc4496a', 
-            'ngc4535', 
-            'ngc4536_1', 
-            'ngc4536_2',
-            'ngc4540', 
-            'ngc4548', 
-            'ngc4569', 
-            'ngc4571', 
-            'ngc4579', 
-            'ngc4654', 
-            'ngc4689', 
-            'ngc4694',
-            'ngc4731', 
-            'ngc4781', 
-            'ngc4826', 
-            'ngc4941',  
-            'ngc4951', 
-            'ngc5042', 
-            'ngc5068north', 
-            'ngc5068south',
-            'ngc5128', 
-            'ngc5134', 
-            'ngc5248_1', 
-            'ngc5248_2', 
-            'ngc5530',
-            'ngc5643_1',
-            'ngc5643_2', 
-            'ngc6300', 
-            'ngc6744north', 
-            'ngc6744south', 
-            'ngc7456', 
-            'ngc7496']
     
 # ... skip these galaxies
 
@@ -126,7 +33,7 @@ skip = []
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-just_array = ['7m']
+just_array = ['12m','12m+7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -203,6 +110,7 @@ for gal in gals:
         if only.count(gal) == 0:
             print "Skipping "+gal
             continue
+
     if len(skip) > 0:
         if skip.count(gal) > 0:
             print "Skipping "+gal
@@ -224,6 +132,10 @@ for gal in gals:
 
             print gal, array, product
 
+            this_dir = pp.dir_for_gal(gal)
+            out_image_name = this_dir+gal+'_'+array+'_'+product+'.image'
+            has_image = len(glob.glob(out_image_name)) > 0            
+
             if do_only_new:
                 this_dir = pp.dir_for_gal(gal)
                 out_image_name = this_dir+gal+'_'+array+'_'+product+'.image'
@@ -243,6 +155,9 @@ for gal in gals:
                 product=product,
                 tag='')
         
+            if clean_call == None:
+                continue
+
             pp.phangsImagingRecipe(
                 clean_call=clean_call,
                 make_dirty_image=make_dirty_image,
