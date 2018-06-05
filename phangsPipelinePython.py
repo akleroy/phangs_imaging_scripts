@@ -169,7 +169,8 @@ def read_dir_key(fname='../scripts/dir_key.txt'):
     
     return dir_key
 
-def dir_for_gal(gal=None):
+def dir_for_gal(gal=None,
+                quiet=False):
     """
     Return the working directory given a galaxy name. See above.
     """

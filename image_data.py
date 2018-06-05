@@ -24,7 +24,7 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = []
+only = ['ngc0685']
     
 # ... skip these galaxies
 
@@ -33,7 +33,8 @@ skip = []
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-just_array = ['12m','12m+7m']
+#just_array = ['12m','12m+7m']
+just_array = ['7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -85,11 +86,11 @@ just_product = ['co21']
 
 make_dirty_image=True
 revert_to_dirty=False
-read_in_clean_mask=True
-run_multiscale_clean=True
+read_in_clean_mask=False #True
+run_multiscale_clean=False #True
 revert_to_multiscale=False
-make_singlescale_mask=True # True
-run_singlescale_clean=True # True
+make_singlescale_mask=False # True # True
+run_singlescale_clean=False #True # True
 export_to_fits=True
 
 do_only_new = False # True

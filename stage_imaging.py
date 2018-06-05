@@ -21,12 +21,17 @@ only = []
 
 skip = []
 
+# ... start with this galaxy
+
+first = "ngc3239"
+last = ""
+
 # ... set this to '12m' or '7m' to stage data only for those
 # arrays. Leave it as None to process all data. If both 12m and 7m
 # data are processed, then the script will also create 12m+7m data. So
 # you need to rerun the staging when both data sets arrive.
 
-just_array = '7m'
+just_array = None
 
 # ... set these variables to indicate what steps of the script should
 # carry out. The steps do:
@@ -51,10 +56,10 @@ just_array = '7m'
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = True
+do_copy = False
 do_custom_scripts = True
 do_extract_lines = True
-do_extract_cont = True
+do_extract_cont = False
 do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -62,6 +67,9 @@ do_only_new = False
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 gals = pp.list_gal_names()
+
+before_first = True
+after_last = False
 
 for gal in gals:
     
@@ -71,6 +79,18 @@ for gal in gals:
     if len(skip) > 0:
         if skip.count(gal) > 0:
             continue
+
+    if first != "":
+        if gal == first:
+            before_first = False
+        if before_first:
+            continue
+    
+    if last != "":
+        if after_last == True:
+            continue
+        if gal == last:
+            after_last = True
     
     if do_only_new:        
         this_dir = pp.dir_for_gal(gal)
@@ -105,7 +125,7 @@ for gal in gals:
             just_array=just_array,
             quiet=False,
             do_statwt=True,
-            spw_statwt='0:0~25',
+            spw_statwt='*:0~25',
             append_ext=line_ext)
 
     if do_extract_cont:

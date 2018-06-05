@@ -354,7 +354,7 @@ def extract_phangs_lines(
     ext='',
     quiet=False,
     do_statwt=True,
-    spw_statwt='0:0~25',
+    spw_statwt='*:0~25',
     append_ext='',
     ):
     """
@@ -495,6 +495,7 @@ def list_lines_in_ms(
     in_file= None,
     vsys=0.0,
     gal=None,
+    quiet=False,
     ):    
     """
     List the lines likely to be present in a measurement set. This can
@@ -716,13 +717,16 @@ def extract_line(in_file=None,
         print "DESIRED VELOCITY WIDTH: ", str(vwidth)
         print "START VELOCITY: ", start_vel_string
         print "NUMBER OF CHANNELS: ", str(nchan)
-        print "CHANNELS TO BIN TOGETHER FIRST: ", chanbin
+        print "CHANNELS TO BIN TOGETHER FIRST (CURRENTLY DEPRECATED): ", chanbin
 
     # Call mstransform
     
     os.system('rm -rf '+out_file+'.temp')
     os.system('rm -rf '+out_file+'.temp.flagversions')
 
+    chanbin = 1
+    chanaverage = False
+    
     mstransform(vis=in_file,
                 outputvis=out_file+'.temp',
                 spw=spw_list_string,
@@ -738,6 +742,7 @@ def extract_line(in_file=None,
 
     mstransform(vis=out_file+'.temp',
                 outputvis=out_file,
+                spw=spw_list_string,
                 datacolumn='DATA',
                 combinespws=True,
                 regridms=True,
@@ -830,6 +835,9 @@ def extract_line_for_galaxy(
             out_file = gal+'_'+this_proj+'_'+this_ms+'_'+line+'.ms'    
 
             lines_in_ms = list_lines_in_ms(in_file, gal=gal)
+            if lines_in_ms == None:
+                print "No lines found in measurement set."
+                return
             if lines_in_ms.count(line) == 0:
                 print "Line not found in measurement set."
                 return
@@ -1930,7 +1938,7 @@ def buildPhangsCleanCall(
     clean_call.vis = gal+'_'+array+'_'+product+'.ms'
     if os.path.isdir(clean_call.vis) == False:
         print "Visibility data not found. Returning empty."
-        return
+        return None
 
     if tag == '':
         clean_call.image_root = gal+'_'+array+'_'+product

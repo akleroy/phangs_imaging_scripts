@@ -133,12 +133,12 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X27b9/group.uid___A001_X1284_X27ba/
 - target: NGC 3239
-- Main Array: 
+- Main Array: member.uid___A001_X1284_X27bb
 - ACA 7m: member.uid___A001_X1284_X27bd
 
 - science_goal.uid___A001_X1284_X27af/group.uid___A001_X1284_X27b0/
 - target: NGC 3507
-- Main Array:
+- Main Array: member.uid___A001_X1284_X27b1
 - ACA 7m: member.uid___A001_X1284_X27b3
 
 - science_goal.uid___A001_X1284_X27a5/group.uid___A001_X1284_X27a6/
@@ -158,7 +158,7 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X2787/group.uid___A001_X1284_X2788/
 - target: NGC 3596
-- Main Array:
+- Main Array: member.uid___A001_X1284_X2789
 - ACA 7m: member.uid___A001_X1284_X278b
 
 - science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/
@@ -173,12 +173,12 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/
 - target: NGC 3626
-- Main Array: 
+- Main Array: member.uid___A001_X1284_X276b
 - ACA 7m: member.uid___A001_X1284_X276d
 
 - science_goal.uid___A001_X1284_X275f/group.uid___A001_X1284_X2760/
 - target: NGC 4207
-- Main Array: 
+- Main Array: member.uid___A001_X1284_X2761
 - ACA 7m: member.uid___A001_X1284_X2763
 
 - science_goal.uid___A001_X1284_X2755/group.uid___A001_X1284_X2756/
@@ -233,7 +233,7 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X26f1/group.uid___A001_X1284_X26f2/
 - target: NGC 4571
-- Main Array:
+- Main Array: member.uid___A001_X1284_X26f3
 - ACA 7m: member.uid___A001_X1284_X26f5
 
 - science_goal.uid___A001_X12a3_X4e4/group.uid___A001_X12a3_X4e5/
@@ -248,7 +248,7 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X26d3/group.uid___A001_X1284_X26d4/
 - target: NGC 4689
-- Main Array:
+- Main Array: member.uid___A001_X1284_X26d5
 - ACA 7m: member.uid___A001_X1284_X26d7
 
 - science_goal.uid___A001_X1284_X26c9/group.uid___A001_X1284_X26ca/
@@ -293,7 +293,7 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X266f/group.uid___A001_X1284_X2670/
 - target: NGC 5248_1
-- Main Array:
+- Main Array: member.uid___A001_X1284_X2671
 - ACA 7m: member.uid___A001_X1284_X2673
 
 - science_goal.uid___A001_X1284_X2679/group.uid___A001_X1284_X267a/
@@ -303,7 +303,7 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X1284_X2665/group.uid___A001_X1284_X2666/
 - target: NGC 5530
-- Main Array: 
+- Main Array: member.uid___A001_X1284_X2667/
 - ACA 7m: member.uid___A001_X1284_X2669/
 
 - science_goal.uid___A001_X1284_X2651/group.uid___A001_X1284_X2652/
@@ -318,7 +318,7 @@ DELIVERED DATA
 
 - science_goal.uid___A001_X12a3_X4b8/group.uid___A001_X12a3_X4b9/
 - target: NGC 6300
-- Main Array:
+- Main Array: member.uid___A001_X12a3_X4ba
 - ACA 7m: member.uid___A001_X12a3_X4bc
 
 - science_goal.uid___A001_X1284_X263d/group.uid___A001_X1284_X263e/
