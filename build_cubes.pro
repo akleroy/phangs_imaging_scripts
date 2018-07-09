@@ -633,8 +633,8 @@ pro build_cubes $
      in_dir = release_dir+'feather/'
      out_dir = release_dir+'process/'
      
-     for ii = 0, n_gals-1 do begin
-        
+     for ii = 0, n_gals-1 do begin       
+
         if n_elements(only) gt 0 then $
            if total(only eq gals[ii]) eq 0 then continue
 
@@ -643,6 +643,8 @@ pro build_cubes $
 
         this_gal = gals[ii]
         this_dir = dir_for_gal[ii]
+
+        message, 'Copying feathered data for '+this_gal, /info
 
         for jj = 0, n_array - 1 do begin
 
@@ -711,7 +713,7 @@ pro build_cubes $
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; MERGE MULTI-FIELD CUBES
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
+ 
 ; This part of the script assumes that the directory name is the
 ; galaxy name (or at least the name of the synthesized product created
 ; by combining the fields).
@@ -791,10 +793,14 @@ pro build_cubes $
                  endif
                  cube1 = readfits(cube1_infile, cube1_hdr)
 
+                 array_for_pb = this_array
+                 if array_for_pb eq '7m+tp' then array_for_pb = '7m'
+                 if array_for_pb eq '12m+7m+tp' then array_for_pb = '12m+7m'
+
                  pb1_infile = $
                     release_dir+'raw/'+ $
                     gals[gal_ind[0]]+'_'+ $
-                    this_array+'_'+this_product+'_'+$
+                    array_for_pb+'_'+this_product+'_'+$
                     'pb'+'.fits'
 
                  test = file_search(pb1_infile, count=found)
@@ -820,7 +826,7 @@ pro build_cubes $
                  pb2_infile = $
                     release_dir+'raw/'+ $
                     gals[gal_ind[1]]+'_'+ $
-                    this_array+'_'+this_product+'_'+$
+                    array_for_pb+'_'+this_product+'_'+$
                     'pb'+'.fits'
 
                  test = file_search(pb2_infile, count=found)
@@ -847,7 +853,7 @@ pro build_cubes $
                     pb3_infile = $
                        release_dir+'raw/'+ $
                        gals[gal_ind[2]]+'_'+ $
-                       this_array+'_'+this_product+'_'+$
+                       array_for_pb+'_'+this_product+'_'+$
                        'pb'+'.fits'
 
                     test = file_search(pb3_infile, count=found)
