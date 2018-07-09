@@ -86,7 +86,7 @@ pro build_cubes $
 ; RESOLUTIONS
 
   if n_elements(target_res) eq 0 then begin
-     target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+     target_res = [45, 60, 80, 100, 120, 500, 750, 1000, 1250, 1500, 2000]
   endif
   n_res = n_elements(target_res)
 

@@ -742,7 +742,7 @@ def extract_line(in_file=None,
 
     mstransform(vis=out_file+'.temp',
                 outputvis=out_file,
-                spw=spw_list_string,
+                spw='',
                 datacolumn='DATA',
                 combinespws=True,
                 regridms=True,

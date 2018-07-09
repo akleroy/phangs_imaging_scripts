@@ -16,6 +16,14 @@ import glob
 # ... a text list. The script will process only these galaxies.
 
 only = []
+#["ngc4826","ng6300"]
+#["ngc2090", "ngc3059", "ngc4951", "ngc6300", "ngc7496"]
+
+#"ngc3626",
+#        "ngc4207","ngc4424","ngc4457","ngc4496a","ngc4571","ngc4694",
+#        "ngc5128","ngc5248_1","ngc5248_2","ngc5530"]
+
+# not yet
 
 # ... skip these galaxies.
 
@@ -23,7 +31,7 @@ skip = []
 
 # ... start with this galaxy
 
-first = "ngc3239"
+first = ""
 last = ""
 
 # ... set this to '12m' or '7m' to stage data only for those
@@ -56,10 +64,10 @@ just_array = None
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = False
+do_copy = True
 do_custom_scripts = True
 do_extract_lines = True
-do_extract_cont = False
+do_extract_cont = True
 do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

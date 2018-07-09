@@ -24,17 +24,29 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = ['ngc0685']
-    
+# still run 5128 (broken), 1365 12m+7m, original targets
+
+# going now
+#only = ["ngc3059","ngc5248_1","ngc5248_2","ngc5530"]
+#only = ['ic5273','ngc1809','ngc2283','ngc2566']
+
+# Still to do:
+#        ['ngc2903_2',"ngc4293", 'ngc4548',]
+only = ["ngc5643_1","ngc5643_2","ngc7456"]
+#        ["ngc4826","ngc6300"]
 # ... skip these galaxies
 
-skip = []
+#skip = []
+
+# ... start with this galaxy
+
+first = ""
+last = ""
 
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-#just_array = ['12m','12m+7m']
-just_array = ['7m']
+just_array = ['12m','12m+7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -86,14 +98,14 @@ just_product = ['co21']
 
 make_dirty_image=True
 revert_to_dirty=False
-read_in_clean_mask=False #True
-run_multiscale_clean=False #True
+read_in_clean_mask=True
+run_multiscale_clean=True
 revert_to_multiscale=False
-make_singlescale_mask=False # True # True
-run_singlescale_clean=False #True # True
+make_singlescale_mask=True
+run_singlescale_clean=True
 export_to_fits=True
 
-do_only_new = False # True
+do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop
@@ -104,6 +116,9 @@ gals = pp.list_gal_names()
 array_list = ['12m', '7m', '12m+7m']
 
 product_list = ['co21','c18o21','cont','co21_chan0','c18o21_chan0']
+
+before_first = True
+after_last = False
 
 for gal in gals:
     
@@ -117,6 +132,18 @@ for gal in gals:
             print "Skipping "+gal
             continue
 
+    if first != "":
+        if gal == first:
+            before_first = False
+        if before_first:
+            continue
+    
+    if last != "":
+        if after_last == True:
+            continue
+        if gal == last:
+            after_last = True
+ 
     for array in array_list:
 
         if len(just_array) > 0:
