@@ -77,9 +77,13 @@ pro generate_inspection_reports $
         use_plotdir = out_dir
         use_reportdir = out_dir
 
+        print, '../'+this_dir+'/'+this_gal+'_'+this_array+'_co21.fits'
+
         phangs_cube_show $
            , use_galname $
-           , datadir=use_datadir $
+           , cube_fits='../'+this_dir+'/'+this_gal+'_'+this_array+'_co21.fits' $
+           , mask_fits='../'+this_dir+'/'+this_gal+'_'+this_array+'_co21_multiscale_mask.fits' $
+           , resids_fits='../'+this_dir+'/'+this_gal+'_'+this_array+'_co21_residual.fits' $
            , plotdir=use_plotdir $
            , reportdir=use_reportdir $
            , namestr=use_galname+'_'+this_array $
