@@ -197,12 +197,12 @@ pro make_clean_masks $
 
      if keyword_set(do_inspect) eq 0 then begin 
 
-        if total(gals[ii] eq threed_noise) gt 0 then begin
-           print, "Three-d noise."
-           twod_only = 0B
-        endif else begin
-           twod_only = 1B
-        endelse
+        ;if total(gals[ii] eq threed_noise) gt 0 then begin
+        ;   print, "Three-d noise."
+        ;   twod_only = 0B
+        ;endif else begin
+        ;   twod_only = 1B
+        ;endelse
 
         make_noise_cube $
            , cube_in = cube $
