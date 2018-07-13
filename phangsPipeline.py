@@ -727,15 +727,21 @@ def extract_line(in_file=None,
     chanbin = 1
     chanaverage = False
     
-    mstransform(vis=in_file,
-                outputvis=out_file+'.temp',
-                spw=spw_list_string,
-                datacolumn='DATA',
-                chanaverage=chanaverage,
-                chanbin=chanbin,
-                hanning=False,
-                interpolation='cubic',
-                )
+    #mstransform(vis=in_file,
+    #            outputvis=out_file+'.temp',
+    #            spw=spw_list_string,
+    #            datacolumn='DATA',
+    #            chanaverage=chanaverage,
+    #            chanbin=chanbin,
+    #            hanning=False,
+    #            interpolation='cubic',
+    #            )
+
+    split(vis=in_file,
+          outputvis=out_file+'.temp',
+          spw=spw_list_string,
+          datacolumn='DATA',
+          width=chanbin)
 
     os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.flagversions')

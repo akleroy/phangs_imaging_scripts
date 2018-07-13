@@ -24,17 +24,8 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-# still run 5128 (broken), 1365 12m+7m, original targets
-# only = ["ngc5643_1","ngc5643_2","ngc7456"]
-# only = ["ngc4826"]
-
-# going now
-#only = ["ngc3137"]
-#only = ["ngc6300"]
-
 # Still to do:
-#only = ['ngc2903_2','ngc5042']
-only = ["ngc4293", 'ngc4548',]
+only = []
 
 # ... skip these galaxies
 
@@ -48,14 +39,13 @@ last = ""
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-just_array = ['12m','12m+7m']
-#just_array = ['7m']
+just_array = ['7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
 # 'c18o21_chan0'. Note that right now cont and chan0 are not tested.
 
-just_product = ['co21']
+just_product = ['cont']
 
 # ... set these variables to indicate what steps of the script should
 # be performed. The steps do:
@@ -101,11 +91,11 @@ just_product = ['co21']
 
 make_dirty_image=True
 revert_to_dirty=False
-read_in_clean_mask=True
-run_multiscale_clean=True
+read_in_clean_mask=False
+run_multiscale_clean=False
 revert_to_multiscale=False
-make_singlescale_mask=True
-run_singlescale_clean=True
+make_singlescale_mask=False
+run_singlescale_clean=False
 export_to_fits= True
 
 do_only_new = False

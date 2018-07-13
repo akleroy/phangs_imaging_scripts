@@ -15,7 +15,7 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = ["ic1954"]
+only = ["ngc3059"]
 
 # ... skip these galaxies.
 
@@ -31,8 +31,8 @@ last = ""
 # data are processed, then the script will also create 12m+7m data. So
 # you need to rerun the staging when both data sets arrive.
 
-just_array = None
-#just_array = '7m'
+#just_array = None
+just_array = '7m'
 
 # ... set these variables to indicate what steps of the script should
 # carry out. The steps do:
@@ -57,10 +57,10 @@ just_array = None
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = True #True
-do_custom_scripts = True #True
+do_copy = True
+do_custom_scripts = True
 do_extract_lines = True
-do_extract_cont = True #True
+do_extract_cont = True
 do_only_new = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
