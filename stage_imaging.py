@@ -15,7 +15,7 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = ["ic1954"]
+only = []
 
 # ... skip these galaxies.
 
@@ -57,7 +57,7 @@ just_array = None
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = True #True
+do_copy = False #True
 do_custom_scripts = True #True
 do_extract_lines = True
 do_extract_cont = True #True

@@ -23,15 +23,7 @@ import glob
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 # ... a text list. The script will process only these galaxies.
-
-# still run 5128 (broken), 1365 12m+7m, original targets
-
-# going now
-
-# Still to do:
-#only = ['ngc1365','ngc3627north','ngc3627south','ngc4254north','ngc4254south',
-#        'ngc4535','ngc4826','ngc5068north','ngc5068south','ngc6744north','ngc6744south']
-only = ['ngc4689']
+only = []
 
 # ... skip these galaxies
 
@@ -45,8 +37,7 @@ last = ""
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-just_array = ['12m','12m+7m']
-#just_array = ['7m']
+just_array = ['7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and

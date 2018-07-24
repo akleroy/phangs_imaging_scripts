@@ -555,6 +555,30 @@ pro build_products $
                             , e_mom1, mom1_hdr
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; MOMENT 2
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+                 blank_mom2 = where((mom0 le e_mom0*mom0_thresh) $
+                                    or (e_mom1 gt mom1_thresh), mom2_ct)
+                 if mom2_ct gt 0 then begin
+                    mom2[blank_mom2] = !values.f_nan
+                    e_mom2[blank_mom2] = !values.f_nan
+                 endif
+
+                 mom2_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom2_hdr, 'BUNIT', 'KM/S'
+                 mom2[blank_ind] = !values.f_nan
+
+                 mom2_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_mom2'+ $
+                    res_str+'.fits'
+
+                 writefits, mom2_fname $
+                            , mom2, mom1_hdr
+                 
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; DISPLAY
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  

@@ -264,7 +264,7 @@ ngc3621_1	 886	 7m_3		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/g
 ngc3621_1	 886	 7m_4		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc6ff69_X3a2c.ms
 ngc3621_1	 886	 7m_5		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc7111c_X2a18.ms
 ngc3621_1	 886	 7m_6		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc7111c_X7e68.ms
-ngc3621_1	 886	 12m		TO BE DELIVERED
+#ngc3621_1	 886	 12m		TO BE DELIVERED
 #
 ngc3621_2	 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc6fa08_X1b71.ms
 ngc3621_2	 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc6fa08_X245d.ms
@@ -272,7 +272,7 @@ ngc3621_2	 886	 7m_3		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/g
 ngc3621_2	 886	 7m_4		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc743d2_X3b09.ms
 ngc3621_2	 886	 7m_5		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc74b5b_X343d.ms
 ngc3621_2	 886	 7m_6		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc74b5b_X82e9.ms
-ngc3621_2	 886	 12m		TO BE DELIVERED
+#ngc3621_2	 886	 12m		TO BE DELIVERED
 #
 ngc3626		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/member.uid___A001_X1284_X276d/calibrated/uid___A002_Xc59134_X350a.ms
 ngc3626		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/member.uid___A001_X1284_X276d/calibrated/uid___A002_Xc59134_X38d7.ms

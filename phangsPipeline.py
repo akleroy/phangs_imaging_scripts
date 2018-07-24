@@ -1160,7 +1160,8 @@ def extract_continuum_for_galaxy(
 
 def pick_phangs_cell_and_imsize(
     in_file=None,
-    oversamp=5
+    oversamp=5,
+    forceSquare=False
     ):
     """
     Wraps estimate_cell_and_imsize and also allows our custom
@@ -1168,7 +1169,8 @@ def pick_phangs_cell_and_imsize(
     """
 
     cell_size_string, x_size_string, y_size_string = \
-        estimate_cell_and_imsize(in_file, oversamp)
+        estimate_cell_and_imsize(in_file, oversamp,
+                                 forceSquare=forceSquare)
 
     override_dict = read_override_mosaic_params()
 
@@ -1185,7 +1187,8 @@ def pick_phangs_cell_and_imsize(
 
 def estimate_cell_and_imsize(
     in_file=None,    
-    oversamp=5
+    oversamp=5,
+    forceSquare=False,
     ):
     """
     Pick a cell and image size for a measurement set. Requests an
@@ -1235,6 +1238,15 @@ def estimate_cell_and_imsize(
 
     cells_x = np.min(valid_sizes[valid_sizes > need_cells_x])
     cells_y = np.min(valid_sizes[valid_sizes > need_cells_y])
+
+    # If requested, force the mosaic to be square. This avoids
+    # pathologies in CASA versions 5.1 and 5.3.
+
+    if forceSquare == True:
+        if cells_y < cells_x:
+            cells_y = cells_x
+        if cells_x < cells_y:
+            cells_x = cells_y
 
     image_size = [int(cells_x), int(cells_y)]
     cell_size_string = str(cell_size)+'arcsec'
@@ -1925,6 +1937,7 @@ def buildPhangsCleanCall(
     array='7m',
     product='co21',    
     tag='',
+    forceSquare=False
     ):
     """
     Build a clean call.
@@ -1959,7 +1972,8 @@ def buildPhangsCleanCall(
     clean_call.phase_center = 'J2000 '+this_ra+' '+this_dec
 
     cell_size, x_size, y_size = \
-        pick_phangs_cell_and_imsize(clean_call.vis)
+        pick_phangs_cell_and_imsize(clean_call.vis, 
+                                    forceSquare=forceSquare)
     image_size = [int(x_size), int(y_size)]
 
     clean_call.cell_size = cell_size
