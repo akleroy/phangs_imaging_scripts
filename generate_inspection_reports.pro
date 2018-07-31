@@ -1,7 +1,8 @@
 pro generate_inspection_reports $
    , only=only $
    , skip=skip $
-   , just_array=just_array
+   , just_array=just_array $
+   , reset=reset
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; SOME DEFAULTS
@@ -53,6 +54,20 @@ pro generate_inspection_reports $
 ; LOOP OVER GALAXIES AND GENERATE REPORT
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%  
 
+  if keyword_set(reset) then begin
+
+     for jj = 0, n_array - 1 do begin
+        
+        this_array = array_list[jj]
+        if n_elements(just_array) gt 0 then $
+           if total(just_array eq this_array) eq 0 then continue
+
+        spawn, 'rm -rf ../reports/'+this_array+'/'
+
+     endfor
+
+  endif
+
   for ii = 0, n_gals-1 do begin
      
      if n_elements(only) gt 0 then $
@@ -74,8 +89,8 @@ pro generate_inspection_reports $
 
         use_galname = this_gal
         use_datadir = '../'+this_dir
-        use_plotdir = out_dir
-        use_reportdir = out_dir
+        use_plotdir = out_dir+'/'+this_array
+        use_reportdir = out_dir+'/'+this_array
 
         print, '../'+this_dir+'/'+this_gal+'_'+this_array+'_co21.fits'
 
