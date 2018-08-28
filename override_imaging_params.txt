@@ -6,7 +6,10 @@ ngc1365_12m+7m_co21		pblimit			0.75
 ngc1365_12m+7m_co21		smallscalebias		0.9
 ngc1365_12m_co21		smallscalebias		0.9
 ngc1365_7m_co21			smallscalebias		0.7
-# ngc1365_7m_co21			scales_as_angle		0,
+#
+ngc2903_2_12m+7m_co21		pblimit			0.5
+#
+ngc4321north_12m+7m_co21	pblimit			0.5
 #
 ngc5068north_12m+7m_co21	pblimit			0.5
 ngc5068south_12m+7m_co21	pblimit			0.5
