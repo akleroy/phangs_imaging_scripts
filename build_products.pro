@@ -490,7 +490,7 @@ pro build_products $
                  tpeak12p5_fname = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
-                    this_product+'_tpeak'+ $
+                    this_product+'_tpeak12p5kms'+ $
                     res_str+'.fits'
 
                  writefits, tpeak12p5_fname, tpeak_12p5, tpeak_hdr
