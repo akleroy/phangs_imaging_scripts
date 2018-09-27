@@ -3,6 +3,7 @@ pro build_products $
    , only=only $
    , skip=skip $
    , just_array=just_array $
+   , prelim=do_prelim $
    , noise=do_noise $
    , mask=do_masks $
    , collapse=do_collapse $
@@ -83,9 +84,101 @@ pro build_products $
 ; RESOLUTIONS
 
   if n_elements(target_res) eq 0 then begin
-     target_res = [-1, 45, 60, 80, 100, 120, 500, 750, 1000, 1250, 1500, 2000]
+     target_res = [-1, 60, 90, 150, 500, 1250]
+                                ;target_res = [-1, 45, 60, 80, 100, 120, 500, 750, 1000, 1250, 1500, 2000]
   endif
   n_res = n_elements(target_res)
+
+  prelim_res = 1250
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; GENERATE A LOW RESOLUTION MASK FROM THE FLAT CUBE
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+  if keyword_set(do_prelim) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'PRELIMINARY MASK', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+
+     ext_to_process = $
+        ['flat_round_k']
+     n_ext = n_elements(ext_to_process)
+     
+     for ii = 0, n_fullgals-1 do begin
+        
+        if n_elements(only) gt 0 then $
+           if total(only eq fullgal_list[ii]) eq 0 then continue
+
+        if n_elements(skip) gt 0 then $
+           if total(skip eq fullgal_list[ii]) gt 0 then continue
+
+        this_gal = fullgal_list[ii]
+
+        message, "A low res initial mask for "+this_gal, /info
+
+        for jj = 0, n_fullarray - 1 do begin
+
+           this_array = fullarray_list[jj]
+           if n_elements(just_array) gt 0 then $
+              if total(just_array eq this_array) eq 0 then continue
+
+           for kk = 0, n_product-1 do begin
+              
+              this_product = product_list[kk]
+
+              for ll = 0, n_ext-1 do begin
+
+                 this_ext = ext_to_process[ll]
+
+                 res_str = '_'+strcompress(str(prelim_res),/rem)+'pc'
+                 print, "Resolution "+res_str
+
+                 in_file = release_dir+'process/'+ $
+                           this_gal+'_'+this_array+'_'+ $
+                           this_product+'_'+this_ext+res_str+'.fits'
+                 
+                 test = file_search(in_file, count=found)
+                 if found eq 0 then begin
+                    message, 'File '+in_file+' not found.', /info
+                    continue
+                 endif                 
+                 
+                 cube = readfits(in_file, cube_hdr)
+                 
+                 make_noise_cube $
+                    , cube_in = cube $
+                    , out_cube = rms $
+                    , /zero_only $
+                    , /show $
+                    , /iterate
+                 
+                 ppbeam = calc_pixperbeam(hdr=cube_hdr)         
+                 
+                 make_cprops_mask $
+                    , indata=cube $
+                    , inrms = rms $
+                    , lo_thresh = 2 $
+                    , hi_thresh = 3.5 $
+                    , hi_nchan = 3 $
+                    , min_area = ppbeam $
+                    , outmask=prelim_mask
+
+                 out_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    'prelim_mask.fits'
+                 writefits, out_file, prelim_mask, cube_hdr
+                 
+              endfor
+              
+           endfor
+
+        endfor
+
+     endfor
+
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; ESTIMATE THE NOISE FOR EACH CUBE
@@ -98,8 +191,7 @@ pro build_products $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      ext_to_process = $
-        ['flat_round_k' $
-         , 'pbcorr_round_k']
+        ['flat_round_k']
      n_ext = n_elements(ext_to_process)
      
      for ii = 0, n_fullgals-1 do begin
@@ -120,6 +212,11 @@ pro build_products $
            if n_elements(just_array) gt 0 then $
               if total(just_array eq this_array) eq 0 then continue
 
+           prelim_mask_file = $
+              release_dir+'process/'+ $
+              this_gal+'_'+this_array+'_'+ $
+              'prelim_mask.fits'
+           
            for kk = 0, n_product-1 do begin
               
               this_product = product_list[kk]
@@ -149,12 +246,20 @@ pro build_products $
                     endif                 
                     
                     cube = readfits(in_file, hdr)
-                    
+
+                    if file_test(prelim_mask_file) then begin
+                       prelim_mask = readfits(prelim_mask_file)
+                    endif else begin
+                       prelim_mask = finite(cube) eq 0 
+                    endelse
+
                     make_noise_cube $
                        , cube_in = cube $
                        , out_cube = rms_cube $
-                       , box = 5 $
-                       , /twod_only $
+                       , mask_in = prelim_mask $
+                       , box=11, spec_box=5 $
+                       ;, twod_only, box=5 $
+                       ;, /oned_only, spec_box=2 $
                        , /show $
                        , /iterate
                     
@@ -289,6 +394,7 @@ pro build_products $
                  release_dir+'process/'+ $
                  this_gal+'_'+this_array+'_'+ $
                  this_product+ $
+                 ;'_signalmask_1250pc.fits'
                  '_signalmask_500pc.fits'
 
               test = file_search(lores_fname, count=found)

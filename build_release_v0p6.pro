@@ -26,8 +26,8 @@ pro build_release_v0p6 $
 ; DIRECTORIES
   version = '0.6'
   vstring = 'v0p6'
-  root_imaging_dir = '../'
-  release_dir = root_imaging_dir+'release/'+vstring+'/'
+  root_imaging_dir = '../v1/'
+  release_dir = '../release/'+vstring+'/'
 
 ; GALAXIES
   gals = $
@@ -50,6 +50,29 @@ pro build_release_v0p6 $
       , 'ngc4535' $
       , 'ngc5068' $
       , 'ngc6744' $
+     ]
+
+  nan = !values.f_nan
+  dist_list = $
+     [nan $
+      , 9.0 $
+      , nan $
+      , nan $
+      , nan $
+      , nan $
+      , nan $
+      , nan $
+      , nan $
+      , 11.9 $
+      , 10.1 $
+      , 10.0 $
+      , 8.28 $
+      , 16.8 $
+      , 17.6 $
+      , 15.2 $
+      , 15.8 $
+      , 9.0 $
+      , 11.6 $
      ]
 
   has_12m = $
@@ -82,7 +105,8 @@ pro build_release_v0p6 $
   mom1_thresh = 25.0d
   mom0_thresh = 2.0d
 
-  target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+  ;target_res = [45, 60, 80, 100, 120, 500, 750, 1000]
+  target_res = [70]
   n_res = n_elements(target_res)
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -167,7 +191,7 @@ pro build_release_v0p6 $
               endelse
               
               for zz = 0, n_elements(galname)-1 do begin                     
-                 spawn, 'cp '+root_imaging_dir+gals[ii]+'/'+ $
+                 spawn, 'cp '+root_imaging_dir+gals[ii]+'_v1/'+ $
                         galname[zz]+'_co21'+array+ext_to_copy[jj]+' '+ $
                         release_dir+'raw/.'
               endfor
@@ -1251,6 +1275,9 @@ pro build_release_v0p6 $
         message, "Convolving the cubes for "+gals[ii], /info
         message, '', /info
 
+        this_dist = dist_list[ii]
+        if finite(this_dist) eq 0 then this_dist = s[ii].dist_mpc
+
         if n_elements(just) gt 0 then $
            if total(strlowcase(just) eq strlowcase(gals[ii])) eq 0 then continue
 
@@ -1281,15 +1308,15 @@ pro build_release_v0p6 $
               
               cube = readfits(dir+strlowcase(gal)+ $
                               '_co21'+array+ext_to_process[jj]+'.fits', hdr)           
-              sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'           
-              current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
+              sxaddpar, hdr, 'DIST', this_dist, 'MPC / USED IN CONVOLUTION'           
+              current_res_pc = this_dist*!dtor*sxpar(hdr, 'BMAJ')*1d6
               
               for zz = 0, n_res -1 do begin
                  
                  res_str = strcompress(str(target_res[zz]),/rem)+'pc'
                  out_name = dir+strlowcase(gal)+ $
                             '_co21'+array+ext_to_process[jj]+'_'+res_str+'.fits'
-                 target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                 target_res_as = target_res[zz]/(this_dist*1d6)/!dtor*3600.d
                  
                  if current_res_pc gt (1.0+tol)*target_res[zz] then begin
                     print, strupcase(gal)+": Resolution too coarse. Skipping."

@@ -12,6 +12,7 @@ pro build_cubes $
    , feather=do_copy_feather $
    , merge=do_merge $
    , sanitize=do_sanitize $
+   , clear_convolve=do_clear_convolve $
    , convolve=do_conv_to_res $
    , target_res=target_res
 
@@ -86,7 +87,7 @@ pro build_cubes $
 ; RESOLUTIONS
 
   if n_elements(target_res) eq 0 then begin
-     target_res = [45, 60, 80, 100, 120, 500, 750, 1000, 1250, 1500, 2000]
+     target_res = [60, 90, 150, 500, 1250]
   endif
   n_res = n_elements(target_res)
 
@@ -713,7 +714,7 @@ pro build_cubes $
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; MERGE MULTI-FIELD CUBES
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
- 
+  
 ; This part of the script assumes that the directory name is the
 ; galaxy name (or at least the name of the synthesized product created
 ; by combining the fields).
@@ -1424,15 +1425,15 @@ pro build_cubes $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; CONVOLVE TO SPECIFIC RESOLUTION
+; IF REQUESTED, WIPE PREVIOUS VERSIONS OF THE CONVOLUTION
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  if keyword_set(do_conv_to_res) then begin
-     
+  if keyword_set(do_clear_convolve) then begin
+
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'CONVOLVING TO FIXED PHYSICAL RESOLUTION', /info
+     message, 'REMOVING PREVIOUS VERSIONS OF THE CONVOLUTION', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
-     
+
      dir = release_dir+'process/'
      tol = 0.1
 
@@ -1453,77 +1454,139 @@ pro build_cubes $
 
         this_gal = fullgal_list[ii]
 
-        message, "Convolving the cubes for "+this_gal, /info
+        message, "Wiping convolved cubes for "+this_gal, /info
 
         for jj = 0, n_fullarray - 1 do begin
 
            this_array = fullarray_list[jj]
            if n_elements(just_array) gt 0 then $
               if total(just_array eq this_array) eq 0 then continue
+           
+           flist = file_search(release_dir+'process/'+ $
+                               this_gal+'_'+this_array+'_*pc.fits' $
+                               , count=fct)
+           
+           if fct eq 0 then continue
 
-           for kk = 0, n_product-1 do begin
-              
-              this_product = product_list[kk]
+           for kk = 0, fct-1 do begin
 
-              for ll = 0, n_ext-1 do begin
+              command = 'rm -rf '+flist[kk]
+              print, command
+              spawn, command
 
-                 this_ext = ext_to_process[ll]
+           endfor
+
+        endfor
+
+     endfor
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'DONE CLEARING PREVIOUS CONVOLUTIONS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+     
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; CONVOLVE TO SPECIFIC RESOLUTION
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+     if keyword_set(do_conv_to_res) then begin
+        
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'CONVOLVING TO FIXED PHYSICAL RESOLUTION', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+        
+        dir = release_dir+'process/'
+        tol = 0.1
+
+        s = gal_data(gal_for_fullgals)
+
+        ext_to_process = $
+           ['flat_round_k' $
+            , 'pbcorr_round_k']
+        n_ext = n_elements(ext_to_process)
+        
+        for ii = 0, n_fullgals-1 do begin
+           
+           if n_elements(only) gt 0 then $
+              if total(only eq fullgal_list[ii]) eq 0 then continue
+
+           if n_elements(skip) gt 0 then $
+              if total(skip eq fullgal_list[ii]) gt 0 then continue
+
+           this_gal = fullgal_list[ii]
+
+           message, "Convolving the cubes for "+this_gal, /info
+
+           for jj = 0, n_fullarray - 1 do begin
+
+              this_array = fullarray_list[jj]
+              if n_elements(just_array) gt 0 then $
+                 if total(just_array eq this_array) eq 0 then continue
+
+              for kk = 0, n_product-1 do begin
                  
-                 in_file = release_dir+'process/'+ $
-                           this_gal+'_'+this_array+'_'+ $
-                           this_product+'_'+this_ext+'.fits'
-                 
-                 test = file_search(in_file, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+in_file+' not found.', /info
-                    continue
-                 endif                 
+                 this_product = product_list[kk]
 
-                 cube = readfits(in_file, hdr)
+                 for ll = 0, n_ext-1 do begin
 
-                 sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'
-                 current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
-                 
-                 for zz = 0, n_res -1 do begin
+                    this_ext = ext_to_process[ll]
                     
-                    res_str = strcompress(str(target_res[zz]),/rem)+'pc'
-                    out_file = release_dir+'process/'+ $
-                               this_gal+'_'+this_array+'_'+ $
-                               this_product+'_'+this_ext+'_'+res_str+'.fits'
-                    target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                    in_file = release_dir+'process/'+ $
+                              this_gal+'_'+this_array+'_'+ $
+                              this_product+'_'+this_ext+'.fits'
                     
-                    if current_res_pc gt (1.0+tol)*target_res[zz] then begin
-                       print, strupcase(this_gal)+": Resolution too coarse. Skipping."
+                    test = file_search(in_file, count=found)
+                    if found eq 0 then begin
+                       message, 'File '+in_file+' not found.', /info
                        continue
-                    endif
+                    endif                 
+
+                    cube = readfits(in_file, hdr)
+
+                    sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'
+                    current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
                     
-                    if abs(current_res_pc - target_res[zz])/target_res[zz] lt tol then begin
-                       print, strupcase(this_gal)+": I will call ", current_res_pc, " ", target_res[zz]
-                       writefits, out_file, cube, hdr
-                    endif else begin
-                       print, strupcase(this_gal)+": I will convolve ", current_res_pc $
-                              , " to ", target_res[zz]
-                       conv_with_gauss $
-                          , data=cube $
-                          , hdr=hdr $
-                          , target_beam=target_res_as*[1,1,0] $
-                          , out_file=out_file
-                    endelse
+                    for zz = 0, n_res -1 do begin
+                       
+                       res_str = strcompress(str(target_res[zz]),/rem)+'pc'
+                       out_file = release_dir+'process/'+ $
+                                  this_gal+'_'+this_array+'_'+ $
+                                  this_product+'_'+this_ext+'_'+res_str+'.fits'
+                       target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                       
+                       if current_res_pc gt (1.0+tol)*target_res[zz] then begin
+                          print, strupcase(this_gal)+": Resolution too coarse. Skipping."
+                          continue
+                       endif
+                       
+                       if abs(current_res_pc - target_res[zz])/target_res[zz] lt tol then begin
+                          print, strupcase(this_gal)+": I will call ", current_res_pc, " ", target_res[zz]
+                          writefits, out_file, cube, hdr
+                       endif else begin
+                          print, strupcase(this_gal)+": I will convolve ", current_res_pc $
+                                 , " to ", target_res[zz]
+                          conv_with_gauss $
+                             , data=cube $
+                             , hdr=hdr $
+                             , target_beam=target_res_as*[1,1,0] $
+                             , out_file=out_file
+                       endelse
+                       
+                    endfor
                     
                  endfor
                  
               endfor
               
            endfor
-           
+
         endfor
 
-     endfor
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+        message, 'CONVOLVING TO FIXED PHYSICAL RESOLUTION', /info
+        message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
+        
+     endif
 
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'CONVOLVING TO FIXED PHYSICAL RESOLUTION', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
-     
-  endif
-
-end
+  end
