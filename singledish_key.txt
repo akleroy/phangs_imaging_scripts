@@ -43,14 +43,21 @@ ngc1809		../singledish/cycle5_data/ALMA_TP.NGC1809.CO21.image.VLSRK.fits				co21
 ngc2090		../singledish/cycle5_data/ALMA_TP.NGC2090.CO21.image.VLSRK.fits				co21
 ngc2283		../singledish/cycle5_data/ALMA_TP.NGC2283.CO21.image.VLSRK.fits				co21
 ngc2903_2	../singledish/cycle5_data/ALMA_TP.NGC2903.CO21.image.VLSRK.fits				co21
+ngc2903_3	../singledish/cycle5_data/ALMA_TP.NGC2903.c.CO21.image.VLSRK.fits			co21
+ngc2997_3	../singledish/cycle5_data/ALMA_TP.NGC2997.CO21.c.image.VLSRK.fits			co21
+ngc3137		../singledish/cycle5_data/ALMA_TP.NGC3137.CO21.image.VLSRK.fits				co21
 ngc3239		../singledish/cycle5_data/ALMA_TP.NGC3239.CO21.image.VLSRK.fits				co21
+ngc3507		../singledish/cycle5_data/ALMA_TP.NGC3507.CO21.image.VLSRK.fits				co21
+ngc3596		../singledish/cycle5_data/ALMA_TP.NGC3596.CO21.image.VLSRK.fits				co21
 ngc3626		../singledish/cycle5_data/ALMA_TP.NGC3626.CO21.image.VLSRK.fits				co21
 ngc4207		../singledish/cycle5_data/ALMA_TP.NGC4207.CO21.image.VLSRK.fits				co21
 ngc4424		../singledish/cycle5_data/ALMA_TP.NGC4424.CO21.image.VLSRK.fits				co21
 ngc4457		../singledish/cycle5_data/ALMA_TP.NGC4457.CO21.image.VLSRK.fits				co21
 ngc4496a	../singledish/cycle5_data/ALMA_TP.NGC4496A.CO21.image.VLSRK.fits			co21
 ngc4536_1	../singledish/cycle5_data/ALMA_TP.NGC4536.CO21.a.image.VLSRK.fits			co21
+ngc4536_2	../singledish/cycle5_data/ALMA_TP.NGC4536.CO21.b.image.VLSRK.fits			co21
 ngc4540		../singledish/cycle5_data/ALMA_TP.NGC4540.CO21.image.VLSRK.fits				co21
+ngc4571		../singledish/cycle5_data/ALMA_TP.NGC4571.CO21.image.VLSRK.fits				co21
 ngc4694		../singledish/cycle5_data/ALMA_TP.NGC4694.CO21.image.VLSRK.fits				co21
 ngc4689		../singledish/cycle5_data/ALMA_TP.NGC4689.CO21.image.VLSRK.fits				co21
 ngc4731		../singledish/cycle5_data/ALMA_TP.NGC4731.CO21.image.VLSRK.fits				co21
@@ -64,3 +71,4 @@ ngc5643_2	../singledish/cycle5_data/ALMA_TP.NGC5643.CO21.b.image.VLSRK.fits			co
 ngc6300		../singledish/cycle5_data/ALMA_TP.NGC6300.CO21.image.VLSRK.fits				co21
 ngc7456		../singledish/cycle5_data/ALMA_TP.NGC7456.CO21.image.VLSRK.fits				co21
 ngc7496		../singledish/cycle5_data/ALMA_TP.NGC7496.CO21.image.VLSRK.fits				co21
+
