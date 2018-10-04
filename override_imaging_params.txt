@@ -7,6 +7,7 @@ ngc1365_12m+7m_co21		smallscalebias		0.9
 ngc1365_12m_co21		smallscalebias		0.9
 ngc1365_7m_co21			smallscalebias		0.7
 #
+ngc2903_1_12m+7m_co21		pblimit			0.5
 ngc2903_2_12m+7m_co21		pblimit			0.5
 #
 ngc4321north_12m+7m_co21	pblimit			0.5
