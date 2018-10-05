@@ -21,11 +21,6 @@ pro build_products_12m $
 ;
 ;-
 
-; THRESHOLDS FOR MOMENT CREATION
-
-  mom1_thresh = 2.5d
-  mom0_thresh = 3.0d
-
 ; DIRECTORIES
 
   root_imaging_dir = '../'
@@ -405,7 +400,8 @@ pro build_products_12m $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
 
      ext_to_process = $
-        ['flat_round_k']
+        ['flat_round_k' $
+         , 'pbcorr_round_k']
      n_ext = n_elements(ext_to_process)
 
      first = 0B
@@ -485,10 +481,11 @@ pro build_products_12m $
                        , out_cube = rms_cube $
                        , mask_in = prelim_mask $
                        , box=11, spec_box=5 $
-                                ;, twod_only, box=5 $
-                                ;, /oned_only, spec_box=2 $
                        , /show $
                        , /iterate
+
+                                ;, twod_only, box=5 $
+                                ;, /oned_only, spec_box=2 $
                     
                     out_file = $
                        release_dir+'process/'+ $
@@ -816,6 +813,8 @@ pro build_products_12m $
 ; inelegantly by dividing the flat and pbcorr cube at the appropriate
 ; resolution to construct a correction factor.
 
+; REPLACE THIS WIT THE PRIMARY BEAM CORRECTED VERSION WHEN AVAILABLE
+
                  noise_file = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
@@ -829,7 +828,7 @@ pro build_products_12m $
                  endif                 
                  rms_cube = readfits(noise_file, noise_hdr)
                  
-; Read the cube itself. Both the flat and pbcorr versions.                 
+; Read the cube itself.
 
                  cube_file = $
                     release_dir+'process/'+ $
@@ -850,23 +849,6 @@ pro build_products_12m $
                     this_product+'_pbcorr_round_k'+ $
                     res_str+'.fits'
 
-; Read the flat cube and immediately just use it to construct the
-; correction factor. Then apply that to the noise cube.
-
-                 flat_cube_file = $
-                    release_dir+'process/'+ $
-                    this_gal+'_'+this_array+'_'+ $
-                    this_product+'_flat_round_k'+ $
-                    res_str+'.fits'                 
-                 
-                 test = file_search(flat_cube_file, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+flat_cube_file+' not found.', /info
-                    continue
-                 endif                 
-                 pbcube = $
-                    cube/readfits(flat_cube_file)
-                 
 ; Now read the mask appropriate for this resolution. For this step, we
 ; use only the signalmask and construct simple moments.
                  
@@ -900,15 +882,15 @@ pro build_products_12m $
                     , cube=cube $
                     , hdr=cube_hdr $
                     , mask=mom0_mask $
-                    , noise=rms_cube*pbcube $
+                    , noise=rms_cube $
                     , mom0 = mom0 $
                     , e_mom0 = e_mom0 $
                     , mom1 = mom1 $
                     , e_mom1 = e_mom1 $
                     , ew = ew $
                     , e_ew = e_ew $
-                    , tpeak = tpeak
-                 
+                    , tpeak = tpeak                                  
+
                  mom0_hdr = twod_head(cube_hdr)
                  sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
                  mom0[blank_ind] = !values.f_nan
@@ -957,13 +939,16 @@ pro build_products_12m $
                     , cube=cube $
                     , hdr=cube_hdr $
                     , mask=mask $
-                    , noise=rms_cube*pbcube $
+                    , noise=rms_cube $
                     , mom1 = mom1 $
                     , e_mom1 = e_mom1 $
                     , mom2 = mom2 $
                     , e_mom2 = e_mom2 $
                     , tpeak = tpeak $                  
-                    , tmin = tmin
+                    , tmin = tmin $
+                    , vquad = vquad $
+                    , e_vquad = e_vquad $
+                    , vpeak = vpeak
 
                  peak_to_edge = tpeak/tmin
 
@@ -1011,6 +996,38 @@ pro build_products_12m $
                  
                  writefits, emom1_fname, e_mom1, mom1_hdr
 
+                 vpeak_hdr = twod_head(cube_hdr)
+                 sxaddpar, vpeak_hdr, 'BUNIT', 'KM/S'
+                 vpeak[blank_ind] = !values.f_nan
+
+                 vpeak_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_vpeak'+ $
+                    res_str+'.fits'
+                 
+                 writefits, vpeak_fname, vpeak, vpeak_hdr                 
+
+                 vquad_hdr = twod_head(cube_hdr)
+                 sxaddpar, vquad_hdr, 'BUNIT', 'KM/S'
+                 vquad[blank_ind] = !values.f_nan
+
+                 vquad_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_vquad'+ $
+                    res_str+'.fits'
+                 
+                 writefits, vquad_fname, vquad, vquad_hdr                 
+
+                 evquad_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_evquad'+ $
+                    res_str+'.fits'
+                 
+                 writefits, evquad_fname, e_vquad, vquad_hdr
+
 ; The mask used for the peak temperature is right now the full width
 ; of the mask across the galaxy. This can be improved at least a bit
 ; while still staying general. One improvement would be to use the
@@ -1057,9 +1074,11 @@ pro build_products_12m $
                  loadct, 33
                  disp, tpeak_12p5, /sq
                  disp, mom0, /sq
-                 disp, mom1, /sq
                  disp, ew, /sq
-                 disp, mom2, /sq
+                 disp, mom1, /sq
+                 disp, vpeak, /sq
+                 disp, vquad, /sq
+                 ;disp, mom2, /sq
 
               endfor
 
@@ -1135,6 +1154,7 @@ pro build_products_12m $
 ; inelegantly by dividing the flat and pbcorr cube at the appropriate
 ; resolution to construct a correction factor.
 
+; REPLACE THIS WIT THE PRIMARY BEAM CORRECTED VERSION WHEN AVAILABLE
                  noise_file = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
@@ -1148,7 +1168,7 @@ pro build_products_12m $
                  endif                 
                  rms_cube = readfits(noise_file, noise_hdr)
                  
-; Read the cube itself. Both the flat and pbcorr versions.                 
+; Read the cube itself.
 
                  cube_file = $
                     release_dir+'process/'+ $
@@ -1168,23 +1188,6 @@ pro build_products_12m $
                     this_gal+'_'+this_array+'_'+ $
                     this_product+'_pbcorr_round_k'+ $
                     res_str+'.fits'
-
-; Read the flat cube and immediately just use it to construct the
-; correction factor. Then apply that to the noise cube.
-
-                 flat_cube_file = $
-                    release_dir+'process/'+ $
-                    this_gal+'_'+this_array+'_'+ $
-                    this_product+'_flat_round_k'+ $
-                    res_str+'.fits'                 
-                 
-                 test = file_search(flat_cube_file, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+flat_cube_file+' not found.', /info
-                    continue
-                 endif                 
-                 pbcube = $
-                    cube/readfits(flat_cube_file)
 
 ; Now read the mask appropriate for this resolution. We want to use
 ; the "hybrid" masks, which combine the low low resolution detections
@@ -1215,7 +1218,7 @@ pro build_products_12m $
                     , cube=cube $
                     , hdr=cube_hdr $
                     , mask=mask $
-                    , noise=rms_cube*pbcube $
+                    , noise=rms_cube $
                     , mom0 = mom0 $
                     , e_mom0 = e_mom0 $
                     , mom1 = mom1 $
