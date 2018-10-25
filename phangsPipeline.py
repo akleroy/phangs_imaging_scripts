@@ -30,6 +30,7 @@ from split import split
 from statwt import statwt
 from tclean import tclean
 from uvcontsub import uvcontsub
+from visstat import visstat
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
@@ -1203,6 +1204,29 @@ def extract_continuum_for_galaxy(
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to characterize measurement sets
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+def noise_spectrum(
+    vis=None,
+    stat_name="medabsdevmed"):
+    """
+    Calculates the u-v based noise spectrum and returns it as an array.
+    """
+    if vis == None:
+        return None
+    
+   # Note the number of channels in SPW 0
+
+    vm = au.ValueMapping(vis)
+    nchan = vm.spwInfo[0]['numChannels']
+    spec = np.zeros(nchan)
+    for ii in range(nchan):
+        result = visstat(vis=vis,
+                         axis='amp',
+                         spw='0:'+str(ii),
+                         )
+        spec[ii] = result[result.keys()[0]][stat_name]
+        
+    return spec
 
 def pick_phangs_cell_and_imsize(
     in_file=None,
