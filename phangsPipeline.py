@@ -260,7 +260,7 @@ def concat_line_for_gal(
     if do_statwt:
         statwt(vis=out_file,
                datacolumn='DATA',
-               fitspw=spw_statwt)
+               spw=spw_statwt)
 
     # Collapse to form a "channel 0" measurement set
 
@@ -686,21 +686,28 @@ def extract_line(in_file=None,
             print "... no spectral windows contain this line at this redshift."
         return
 
+    if quiet == False:
+        print "... spectral windows to consider: "+spw_list_string
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 1. Shift the zero point and velocity range to cover the
     # desired window. Do NOT change the channel width at this stage.
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    if quiet == False:
-        print "... shifting the zero point using linear interpolation"
-
     start_vel_kms = (vsys - vwidth/2.0)
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)    
-    nchan_for_recenter = int(ceil(vwidth / current_chan_width_kms))
+    nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
 
     restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
     start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
+
+    if quiet == False:
+        print "... shifting the zero point using linear interpolation"
+        print "... rest frequency: "+restfreq_string
+        print "... new starting velocity: "+start_vel_string
+        print "... original velocity width: "+str(current_chan_width_kms)
+        print "... number of channels at this stage: "+str(nchan_for_recenter)
 
     os.system('rm -rf '+out_file+'.temp')
     os.system('rm -rf '+out_file+'.temp.flagversions')
@@ -726,14 +733,16 @@ def extract_line(in_file=None,
     # desired channel width.
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    if quiet == False:
-        print "... channel averaging"
-
     target_width_hz = abs(chan_width/sol_kms*restfreq_ghz*1e9)
-    rebin_factor = int(floor(min(target_width_hz / chan_width_hz)))
+    rebin_factor = int(np.floor(min(np.abs(target_width_hz / chan_width_hz))))
 
     if rebin_factor == 0:
         rebin_factor = 1
+
+    if quiet == False:
+        print "... channel averaging"
+        print "... target velocity width: "+str(chan_width)
+        print "... rebinning factor: "+str(rebin_factor)
 
     os.system('rm -rf '+out_file+'.temp2')
     os.system('rm -rf '+out_file+'.temp2.flagversions')
@@ -754,6 +763,7 @@ def extract_line(in_file=None,
 
         if quiet == False:
             print "... interpolating to a new channel width"
+            print "... this is currently NOT RECOMMENDED."
 
         chan_dv_string =  "{:5.2f}".format(chan_width)+'km/s'
         os.system('rm -rf '+out_file+'.temp3')
