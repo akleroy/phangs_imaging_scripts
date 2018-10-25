@@ -76,7 +76,7 @@ def copy_data(gal=None,
 
     if quiet == False:
         print "--------------------------------------------------------"
-        print "START: Copying data from original location."
+        print "START: Linking to the original data location."
         print "--------------------------------------------------------"
 
         print "Galaxy: ", gal
@@ -118,15 +118,20 @@ def copy_data(gal=None,
             else:
                 copied_file = gal+'_'+this_proj+'_'+this_ms+'.ms'
 
+            # Copy. We could place a symbolic link here using ln -s
+            # instead, but instead I think the right move is to make
+            # the intermediate files and then clean them up. This
+            # avoids "touching" the original data at all.
+
             os.system('rm -rf '+copied_file)
             os.system('rm -rf '+copied_file+'.flagversions')
 
-            command = 'cp -r -H '+in_file+' '+copied_file
+            command = 'cp -r '+in_file+' '+copied_file
             print command
             var = os.system(command)    
             print var
 
-            # Call split and statwt if desired (default is yes)
+            # Call split and statwt if desired.
 
             if do_split:
 
@@ -138,8 +143,9 @@ def copy_data(gal=None,
                 os.system('rm -rf '+out_file)
                 os.system('rm -rf '+out_file+'.flagversions')
                 
-                # If present, use the corrected column. If not, then
-                # use the data column.
+                # If present, we use the corrected column. If not,
+                # then we use the data column.
+
                 mytb = au.createCasaTool(tbtool)
                 mytb.open(copied_file)
                 colnames = mytb.colnames()
@@ -610,19 +616,28 @@ def extract_line(in_file=None,
                  line='co21',
                  gal=None,
                  vsys=0.0,
-                 vwidth=500.,
+                 vwidth=500.,                 
                  chan_width=2.5,
+                 rebin_only=True,
                  quiet=False):
     """
     Extract a spectral line from a measurement set and regrid onto a
     new velocity grid with the desired spacing. This doesn't
     necessarily need the PHANGS keys in place and may be a general
-    purpose utility.
+    purpose utility. There are some minor subtleties here related to
+    regridding and rebinning.
     """
+
+
+    if quiet == False:
+        print "EXTRACT_LINE begins:"
 
     sol_kms = 2.99e5
 
-    # pull the parameters from the galaxy in the mosaic file
+    # pull the parameters from the galaxy in the mosaic file. This is
+    # PHANGS-specific. Just ignore the gal keyword to use the routine
+    # for non-PHANGS applications.
+
     if gal != None:
         mosaic_parms = read_mosaic_key()
         if mosaic_parms.has_key(gal):
@@ -633,14 +648,14 @@ def extract_line(in_file=None,
 
     if os.path.isdir(in_file) == False:
         if quiet == False:
-            print "Input file not found."
+            print "... input file not found."
         return
 
     # Look up the line
 
     if line_list.line_list.has_key(line) == False:
         if quiet == False:
-            print "Line not found. Give lower case abbreviate found in line_list.py"
+            print "... line not found. Give lower case abbreviate found in line_list.py"
         return
     restfreq_ghz = line_list.line_list[line]
 
@@ -668,102 +683,123 @@ def extract_line(in_file=None,
 
     if len(spw_list) == 0:
         if quiet == False:
-            print "No spectral windows contain this line at this redshift."
+            print "... no spectral windows contain this line at this redshift."
         return
 
-    # Figure out the starting velocity and number of channels.
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 1. Shift the zero point and velocity range to cover the
+    # desired window. Do NOT change the channel width at this stage.
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    if quiet == False:
+        print "... shifting the zero point using linear interpolation"
 
     start_vel_kms = (vsys - vwidth/2.0)
-    nchan = int(np.floor(vwidth / chan_width)+1)
-
-    # Convert to strings. The precision is hardcoded with
-    # extragalactic ALMA work in mind.
-
-    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
-    chan_dv_string =  "{:5.2f}".format(chan_width)+'km/s'
-    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
-
-    # Figure out how much averaging is needed to reach the target resolution
-
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)    
-    target_width_hz = chan_width/sol_kms*restfreq_ghz*1e9
-    rebin_factor = min(target_width_hz / chan_width_hz)
+    nchan_for_recenter = int(ceil(vwidth / current_chan_width_kms))
 
-    if max(current_chan_width_kms) > chan_width:
-        print "Requested channel width is smaller than the starting width. Returning."
-        return
-    
-    if rebin_factor < 2:
-        chanbin = 1
-    else:
-        chanbin = int(np.floor(rebin_factor/2.))
+    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
+    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
 
-    if chanbin > 1:
-        chanaverage = True
-    else:
-        chanaverage = False
-
-    # Report the call
-
-    if quiet == False:        
-        print "FILE:", in_file
-        print "LINE TAG: ", line
-        print "REST FREQUENCY: ", restfreq_string
-        print "SPECTRAL WINDOWS: ", spw_list
-        print "STARTING CHANNEL WIDTH: ", current_chan_width_kms
-        print "TARGET CHANNEL WIDTH: ", chan_dv_string
-        print "SUPPLIED SOURCE VELOCITY: ", str(vsys)
-        print "DESIRED VELOCITY WIDTH: ", str(vwidth)
-        print "START VELOCITY: ", start_vel_string
-        print "NUMBER OF CHANNELS: ", str(nchan)
-        print "CHANNELS TO BIN TOGETHER FIRST (CURRENTLY DEPRECATED): ", chanbin
-
-    # Call mstransform
-    
     os.system('rm -rf '+out_file+'.temp')
     os.system('rm -rf '+out_file+'.temp.flagversions')
-
-    chanbin = 1
-    chanaverage = False
-    
-    #mstransform(vis=in_file,
-    #            outputvis=out_file+'.temp',
-    #            spw=spw_list_string,
-    #            datacolumn='DATA',
-    #            chanaverage=chanaverage,
-    #            chanbin=chanbin,
-    #            hanning=False,
-    #            interpolation='cubic',
-    #            )
-
-    split(vis=in_file,
-          outputvis=out_file+'.temp',
-          spw=spw_list_string,
-          datacolumn='DATA',
-          width=chanbin)
-
-    os.system('rm -rf '+out_file)
-    os.system('rm -rf '+out_file+'.flagversions')
-
-    mstransform(vis=out_file+'.temp',
-                outputvis=out_file,
-                spw='',
+    mstransform(vis=in_file,
+                outputvis=out_file+'.temp',
+                spw=spw_list_string,
                 datacolumn='DATA',
-                combinespws=True,
+                combinespws=False,
                 regridms=True,
                 mode='velocity',
-                interpolation='cubic',
+                interpolation='linear',
                 start=start_vel_string,
-                nchan=nchan,
-                width=chan_dv_string,
+                nchan=nchan_for_recenter,
                 restfreq=restfreq_string,
                 outframe='lsrk',
                 veltype='radio',
                 )
+    current_file = out_file+'.temp'
 
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 2. Change the channel width by integer binning. Figure out
+    # the maximum amount of rebinning to approach but not exceed the
+    # desired channel width.
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    if quiet == False:
+        print "... channel averaging"
+
+    target_width_hz = abs(chan_width/sol_kms*restfreq_ghz*1e9)
+    rebin_factor = int(floor(min(target_width_hz / chan_width_hz)))
+
+    if rebin_factor == 0:
+        rebin_factor = 1
+
+    os.system('rm -rf '+out_file+'.temp2')
+    os.system('rm -rf '+out_file+'.temp2.flagversions')
+    mstransform(vis=current_file,
+                outputvis=out_file+'.temp2',
+                spw='',
+                datacolumn='DATA',
+                regridms=False,
+                chanaverage=True,
+                chanbin=rebin_factor,
+                )
+    current_file = out_file+'.temp2'
+    
+    # Optionally but not currently recommended: regrid and interpolate
+    # to a user-chosen channel width.
+
+    if rebin_only == False:
+
+        if quiet == False:
+            print "... interpolating to a new channel width"
+
+        chan_dv_string =  "{:5.2f}".format(chan_width)+'km/s'
+        os.system('rm -rf '+out_file+'.temp3')
+        os.system('rm -rf '+out_file+'.temp3.flagversions')
+        mstransform(vis=current_file,
+                    outputvis=out_file+'.temp2',
+                    spw='',
+                    datacolumn='DATA',
+                    regridms=True,
+                    mode='velocity',
+                    interpolation='cubic',
+                    width=chan_dv_string,
+                    restfreq=restfreq_string,
+                    outframe='lsrk',
+                    veltype='radio',                    
+                    )    
+        current_file = out_file+'.temp3'
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 3. Combine the SPWs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    if quiet == False:
+        print "... combining spectral windows"
+
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')    
+    mstransform(vis=current_file,
+                outputvis=out_file,
+                spw='',
+                datacolumn='DATA',
+                regridms=False,
+                chanaverage=False,
+                combinespws=True
+                )    
+
+    if quiet == False:
+        print "... deleting old files"
+        
+    # Clean up
     os.system('rm -rf '+out_file+'.temp')
     os.system('rm -rf '+out_file+'.temp.flagversions')
+    os.system('rm -rf '+out_file+'.temp2')
+    os.system('rm -rf '+out_file+'.temp2.flagversions')
+    os.system('rm -rf '+out_file+'.temp3')
+    os.system('rm -rf '+out_file+'.temp3.flagversions')
 
     return
 
