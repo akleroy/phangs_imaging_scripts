@@ -15,7 +15,7 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = []
+only = ['ngc1672']
 
 # ... skip these galaxies.
 
@@ -31,8 +31,8 @@ last = ""
 # data are processed, then the script will also create 12m+7m data. So
 # you need to rerun the staging when both data sets arrive.
 
-just_array = None
-#just_array = '7m'
+#just_array = None
+just_array = '12m'
 
 # ... set these variables to indicate what steps of the script should
 # carry out. The steps do:
@@ -57,11 +57,12 @@ just_array = None
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = False #True
-do_custom_scripts = True #True
+do_copy = False
+do_custom_scripts = False
 do_extract_lines = True
-do_extract_cont = True #True
+do_extract_cont = False
 do_only_new = False
+do_cleanup = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop
@@ -105,6 +106,10 @@ for gal in gals:
             print ""
             continue
 
+    # Copy the calibrated data to the working directory. Split out the
+    # source observations. The copies will be deleted late, but ensure
+    # that nothing we do should damage the original calibrated MSes.
+
     if do_copy:
         pp.copy_data(
             gal=gal,
@@ -113,12 +118,19 @@ for gal in gals:
             do_statwt=False,
             quiet=False)
 
+    # Optionally, run custom scripts at this stage. This could, for
+    # example, flag data or carry out uv continuum subtraction. The
+    # line and continuum extensions defined here point the subsequent
+    # programs at the processed data.
+
     line_ext = ''
     cont_ext = ''
     if do_custom_scripts:
         scripts_for_this_gal = glob.glob('../scripts/custom_staging_scripts/'+gal+'_staging_script.py')
         for this_script in scripts_for_this_gal:
             execfile(this_script)
+
+    # Extract lines.
 
     if do_extract_lines:
         pp.extract_phangs_lines(
@@ -136,6 +148,12 @@ for gal in gals:
             quiet=False,
             do_statwt=True,
             append_ext=cont_ext)
+
+    if do_cleanup:
+        pp.cleanup_phangs_staging(
+            gal=gal,
+            just_array=just_array)
+        
 
 
             

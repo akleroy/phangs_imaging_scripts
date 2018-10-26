@@ -32,12 +32,17 @@ from tclean import tclean
 from uvcontsub import uvcontsub
 from visstat import visstat
 
+# Strings useful for antenna selection
+string_7m = 'CM*'
+string_12m = 'DV*,DA*,PM*'
+string_12m7m = ''
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
-# All of these know about the PHANGS keys. They're called as part of
-# the pipeline to set up the imaging.
+# All of these fil shuffling routines know about the PHANGS
+# keys. They're called as part of the pipeline to set up the imaging.
 
 def copy_data(gal=None,
               just_proj=None,
@@ -77,7 +82,7 @@ def copy_data(gal=None,
 
     if quiet == False:
         print "--------------------------------------------------------"
-        print "START: Linking to the original data location."
+        print "START: Copying the original data."
         print "--------------------------------------------------------"
 
         print "Galaxy: ", gal
@@ -377,8 +382,14 @@ def extract_phangs_lines(
         print "--------------------------------------------------------"
 
     chan_width = {}
-    chan_width['co21'] = 2.5
-    chan_width['c18o21'] = 6.0
+    #chan_width['co21'] = 2.5
+    #chan_width['c18o21'] = 6.0
+    chan_width['co21'] = 0.5
+    chan_width['c18o21'] = 2.7
+
+    rebin_factor = {}
+    rebin_factor['co21'] = 5
+    rebin_factor['c18o21'] = 2
 
     for line in ['co21', 'c18o21']:
 
@@ -387,7 +398,9 @@ def extract_phangs_lines(
             just_array=just_array,
             line=line,
             ext=ext,
-            chan_width=chan_width[line],    
+            #chan_width=chan_width[line],    
+            chan_fine=chan_width[line],
+            rebin_factor=rebin_factor[line],
             quiet=quiet,
             append_ext=append_ext,
             )
@@ -617,9 +630,9 @@ def extract_line(in_file=None,
                  line='co21',
                  gal=None,
                  vsys=0.0,
-                 vwidth=500.,                 
+                 vwidth=500.,
                  chan_width=2.5,
-                 rebin_only=True,
+                 rebin_fine=True,
                  quiet=False):
     """
     Extract a spectral line from a measurement set and regrid onto a
@@ -814,6 +827,173 @@ def extract_line(in_file=None,
 
     return
 
+def extract_line2(in_file=None,
+                  out_file=None,
+                  line='co21',
+                  gal=None,
+                  vsys=0.0,
+                  vwidth=500.,
+                  chan_fine=0.5,
+                  rebin_factor=5,
+                  quiet=False):
+    """
+    Extract a spectral line from a measurement set and regrid onto a
+    new velocity grid with the desired spacing. This doesn't
+    necessarily need the PHANGS keys in place and may be a general
+    purpose utility. There are some minor subtleties here related to
+    regridding and rebinning.
+    """
+
+
+    if quiet == False:
+        print "EXTRACT_LINE2 begins:"
+
+    sol_kms = 2.99e5
+
+    # pull the parameters from the galaxy in the mosaic file. This is
+    # PHANGS-specific. Just ignore the gal keyword to use the routine
+    # for non-PHANGS applications.
+
+    if gal != None:
+        mosaic_parms = read_mosaic_key()
+        if mosaic_parms.has_key(gal):
+            vsys = mosaic_parms[gal]['vsys']
+            vwidth = mosaic_parms[gal]['vwidth']
+
+    # Set up the input file
+
+    if os.path.isdir(in_file) == False:
+        if quiet == False:
+            print "... input file not found."
+        return
+
+    # Look up the line
+
+    if line_list.line_list.has_key(line) == False:
+        if quiet == False:
+            print "... line not found. Give lower case abbreviate found in line_list.py"
+        return
+    restfreq_ghz = line_list.line_list[line]
+
+    # Work out which spectral windows contain the line contain
+
+    target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
+    target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
+    target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
+
+    spw_list_string = ''    
+    first = True
+    spw_list = []
+
+    for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
+        this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq*1e9)    
+        for spw in this_spw_list:
+            if spw_list.count(spw) != 0:
+                continue
+            spw_list.append(spw)
+            if not first:
+                spw_list_string += ','
+            else:
+                first = False
+            spw_list_string += str(spw)
+
+    if len(spw_list) == 0:
+        if quiet == False:
+            print "... no spectral windows contain this line at this redshift."
+        return
+
+    if quiet == False:
+        print "... spectral windows to consider: "+spw_list_string
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 1. Shift the zero point AND change the channel width.
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    start_vel_kms = (vsys - vwidth/2.0)
+    chan_width_hz = au.getChanWidths(in_file, spw_list_string)
+    current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)        
+    nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
+
+    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
+    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
+    chanwidth_string =  "{:6.2f}".format(chan_fine)+'km/s'
+
+    if quiet == False:
+        print "... shifting the zero point using linear interpolation"
+        print "... rest frequency: "+restfreq_string
+        print "... new starting velocity: "+start_vel_string
+        print "... original velocity width: "+str(current_chan_width_kms)
+        print "... target velocity width: "+str(chan_fine)
+        print "... number of channels at this stage: "+str(nchan_for_recenter)
+
+    os.system('rm -rf '+out_file+'.temp')
+    os.system('rm -rf '+out_file+'.temp.flagversions')
+    mstransform(vis=in_file,
+                outputvis=out_file+'.temp',
+                spw=spw_list_string,
+                datacolumn='DATA',
+                combinespws=False,
+                regridms=True,
+                mode='velocity',
+                interpolation='linear',
+                start=start_vel_string,
+                nchan=nchan_for_recenter,
+                restfreq=restfreq_string,
+                width=chanwidth_string,
+                outframe='lsrk',
+                veltype='radio',
+                )
+    current_file = out_file+'.temp'
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 2. Change the channel width by integer binning. 
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    if quiet == False:
+        print "... channel averaging"
+        print "... rebinning factor: "+str(rebin_factor)
+
+    os.system('rm -rf '+out_file+'.temp2')
+    os.system('rm -rf '+out_file+'.temp2.flagversions')
+    mstransform(vis=current_file,
+                outputvis=out_file+'.temp2',
+                spw='',
+                datacolumn='DATA',
+                regridms=False,
+                chanaverage=True,
+                chanbin=rebin_factor,
+                )
+    current_file = out_file+'.temp2'
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 3. Combine the SPWs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    if quiet == False:
+        print "... combining spectral windows"
+
+    os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.flagversions')    
+    mstransform(vis=current_file,
+                outputvis=out_file,
+                spw='',
+                datacolumn='DATA',
+                regridms=False,
+                chanaverage=False,
+                combinespws=True
+                )    
+
+    if quiet == False:
+        print "... deleting old files"
+        
+    # Clean up
+    os.system('rm -rf '+out_file+'.temp')
+    os.system('rm -rf '+out_file+'.temp.flagversions')
+    os.system('rm -rf '+out_file+'.temp2')
+    os.system('rm -rf '+out_file+'.temp2.flagversions')
+
+    return
+
 def extract_line_for_galaxy(   
     gal=None,
     just_proj=None,
@@ -822,7 +1002,9 @@ def extract_line_for_galaxy(
     line='co21',
     vsys=0.0,
     vwidth=500.,
-    chan_width=2.5,    
+    #chan_width=2.5,    
+    chan_fine=0.5,
+    rebin_factor=5,
     ext='',
     quiet=False,
     append_ext='',
@@ -895,12 +1077,20 @@ def extract_line_for_galaxy(
                 print "Line not found in measurement set."
                 return
 
-            extract_line(in_file=in_file,
-                         out_file=out_file,
-                         line=line,
-                         gal=gal,
-                         chan_width=chan_width,
-                         quiet=quiet)            
+            #extract_line(in_file=in_file,
+            #             out_file=out_file,
+            #             line=line,
+            #             gal=gal,
+            #             chan_width=chan_width,
+            #             quiet=quiet)            
+
+            extract_line2(in_file=in_file,
+                          out_file=out_file,
+                          line=line,
+                          gal=gal,
+                          chan_fine=chan_fine,
+                          rebin_factor=rebin_factor,
+                          quiet=quiet)            
 
     return
     
@@ -1207,7 +1397,9 @@ def extract_continuum_for_galaxy(
 
 def noise_spectrum(
     vis=None,
-    stat_name="medabsdevmed"):
+    stat_name="medabsdevmed",
+    start_chan=None,
+    stop_chan=None):
     """
     Calculates the u-v based noise spectrum and returns it as an array.
     """
@@ -1220,10 +1412,20 @@ def noise_spectrum(
     nchan = vm.spwInfo[0]['numChannels']
     spec = np.zeros(nchan)
     for ii in range(nchan):
+        if start_chan != None:
+            if ii < start_chan:
+                continue
+        if stop_chan != None:
+            if ii > stop_chan:
+                continue
+        print "Channel "+str(ii)+" / "+str(nchan)
         result = visstat(vis=vis,
                          axis='amp',
                          spw='0:'+str(ii),
                          )
+        if result == None:
+            print "Skipping channel."
+            continue
         spec[ii] = result[result.keys()[0]][stat_name]
         
     return spec
