@@ -33,9 +33,11 @@ from uvcontsub import uvcontsub
 from visstat import visstat
 
 # Strings useful for antenna selection
-string_7m = 'CM*'
-string_12m = 'DV*,DA*,PM*'
-string_12m7m = ''
+select_7m = 'CM*'
+select_12m = 'DV*,DA*,PM*'
+select_12m7m = ''
+
+sol_kms = 2.9979246e5
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
@@ -132,9 +134,14 @@ def copy_data(gal=None,
             os.system('rm -rf '+copied_file)
             os.system('rm -rf '+copied_file+'.flagversions')
 
-            command = 'cp -r '+in_file+' '+copied_file
+            command = 'cp -Lr '+in_file+' '+copied_file
             print command
             var = os.system(command)    
+            print var
+
+            command = 'cp -Lr '+in_file+'.flagversions'+' '+copied_file+'.flagversions'
+            print command
+            var = os.system(command) 
             print var
 
             # Call split and statwt if desired.
@@ -191,15 +198,15 @@ def concat_line_for_gal(
     just_array=None,
     line='co21',
     tag='',
-    do_statwt=True,
-    spw_statwt='',
     do_chan0=True,
     quiet=False):
     """
     Combine all measurement sets for one line and one galaxy.
     """
 
-    # Identify the data sets to combine
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # 1. Identify the data sets to combine
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if gal == None:
         if quiet == False:
@@ -248,7 +255,9 @@ def concat_line_for_gal(
         print "No files to concatenate found. Returning."
         return
 
-    # Concatenate all of the relevant files
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # 2. Concatenate all of the relevant files
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if tag != '':
         out_file =  gal+'_'+tag+'_'+line+'.ms'
@@ -261,14 +270,9 @@ def concat_line_for_gal(
     concat(vis=files_to_concat,
            concatvis=out_file)
 
-    # Re-weight the data empirically
-
-    if do_statwt:
-        statwt(vis=out_file,
-               datacolumn='DATA',
-               spw=spw_statwt)
-
-    # Collapse to form a "channel 0" measurement set
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # 3. Collapse to form a "channel 0" measurement set
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if do_chan0 == False:
         return
@@ -365,8 +369,6 @@ def extract_phangs_lines(
     just_array=None,
     ext='',
     quiet=False,
-    do_statwt=True,
-    spw_statwt='*:0~25',
     append_ext='',
     ):
     """
@@ -381,49 +383,81 @@ def extract_phangs_lines(
         print "START: Extracting spectral lines from data set."
         print "--------------------------------------------------------"
 
+    # Hardcoded parameters for the PHANGS lines
+
     chan_width = {}
-    #chan_width['co21'] = 2.5
-    #chan_width['c18o21'] = 6.0
-    chan_width['co21'] = 0.5
-    chan_width['c18o21'] = 2.7
+    chan_width['co21'] = 0.317506
+    chan_width['c18o21'] = 2.667046
 
     rebin_factor = {}
-    rebin_factor['co21'] = 5
+    rebin_factor['co21'] = 8
     rebin_factor['c18o21'] = 2
+    
+    edge_for_statwt = {}
+    edge_for_statwt['co21'] = 25
+    edge_for_statwt['c18o21'] = 20
 
-    for line in ['co21', 'c18o21']:
+    # Loop and extract lines for each data set
 
-        extract_line_for_galaxy(   
+    for line in ['co21', 'c18o21']:    
+
+        extract_line_for_galaxy(
             gal=gal,
             just_array=just_array,
             line=line,
             ext=ext,
-            #chan_width=chan_width[line],    
             chan_fine=chan_width[line],
             rebin_factor=rebin_factor[line],
             quiet=quiet,
             append_ext=append_ext,
+            do_statwt=True,
+            edge_for_statwt=edge_for_statwt[line],
             )
+ 
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "END: Extracting spectral lines from data set."
+        print "--------------------------------------------------------"
 
+def concat_phangs_lines(   
+    gal=None,
+    just_array=None,
+    ext='',
+    quiet=False,
+    ):
+    """
+    Concatenate the extracted lines into a few aggregated measurement
+    sets.
+    """
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "START: Concatenating spectral line measurements."
+        print "--------------------------------------------------------"
+
+    for line in ['co21', 'c18o21']:    
+
+        # Unless we just do the 12m, we build a 7m dataset
         if just_array != '12m':
             concat_line_for_gal(
                 gal=gal,
-                just_array='7m',
+                just_array = '7m',
                 tag='7m',
                 line=line,
-                do_statwt=do_statwt,
-                spw_statwt=spw_statwt,
                 do_chan0=True)
 
+        # Unless we just do the 7m, we build a 12m dataset
         if just_array != '7m':
             concat_line_for_gal(
                 gal=gal,
-                just_array='12m',
+                just_array = '12m',
                 tag='12m',
                 line=line,
-                do_statwt=do_statwt,
-                spw_statwt=spw_statwt,
                 do_chan0=True)
+
+        # This can probably be improved, but works for now. Check if
+        # we lack either 12m or 7m data, in which case there is no
+        # combined data set to make.
 
         has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
         has_12m = len(glob.glob(gal+'*12m*'+line+'*')) > 0
@@ -431,19 +465,16 @@ def extract_phangs_lines(
             continue
 
         if just_array == None:
-
             concat_line_for_gal(
                 gal=gal,
                 just_array = None,
                 tag='12m+7m',
                 line=line,
-                do_statwt=do_statwt,
-                spw_statwt=spw_statwt,
                 do_chan0=True)
 
     if quiet == False:
         print "--------------------------------------------------------"
-        print "END: Extracting spectral lines from data set."
+        print "END: Concatenating spectral line measurements."
         print "--------------------------------------------------------"
 
 def extract_phangs_continuum(   
@@ -465,10 +496,11 @@ def extract_phangs_continuum(
 
     lines_to_flag = line_list.lines_co+line_list.lines_13co+line_list.lines_c18o
 
-    # Best practice here isn't obvious - it's the continuum, so there
-    # are no signal free channels. I think we just have to hope that
-    # the signal does not swamp the noise during the statwt or
-    # consider turning off the statwt in high S/N continuum cases.
+    # Best practice here regarding statwt isn't obvious - it's the
+    # continuum, so there are no signal free channels. I think we just
+    # have to hope that the signal does not swamp the noise during the
+    # statwt or consider turning off the statwt in high S/N continuum
+    # cases.
 
     extract_continuum_for_galaxy(   
         gal=gal,
@@ -480,6 +512,25 @@ def extract_phangs_continuum(
         quiet=quiet,
         append_ext=append_ext,
         )
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "END: Extracting continuum from data set."
+        print "--------------------------------------------------------"
+
+def concat_phangs_continuum(   
+    gal=None,
+    just_array=None,
+    quiet=False,
+    ):
+    """
+    Extract all phangs lines and continuum for a galaxy.
+    """
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "START: Concatenating continuum from data set."
+        print "--------------------------------------------------------"
 
     if just_array != '12m':
         concat_cont_for_gal(
@@ -504,7 +555,7 @@ def extract_phangs_continuum(
 
     if quiet == False:
         print "--------------------------------------------------------"
-        print "END: Extracting continuum from data set."
+        print "END: Concatenate continuum from data set."
         print "--------------------------------------------------------"
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -521,8 +572,6 @@ def list_lines_in_ms(
     List the lines likely to be present in a measurement set. This can
     be a general purpose utility.
     """
-
-    sol_kms = 2.99e5
 
     # pull the parameters from the galaxy in the mosaic file
     if gal != None:
@@ -572,8 +621,6 @@ def chanwidth_for_line(
         if mosaic_parms.has_key(gal):
             vsys = mosaic_parms[gal]['vsys']
             vwidth = mosaic_parms[gal]['vwidth']
-
-    sol_kms = 2.99e5
 
     # Set up the input file
 
@@ -631,8 +678,10 @@ def extract_line(in_file=None,
                  gal=None,
                  vsys=0.0,
                  vwidth=500.,
-                 chan_width=2.5,
-                 rebin_fine=True,
+                 chan_fine=0.5,
+                 rebin_factor=5,
+                 do_statwt=False,
+                 edge_for_statwt=-1,
                  quiet=False):
     """
     Extract a spectral line from a measurement set and regrid onto a
@@ -642,213 +691,8 @@ def extract_line(in_file=None,
     regridding and rebinning.
     """
 
-
     if quiet == False:
         print "EXTRACT_LINE begins:"
-
-    sol_kms = 2.99e5
-
-    # pull the parameters from the galaxy in the mosaic file. This is
-    # PHANGS-specific. Just ignore the gal keyword to use the routine
-    # for non-PHANGS applications.
-
-    if gal != None:
-        mosaic_parms = read_mosaic_key()
-        if mosaic_parms.has_key(gal):
-            vsys = mosaic_parms[gal]['vsys']
-            vwidth = mosaic_parms[gal]['vwidth']
-
-    # Set up the input file
-
-    if os.path.isdir(in_file) == False:
-        if quiet == False:
-            print "... input file not found."
-        return
-
-    # Look up the line
-
-    if line_list.line_list.has_key(line) == False:
-        if quiet == False:
-            print "... line not found. Give lower case abbreviate found in line_list.py"
-        return
-    restfreq_ghz = line_list.line_list[line]
-
-    # Work out which spectral windows contain the line contain
-
-    target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
-    target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
-    target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
-
-    spw_list_string = ''    
-    first = True
-    spw_list = []
-
-    for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
-        this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq*1e9)    
-        for spw in this_spw_list:
-            if spw_list.count(spw) != 0:
-                continue
-            spw_list.append(spw)
-            if not first:
-                spw_list_string += ','
-            else:
-                first = False
-            spw_list_string += str(spw)
-
-    if len(spw_list) == 0:
-        if quiet == False:
-            print "... no spectral windows contain this line at this redshift."
-        return
-
-    if quiet == False:
-        print "... spectral windows to consider: "+spw_list_string
-
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 1. Shift the zero point and velocity range to cover the
-    # desired window. Do NOT change the channel width at this stage.
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-    start_vel_kms = (vsys - vwidth/2.0)
-    chan_width_hz = au.getChanWidths(in_file, spw_list_string)
-    current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)    
-    nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
-
-    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
-    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
-
-    if quiet == False:
-        print "... shifting the zero point using linear interpolation"
-        print "... rest frequency: "+restfreq_string
-        print "... new starting velocity: "+start_vel_string
-        print "... original velocity width: "+str(current_chan_width_kms)
-        print "... number of channels at this stage: "+str(nchan_for_recenter)
-
-    os.system('rm -rf '+out_file+'.temp')
-    os.system('rm -rf '+out_file+'.temp.flagversions')
-    mstransform(vis=in_file,
-                outputvis=out_file+'.temp',
-                spw=spw_list_string,
-                datacolumn='DATA',
-                combinespws=False,
-                regridms=True,
-                mode='velocity',
-                interpolation='linear',
-                start=start_vel_string,
-                nchan=nchan_for_recenter,
-                restfreq=restfreq_string,
-                outframe='lsrk',
-                veltype='radio',
-                )
-    current_file = out_file+'.temp'
-
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 2. Change the channel width by integer binning. Figure out
-    # the maximum amount of rebinning to approach but not exceed the
-    # desired channel width.
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-    target_width_hz = abs(chan_width/sol_kms*restfreq_ghz*1e9)
-    rebin_factor = int(np.floor(min(np.abs(target_width_hz / chan_width_hz))))
-
-    if rebin_factor == 0:
-        rebin_factor = 1
-
-    if quiet == False:
-        print "... channel averaging"
-        print "... target velocity width: "+str(chan_width)
-        print "... rebinning factor: "+str(rebin_factor)
-
-    os.system('rm -rf '+out_file+'.temp2')
-    os.system('rm -rf '+out_file+'.temp2.flagversions')
-    mstransform(vis=current_file,
-                outputvis=out_file+'.temp2',
-                spw='',
-                datacolumn='DATA',
-                regridms=False,
-                chanaverage=True,
-                chanbin=rebin_factor,
-                )
-    current_file = out_file+'.temp2'
-    
-    # Optionally but not currently recommended: regrid and interpolate
-    # to a user-chosen channel width.
-
-    if rebin_only == False:
-
-        if quiet == False:
-            print "... interpolating to a new channel width"
-            print "... this is currently NOT RECOMMENDED."
-
-        chan_dv_string =  "{:5.2f}".format(chan_width)+'km/s'
-        os.system('rm -rf '+out_file+'.temp3')
-        os.system('rm -rf '+out_file+'.temp3.flagversions')
-        mstransform(vis=current_file,
-                    outputvis=out_file+'.temp2',
-                    spw='',
-                    datacolumn='DATA',
-                    regridms=True,
-                    mode='velocity',
-                    interpolation='cubic',
-                    width=chan_dv_string,
-                    restfreq=restfreq_string,
-                    outframe='lsrk',
-                    veltype='radio',                    
-                    )    
-        current_file = out_file+'.temp3'
-
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 3. Combine the SPWs
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-    if quiet == False:
-        print "... combining spectral windows"
-
-    os.system('rm -rf '+out_file)
-    os.system('rm -rf '+out_file+'.flagversions')    
-    mstransform(vis=current_file,
-                outputvis=out_file,
-                spw='',
-                datacolumn='DATA',
-                regridms=False,
-                chanaverage=False,
-                combinespws=True
-                )    
-
-    if quiet == False:
-        print "... deleting old files"
-        
-    # Clean up
-    os.system('rm -rf '+out_file+'.temp')
-    os.system('rm -rf '+out_file+'.temp.flagversions')
-    os.system('rm -rf '+out_file+'.temp2')
-    os.system('rm -rf '+out_file+'.temp2.flagversions')
-    os.system('rm -rf '+out_file+'.temp3')
-    os.system('rm -rf '+out_file+'.temp3.flagversions')
-
-    return
-
-def extract_line2(in_file=None,
-                  out_file=None,
-                  line='co21',
-                  gal=None,
-                  vsys=0.0,
-                  vwidth=500.,
-                  chan_fine=0.5,
-                  rebin_factor=5,
-                  quiet=False):
-    """
-    Extract a spectral line from a measurement set and regrid onto a
-    new velocity grid with the desired spacing. This doesn't
-    necessarily need the PHANGS keys in place and may be a general
-    purpose utility. There are some minor subtleties here related to
-    regridding and rebinning.
-    """
-
-
-    if quiet == False:
-        print "EXTRACT_LINE2 begins:"
-
-    sol_kms = 2.99e5
 
     # pull the parameters from the galaxy in the mosaic file. This is
     # PHANGS-specific. Just ignore the gal keyword to use the routine
@@ -912,14 +756,18 @@ def extract_line2(in_file=None,
     start_vel_kms = (vsys - vwidth/2.0)
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)        
-    nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
+    if chan_fine == -1:
+        nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
+    else:
+        nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
 
-    restfreq_string = "{:10.6f}".format(restfreq_ghz)+'GHz'
-    start_vel_string =  "{:6.1f}".format(start_vel_kms)+'km/s'
-    chanwidth_string =  "{:6.2f}".format(chan_fine)+'km/s'
+    # Cast to text with specified precision.
+    restfreq_string = "{:12.8f}".format(restfreq_ghz)+'GHz'
+    start_vel_string =  "{:12.8f}".format(start_vel_kms)+'km/s'
+    chanwidth_string =  "{:12.8f}".format(chan_fine)+'km/s'
 
     if quiet == False:
-        print "... shifting the zero point using linear interpolation"
+        print "... shifting the fine grid (before any regridding)"
         print "... rest frequency: "+restfreq_string
         print "... new starting velocity: "+start_vel_string
         print "... original velocity width: "+str(current_chan_width_kms)
@@ -928,21 +776,38 @@ def extract_line2(in_file=None,
 
     os.system('rm -rf '+out_file+'.temp')
     os.system('rm -rf '+out_file+'.temp.flagversions')
-    mstransform(vis=in_file,
-                outputvis=out_file+'.temp',
-                spw=spw_list_string,
-                datacolumn='DATA',
-                combinespws=False,
-                regridms=True,
-                mode='velocity',
-                interpolation='linear',
-                start=start_vel_string,
-                nchan=nchan_for_recenter,
-                restfreq=restfreq_string,
-                width=chanwidth_string,
-                outframe='lsrk',
-                veltype='radio',
-                )
+    if chan_fine == -1:
+        mstransform(vis=in_file,
+                    outputvis=out_file+'.temp',
+                    spw=spw_list_string,
+                    datacolumn='DATA',
+                    combinespws=False,
+                    regridms=True,
+                    mode='velocity',
+                    interpolation='linear',
+                    start=start_vel_string,
+                    nchan=nchan_for_recenter,
+                    restfreq=restfreq_string,
+                    outframe='lsrk',
+                    veltype='radio',
+                    )
+    else:
+        mstransform(vis=in_file,
+                    outputvis=out_file+'.temp',
+                    spw=spw_list_string,
+                    datacolumn='DATA',
+                    combinespws=False,
+                    regridms=True,
+                    mode='velocity',
+                    interpolation='linear',
+                    start=start_vel_string,
+                    nchan=nchan_for_recenter,
+                    restfreq=restfreq_string,
+                    width=chanwidth_string,
+                    outframe='lsrk',
+                    veltype='radio',
+                    )
+
     current_file = out_file+'.temp'
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -953,17 +818,18 @@ def extract_line2(in_file=None,
         print "... channel averaging"
         print "... rebinning factor: "+str(rebin_factor)
 
-    os.system('rm -rf '+out_file+'.temp2')
-    os.system('rm -rf '+out_file+'.temp2.flagversions')
-    mstransform(vis=current_file,
-                outputvis=out_file+'.temp2',
-                spw='',
-                datacolumn='DATA',
-                regridms=False,
-                chanaverage=True,
-                chanbin=rebin_factor,
-                )
-    current_file = out_file+'.temp2'
+    if rebin_factor > 1:
+        os.system('rm -rf '+out_file+'.temp2')
+        os.system('rm -rf '+out_file+'.temp2.flagversions')
+        mstransform(vis=current_file,
+                    outputvis=out_file+'.temp2',
+                    spw='',
+                    datacolumn='DATA',
+                    regridms=False,
+                    chanaverage=True,
+                    chanbin=rebin_factor,
+                    )
+        current_file = out_file+'.temp2'
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 3. Combine the SPWs
@@ -973,7 +839,7 @@ def extract_line2(in_file=None,
         print "... combining spectral windows"
 
     os.system('rm -rf '+out_file)
-    os.system('rm -rf '+out_file+'.flagversions')    
+    os.system('rm -rf '+out_file+'.flagversions') 
     mstransform(vis=current_file,
                 outputvis=out_file,
                 spw='',
@@ -992,6 +858,34 @@ def extract_line2(in_file=None,
     os.system('rm -rf '+out_file+'.temp2')
     os.system('rm -rf '+out_file+'.temp2.flagversions')
 
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # STEP 4. Combine the SPWs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # N.B. need the sliding time bin to make statwt work.
+
+    if do_statwt:
+
+        if edge_for_statwt == -1:
+            exclude_str = ''
+        else:
+            nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
+            exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
+                str(nchan_final-(edge_for_statwt-2))
+
+        print "... running statwt with exclusion: "+exclude_str
+
+        # This needs to revert to oldstatwt, it seems not to work in the new form
+
+        test = statwt(vis=out_file,
+                      timebin='0.001s',
+                      slidetimebin=False,
+                      chanbin='spw',
+                      statalg='classic',
+                      datacolumn='data',
+                      excludechans=exclude_str,
+                      )
+
     return
 
 def extract_line_for_galaxy(   
@@ -1002,12 +896,13 @@ def extract_line_for_galaxy(
     line='co21',
     vsys=0.0,
     vwidth=500.,
-    #chan_width=2.5,    
     chan_fine=0.5,
     rebin_factor=5,
     ext='',
     quiet=False,
     append_ext='',
+    do_statwt=False,
+    edge_for_statwt=-1,
     ):
     """
     Extract a given line for all data sets for a galaxy. This knows
@@ -1077,20 +972,16 @@ def extract_line_for_galaxy(
                 print "Line not found in measurement set."
                 return
 
-            #extract_line(in_file=in_file,
-            #             out_file=out_file,
-            #             line=line,
-            #             gal=gal,
-            #             chan_width=chan_width,
-            #             quiet=quiet)            
-
-            extract_line2(in_file=in_file,
-                          out_file=out_file,
-                          line=line,
-                          gal=gal,
-                          chan_fine=chan_fine,
-                          rebin_factor=rebin_factor,
-                          quiet=quiet)            
+            extract_line(in_file=in_file,
+                         out_file=out_file,
+                         line=line,
+                         gal=gal,
+                         chan_fine=chan_fine,
+                         rebin_factor=rebin_factor,
+                         quiet=quiet,
+                         do_statwt=do_statwt,
+                         edge_for_statwt=edge_for_statwt,    
+                         )            
 
     return
     
@@ -1281,7 +1172,14 @@ def extract_continuum(
     if do_statwt:
         print "... deriving empirical weights using STATWT."
         statwt(vis=out_file,
-               datacolumn='DATA')
+               spw='',
+               timebin='100s',
+               slidetimebin=True,
+               chanbin='spw',
+               statalg='classic',
+               datacolumn='data',
+               )
+
 
     if do_collapse:
         print "... Collapsing the continuum to a single channel."
@@ -1815,6 +1713,7 @@ class cleanCall:
     
     def __init__(self):
         self.vis = None
+        self.antenna = ""
         self.image_root = None
         self.phase_center = ""
         self.image_size = None
@@ -1883,6 +1782,8 @@ class cleanCall:
                cell=self.cell_size,
                imsize=self.image_size,
                gridder='mosaic',
+               # Selection
+               antenna=self.antenna,
                # Spectral axis
                specmode=self.specmode,
                restfreq=restfreq_str,
@@ -2235,6 +2136,13 @@ def buildPhangsCleanCall(
         clean_call.image_root = gal+'_'+array+'_'+product
     else:
         clean_call.image_root = gal+'_'+array+'_'+product+'_'+tag
+
+    if array == '12m+7m':
+        clean_call.antenna = select_12m7m
+    if array == '12m':
+        clean_call.antenna = select_12m
+    if array == '7m':
+        clean_call.antenna = select_7m
 
     # Look up the center and shape of the mosaic
 
