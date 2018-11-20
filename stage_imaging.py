@@ -15,16 +15,19 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = ['ngc1672']
+only = []
 
 # ... skip these galaxies.
 
-skip = []
+skip = ["ngc0628","ngc1365","ngc5128"]
 
 # ... start with this galaxy
 
 first = ""
 last = ""
+
+#first = "ngc1672"
+#last = "ngc4303"
 
 # ... set this to '12m' or '7m' to stage data only for those
 # arrays. Leave it as None to process all data. If both 12m and 7m
@@ -32,7 +35,16 @@ last = ""
 # you need to rerun the staging when both data sets arrive.
 
 #just_array = None
-just_array = '12m'
+just_array = ''
+
+# List of lines to process. There's not a lot of error catching
+# here. It needs to be a list and it only knows about co21 and c18o21
+# right now. It's inflexible because the spectral regridding
+# parameters remain hard-coded until we come up with a more general
+# solution to the rebin-and-regrid problem.
+
+#lines = ['co21', 'c18o21']
+lines = ['co21']
 
 # ... set these variables to indicate what steps of the script should
 # carry out. The steps do:
@@ -42,9 +54,8 @@ just_array = '12m'
 # if it doesn't exist already. Uses "ms_file_key.txt" and maps
 # multi-part galaxies to directories using "dir_key.txt"
 
-# do_custom_scripts - NOT IMPLEMENTED YET. Will run custom processing
-# for each galaxy. For example, additional flagging and uv continuum
-# subtraction.
+# do_custom_scripts - Will run custom processing for each galaxy. For
+# example, additional flagging and uv continuum subtraction.
 
 # do_extract_lines - extract lines from the measurement set and regrid
 # them onto our working grid. The line set is assumed to be 12co21 and
@@ -60,7 +71,9 @@ just_array = '12m'
 do_copy = False
 do_custom_scripts = False
 do_extract_lines = True
-do_extract_cont = False
+do_concat_lines = True
+do_extract_cont = False #True
+do_concat_cont = False
 do_only_new = False
 do_cleanup = False
 
@@ -74,7 +87,7 @@ before_first = True
 after_last = False
 
 for gal in gals:
-    
+
     if len(only) > 0:
         if only.count(gal) == 0:
             continue
@@ -130,16 +143,33 @@ for gal in gals:
         for this_script in scripts_for_this_gal:
             execfile(this_script)
 
-    # Extract lines.
+    # Extract lines, includes regridding and rebinning to the velocity
+    # grid specified in the text file keys. Runs statwt afterwards,
+    # the result is a bunch of line-only data sets but still
+    # execution-by-execution.
 
     if do_extract_lines:
         pp.extract_phangs_lines(
             gal=gal,
             just_array=just_array,
             quiet=False,
-            do_statwt=True,
-            spw_statwt='*:0~25',
-            append_ext=line_ext)
+            append_ext=line_ext,
+            lines=lines)
+
+    # Concatenate the extracted lines into the measurement sets that
+    # we will use for imaging. This step also makes a "channel 0"
+    # measurement for each line.
+
+    if do_concat_lines:
+        pp.concat_phangs_lines(
+            gal=gal,
+            just_array=just_array,
+            quiet=False,
+            lines=lines)
+
+    # Extract the continuum, avoiding lines and averaging all
+    # frequencies in each SPW together. This step also uses statwt to
+    # empirically weight the data.
 
     if do_extract_cont:
         pp.extract_phangs_continuum(
@@ -149,11 +179,19 @@ for gal in gals:
             do_statwt=True,
             append_ext=cont_ext)
 
+    if do_concat_cont:
+        pp.concat_phangs_continuum(
+            gal=gal,
+            just_array=just_array,
+            quiet=False)
+
+    # Remove intermediate files. The big space-savers here are the
+    # initial copies of the data. The data after frequency averaging
+    # are smaller by a large factor (~10). For reference, re-copying
+    # all of the PHANGS-ALMA LP takes less than a day on the OSU
+    # system. Full line and continuum exraction takes longer.
+
     if do_cleanup:
         pp.cleanup_phangs_staging(
             gal=gal,
             just_array=just_array)
-        
-
-
-            

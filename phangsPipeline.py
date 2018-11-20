@@ -370,6 +370,7 @@ def extract_phangs_lines(
     ext='',
     quiet=False,
     append_ext='',
+    lines=['co21', 'c18o21'],
     ):
     """
     Extract all phangs lines and continuum for a galaxy.
@@ -399,7 +400,7 @@ def extract_phangs_lines(
 
     # Loop and extract lines for each data set
 
-    for line in ['co21', 'c18o21']:    
+    for line in lines:    
 
         extract_line_for_galaxy(
             gal=gal,
@@ -424,6 +425,7 @@ def concat_phangs_lines(
     just_array=None,
     ext='',
     quiet=False,
+    lines=['co21', 'c18o21'],
     ):
     """
     Concatenate the extracted lines into a few aggregated measurement
@@ -435,7 +437,7 @@ def concat_phangs_lines(
         print "START: Concatenating spectral line measurements."
         print "--------------------------------------------------------"
 
-    for line in ['co21', 'c18o21']:    
+    for line in lines:    
 
         # Unless we just do the 12m, we build a 7m dataset
         if just_array != '12m':
@@ -692,6 +694,7 @@ def extract_line(in_file=None,
     """
 
     if quiet == False:
+        print "--------------------------------------"
         print "EXTRACT_LINE begins:"
 
     # pull the parameters from the galaxy in the mosaic file. This is
@@ -885,6 +888,8 @@ def extract_line(in_file=None,
                       datacolumn='data',
                       excludechans=exclude_str,
                       )
+
+    print "--------------------------------------"
 
     return
 
