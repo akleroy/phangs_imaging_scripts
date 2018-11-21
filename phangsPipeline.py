@@ -322,6 +322,11 @@ def concat_cont_for_gal(
         return
     gal_specific_key = ms_key[gal]
 
+    # Change to the right directory
+
+    this_dir = dir_for_gal(gal)    
+    os.chdir(this_dir)
+
     files_to_concat = []
 
     for this_proj in gal_specific_key.keys():
@@ -530,7 +535,7 @@ def extract_phangs_continuum(
 
 def concat_phangs_continuum(   
     gal=None,
-    just_array=None,
+    just_array='',
     quiet=False,
     ):
     """
@@ -557,7 +562,8 @@ def concat_phangs_continuum(
     has_7m = len(glob.glob(gal+'*7m*cont*')) > 0
     has_12m = len(glob.glob(gal+'*12m*cont*')) > 0
 
-    if just_array == None and has_7m and has_12m:
+    if (just_array == None or just_array == '') and \
+            has_7m and has_12m:
         concat_cont_for_gal(
             gal=gal,
             just_array = None,
