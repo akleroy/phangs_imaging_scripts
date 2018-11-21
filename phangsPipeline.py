@@ -204,6 +204,11 @@ def concat_line_for_gal(
     Combine all measurement sets for one line and one galaxy.
     """
 
+    # Change to the right directory
+
+    this_dir = dir_for_gal(gal)    
+    os.chdir(this_dir)
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # 1. Identify the data sets to combine
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -422,7 +427,7 @@ def extract_phangs_lines(
 
 def concat_phangs_lines(   
     gal=None,
-    just_array=None,
+    just_array='',
     ext='',
     quiet=False,
     lines=['co21', 'c18o21'],
@@ -436,6 +441,8 @@ def concat_phangs_lines(
         print "--------------------------------------------------------"
         print "START: Concatenating spectral line measurements."
         print "--------------------------------------------------------"
+        print ""
+        print "Galaxy: "+gal
 
     for line in lines:    
 
@@ -464,9 +471,10 @@ def concat_phangs_lines(
         has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
         has_12m = len(glob.glob(gal+'*12m*'+line+'*')) > 0
         if has_12m == False or has_7m == False:
+            print "Missing 12m or 7m ... no combined set made."
             continue
 
-        if just_array == None:
+        if just_array == '' or just_array == None:
             concat_line_for_gal(
                 gal=gal,
                 just_array = None,
