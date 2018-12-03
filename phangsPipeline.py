@@ -374,124 +374,6 @@ def concat_cont_for_gal(
     concat(vis=files_to_concat,
            concatvis=out_file)
 
-def extract_phangs_lines(   
-    gal=None,
-    just_array=None,
-    ext='',
-    quiet=False,
-    append_ext='',
-    lines=['co21', 'c18o21'],
-    ):
-    """
-    Extract all phangs lines and continuum for a galaxy.
-    """
-
-    # Could add sio54, which is generally covered in PHANGS but almost
-    # always likely to be a nondetection.
-
-    if quiet == False:
-        print "--------------------------------------------------------"
-        print "START: Extracting spectral lines from data set."
-        print "--------------------------------------------------------"
-
-    # Hardcoded parameters for the PHANGS lines
-
-    chan_width = {}
-    chan_width['co21'] = 0.317506
-    chan_width['c18o21'] = 2.667046
-
-    rebin_factor = {}
-    rebin_factor['co21'] = 8
-    rebin_factor['c18o21'] = 2
-    
-    edge_for_statwt = {}
-    edge_for_statwt['co21'] = 25
-    edge_for_statwt['c18o21'] = 20
-
-    # Loop and extract lines for each data set
-
-    for line in lines:    
-
-        extract_line_for_galaxy(
-            gal=gal,
-            just_array=just_array,
-            line=line,
-            ext=ext,
-            chan_fine=chan_width[line],
-            rebin_factor=rebin_factor[line],
-            quiet=quiet,
-            append_ext=append_ext,
-            do_statwt=True,
-            edge_for_statwt=edge_for_statwt[line],
-            )
- 
-    if quiet == False:
-        print "--------------------------------------------------------"
-        print "END: Extracting spectral lines from data set."
-        print "--------------------------------------------------------"
-
-def concat_phangs_lines(   
-    gal=None,
-    just_array='',
-    ext='',
-    quiet=False,
-    lines=['co21', 'c18o21'],
-    ):
-    """
-    Concatenate the extracted lines into a few aggregated measurement
-    sets.
-    """
-
-    if quiet == False:
-        print "--------------------------------------------------------"
-        print "START: Concatenating spectral line measurements."
-        print "--------------------------------------------------------"
-        print ""
-        print "Galaxy: "+gal
-
-    for line in lines:    
-
-        # Unless we just do the 12m, we build a 7m dataset
-        if just_array != '12m':
-            concat_line_for_gal(
-                gal=gal,
-                just_array = '7m',
-                tag='7m',
-                line=line,
-                do_chan0=True)
-
-        # Unless we just do the 7m, we build a 12m dataset
-        if just_array != '7m':
-            concat_line_for_gal(
-                gal=gal,
-                just_array = '12m',
-                tag='12m',
-                line=line,
-                do_chan0=True)
-
-        # This can probably be improved, but works for now. Check if
-        # we lack either 12m or 7m data, in which case there is no
-        # combined data set to make.
-
-        has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
-        has_12m = len(glob.glob(gal+'*12m*'+line+'*')) > 0
-        if has_12m == False or has_7m == False:
-            print "Missing 12m or 7m ... no combined set made."
-            continue
-
-        if just_array == '' or just_array == None:
-            concat_line_for_gal(
-                gal=gal,
-                just_array = None,
-                tag='12m+7m',
-                line=line,
-                do_chan0=True)
-
-    if quiet == False:
-        print "--------------------------------------------------------"
-        print "END: Concatenating spectral line measurements."
-        print "--------------------------------------------------------"
-
 def extract_phangs_continuum(   
     gal=None,
     just_array=None,
@@ -767,7 +649,7 @@ def extract_line(in_file=None,
         print "... spectral windows to consider: "+spw_list_string
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 1. Shift the zero point AND change the channel width.
+    # STEP 1. Shift the zero point AND change the channel width (slightly).
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     start_vel_kms = (vsys - vwidth/2.0)
@@ -876,7 +758,7 @@ def extract_line(in_file=None,
     os.system('rm -rf '+out_file+'.temp2.flagversions')
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 4. Combine the SPWs
+    # STEP 4. Re-weight the data using statwt
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     # N.B. need the sliding time bin to make statwt work.
@@ -1003,6 +885,230 @@ def extract_line_for_galaxy(
                          )            
 
     return
+
+def calculate_phangs_chanwidth(
+    gal=None,
+    just_proj=None,
+    just_ms=None,
+    just_array=None,
+    ext='',
+    append_ext='',
+    line='co21',
+    quiet=False,
+    ):
+    
+    """
+    Figure out the channel width to use in regridding for PHANGS. Uses
+    the known file lists to figure out the common denominator channel
+    width the specified line.
+    """
+
+    if gal == None:
+        if quiet == False:
+            print "Please specify a galaxy."
+        return
+
+    ms_key = read_ms_key()
+
+    if ms_key.has_key(gal) == False:
+        if quiet == False:
+            print "Galaxy "+gal+" not found in the measurement set key."
+        return
+    gal_specific_key = ms_key[gal]
+
+    # Change to the right directory
+
+    this_dir = dir_for_gal(gal)
+    os.chdir(this_dir)
+
+    # Initialize an empty list
+
+    chanwidth_list = []
+
+    # Loop over all projects and measurement sets
+
+    for this_proj in gal_specific_key.keys():
+
+        # Allow choice of specific project
+
+        if just_proj != None:
+            if type(just_proj) == type([]):
+                if just_proj.count(this_proj) == 0:
+                    continue
+            else:
+                if this_proj != just_proj:
+                    continue
+
+        # Allow choice of specific MS
+                
+        proj_specific_key = gal_specific_key[this_proj]
+        for this_ms in proj_specific_key.keys():
+            if just_ms != None:
+                if type(just_ms) == type([]):
+                    if just_ms.count(this_ms) == 0:
+                        continue
+                    else:
+                        if this_ms != just_ms:
+                            continue
+            
+            # Allow choice of specific array
+
+            if just_array != None:
+                if this_ms.count(just_array) == 0:
+                    continue
+
+            this_vis = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'+append_ext
+
+            this_chandwidth = chanwidth_for_line(
+                in_file=this_vis,
+                line=line,
+                gal=gal,
+                quiet=quiet)
+            
+            chanwidth_list.append(this_chanwidth)
+                
+    # Calculate the least common channel
+
+    chanwidths = np.array(chanwidth_list)
+    max_cw = np.max(chanwidths)
+    min_cw = np.min(chanwidths)
+
+    # Get the mosaic parameters for comparison
+
+    mosaic_parms = read_mosaic_key()
+    if mosaic_parms.has_key(gal):
+        vsys = mosaic_parms[gal]['vsys']
+        vwidth = mosaic_parms[gal]['vwidth']
+
+    if quiet == False:
+        print ""
+        print "For galaxy: "+gal+" and line "+line
+        print "... channel widths ", chanwidths
+        print "... max is ", max_cw
+        print "... min is ", min_cw
+        print "... (target - min)
+
+    # Report
+
+    return common_chanwidth
+
+def extract_phangs_lines(   
+    gal=None,
+    just_array=None,
+    ext='',
+    quiet=False,
+    append_ext='',
+    lines=['co21', 'c18o21'],
+    ):
+    """
+    Extract all phangs lines and continuum for a galaxy.
+    """
+
+    # Could add sio54, which is generally covered in PHANGS but almost
+    # always likely to be a nondetection.
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "START: Extracting spectral lines from data set."
+        print "--------------------------------------------------------"
+
+    # Hardcoded parameters for the PHANGS lines
+
+    chan_width = {}
+    chan_width['co21'] = 0.317506
+    chan_width['c18o21'] = 2.667046
+
+    rebin_factor = {}
+    rebin_factor['co21'] = 8
+    rebin_factor['c18o21'] = 2
+    
+    edge_for_statwt = {}
+    edge_for_statwt['co21'] = 25
+    edge_for_statwt['c18o21'] = 20
+
+    # Loop and extract lines for each data set
+
+    for line in lines:    
+
+        extract_line_for_galaxy(
+            gal=gal,
+            just_array=just_array,
+            line=line,
+            ext=ext,
+            chan_fine=chan_width[line],
+            rebin_factor=rebin_factor[line],
+            quiet=quiet,
+            append_ext=append_ext,
+            do_statwt=True,
+            edge_for_statwt=edge_for_statwt[line],
+            )
+ 
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "END: Extracting spectral lines from data set."
+        print "--------------------------------------------------------"
+
+def concat_phangs_lines(   
+    gal=None,
+    just_array='',
+    ext='',
+    quiet=False,
+    lines=['co21', 'c18o21'],
+    ):
+    """
+    Concatenate the extracted lines into a few aggregated measurement
+    sets.
+    """
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "START: Concatenating spectral line measurements."
+        print "--------------------------------------------------------"
+        print ""
+        print "Galaxy: "+gal
+
+    for line in lines:    
+
+        # Unless we just do the 12m, we build a 7m dataset
+        if just_array != '12m':
+            concat_line_for_gal(
+                gal=gal,
+                just_array = '7m',
+                tag='7m',
+                line=line,
+                do_chan0=True)
+
+        # Unless we just do the 7m, we build a 12m dataset
+        if just_array != '7m':
+            concat_line_for_gal(
+                gal=gal,
+                just_array = '12m',
+                tag='12m',
+                line=line,
+                do_chan0=True)
+
+        # This can probably be improved, but works for now. Check if
+        # we lack either 12m or 7m data, in which case there is no
+        # combined data set to make.
+
+        has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
+        has_12m = len(glob.glob(gal+'*12m*'+line+'*')) > 0
+        if has_12m == False or has_7m == False:
+            print "Missing 12m or 7m ... no combined set made."
+            continue
+
+        if just_array == '' or just_array == None:
+            concat_line_for_gal(
+                gal=gal,
+                just_array = None,
+                tag='12m+7m',
+                line=line,
+                do_chan0=True)
+
+    if quiet == False:
+        print "--------------------------------------------------------"
+        print "END: Concatenating spectral line measurements."
+        print "--------------------------------------------------------"
     
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to extract continuum from a measurement set
@@ -1802,7 +1908,7 @@ class cleanCall:
                imsize=self.image_size,
                gridder='mosaic',
                # Selection
-               antenna=self.antenna,
+               #antenna=self.antenna,
                # Spectral axis
                specmode=self.specmode,
                restfreq=restfreq_str,
@@ -2157,11 +2263,14 @@ def buildPhangsCleanCall(
         clean_call.image_root = gal+'_'+array+'_'+product+'_'+tag
 
     if array == '12m+7m':
-        clean_call.antenna = select_12m7m
+        clean_call.antenna = ''
+        #clean_call.antenna = select_12m7m
     if array == '12m':
-        clean_call.antenna = select_12m
+        clean_call.antenna = ''
+        #clean_call.antenna = select_12m
     if array == '7m':
-        clean_call.antenna = select_7m
+        clean_call.antenna = ''
+        #clean_call.antenna = select_7m
 
     # Look up the center and shape of the mosaic
 
