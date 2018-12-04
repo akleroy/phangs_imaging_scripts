@@ -894,6 +894,7 @@ def calculate_phangs_chanwidth(
     ext='',
     append_ext='',
     line='co21',
+    target_width=2.5,
     quiet=False,
     ):
     
@@ -924,6 +925,7 @@ def calculate_phangs_chanwidth(
     # Initialize an empty list
 
     chanwidth_list = []
+    vis_list = []
 
     # Loop over all projects and measurement sets
 
@@ -959,20 +961,22 @@ def calculate_phangs_chanwidth(
 
             this_vis = gal+'_'+this_proj+'_'+this_ms+ext+'.ms'+append_ext
 
-            this_chandwidth = chanwidth_for_line(
+            this_chanwidth = chanwidth_for_line(
                 in_file=this_vis,
                 line=line,
                 gal=gal,
                 quiet=quiet)
             
-            chanwidth_list.append(this_chanwidth)
-                
+            for chanwidth in this_chanwidth:
+                chanwidth_list.append(chanwidth)
+            vis_list.append(this_vis)
+    
     # Calculate the least common channel
 
     chanwidths = np.array(chanwidth_list)
     max_cw = np.max(chanwidths)
     min_cw = np.min(chanwidths)
-    target_cw = max_cw
+    interpolate_cw = max_cw
 
     # Get the mosaic parameters for comparison
 
@@ -981,19 +985,26 @@ def calculate_phangs_chanwidth(
         vsys = mosaic_parms[gal]['vsys']
         vwidth = mosaic_parms[gal]['vwidth']
 
-    delta = (target_cw - min_cw)
+    # Rebinning factor
+
+    rat = target_width / interpolate_cw
+    rebin_fac = int(round(rat))
 
     if quiet == False:
         print ""
         print "For galaxy: "+gal+" and line "+line
-        print "... channel widths ", chanwidths
+        print "... channel widths:"
+        for ii in range(len(vis_list)):
+            print chanwidth_list[ii], ' ... ', vis_list[ii]
         print "... max is ", max_cw
         print "... min is ", min_cw
-        print "... "
+        print "... interpolate_to ", interpolate_cw
+        print "... then rebin by ", rebin_fac
+        print "... to final ", rebin_fac*interpolate_cw
 
     # Report
 
-    return common_chanwidth
+    return interpolate_cw, rebin_fac
 
 def extract_phangs_lines(   
     gal=None,
