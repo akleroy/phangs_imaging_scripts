@@ -972,6 +972,7 @@ def calculate_phangs_chanwidth(
     chanwidths = np.array(chanwidth_list)
     max_cw = np.max(chanwidths)
     min_cw = np.min(chanwidths)
+    target_cw = max_cw
 
     # Get the mosaic parameters for comparison
 
@@ -980,13 +981,15 @@ def calculate_phangs_chanwidth(
         vsys = mosaic_parms[gal]['vsys']
         vwidth = mosaic_parms[gal]['vwidth']
 
+    delta = (target_cw - min_cw)
+
     if quiet == False:
         print ""
         print "For galaxy: "+gal+" and line "+line
         print "... channel widths ", chanwidths
         print "... max is ", max_cw
         print "... min is ", min_cw
-        print "... (target - min)
+        print "... "
 
     # Report
 
