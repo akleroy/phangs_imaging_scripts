@@ -493,7 +493,7 @@ def list_lines_in_ms(
 
         target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
 
-        this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq_ghz*1e9)    
+        this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq_ghz*1e9)
         if len(this_spw_list) == 0:
             continue
         
@@ -683,7 +683,8 @@ def extract_line(in_file=None,
                     combinespws=False,
                     regridms=True,
                     mode='velocity',
-                    interpolation='linear',
+                    #interpolation='linear',
+                    interpolation='cubic',
                     start=start_vel_string,
                     nchan=nchan_for_recenter,
                     restfreq=restfreq_string,
@@ -698,7 +699,8 @@ def extract_line(in_file=None,
                     combinespws=False,
                     regridms=True,
                     mode='velocity',
-                    interpolation='linear',
+                    #interpolation='linear',
+                    interpolation='cubic',
                     start=start_vel_string,
                     nchan=nchan_for_recenter,
                     restfreq=restfreq_string,
@@ -901,8 +903,10 @@ def calculate_phangs_chanwidth(
     """
     Figure out the channel width to use in regridding for PHANGS. Uses
     the known file lists to figure out the common denominator channel
-    width the specified line.
+    width of the specified line.
     """
+
+    one_plus_eps = 1.0+1e-3
 
     if gal == None:
         if quiet == False:
@@ -976,7 +980,7 @@ def calculate_phangs_chanwidth(
     chanwidths = np.array(chanwidth_list)
     max_cw = np.max(chanwidths)
     min_cw = np.min(chanwidths)
-    interpolate_cw = max_cw
+    interpolate_cw = max_cw*one_plus_eps
 
     # Get the mosaic parameters for comparison
 
@@ -989,6 +993,8 @@ def calculate_phangs_chanwidth(
 
     rat = target_width / interpolate_cw
     rebin_fac = int(round(rat))
+    if rebin_fac < 1:
+        rebin_fac = 1
 
     if quiet == False:
         print ""
@@ -1028,13 +1034,9 @@ def extract_phangs_lines(
 
     # Hardcoded parameters for the PHANGS lines
 
-    chan_width = {}
-    chan_width['co21'] = 0.317506
-    chan_width['c18o21'] = 2.667046
-
-    rebin_factor = {}
-    rebin_factor['co21'] = 8
-    rebin_factor['c18o21'] = 2
+    target_width = {}
+    target_width['co21'] = 2.5
+    target_width['c18o21'] = 6.0
     
     edge_for_statwt = {}
     edge_for_statwt['co21'] = 25
@@ -1044,13 +1046,22 @@ def extract_phangs_lines(
 
     for line in lines:    
 
+        interp_to, rebin_fac = calculate_phangs_chanwidth(
+            gal=gal,
+            just_array=just_array,
+            ext=ext,
+            line=line,
+            target_width=target_width[line],
+            quiet=False,
+            )
+        
         extract_line_for_galaxy(
             gal=gal,
             just_array=just_array,
             line=line,
             ext=ext,
-            chan_fine=chan_width[line],
-            rebin_factor=rebin_factor[line],
+            chan_fine=interp_to,
+            rebin_factor=rebin_fac,
             quiet=quiet,
             append_ext=append_ext,
             do_statwt=True,
