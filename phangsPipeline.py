@@ -2371,8 +2371,10 @@ def buildPhangsCleanCall(
                 scales_as_angle.append(float(token))
             clean_call.scales_as_angle = scales_as_angle
 
-    # Define the clean mask
-    clean_file_name = '../clean_masks/'+gal+'_co21_clean_mask.fits'
+    # Define the clean mask (note one mask per galaxy)
+
+    this_dir = dir_for_gal(gal)
+    clean_file_name = '../clean_masks/'+this_dir+'_co21_clean_mask.fits'
     if os.path.isfile(clean_file_name):
         clean_call.clean_mask_file = clean_file_name
 
