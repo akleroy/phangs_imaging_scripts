@@ -1,18 +1,23 @@
 pro make_clean_masks $
-   , pause=pause $
+   , nopause=nopause $
    , inspect=do_inspect $
-   , start = start_num
+   , start = start_num $
+   , skip = skip $
+   , only = only
 
 ;+
 ;
-; Scripts to build the imaged data into data cubes suitable for
-; analysis.
+; Create clean masks for use with imaging.
 ;
 ;-
 
-; DIRECTORIES
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; DIRECTORIES AND SETUP
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
   root_imaging_dir = '../'
+
+; ... look up the version to based the masks on
 
   if n_elements(version) eq 0 then $
      version = '2'
@@ -28,12 +33,10 @@ pro make_clean_masks $
   if n_elements(start_num) eq 0 then $
      start_num = 0 
 
-; GALAXIES
-  
 ; ... look up the list of galaxies
 
   readcol, 'ms_file_key.txt', comment='#', format='A,X,A' $
-           , ms_file_gal, ms_file_array
+           , ms_file_gal, ms_file_array, /silent
   gals = ms_file_gal[sort(ms_file_gal)]
   gals = gals[uniq(gals)]
   n_gals = n_elements(gals)
@@ -41,7 +44,7 @@ pro make_clean_masks $
 ; ... look up the cases with nonstandard directory names
 
   readcol, 'dir_key.txt', comment='#', format='A,A' $
-           , dir_key_gal, dir_key_dir
+           , dir_key_gal, dir_key_dir, /silent
   dir_for_gal = gals
   for ii = 0, n_elements(dir_key_gal)-1 do begin
      ind = where(dir_key_gal[ii] eq gals, ct)
@@ -49,26 +52,31 @@ pro make_clean_masks $
      dir_for_gal[ind] = (dir_key_dir[ii])
   endfor
 
-; ARRAYS
+; ... define arrays
   
   array_list = ['7m', '12m', '12m+7m']
   n_array = n_elements(array_list)
 
-; PRODUCTS
+; ... define products
   
   product_list = ['co21']
   n_product = n_elements(product_list)
 
-; SKIP
+; ... lists of galaxies to skip or focus on
 
-  only = []
-  skip = []
+  if n_elements(only) eq 0 then $
+     only = []
+  if n_elements(skip) eq 0 then $
+     skip = []
 
-; HAS A CENTRAL BRIGHT SOURCE
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; GALAXY-SPECIFIC TUNING
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  bright_center = $
-     ['ngc1097_1' $
-      , 'ngc1097_2' $
+; ... these galaxies have central bright sources
+
+  has_bright_center = $
+     ['ngc1097' $
       , 'ngc1300' $
       , 'ngc1317' $
       , 'ngc1365' $
@@ -78,36 +86,27 @@ pro make_clean_masks $
       , 'ngc1637' $
       , 'ngc1672' $
       , 'ngc2566' $
-      , 'ngc2903_1' $
-      , 'ngc2903_2' $
-      , 'ngc2903_3' $
-      , 'ngc2997_1' $
-      , 'ngc2997_2' $
-      , 'ngc2997_3' $
+      , 'ngc2903' $
+      , 'ngc2997' $
       , 'ngc3351' $
       , 'ngc3507' $
       , 'ngc3626' $    
-      , 'ngc3627north' $
-      , 'ngc3627south' $
+      , 'ngc3627' $
       , 'ngc4293' $
       , 'ngc4303' $
-      , 'ngc4321north' $
-      , 'ngc4321south' $
+      , 'ngc4321' $
       , 'ngc4457' $
       , 'ngc4535' $
-      , 'ngc4536_1' $
-      , 'ngc4536_2' $
+      , 'ngc4536' $
       , 'ngc4548' $
-      , 'ngc4569' $      
+      , 'ngc4569' $
       , 'ngc4579' $
       , 'ngc4826' $
       , 'ngc4941' $
       , 'ngc4951' $
       , 'ngc5128' $
-      , 'ngc5248_1' $
-      , 'ngc5248_2' $      
-      , 'ngc5643_1' $
-      , 'ngc5643_2' $
+      , 'ngc5248' $
+      , 'ngc5643' $
       , 'ngc6300' $
       , 'ngc7496' $
      ]
@@ -116,50 +115,19 @@ pro make_clean_masks $
      ['ngc3239' $
      ]
 
-  high_seed = $
-     ['ngc3627north' $
-      , 'ngc3627south' $
-      , 'ngc4321north' $
-      , 'ngc4321south' $
-      , 'ngc4579']
-
-  low_seed = $
-     ['ic5332' $
-      , 'ngc1317' $
-      , 'ngc3239' $
-      , 'ngc5042' $
-      , 'ngc5068north' $
-      , 'ngc5068south' $
-      , 'ngc7456' $
-     ]
-
-  low_thresh = $
-     ['ngc1317' $
-      , 'ngc5042' $
-      , 'ngc5068north' $
-      , 'ngc5068south' $
-      , 'ngc7456' $
-     ]
-
-  expand_in_space = $
-     ['ngc1317' $
-      , 'ngc5042' $
-      , 'ngc5068north' $
-      , 'ngc5068south' $
-      , 'ngc7456']
-
-  threed_noise = $
-     ['ngc3627north' $
-      , 'ngc3627south' $
-      , 'ngc4321north' $
-      , 'ngc4321south' $
-      , 'ngc4579']
-
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; LOOP OVER GALAXIES
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
   for ii = start_num, n_gals-1 do begin
+     
+     dir_ind = where(dir_key_gal eq gals[ii], dir_ct)
+     is_multipart = dir_ct ge 1
+     if is_multipart then begin
+        this_gal = dir_key_dir[dir_ind]
+     endif else begin
+        this_gal = gals[ii]
+     endelse
 
      if n_elements(skip) gt 0 then begin
         if total(gals[ii] eq skip) gt 0 then begin
@@ -169,7 +137,9 @@ pro make_clean_masks $
      endif
 
      if n_elements(only) gt 0 then begin
-        if total(gals[ii] eq only) eq 0 then begin
+        if (total(gals[ii] eq only) eq 0) and $
+           (total(this_gal eq only) eq 0) $
+        then begin
            print, "Skipping "+gals[ii]
            continue
         endif
@@ -180,214 +150,93 @@ pro make_clean_masks $
      print, ""
 
      dir = release_dir+'process/'
-     
-     clean_mask_fname = '../clean_masks/'+gals[ii]+'_co21_clean_mask.fits'
+
+     clean_mask_fname = '../clean_masks/'+this_gal+'_co21_clean_mask.fits'
 
      if n_elements(only) gt 0 then $
         if total(only eq gals[ii]) eq 0 then continue
 
-     fname = dir+gals[ii]+'_7m_co21_flat_round.fits'
-     if file_test(fname) eq 0 then begin
-        print, "No file found for "+gals[ii]
+     cube_fname = dir+this_gal+'_7m+tp_co21_flat_round_k.fits'
+     if file_test(cube_fname) eq 0 then begin
+        cube_fname = dir+this_gal+'_7m_co21_flat_round_k.fits'
+     endif
+     if file_test(cube_fname) eq 0 then begin
+        cube_fname = dir+this_gal+'_12m_co21_flat_round_k.fits'
+     endif
+     if file_test(cube_fname) eq 0 then begin
+        print, ""
+        print, "WARNING!!!"
+        print, ""
+        print, "No cube found for "+this_gal
+        print, "... looking for "+cube_fname
         print, "Continuing."
         continue
-     endif
+     endif    
+     cube = readfits(cube_fname, cube_hdr)
+
+     conv_with_gauss $
+        , data=cube*1.0 $
+        , hdr=cube_hdr $
+        , target = [1,1,0.] * 33.0 $
+        , out_data=lowres_cube $
+        , out_hdr=lowres_hdr $
+        , /perbeam        
+     lowres_cube = smooth(lowres_cube, [1,1,20], /nan)
      
-     cube = readfits(fname, hdr)
+     lowres_ppbeam = calc_pixperbeam(hdr=lowres_hdr)
+     rms_lowres_cube = mad(lowres_cube)
 
-     if keyword_set(do_inspect) eq 0 then begin 
+     lo_thresh_lowres = 3
+     hi_thresh_lowres = 10
 
-        ;if total(gals[ii] eq threed_noise) gt 0 then begin
-        ;   print, "Three-d noise."
-        ;   twod_only = 0B
-        ;endif else begin
-        ;   twod_only = 1B
-        ;endelse
-
-        make_noise_cube $
-           , cube_in = cube $
-           , out_cube = rms_cube $
-           , twod_only=twod_only $
-           , show=0B $
-           , /iterate
-
-        ppbeam = calc_pixperbeam(hdr=hdr)
-
-        fac = 1.0
-
-        hi_thresh = 5.0
-
-        if total(gals[ii] eq high_seed) gt 0 then begin
-           print, "High seed"
-           hi_thresh = 10.0
-        endif
-
-        if total(gals[ii] eq low_seed) gt 0 then begin
-           print, "Low seed"
-           hi_thresh = 5.0
-           if gals[ii] eq 'ic5332' then hi_thresh = 7.0
-           if gals[ii] eq 'ngc5042' then hi_thresh = 4.0
-           if gals[ii] eq 'ngc7456' then hi_thresh = 3.5
-        endif
-
-        lo_thresh = 2        
-
-        if total(gals[ii] eq low_thresh) gt 0 then begin
-           print, "Low threshold"
-           lo_thresh = 1.5
-        endif
-
-        make_cprops_mask $
-           , indata=cube $
-           , inrms = rms_cube $
-           , lo_thresh = lo_thresh $
-           , hi_thresh = hi_thresh $
-           , hi_nchan = 2 $
-           , min_area = fac*ppbeam $
-           , outmask=mask
-
-        conv_with_gauss $
-           , data=mask*1.0 $
-           , hdr=hdr $
-           , target = [1,1,0.] * 20.0 $
-           , out_data=out_mask $
-           , /perbeam        
-        mask = out_mask ge 0.5
-
-        ; LOW RESOLUTION VERSION
-
-        conv_with_gauss $
-           , data=cube $
-           , hdr=hdr $
-           , target = [1,1,0.] * 30.0 $
-           , out_data= lowres_cube $
-           , out_hdr = lowres_hdr
-        
-        make_noise_cube $
-           , cube_in = lowres_cube $
-           , out_cube = rms_lowres_cube $
-           , twod_only=twod_only $
-           , show=0B $
-           , /iterate
-
-        hi_thresh_lowres = 10.0
-
-        if total(gals[ii] eq high_seed) gt 0 then begin
-           print, "High seed"
-           hi_thresh_lowres = 20.0
-        endif
-
-        if total(gals[ii] eq low_seed) gt 0 then begin
-           print, "Low seed"
-           hi_thresh_lowres = 5.0
-           if gals[ii] eq 'ic5332' then hi_thresh_lowres = 7.0
-           if gals[ii] eq 'ngc5042' then hi_thresh_lowres = 4.0
-           if gals[ii] eq 'ngc7456' then hi_thresh_lowres = 3.5
-        endif
-
-        lo_thresh_lowres = 3.0
-        if total(gals[ii] eq low_thresh) gt 0 then begin
-           print, "Low threshold"
-           lo_thresh_lowres = 2.0
-           if gals[ii] eq 'ngc5042' then lo_thresh_lowres = 1.5
-           if gals[ii] eq 'ngc7456' then lo_thresh_lowres = 1.5
-        endif        
-
-        lowres_ppbeam = calc_pixperbeam(hdr=lowres_hdr)
-        make_cprops_mask $
-           , indata=lowres_cube $
-           , inrms = rms_lowres_cube $
-           , lo_thresh = lo_thresh_lowres $
-           , hi_thresh = hi_thresh_lowres $
-           , hi_nchan = 2 $
-           , min_area = 3.0*lowres_ppbeam $
-           , min_pix = 6.0*lowres_ppbeam $
-           , outmask=lowres_mask
-
-        conv_with_gauss $
-           , data=lowres_mask*1.0 $
-           , hdr=lowres_hdr $
-           , target = [1,1,0.] * 33.0 $
-           , out_data=out_lowres_mask $
-           , /perbeam        
-        if total(gals[ii] eq expand_in_space) gt 0 then begin
-           lowres_mask = out_lowres_mask ge 0.5
-        endif else begin
-           lowres_mask = out_lowres_mask ge 1.0
-        endelse
-
-        mask = (mask + lowres_mask) ge 1
-
-        if gals[ii] eq 'ngc7456' then begin
-           mask[*,*,0:50] = 0B
-        endif
-
-        mask = grow_mask(mask, iters=5, /z_only)
-        if total(gals[ii] eq bright_center) gt 0 then begin
-           mask = grow_mask(mask, iters=5, /z_only)
-        endif
-
-        if total(gals[ii] eq empty) gt 0 then begin
-           print, "Cube looks empty - setting mask to unity."
-           mask = finite(mask)*1B
-        endif
-
-     endif else begin
-        
-        if file_test(clean_mask_fname) eq 0 then begin
-           print, "Inspection mode but mask not found : ", clean_mask_fname
-        endif
-        mask = readfits(clean_mask_fname, hdr)
-
-     endelse
-
-     !p.multi=[0,3,2]
-
-     rms = mad(cube)
-     disp_fac = 5.0
-
-     loadct, 33
-     disp, max(cube, dim=3, /nan), /xs, /ys, max=rms*disp_fac
-     contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], thick=5, color=cgcolor('black')
-     contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
-
-     loadct, 33
-     disp, max(cube, dim=2, /nan), /xs, /ys, max=rms*disp_fac
-     contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], thick=5, color=cgcolor('black')
-     contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
-
-     loadct, 33
-     disp, max(cube, dim=1, /nan), /xs, /ys, max=rms*disp_fac
-     contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], thick=5, color=cgcolor('black')
-     contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
-
-     loadct, 33
-     disp, max(cube*(mask eq 0), dim=3, /nan), /xs, /ys, max=rms*disp_fac
-     contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], thick=5, color=cgcolor('black')
-     contour, total(mask,3,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
-
-     loadct, 33
-     disp, max(cube*(mask eq 0), dim=2, /nan), /xs, /ys, max=rms*disp_fac
-     contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], thick=5, color=cgcolor('black')
-     contour, total(mask,2,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
-
-     loadct, 33
-     disp, max(cube*(mask eq 0), dim=1, /nan), /xs, /ys, max=rms*disp_fac
-     contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], thick=5, color=cgcolor('black')
-     contour, total(mask,1,/nan) gt 0, /overplot, lev=[1], color=cgcolor('white')
-
-     sxaddpar, hdr, 'BUNIT', 'MASK'
-     writefits $
-        , dir+gals[ii]+'_co21_clean_mask.fits' $
-        , float(mask*1.0), hdr
+     make_cprops_mask $
+        , indata=lowres_cube $
+        , inrms = rms_lowres_cube $
+        , lo_thresh = lo_thresh_lowres $
+        , hi_thresh = hi_thresh_lowres $
+        , hi_nchan = 2 $
+        , min_area = 2.0*lowres_ppbeam $
+        , min_pix = 4.0*lowres_ppbeam $
+        , outmask=mask ;lowres_mask
      
-     if keyword_set(pause) then begin
-        print, "Clean mask for "+gals[ii]+". Key to continue."
-        test = get_kbrd(1)
+     mask = grow_mask(mask, /z_only, iter=4)
+
+     if total(this_gal[0] eq has_bright_center) ge 1 then begin
+
+        s = gal_data(this_gal)
+        make_axes, lowres_hdr, ri=ri, di=di
+        rad = sphdist(ri, di, s.ra_deg, s.dec_deg, /deg)
+        center_mask = rad le 20./3600.
+        sz = size(lowres_cube)
+        for kk = 0, sz[3]-1 do begin
+           mask[*,*,kk] = mask[*,*,kk] or center_mask
+        endfor
+
      endif
 
-     writefits, clean_mask_fname $
-                , mask, hdr
+     ;conv_with_gauss $
+     ;   , data=lowres_mask*1.0 $
+     ;   , hdr=lowres_hdr $
+     ;   , target = [1,1,0.] * 33.0 $
+     ;   , out_data=out_lowres_mask $
+     ;   , /perbeam        
+     ;if total(gals[ii] eq expand_in_space) gt 0 then begin
+     ;   lowres_mask = out_lowres_mask ge 0.5
+     ;endif else begin
+     ;   lowres_mask = out_lowres_mask ge 1.0
+     ;endelse
+
+     writefits, clean_mask_fname, mask, lowres_hdr
+
+     inspect_clean_masks $
+        , nopause=nopause $
+        , only=this_gal $
+        , array='7m'
+
+     ;inspect_clean_masks $
+     ;   , nopause=nopause $
+     ;   , only=this_gal $
+     ;   , array='12m+7m'
 
   endfor
 
