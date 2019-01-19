@@ -15,11 +15,15 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = []
+only = ['ngc1433_1', 'ngc1433_2', 'ngc2090', 'ngc1300_1', 'ngc1300_2'
+        , 'ngc1566_1', 'ngc1566_2', 'ngc3627_1', 'ngc3627_2'
+        , 'ngc4321_1', 'ngc4321_2', 'ngc4254_1', 'ngc4254_2'
+        , 'ngc5068_1', 'ngc5068_2', 'ngc6744_1', 'ngc6744_2'
+        ]
 
 # ... skip these galaxies.
 
-skip = ["ngc0628","ngc1365","ngc5128"]
+skip = []
 
 # ... start with this galaxy
 
@@ -43,8 +47,8 @@ just_array = ''
 # parameters remain hard-coded until we come up with a more general
 # solution to the rebin-and-regrid problem.
 
-#lines = ['co21', 'c18o21']
-lines = ['co21']
+lines = ['co21', 'c18o21']
+#lines = ['c18o21']
 
 # ... set these variables to indicate what steps of the script should
 # carry out. The steps do:
@@ -70,7 +74,7 @@ lines = ['co21']
 
 do_copy = False
 do_custom_scripts = False
-do_extract_lines = True
+do_extract_lines = True #False
 do_concat_lines = True
 do_extract_cont = False #True
 do_concat_cont = False

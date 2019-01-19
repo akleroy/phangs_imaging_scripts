@@ -24,17 +24,16 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-# still run 5128 (broken), 1365 12m+7m, original targets
-
 # going now
+only = ['ngc3627_1', 'ngc3627_2'
+        , 'ngc4321_1', 'ngc4321_2', 'ngc4254_1', 'ngc4254_2'
+        , 'ngc5068_1', 'ngc5068_2', 'ngc6744_1', 'ngc6744_2']
 
-# Still to do:
-#only = ['ngc1365','ngc3627north','ngc3627south','ngc4254north','ngc4254south',
-#        'ngc4535','ngc4826','ngc5068north','ngc5068south','ngc6744north','ngc6744south']
-only = ['ngc4689']
+# divergence
+# .. ngc5128
 
 # ... skip these galaxies
-
+#skip = []
 skip = []
 
 # ... start with this galaxy
@@ -45,8 +44,9 @@ last = ""
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-just_array = ['12m','12m+7m']
-#just_array = ['7m']
+#just_array = ['12m']
+#just_array = ['12m+7m']
+just_array = ['7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -97,7 +97,7 @@ just_product = ['co21']
 # from beginning to end when using the script.
 
 make_dirty_image=True
-forceSquare=True
+forceSquare=False
 revert_to_dirty=False
 read_in_clean_mask=True
 run_multiscale_clean=True

@@ -63,10 +63,12 @@ ngc1097_2	 886	 7m_6		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2895/g
 ngc1097_2	 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2895/group.uid___A001_X1284_X2896/member.uid___A001_X1284_X2897/calibrated/uid___A002_Xcfae6a_X3b5d.ms
 ngc1097_2	 886	 12m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2895/group.uid___A001_X1284_X2896/member.uid___A001_X1284_X2897/calibrated/uid___A002_Xcfae6a_X44ce.ms
 #
-# NGC 1300 TO BE SPLIT INTO TWO PARTS
-ngc1300	    	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2f6/group.uid___A001_X2fe_X2f7/member.uid___A001_X2fe_X2fa/calibrated/calibrated_final.ms
-ngc1300	    	 925	 7m_2		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ec/group.uid___A001_X2fe_X2ed/member.uid___A001_X2fe_X2f0/calibrated/calibrated_final.ms
-#ngc1300	 12M STILL TO BE OBSERVED IN CYCLE 6
+#
+ngc1300_1	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2f6/group.uid___A001_X2fe_X2f7/member.uid___A001_X2fe_X2fa/calibrated/calibrated_final.ms
+#ngc1300_1	 1651	 12m_1		TO BE OBSERVED
+#
+ngc1300_2	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ec/group.uid___A001_X2fe_X2ed/member.uid___A001_X2fe_X2f0/calibrated/calibrated_final.ms
+#ngc1300_2	 1651	 12m_1		TO BE OBSERVED
 #
 ngc1317		 886	 7m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2881/group.uid___A001_X1284_X2882/member.uid___A001_X1284_X2885/calibrated/uid___A002_Xc53e4e_X2579.ms
 ngc1317	 	 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2881/group.uid___A001_X1284_X2882/member.uid___A001_X1284_X2883/calibrated/uid___A002_Xced5df_Xff0c.ms
@@ -79,10 +81,11 @@ ngc1365		 1161	 12m_2		../../2013.1.01161.S/science_goal.uid___A001_X12f_X315/gr
 ngc1385	    	 925	 7m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2ce/group.uid___A001_X2fe_X2cf/member.uid___A001_X2fe_X2d2/calibrated/calibrated_final.ms
 #ngc1385	 12M STILL TO BE OBSERVED IN CYCLE 6
 #
-# NGC 1433 TO BE SPLIT INTO TWO PARTS
-ngc1433	    	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X300/group.uid___A001_X2fe_X301/member.uid___A001_X2fe_X304/calibrated/calibrated_final.ms
-ngc1433	    	 925	 7m_2		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X30a/group.uid___A001_X2fe_X30b/member.uid___A001_X2fe_X30e/calibrated/calibrated_final.ms
-#ngc1433	 12M STILL TO BE DELIVERED AND STILL TO BE OBSERVED HALF IN CYCLE 6
+ngc1433_1    	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X300/group.uid___A001_X2fe_X301/member.uid___A001_X2fe_X304/calibrated/calibrated_final.ms
+#ngc1433_2	 1651 	 12m_1		TO BE DOWNLOADED
+#
+ngc1433_2	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X30a/group.uid___A001_X2fe_X30b/member.uid___A001_X2fe_X30e/calibrated/calibrated_final.ms
+#ngc1433_2	 1651 	 12m_1		TO BE DOWNLOADED
 #
 ngc1511		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2877/group.uid___A001_X1284_X2878/member.uid___A001_X1284_X287b/calibrated/uid___A002_Xc571aa_X2265.ms
 ngc1511		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2877/group.uid___A001_X1284_X2878/member.uid___A001_X1284_X287b/calibrated/uid___A002_Xc5802b_X1e13.ms
@@ -94,7 +97,7 @@ ngc1512	    	 925	 7m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X2d8/gr
 #
 ngc1546		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X286d/group.uid___A001_X1284_X286e/member.uid___A001_X1284_X2871/calibrated/uid___A002_Xc5537d_Xef7.ms
 ngc1546		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X286d/group.uid___A001_X1284_X286e/member.uid___A001_X1284_X2871/calibrated/uid___A002_Xc56496_X2b75.ms
-#ngc1546	 886	 12m		TO BE DELIVERED
+ngc1546	 	 886	 12m_1		
 #
 ngc1559		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2863/group.uid___A001_X1284_X2864/member.uid___A001_X1284_X2867/calibrated/uid___A002_Xc5ceeb_X2752.ms
 ngc1559		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2863/group.uid___A001_X1284_X2864/member.uid___A001_X1284_X2867/calibrated/uid___A002_Xc5d6d1_X1a6e.ms
@@ -105,9 +108,11 @@ ngc1559		 886	 7m_6		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2863/gr
 ngc1559	 	 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2863/group.uid___A001_X1284_X2864/member.uid___A001_X1284_X2865/calibrated/uid___A002_Xd0c6e8_X1b60.ms.split.cal
 ngc1559	 	 886	 12m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2863/group.uid___A001_X1284_X2864/member.uid___A001_X1284_X2865/calibrated/uid___A002_Xd0c6e8_X1fe7.ms.split.cal
 #
-ngc1566	    	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X31e/group.uid___A001_X2fe_X31f/member.uid___A001_X2fe_X322/calibrated/calibrated_final.ms
-ngc1566	    	 925	 7m_2		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X314/group.uid___A001_X2fe_X315/member.uid___A001_X2fe_X318/calibrated/calibrated_final.ms
-#ngc1566	 12M STILL TO BE DELIVERED AND STILL TO BE OBSERVED HALF IN CYCLE 6
+ngc1566_1    	 925	 7m_1		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X31e/group.uid___A001_X2fe_X31f/member.uid___A001_X2fe_X322/calibrated/calibrated_final.ms
+ngc1566_1	 1651	 12m_1		../../2018.1.01651.S/science_goal.uid___A001_X136e_X9e/group.uid___A001_X136e_X9f/member.uid___A001_X136e_Xa0/calibrated/uid___A002_Xd6ebab_Xead.ms.split.cal
+
+ngc1566_2    	 925	 7m_2		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X314/group.uid___A001_X2fe_X315/member.uid___A001_X2fe_X318/calibrated/calibrated_final.ms
+#ngc1566_2	 1651	 12m_2		TO BE DELIVERED
 #
 ngc1637		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2859/group.uid___A001_X1284_X285a/member.uid___A001_X1284_X285d/calibrated/uid___A002_Xc5fe11_X276e.ms
 ngc1637		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2859/group.uid___A001_X1284_X285a/member.uid___A001_X1284_X285d/calibrated/uid___A002_Xc5fe11_X2f6e.ms
@@ -185,13 +190,16 @@ ngc2903_3	 886	 7m_3		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2809/g
 ngc2903_3	 886	 7m_4		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2809/group.uid___A001_X1284_X280a/member.uid___A001_X1284_X280d/calibrated/uid___A002_Xc6a3db_X8ac9.ms
 ngc2903_3	 886	 7m_5		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2809/group.uid___A001_X1284_X280a/member.uid___A001_X1284_X280d/calibrated/uid___A002_Xc6c0d5_X7f42.ms
 ngc2903_3	 886	 7m_6		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2809/group.uid___A001_X1284_X280a/member.uid___A001_X1284_X280d/calibrated/uid___A002_Xc6d2f9_X7f8e.ms
+#ngc2903_3	 886	 12m_1		TO BE DELIVERED
 #
 ngc2997_1	 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27db/calibrated/uid___A002_Xc660ef_X2a05.ms
 ngc2997_1	 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27db/calibrated/uid___A002_Xc660ef_X3269.ms
 ngc2997_1	 886	 7m_3		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27db/calibrated/uid___A002_Xc66ce1_X2774.ms
 ngc2997_1	 886	 7m_4		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27db/calibrated/uid___A002_Xc67b7e_X2b13.ms
 ngc2997_1	 886	 7m_5		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27db/calibrated/uid___A002_Xc67b7e_X33b3.ms
-#ngc2997_1	 886	 12m
+ngc2997_1	 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27d9/calibrated/uid___A002_Xcf0c6b_X911.ms.split.cal
+ngc2997_1	 886	 12m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27d9/calibrated/uid___A002_Xcf0c6b_Xeb3.ms.split.cal
+ngc2997_1	 886	 12m_3		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27d7/group.uid___A001_X1284_X27d8/member.uid___A001_X1284_X27d9/calibrated/uid___A002_Xd0c6e8_X3312.ms.split.cal
 #
 ngc2997_2	 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27e1/group.uid___A001_X1284_X27e2/member.uid___A001_X1284_X27e5/calibrated/uid___A002_Xc60fe8_X11eb.ms
 ngc2997_2	 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X27e1/group.uid___A001_X1284_X27e2/member.uid___A001_X1284_X27e5/calibrated/uid___A002_Xc63024_X1d41.ms
@@ -277,7 +285,7 @@ ngc3621_1	 886	 7m_3		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/g
 ngc3621_1	 886	 7m_4		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc6ff69_X3a2c.ms
 ngc3621_1	 886	 7m_5		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc7111c_X2a18.ms
 ngc3621_1	 886	 7m_6		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc7111c_X7e68.ms
-#ngc3621_1	 886	 12m_1		TO BE DELIVERED
+ngc3621_1	 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2775/calibrated/
 #
 ngc3621_2	 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc6fa08_X1b71.ms
 ngc3621_2	 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc6fa08_X245d.ms
@@ -295,20 +303,20 @@ ngc3626		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2769/gr
 ngc3626		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/member.uid___A001_X1284_X276d/calibrated/uid___A002_Xc59134_X38d7.ms
 ngc3626		 886	 12m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2769/group.uid___A001_X1284_X276a/member.uid___A001_X1284_X276b/calibrated/uid___A002_Xccb526_X907c.ms
 #
-ngc3627north	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X289/calibrated/calibrated_final.ms
-ngc3627north	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X287/calibrated/uid___A002_Xaf5c32_X6d2.ms.split.cal
+ngc3627_1	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X289/calibrated/calibrated_final.ms
+ngc3627_1	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X285/group.uid___A001_X2fb_X286/member.uid___A001_X2fb_X287/calibrated/uid___A002_Xaf5c32_X6d2.ms.split.cal
 #
-ngc3627south	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X293/calibrated/calibrated_final.ms
-ngc3627south	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X291/calibrated/uid___A002_Xb12f3b_X92ce.ms.split.cal
+ngc3627_2	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X293/calibrated/calibrated_final.ms
+ngc3627_2	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X28f/group.uid___A001_X2fb_X290/member.uid___A001_X2fb_X291/calibrated/uid___A002_Xb12f3b_X92ce.ms.split.cal
 #
 ngc4207		 886	 7m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X275f/group.uid___A001_X1284_X2760/member.uid___A001_X1284_X2763/calibrated/uid___A002_Xc53e4e_X5364.ms
 ngc4207		 886	 12m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X275f/group.uid___A001_X1284_X2760/member.uid___A001_X1284_X2761/calibrated/uid___A002_Xccb526_X97dc.ms
 #
-ngc4254north	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29d/calibrated/calibrated_final.ms
-ngc4254north	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29b/calibrated/calibrated_final.ms
+ngc4254_1	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29d/calibrated/calibrated_final.ms
+ngc4254_1	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X299/group.uid___A001_X2fb_X29a/member.uid___A001_X2fb_X29b/calibrated/calibrated_final.ms
 #
-ngc4254south	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a7/calibrated/calibrated_final.ms
-ngc4254south	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a5/calibrated/calibrated_final.ms
+ngc4254_2	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a7/calibrated/calibrated_final.ms
+ngc4254_2	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2a3/group.uid___A001_X2fb_X2a4/member.uid___A001_X2fb_X2a5/calibrated/calibrated_final.ms
 #
 ngc4293		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2755/group.uid___A001_X1284_X2756/member.uid___A001_X1284_X2759/calibrated/uid___A002_Xc75eba_X824b.ms
 ngc4293		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2755/group.uid___A001_X1284_X2756/member.uid___A001_X1284_X2759/calibrated/uid___A002_Xc7a409_X6f82.ms
@@ -325,10 +333,11 @@ ngc4298	 	 886	 12m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X274b/gr
 ngc4303		 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/member.uid___A001_X2fb_X2b1/calibrated/calibrated_final.ms
 ngc4303		 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2ad/group.uid___A001_X2fb_X2ae/member.uid___A001_X2fb_X2af/calibrated/calibrated_final.ms
 #
-ngc4321north	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/member.uid___A001_X2fb_X2bb/calibrated/calibrated_final.ms
-ngc4321north	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/member.uid___A001_X2fb_X2b9/calibrated/calibrated_final.ms
-ngc4321south	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/member.uid___A001_X2fb_X2c5/calibrated/calibrated_final.ms
-ngc4321south	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/member.uid___A001_X2fb_X2c3/calibrated/calibrated_final.ms
+ngc4321_1	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/member.uid___A001_X2fb_X2bb/calibrated/calibrated_final.ms
+ngc4321_1	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2b7/group.uid___A001_X2fb_X2b8/member.uid___A001_X2fb_X2b9/calibrated/calibrated_final.ms
+#
+ngc4321_2	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/member.uid___A001_X2fb_X2c5/calibrated/calibrated_final.ms
+ngc4321_2	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2c1/group.uid___A001_X2fb_X2c2/member.uid___A001_X2fb_X2c3/calibrated/calibrated_final.ms
 #
 ngc4424		 886	 7m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2741/group.uid___A001_X1284_X2742/member.uid___A001_X1284_X2745/calibrated/uid___A002_Xc5802b_X3782.ms
 ngc4424		 886	 12m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X2741/group.uid___A001_X1284_X2742/member.uid___A001_X1284_X2743/calibrated/uid___A002_Xccb526_X95fe.ms
@@ -446,10 +455,11 @@ ngc5042		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X268d/gr
 ngc5042		 886	 7m_2		../../2017.1.00886.L/science_goal.uid___A001_X1284_X268d/group.uid___A001_X1284_X268e/member.uid___A001_X1284_X2691/calibrated/uid___A002_Xc74b5b_X90c6.ms
 ngc5042	 	 886	 12m		../../2017.1.00886.L/science_goal.uid___A001_X1284_X268d/group.uid___A001_X1284_X268e/member.uid___A001_X1284_X268f/calibrated/uid___A002_Xcd07af_X2f55.ms
 #
-ngc5068north	 956	 7m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X332/group.uid___A001_X2fe_X333/member.uid___A001_X2fe_X336/calibrated/calibrated_final.ms
-ngc5068north	 956	 12m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X332/group.uid___A001_X2fe_X333/member.uid___A001_X2fe_X334/calibrated/uid___A002_Xb148a2_X2c49.ms.split.cal
-ngc5068south	 956	 7m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X328/group.uid___A001_X2fe_X329/member.uid___A001_X2fe_X32c/calibrated/calibrated_final.ms
-ngc5068south	 956	 12m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X328/group.uid___A001_X2fe_X329/member.uid___A001_X2fe_X32a/calibrated/uid___A002_Xb148a2_X255e.ms.split.cal
+ngc5068_1	 956	 7m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X332/group.uid___A001_X2fe_X333/member.uid___A001_X2fe_X336/calibrated/calibrated_final.ms
+ngc5068_1	 956	 12m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X332/group.uid___A001_X2fe_X333/member.uid___A001_X2fe_X334/calibrated/uid___A002_Xb148a2_X2c49.ms.split.cal
+#
+ngc5068_2	 956	 7m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X328/group.uid___A001_X2fe_X329/member.uid___A001_X2fe_X32c/calibrated/calibrated_final.ms
+ngc5068_2	 956	 12m		../../2015.1.00925.S/science_goal.uid___A001_X2fe_X328/group.uid___A001_X2fe_X329/member.uid___A001_X2fe_X32a/calibrated/uid___A002_Xb148a2_X255e.ms.split.cal
 #
 ngc5128		 803	 7m		../../2013.1.00803.S/science_goal.uid___A001_X121_X174/group.uid___A001_X121_X175/member.uid___A001_X121_X178/calibrated/calibrated_final.ms
 ngc5128		 803	 12m		../../2013.1.00803.S/science_goal.uid___A001_X121_X174/group.uid___A001_X121_X175/member.uid___A001_X121_X176/calibrated/uid___A002_X804fed_X725.ms.split.cal
@@ -498,10 +508,11 @@ ngc6300		 886	 7m_7		../../2017.1.00886.L/science_goal.uid___A001_X12a3_X4b8/gro
 ngc6300		 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X12a3_X4b8/group.uid___A001_X12a3_X4b9/member.uid___A001_X12a3_X4ba/calibrated/uid___A002_Xcccc19_X22d9.ms
 ngc6300		 886	 12m_2		../../2017.1.00886.L/science_goal.uid___A001_X12a3_X4b8/group.uid___A001_X12a3_X4b9/member.uid___A001_X12a3_X4ba/calibrated/uid___A002_Xcccc19_X2c49.ms
 #
-ngc6744north	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d9/calibrated/calibrated_final.ms
-ngc6744north	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d7/calibrated/calibrated_final.ms
-ngc6744south	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2df/group.uid___A001_X2fb_X2e0/member.uid___A001_X2fb_X2e3/calibrated/calibrated_final.ms
-ngc6744south	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2df/group.uid___A001_X2fb_X2e0/member.uid___A001_X2fb_X2e1/calibrated/calibrated_final.ms
+ngc6744_1	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d9/calibrated/calibrated_final.ms
+ngc6744_1	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2d5/group.uid___A001_X2fb_X2d6/member.uid___A001_X2fb_X2d7/calibrated/calibrated_final.ms
+#
+ngc6744_2	 956	 7m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2df/group.uid___A001_X2fb_X2e0/member.uid___A001_X2fb_X2e3/calibrated/calibrated_final.ms
+ngc6744_2	 956	 12m		../../2015.1.00956.S/science_goal.uid___A001_X2fb_X2df/group.uid___A001_X2fb_X2e0/member.uid___A001_X2fb_X2e1/calibrated/calibrated_final.ms
 #
 ngc7456		 886	 7m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X263d/group.uid___A001_X1284_X263e/member.uid___A001_X1284_X2641/calibrated/uid___A002_Xc55c89_X96a.ms
 ngc7456		 886	 12m_1		../../2017.1.00886.L/science_goal.uid___A001_X1284_X263d/group.uid___A001_X1284_X263e/member.uid___A001_X1284_X263f/calibrated/uid___A002_Xcd8029_Xe2be.ms.split.cal  

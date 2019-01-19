@@ -2373,10 +2373,16 @@ def buildPhangsCleanCall(
 
     # Define the clean mask (note one mask per galaxy)
 
-    this_dir = dir_for_gal(gal)
-    clean_file_name = '../clean_masks/'+this_dir+'_co21_clean_mask.fits'
+    dir_key = read_dir_key()
+    if dir_key.has_key(gal):
+        this_gal = dir_key[gal]
+    else:
+        this_gal = gal
+    clean_file_name = '../clean_masks/'+this_gal+'_co21_clean_mask.fits'
     if os.path.isfile(clean_file_name):
         clean_call.clean_mask_file = clean_file_name
+    else:
+        print "Clean mask not found "+clean_file_name
 
     # Return
 

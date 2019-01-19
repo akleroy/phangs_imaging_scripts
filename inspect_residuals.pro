@@ -67,12 +67,15 @@ pro inspect_residuals $
   bright_center = $
      ['ngc1097_1' $
       , 'ngc1097_2' $
-      , 'ngc1300' $
+      , 'ngc1300_1' $
+      , 'ngc1300_2' $
       , 'ngc1317' $
       , 'ngc1365' $
-      , 'ngc1433' $
+      , 'ngc1433_1' $
+      , 'ngc1433_2' $
       , 'ngc1512' $
-      , 'ngc1566' $
+      , 'ngc1566_1' $
+      , 'ngc1566_2' $
       , 'ngc1637' $
       , 'ngc1672' $
       , 'ngc2566' $
@@ -85,12 +88,12 @@ pro inspect_residuals $
       , 'ngc3351' $
       , 'ngc3507' $
       , 'ngc3626' $    
-      , 'ngc3627north' $
-      , 'ngc3627south' $
+      , 'ngc3627_1' $
+      , 'ngc3627_2' $
       , 'ngc4293' $
       , 'ngc4303' $
-      , 'ngc4321north' $
-      , 'ngc4321south' $
+      , 'ngc4321_1' $
+      , 'ngc4321_2' $
       , 'ngc4457' $
       , 'ngc4535' $
       , 'ngc4536_1' $
