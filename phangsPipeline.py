@@ -971,10 +971,16 @@ def calculate_phangs_chanwidth(
                 gal=gal,
                 quiet=quiet)
             
+            if this_chanwidth == None:
+                continue
+
             for chanwidth in this_chanwidth:
                 chanwidth_list.append(chanwidth)
             vis_list.append(this_vis)
     
+    if len(chanwidth_list) == 0:
+        return None, None
+
     # Calculate the least common channel
 
     chanwidths = np.array(chanwidth_list)
@@ -1055,6 +1061,10 @@ def extract_phangs_lines(
             quiet=False,
             )
         
+        if interp_to == None or rebin_fac == None:
+            print "I cannot extract "+line+" for "+gal
+            return
+
         extract_line_for_galaxy(
             gal=gal,
             just_array=just_array,
