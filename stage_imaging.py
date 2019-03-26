@@ -15,11 +15,8 @@ import glob
 
 # ... a text list. The script will process only these galaxies.
 
-only = ['ngc1433_1', 'ngc1433_2', 'ngc2090', 'ngc1300_1', 'ngc1300_2'
-        , 'ngc1566_1', 'ngc1566_2', 'ngc3627_1', 'ngc3627_2'
-        , 'ngc4321_1', 'ngc4321_2', 'ngc4254_1', 'ngc4254_2'
-        , 'ngc5068_1', 'ngc5068_2', 'ngc6744_1', 'ngc6744_2'
-        ]
+# ngc1365 and ngc5128
+only = ['ngc4731']
 
 # ... skip these galaxies.
 
@@ -72,11 +69,11 @@ lines = ['co21', 'c18o21']
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = False
+do_copy = True
 do_custom_scripts = False
-do_extract_lines = True #False
+do_extract_lines = True
 do_concat_lines = True
-do_extract_cont = False #True
+do_extract_cont = False
 do_concat_cont = False
 do_only_new = False
 do_cleanup = False

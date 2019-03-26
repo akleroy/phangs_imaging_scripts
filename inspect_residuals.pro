@@ -49,7 +49,8 @@ pro inspect_residuals $
 
 ; ARRAYS
   
-  array_list = ['7m', '12m', '12m+7m']
+  ;array_list = ['7m', '12m', '12m+7m']
+  array_list = ['7m']
   n_array = n_elements(array_list)
 
 ; PRODUCTS
