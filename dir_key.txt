@@ -1,6 +1,8 @@
 # Directory mapping key - include only nonstandard mapping
 # Column 1: name of data set (e.g., ngc3627north)
 # Column 2: name of directory that this goes in (e.g., ngc3627)
+circinus_1  	 circinus
+circinus_2  	 circinus
 ngc0253_1   	 ngc0253
 ngc0253_2   	 ngc0253
 ngc0253_3   	 ngc0253

@@ -28,10 +28,10 @@ pro build_cubes $
   root_imaging_dir = '../'
 
   if n_elements(version) eq 0 then $
-     version = '2'
+     version = '3'
   
-  if version eq '2' then begin
-     vstring = 'v2'
+  if version eq '3' then begin
+     vstring = 'v3'
      release_dir = root_imaging_dir+'release/'+vstring+'/'
   endif else begin
      print, "Version not recognized. Returning."
@@ -305,7 +305,7 @@ pro build_cubes $
         this_gal = gals[ii]
         this_dir = dir_for_gal[ii]
 
-        message, "Applying primary beam correction for "+this_gal, /info
+        message, "Convolving to a round beam for "+this_gal, /info
 
         for jj = 0, n_array - 1 do begin
 
