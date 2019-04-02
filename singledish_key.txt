@@ -57,7 +57,7 @@ ngc2566		../singledish/cycle5_data/ALMA_TP.NGC2566.CO21.image.VLSRK.fits				co21
 ngc2775		../singledish/cycle5_data/ALMA_TP.NGC2775.CO21.image.VLSRK.fits				co21
 ngc2903_1	../singledish/cycle5_data/ALMA_TP.NGC2903b.CO21.image.VLSRK.fits			co21
 ngc2903_2	../singledish/cycle5_data/ALMA_TP.NGC2903.CO21.image.VLSRK.fits				co21
-ngc2903_3	../singledish/cycle5_data/ALMA_TP.NGC2903.c.CO21.image.VLSRK.fits			co21
+ngc2903_3	../singledish/cycle5_data/ALMA_TP.NGC2903.CO21.c.image.VLSRK.fits			co21
 ngc2997_1	../singledish/cycle5_data/ALMA_TP.NGC2997.CO21.a.image.VLSRK.fits			co21
 ngc2997_2	../singledish/cycle5_data/ALMA_TP.NGC2997.CO21.b.image.VLSRK.fits			co21
 ngc2997_3	../singledish/cycle5_data/ALMA_TP.NGC2997.CO21.c.image.VLSRK.fits			co21
