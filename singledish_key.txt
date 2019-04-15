@@ -37,8 +37,8 @@ ngc5068_2	../singledish/cycle3_data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSR
 ngc6744_1	../singledish/cycle3_data/ALMA_TP.NGC6744.CO21.v0p2.image.VLSRK.fits			co21
 ngc6744_2	../singledish/cycle3_data/ALMA_TP.NGC_6744south.CO21.v0p2.fits				co21
 # Cycle 5
-# IC1954 HAS TELLURIC CONTAMINATION
-ic1954		../singledish/cycle5_data/ALMA_TP.IC1954.CO21.blank.image.VLSRK.fits			co21
+# IC 1954 - there is also a "blank" version.
+ic1954		../singledish/cycle5_data/ALMA_TP.IC1954.CO21.image.VLSRK.fits				co21
 ic5273		../singledish/cycle5_data/ALMA_TP.IC5273.CO21.image.VLSRK.fits				co21
 ngc0685		../singledish/cycle5_data/ALMA_TP.NGC0685.CO21.image.VLSRK.fits				co21
 ngc1097_1	../singledish/cycle5_data/ALMA_TP.NGC1097.CO21.a.image.VLSRK.fits			co21
@@ -50,11 +50,13 @@ ngc1559		../singledish/cycle5_data/ALMA_TP.NGC1559.CO21.image.VLSRK.fits				co21
 ngc1637		../singledish/cycle5_data/ALMA_TP.NGC1637.CO21.image.VLSRK.fits				co21
 #ngc1792_1	TELLURIC CONTAMINATION
 ngc1792_2	../singledish/cycle5_data/ALMA_TP.NGC1792.CO21.a.image.VLSRK.fits			co21
-ngc1809		../singledish/cycle5_data/ALMA_TP.NGC1809.CO21.image.VLSRK.fits				co21
+# TELLURIC BUT I HAVE A CUBE - 1809?
+#ngc1809		../singledish/cycle5_data/ALMA_TP.NGC1809.CO21.image.VLSRK.fits				co21
 ngc2090		../singledish/cycle5_data/ALMA_TP.NGC2090.CO21.image.VLSRK.fits				co21
 ngc2283		../singledish/cycle5_data/ALMA_TP.NGC2283.CO21.image.VLSRK.fits				co21
 ngc2566		../singledish/cycle5_data/ALMA_TP.NGC2566.CO21.image.VLSRK.fits				co21
-ngc2775		../singledish/cycle5_data/ALMA_TP.NGC2775.CO21.image.VLSRK.fits				co21
+# TELLURIC BUT I HAVE A CUBE - 2775?
+#ngc2775		../singledish/cycle5_data/ALMA_TP.NGC2775.CO21.image.VLSRK.fits				co21
 ngc2903_1	../singledish/cycle5_data/ALMA_TP.NGC2903b.CO21.image.VLSRK.fits			co21
 ngc2903_2	../singledish/cycle5_data/ALMA_TP.NGC2903.CO21.image.VLSRK.fits				co21
 ngc2903_3	../singledish/cycle5_data/ALMA_TP.NGC2903.CO21.c.image.VLSRK.fits			co21
@@ -73,8 +75,8 @@ ngc3621_1	../singledish/cycle5_data/ALMA_TP.NGC3621.CO21.a.image.VLSRK.fits			co
 ngc3621_2	../singledish/cycle5_data/ALMA_TP.NGC3621.CO21.b.image.VLSRK.fits  			co21
 ngc3626		../singledish/cycle5_data/ALMA_TP.NGC3626.CO21.image.VLSRK.fits				co21
 ngc4207		../singledish/cycle5_data/ALMA_TP.NGC4207.CO21.image.VLSRK.fits				co21
-#ngc4293	TELLURIC CONTAMINATION
-#ngc4298	TELLURIC CONTAMINATION
+ngc4293		../singledish/cycle5_data/ALMA_TP.NGC4293.CO21.blank.image.VLSRK.fits			co21
+ngc4298		../singledish/cycle5_data/ALMA_TP.NGC4298.CO21.image.VLSRK.fits				co21
 ngc4424		../singledish/cycle5_data/ALMA_TP.NGC4424.CO21.image.VLSRK.fits				co21
 ngc4457		../singledish/cycle5_data/ALMA_TP.NGC4457.CO21.image.VLSRK.fits				co21
 ngc4496a	../singledish/cycle5_data/ALMA_TP.NGC4496A.CO21.image.VLSRK.fits			co21
@@ -106,8 +108,8 @@ ngc7496		../singledish/cycle5_data/ALMA_TP.NGC7496.CO21.image.VLSRK.fits				co21
 # Cycle 6
 #ngc0253	WAITING
 #ngc0300	WAITING
-#ngc3489	WAITING
-#ngc3599	WAITING
+ngc3489		../singledish/cycle6_data/ALMA_TP.NGC3489.CO21.image.VLSRK.fits				co21
+ngc3599		../singledish/cycle6_data/ALMA_TP.NGC3599.CO21.image.VLSRK.fits				co21
 #ngc4476	WAITING
 #ngc4477	WAITING
 #ngc4596	WAITING

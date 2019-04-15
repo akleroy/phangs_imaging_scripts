@@ -11,10 +11,7 @@ pro build_cubes $
    , stage=do_stage_feather $
    , feather=do_copy_feather $
    , merge=do_merge $
-   , sanitize=do_sanitize $
-   , clear_convolve=do_clear_convolve $
-   , convolve=do_conv_to_res $
-   , target_res=target_res
+   , sanitize=do_sanitize
 
 ;+
 ;
@@ -83,13 +80,6 @@ pro build_cubes $
   
   product_list = ['co21']
   n_product = n_elements(product_list)
-
-; RESOLUTIONS
-
-  if n_elements(target_res) eq 0 then begin
-     target_res = [60, 90, 150, 500, 1250]
-  endif
-  n_res = n_elements(target_res)
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; RESET THE DIRECTORY STRUCTURE

@@ -30,10 +30,10 @@ pro build_products_7m $
   root_imaging_dir = '../'
 
   if n_elements(version) eq 0 then $
-     version = '2'
+     version = '3'
   
-  if version eq '2' then begin
-     vstring = 'v2'
+  if version eq '3' then begin
+     vstring = 'v3'
      release_dir = root_imaging_dir+'release/'+vstring+'/'
   endif else begin
      print, "Version not recognized. Returning."
@@ -471,6 +471,8 @@ pro build_products_7m $
                     endif else begin
                        prelim_mask = finite(cube) eq 0 
                     endelse
+
+                    print, in_file
 
                     make_noise_cube $
                        , cube_in = cube $

@@ -26,10 +26,10 @@ pro build_products_12m $
   root_imaging_dir = '../'
 
   if n_elements(version) eq 0 then $
-     version = '2'
+     version = '3'
   
-  if version eq '2' then begin
-     vstring = 'v2'
+  if version eq '3' then begin
+     vstring = 'v3'
      release_dir = root_imaging_dir+'release/'+vstring+'/'
   endif else begin
      print, "Version not recognized. Returning."
@@ -85,7 +85,7 @@ pro build_products_12m $
 ; RESOLUTIONS
 
   if n_elements(target_res) eq 0 then begin
-     target_res = [-1, 60, 90, 150, 500, 1250]
+     target_res = [-1, 60, 90, 120, 150, 500]
 ; target_res = [-1, 45, 60, 80, 100, 120, 500, 750, 1000, 1250, 1500, 2000]
   endif
   n_res = n_elements(target_res)
@@ -813,7 +813,7 @@ pro build_products_12m $
 ; inelegantly by dividing the flat and pbcorr cube at the appropriate
 ; resolution to construct a correction factor.
 
-; REPLACE THIS WIT THE PRIMARY BEAM CORRECTED VERSION WHEN AVAILABLE
+; REPLACE THIS WITH THE PRIMARY BEAM CORRECTED VERSION WHEN AVAILABLE
 
                  noise_file = $
                     release_dir+'process/'+ $
