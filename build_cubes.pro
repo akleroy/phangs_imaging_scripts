@@ -44,7 +44,7 @@ pro build_cubes $
   gals = ms_file_gal[sort(ms_file_gal)]
   gals = gals[uniq(gals)]
   n_gals = n_elements(gals)
-  
+
 ; ... look up the cases with nonstandard directory names
 
   readcol, 'dir_key.txt', comment='#', format='A,A' $
@@ -716,7 +716,7 @@ pro build_cubes $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      message, '', /info
-     message, 'Merging two part cubes into a single cube.', /info
+     message, 'Merging multi-part cubes into a single cube.', /info
      message, '', /info
      
      dir = release_dir+'process/'
@@ -827,7 +827,7 @@ pro build_cubes $
                  endif
                  pb_cube2 = readfits(pb2_infile, pb2_hdr)
 
-                 if n_part eq 3 then begin
+                 if n_part ge 3 then begin
                     cube3_infile = $
                        release_dir+'process/'+ $
                        gals[gal_ind[2]]+'_'+ $
@@ -856,18 +856,85 @@ pro build_cubes $
                     
                  endif
 
+                 if n_part ge 4 then begin
+                    cube4_infile = $
+                       release_dir+'process/'+ $
+                       gals[gal_ind[3]]+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'.fits'
+                    cube4 = readfits(cube4_infile, cube4_hdr)
+
+                    test = file_search(cube4_infile, count=found)
+                    if found eq 0 then begin
+                       message, 'File '+cube4_infile+' not found.', /info
+                       continue
+                    endif
+                    
+                    pb4_infile = $
+                       release_dir+'raw/'+ $
+                       gals[gal_ind[3]]+'_'+ $
+                       array_for_pb+'_'+this_product+'_'+$
+                       'pb'+'.fits'
+
+                    test = file_search(pb4_infile, count=found)
+                    if found eq 0 then begin
+                       message, 'File '+pb4_infile+' not found.', /info
+                       continue
+                    endif
+                    pb_cube4 = readfits(pb4_infile, pb4_hdr)
+                    
+                 endif
+
+                 if n_part ge 5 then begin
+                    cube5_infile = $
+                       release_dir+'process/'+ $
+                       gals[gal_ind[4]]+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'.fits'
+                    cube5 = readfits(cube5_infile, cube5_hdr)
+
+                    test = file_search(cube5_infile, count=found)
+                    if found eq 0 then begin
+                       message, 'File '+cube5_infile+' not found.', /info
+                       continue
+                    endif
+                    
+                    pb5_infile = $
+                       release_dir+'raw/'+ $
+                       gals[gal_ind[4]]+'_'+ $
+                       array_for_pb+'_'+this_product+'_'+$
+                       'pb'+'.fits'
+
+                    test = file_search(pb5_infile, count=found)
+                    if found eq 0 then begin
+                       message, 'File '+pb5_infile+' not found.', /info
+                       continue
+                    endif
+                    pb_cube5 = readfits(pb5_infile, pb5_hdr)
+                    
+                 endif
+
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; FIGURE THE TARGET BEAM AND CONVOLVE
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  
                  beam1 = sxpar(cube1_hdr, 'BMAJ')
                  beam2 = sxpar(cube2_hdr, 'BMAJ')              
-                 if n_part eq 2 then begin
-                    target_bmaj = max([beam1, beam2],/nan)
-                 endif else begin
+                 beams = [beam1, beam2]
+                 if n_part ge 3 then begin
                     beam3 = sxpar(cube3_hdr, 'BMAJ')
-                    target_bmaj = max([beam1, beam2, beam3],/nan)
-                 endelse
+                    beams = [beams, beam3]
+                 endif
+                 if n_part ge 4 then begin
+                    beam4 = sxpar(cube4_hdr, 'BMAJ')
+                    beams = [beams, beam4]
+                 endif
+                 if n_part ge 5 then begin
+                    beam5 = sxpar(cube5_hdr, 'BMAJ')
+                    beams = [beams, beam5]
+                 endif
+                 
+                 target_bmaj = max(beams,/nan)
                  
                  conv_with_gauss $
                     , data=cube1 $
@@ -905,7 +972,7 @@ pro build_cubes $
                  cube2 = smooth_cube2
                  cube2_hdr = smooth_cube2_hdr
 
-                 if n_part eq 3 then begin
+                 if n_part ge 3 then begin
 
                     conv_with_gauss $
                        , data=cube3 $
@@ -924,6 +991,50 @@ pro build_cubes $
                     if nan_ct gt 0 then smooth_cube3[nan_ind] = !values.f_nan
                     cube3 = smooth_cube3
                     cube3_hdr = smooth_cube3_hdr
+
+                 endif
+
+                 if n_part ge 4 then begin
+
+                    conv_with_gauss $
+                       , data=cube4 $
+                       , hdr=cube4_hdr $
+                       , target =[1,1,0.]*target_bmaj $
+                       , out_data=smooth_cube4 $
+                       , out_hdr=smooth_cube4_hdr $
+                       , /perbeam $
+                       , worked=worked
+                    if worked eq 0 then begin
+                       message, 'Problem with convolution in merging.', /info
+                       stop
+                    endif
+                    
+                    nan_ind = where(finite(cube4) eq 0, nan_ct)
+                    if nan_ct gt 0 then smooth_cube4[nan_ind] = !values.f_nan
+                    cube4 = smooth_cube4
+                    cube4_hdr = smooth_cube4_hdr
+
+                 endif
+
+                 if n_part ge 5 then begin
+
+                    conv_with_gauss $
+                       , data=cube5 $
+                       , hdr=cube5_hdr $
+                       , target =[1,1,0.]*target_bmaj $
+                       , out_data=smooth_cube5 $
+                       , out_hdr=smooth_cube5_hdr $
+                       , /perbeam $
+                       , worked=worked
+                    if worked eq 0 then begin
+                       message, 'Problem with convolution in merging.', /info
+                       stop
+                    endif
+                    
+                    nan_ind = where(finite(cube5) eq 0, nan_ct)
+                    if nan_ct gt 0 then smooth_cube5[nan_ind] = !values.f_nan
+                    cube5 = smooth_cube5
+                    cube5_hdr = smooth_cube5_hdr
 
                  endif
 
@@ -1001,7 +1112,7 @@ pro build_cubes $
                  pb_cube2 = aligned_pb_cube2
                  pb2_hdr = aligned_pb2_hdr
 
-                 if n_part eq 3 then begin
+                 if n_part ge 3 then begin
 
                     cube_hastrom $
                        , data = cube3 $
@@ -1025,6 +1136,54 @@ pro build_cubes $
 
                  endif
 
+                 if n_part ge 4 then begin
+
+                    cube_hastrom $
+                       , data = cube4 $
+                       , hdr_in = cube4_hdr $
+                       , target_hdr = target_hdr $
+                       , outcube = aligned_cube4 $
+                       , outhdr = aligned_cube4_hdr $
+                       , missing=!values.f_nan
+                    cube4 = aligned_cube4
+                    cube4_hdr = aligned_cube4_hdr
+
+                    cube_hastrom $
+                       , data = pb_cube4 $
+                       , hdr_in = pb4_hdr $
+                       , target_hdr = target_hdr $
+                       , outcube = aligned_pb_cube4 $
+                       , outhdr = aligned_pb4_hdr $
+                       , missing=!values.f_nan
+                    pb_cube4 = aligned_pb_cube4
+                    pb4_hdr = aligned_pb4_hdr
+
+                 endif
+
+                 if n_part ge 5 then begin
+
+                    cube_hastrom $
+                       , data = cube5 $
+                       , hdr_in = cube5_hdr $
+                       , target_hdr = target_hdr $
+                       , outcube = aligned_cube5 $
+                       , outhdr = aligned_cube5_hdr $
+                       , missing=!values.f_nan
+                    cube5 = aligned_cube5
+                    cube5_hdr = aligned_cube5_hdr
+
+                    cube_hastrom $
+                       , data = pb_cube5 $
+                       , hdr_in = pb5_hdr $
+                       , target_hdr = target_hdr $
+                       , outcube = aligned_pb_cube5 $
+                       , outhdr = aligned_pb5_hdr $
+                       , missing=!values.f_nan
+                    pb_cube5 = aligned_pb_cube5
+                    pb5_hdr = aligned_pb5_hdr
+
+                 endif
+
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; COMBINE THE FILES INTO A SINGLE DATA PRODUCT
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -1033,8 +1192,12 @@ pro build_cubes $
                  
                  cov_part1 = finite(cube1) and pb_cube1 gt 0.
                  cov_part2 = finite(cube2) and pb_cube2 gt 0.
-                 if n_part eq 3 then $
+                 if n_part ge 3 then $
                     cov_part3 = finite(cube3) and pb_cube3 gt 0.
+                 if n_part ge 4 then $
+                    cov_part4 = finite(cube4) and pb_cube4 gt 0.
+                 if n_part ge 5 then $
+                    cov_part5 = finite(cube5) and pb_cube5 gt 0.
                  
                  if n_part eq 2 then begin
                     ind1 = where(cov_part1 eq 1 and cov_part2 eq 0, ct1)
@@ -1051,8 +1214,9 @@ pro build_cubes $
                        (cube1[ind12]*pb_cube1[ind12]^2 + $
                         cube2[ind12]*pb_cube2[ind12]^2) / $
                        (pb_cube1[ind12]^2 + pb_cube2[ind12]^2)
-                 endif else begin
+                 endif 
 
+                 if npart eq 3 then begin
                     ind1 = where(cov_part1 eq 1 and $
                                  cov_part2 eq 0 and cov_part3 eq 0, ct1)
                     if ct1 gt 0 then $
@@ -1101,7 +1265,49 @@ pro build_cubes $
                         cube3[ind123]*pb_cube3[ind123]^2) / $
                        (pb_cube1[ind123]^2 + pb_cube2[ind123]^2 + pb_cube3[ind123]^2)
                     
-                 endelse
+                 endif
+
+                 if npart eq 5 then begin
+
+                    weight_cube = finite(cube_out)*0.0
+                    cumul_cube = finite(cube_out)*0.0
+
+                    ind1 = where(cov_part1 eq 1, ct1)
+                    if ct1 gt 0 then begin
+                       cumul_cube[ind1] = cumul_cube[ind1]+cube1[ind1]*pb_cube1[ind1]^2
+                       weight_cube[ind1] = weight_cube[ind1]+pb_cube1[ind1]^2
+                    endif
+
+                    ind2 = where(cov_part2 eq 1, ct2)
+                    if ct2 gt 0 then begin
+                       cumul_cube[ind2] = cumul_cube[ind2]+cube2[ind2]*pb_cube2[ind2]^2
+                       weight_cube[ind2] = weight_cube[ind2]+pb_cube2[ind2]^2
+                    endif
+
+                    ind3 = where(cov_part3 eq 1, ct3)
+                    if ct3 gt 0 then begin
+                       cumul_cube[ind3] = cumul_cube[ind3]+cube1[ind3]*pb_cube3[ind3]^2
+                       weight_cube[ind3] = weight_cube[ind3]+pb_cube3[ind3]^2
+                    endif
+
+                    ind4 = where(cov_part4 eq 1, ct4)
+                    if ct4 gt 0 then begin
+                       cumul_cube[ind4] = cumul_cube[ind4]+cube1[ind4]*pb_cube4[ind4]^2
+                       weight_cube[ind4] = weight_cube[ind4]+pb_cube4[ind4]^2
+                    endif
+
+                    ind5 = where(cov_part5 eq 1, ct5)
+                    if ct5 gt 0 then begin
+                       cumul_cube[ind5] = cumul_cube[ind5]+cube1[ind5]*pb_cube5[ind5]^2
+                       weight_cube[ind5] = weight_cube[ind5]+pb_cube5[ind5]^2
+                    endif
+
+                    cube_out = cumul_cube/weight_cube
+                    nind = where(weight_cube eq 0, nct)
+                    if nct gt 0 then $
+                       cube_out[nin] = !values.f_nan
+
+                 endif
 
                  !p.multi=[0,2,2]
                  disp, max(cube_out, dim=3, /nan), max=1
