@@ -12,6 +12,7 @@ pro build_products_7m $
    , mask=do_masks $
    , hybrid=do_hybrid $
    , collapse=do_collapse $
+   , highlevel=do_highlevel $
    , target_res=target_res
 
 ;+
@@ -88,11 +89,19 @@ pro build_products_7m $
 ; RESOLUTIONS
 
   if n_elements(target_res) eq 0 then begin
-     target_res = [500, 750, 1000, 1250]
+     target_res = [-1, 500, 750, 1000, 1250]
   endif
   n_res = n_elements(target_res)
 
+; PRELIMINARY RESOLUTION FOR MASKING
   prelim_res = 1250
+
+; LOW RESOLUTION STRING FOR USE IN BROAD MASKS
+  lowres_string = '1250pc'
+
+; TUNING PARAMETERS FOR THE VELOCITY FIELD
+  vfield_reject_thresh = 30.
+  mom0_thresh_for_mom1 = 2.0
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; IF REQUESTED, WIPE PREVIOUS VERSIONS OF THE CONVOLUTION
@@ -729,13 +738,13 @@ pro build_products_7m $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; COLLAPSE
+; COLLAPSE INTO A SIMPLE SET OF MOMENT MAPS
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-  
+
   if keyword_set(do_collapse) then begin
      
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'COLLAPSE INTO MOMENTS', /info
+     message, 'COLLAPSE INTO MOMENTS USING SIMPLE TECHNIQUES', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      dir = release_dir+'process/'
@@ -763,7 +772,7 @@ pro build_products_7m $
            if last eq 1B then continue
         endif
 
-        message, "Estimating noise for for "+this_gal, /info
+        message, "Making moments for "+this_gal, /info
 
         for jj = 0, n_fullarray - 1 do begin
 
@@ -775,10 +784,6 @@ pro build_products_7m $
               
               this_product = product_list[kk]
 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; AT EACH RESOLUTION MAKE A MASK HOLDING BRIGHT SIGNAL
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
               for zz = 0, n_res -1 do begin
                  
                  if target_res[zz] eq -1 then begin
@@ -789,6 +794,13 @@ pro build_products_7m $
                     print, "Resolution "+res_str
                  endelse
                  
+; Read the noise. Note that this is constructed in the "flat" cube to
+; make masking easier, so we need to correct for that. We will do this
+; inelegantly by dividing the flat and pbcorr cube at the appropriate
+; resolution to construct a correction factor.
+
+; REPLACE THIS WITH THE PRIMARY BEAM CORRECTED VERSION WHEN AVAILABLE
+
                  noise_file = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
@@ -802,6 +814,8 @@ pro build_products_7m $
                  endif                 
                  rms_cube = readfits(noise_file, noise_hdr)
                  
+; Read the cube itself.
+
                  cube_file = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
@@ -814,6 +828,358 @@ pro build_products_7m $
                     continue
                  endif                 
                  cube = readfits(cube_file, cube_hdr)
+
+                 cube_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_pbcorr_round_k'+ $
+                    res_str+'.fits'
+
+; Now read the mask appropriate for this resolution. For this step, we
+; use only the signalmask and construct simple moments.
+                 
+                 mask_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_signalmask'+ $
+                    res_str+'.fits'
+
+                 test = file_search(mask_file, count=found)
+                 if found eq 0 then begin
+                    message, 'File '+mask_file+' not found.', /info
+                    continue
+                 endif                 
+                 mask = readfits(mask_file, mask_hdr)
+                 
+; Blank regions of the moment map with no coverage. This is different
+; than zeros, which indicate a region covered but not in the mask.
+
+                 blank_ind = where(total(finite(cube),3) eq 0)
+
+; Calculate moments.
+
+; For the moment 0, moment 1, and the equivalent width, grow the mask
+; by two channels (5 km/s) along the velocity axis.
+
+                 mom0_mask = $
+                    grow_mask(mask, iters=2, /z_only)
+                 
+                 collapse_cube $
+                    , cube=cube $
+                    , hdr=cube_hdr $
+                    , mask=mom0_mask $
+                    , noise=rms_cube $
+                    , mom0 = mom0 $
+                    , e_mom0 = e_mom0 $
+                    , mom1 = mom1 $
+                    , e_mom1 = e_mom1 $
+                    , ew = ew $
+                    , e_ew = e_ew $
+                    , tpeak = tpeak                                  
+
+                 mom0_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
+                 mom0[blank_ind] = !values.f_nan
+                 
+                 mom0_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_mom0'+ $
+                    res_str+'.fits'
+
+                 writefits, mom0_fname, mom0, mom0_hdr
+                 
+                 emom0_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_emom0'+ $
+                    res_str+'.fits'
+
+                 writefits, emom0_fname, e_mom0, mom0_hdr
+
+                 ew_hdr = twod_head(cube_hdr)
+                 sxaddpar, ew_hdr, 'BUNIT', 'KM/S'
+                 ew[blank_ind] = !values.f_nan
+
+                 ew_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_ew'+ $
+                    res_str+'.fits'
+
+                 writefits, ew_fname, ew, ew_hdr
+                 
+                 eew_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_eew'+ $
+                    res_str+'.fits'
+                 
+                 writefits, eew_fname, e_ew, ew_hdr
+
+; For the moment 2 map use the signal-only version of the cube (i.e.,
+; no extension along the velocity axis). Also produce peak-to-edge
+; measurements that can be used to correct the line width.
+
+                 collapse_cube $
+                    , cube=cube $
+                    , hdr=cube_hdr $
+                    , mask=mask $
+                    , noise=rms_cube $
+                    , mom1 = mom1 $
+                    , e_mom1 = e_mom1 $
+                    , mom2 = mom2 $
+                    , e_mom2 = e_mom2 $
+                    , tpeak = tpeak $                  
+                    , tmin = tmin $
+                    , vquad = vquad $
+                    , e_vquad = e_vquad $
+                    , vpeak = vpeak
+
+                 peak_to_edge = tpeak/tmin
+
+                 mom2_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_mom2'+ $
+                    res_str+'.fits'
+                 
+                 mom2_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom2_hdr, 'BUNIT', 'KM/S'
+                 mom2[blank_ind] = !values.f_nan
+
+                 writefits, mom2_fname, mom2, mom2_hdr
+
+                 p2e_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_p2e'+ $
+                    res_str+'.fits'
+                 
+                 p2e_hdr = twod_head(cube_hdr)
+                 sxaddpar, p2e_hdr, 'BUNIT', 'NONE'
+                 peak_to_edge[blank_ind] = !values.f_nan
+
+                 writefits, p2e_fname, peak_to_edge, p2e_hdr
+
+                 mom1_hdr = twod_head(cube_hdr)
+                 sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
+                 mom1[blank_ind] = !values.f_nan
+
+                 mom1_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_mom1'+ $
+                    res_str+'.fits'
+
+                 writefits, mom1_fname, mom1, mom1_hdr
+                 
+                 emom1_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_emom1'+ $
+                    res_str+'.fits'
+                 
+                 writefits, emom1_fname, e_mom1, mom1_hdr
+
+                 vpeak_hdr = twod_head(cube_hdr)
+                 sxaddpar, vpeak_hdr, 'BUNIT', 'KM/S'
+                 vpeak[blank_ind] = !values.f_nan
+
+                 vpeak_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_vpeak'+ $
+                    res_str+'.fits'
+                 
+                 writefits, vpeak_fname, vpeak, vpeak_hdr                 
+
+                 vquad_hdr = twod_head(cube_hdr)
+                 sxaddpar, vquad_hdr, 'BUNIT', 'KM/S'
+                 vquad[blank_ind] = !values.f_nan
+
+                 vquad_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_vquad'+ $
+                    res_str+'.fits'
+                 
+                 writefits, vquad_fname, vquad, vquad_hdr                 
+
+                 evquad_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_evquad'+ $
+                    res_str+'.fits'
+                 
+                 writefits, evquad_fname, e_vquad, vquad_hdr
+
+; The mask used for the peak temperature is right now the full width
+; of the mask across the galaxy. This can be improved at least a bit
+; while still staying general. One improvement would be to use the
+; maximum window size anywhere in the galaxy. A better map would come
+; from the very low resolution masks, but this is less totally
+; agnostic.
+
+                 tpeak_mask = mask
+                 sz = size(mask)
+                 for pp = 0, sz[3]-1 do $
+                    tpeak_mask[*,*,pp] = total(mask[*,*,pp]) ge 1
+
+                 tpeak = max(cube*tpeak_mask, dim=3, /nan)
+                 tpeak[blank_ind] = !values.f_nan
+                 tpeak_hdr = twod_head(cube_hdr)
+                 sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+                 
+                 tpeak_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_tpeak'+ $
+                    res_str+'.fits'
+
+                 writefits, tpeak_fname, tpeak, tpeak_hdr
+                 
+                 tpeak_12p5 = max(smooth(cube,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
+                 tpeak_12p5[blank_ind] = !values.f_nan
+                 tpeak_hdr = twod_head(cube_hdr)
+                 sxaddpar, tpeak_hdr, 'BUNIT', 'K'
+
+                 tpeak12p5_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_tpeak12p5kms'+ $
+                    res_str+'.fits'
+
+                 writefits, tpeak12p5_fname, tpeak_12p5, tpeak_hdr
+                                  
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; DISPLAY
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                 
+                 !p.multi = [0, 3, 2]
+                 loadct, 33
+                 disp, tpeak_12p5, /sq
+                 disp, mom0, /sq
+                 disp, ew, /sq
+                 disp, mom1, /sq
+                 disp, vpeak, /sq
+                 disp, vquad, /sq
+                 ;disp, mom2, /sq
+
+              endfor
+
+           endfor
+           
+        endfor
+
+     endfor
+
+  endif  
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; MAKE MAPS USING MORE SOPHISTICATED MASKING TECHNIQUES
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+  if keyword_set(do_highlevel) then begin
+     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'COLLAPSE INTO FANCIER MOMENTS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     dir = release_dir+'process/'
+
+     first = 0B
+     last = 0B
+
+     for ii = 0, n_fullgals-1 do begin
+        
+        if n_elements(only) gt 0 then $
+           if total(only eq fullgal_list[ii]) eq 0 then continue
+
+        if n_elements(skip) gt 0 then $
+           if total(skip eq fullgal_list[ii]) gt 0 then continue
+
+        this_gal = fullgal_list[ii]
+
+        if n_elements(start_with) gt 0 then begin
+           if this_gal eq start_with then first = 1B
+           if first eq 0 then continue
+        endif
+
+        if n_elements(stop_at) gt 0 then begin
+           if this_gal eq stop_at then last = 1B
+           if last eq 1B then continue
+        endif
+
+        message, "Making high level products for "+this_gal, /info
+
+        for jj = 0, n_fullarray - 1 do begin
+
+           this_array = fullarray_list[jj]
+           if n_elements(just_array) gt 0 then $
+              if total(just_array eq this_array) eq 0 then continue
+
+           for kk = 0, n_product-1 do begin
+              
+              this_product = product_list[kk]
+
+; Loop over resolutions
+
+              for zz = 0, n_res -1 do begin
+                 
+                 if target_res[zz] eq -1 then begin
+                    res_str = ''
+                    print, "Native resolution."
+                 endif else begin
+                    res_str = '_'+strcompress(str(target_res[zz]),/rem)+'pc'
+                    print, "Resolution "+res_str
+                 endelse
+                 
+; Read the noise. Note that this is constructed in the "flat" cube to
+; make masking easier, so we need to correct for that. We will do this
+; inelegantly by dividing the flat and pbcorr cube at the appropriate
+; resolution to construct a correction factor.
+
+; REPLACE THIS WIT THE PRIMARY BEAM CORRECTED VERSION WHEN AVAILABLE
+                 noise_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_'+'noise_flat_round_k'+ $
+                    res_str+'.fits'
+
+                 test = file_search(noise_file, count=found)
+                 if found eq 0 then begin
+                    message, 'File '+noise_file+' not found.', /info
+                    continue
+                 endif                 
+                 rms_cube = readfits(noise_file, noise_hdr)
+                 
+; Read the cube itself.
+
+                 cube_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_pbcorr_round_k'+ $
+                    res_str+'.fits'
+                 
+                 test = file_search(cube_file, count=found)
+                 if found eq 0 then begin
+                    message, 'File '+cube_file+' not found.', /info
+                    continue
+                 endif                 
+                 cube = readfits(cube_file, cube_hdr)
+
+                 cube_file = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_pbcorr_round_k'+ $
+                    res_str+'.fits'
+
+; Now read the mask appropriate for this resolution. We want to use
+; the "hybrid" masks, which combine the low low resolution detections
+; with the signal mask at this resolution. If a hybrid mask is not
+; present, just skip this combination. The strict moments will still
+; exist.
                  
                  mask_file = $
                     release_dir+'process/'+ $
@@ -821,24 +1187,18 @@ pro build_products_7m $
                     this_product+'_hybridmask'+ $
                     res_str+'.fits'
 
-                 test = file_search(mask_file, count=found)
-                 if found eq 0 then begin
-                    mask_file = $
-                       release_dir+'process/'+ $
-                       this_gal+'_'+this_array+'_'+ $
-                       this_product+'_signalmask'+ $
-                       res_str+'.fits'                    
-                    test = file_search(mask_file, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+mask_file+' not found.', /info
-                       continue
-                    endif
+                 if file_test(mask_file) eq 0 then begin
+                    message, 'File '+mask_file+' not found. Skipping this step.', /info
+                    continue
                  endif                 
                  mask = readfits(mask_file, mask_hdr)
-                 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; CALCULATE MOMENTS
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                              
+; Blank regions of the moment map with no coverage. This is different
+; than zeros, which indicate a region covered but not in the mask.
+
+                 blank_ind = where(total(finite(cube),3) eq 0)
+    
+; Calculate moments.
 
                  collapse_cube $
                     , cube=cube $
@@ -857,46 +1217,7 @@ pro build_products_7m $
                     , e_var = e_var $
                     , tpeak = tpeak
 
-                 blank_ind = where(total(finite(cube),3) eq 0)
-
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; PEAK TEMPERATURE IN ONE AND FIVE CHANNELS
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-                 tpeak_mask = mask
-                 sz = size(mask)
-                 for pp = 0, sz[3]-1 do $
-                    tpeak_mask[*,*,pp] = total(mask[*,*,pp]) ge 1
-
-                 tpeak = max(cube*tpeak_mask, dim=3, /nan)
-                 tpeak[blank_ind] = !values.f_nan
-                 tpeak_hdr = twod_head(cube_hdr)
-                 sxaddpar, tpeak_hdr, 'BUNIT', 'K'
-                 
-                 tpeak_fname = $
-                    release_dir+'process/'+ $
-                    this_gal+'_'+this_array+'_'+ $
-                    this_product+'_tpeak'+ $
-                    res_str+'.fits'
-
-                 writefits, tpeak_fname, tpeak, tpeak_hdr
-                 
-                 tpeak_12p5 = max(smooth(cube,[1,1,5],/nan,/edge_wrap)*tpeak_mask, dim=3, /nan)
-                 tpeak_12p5[blank_ind] = !values.f_nan
-                 tpeak_hdr = twod_head(cube_hdr)
-                 sxaddpar, tpeak_hdr, 'BUNIT', 'K'
-
-                 tpeak12p5_fname = $
-                    release_dir+'process/'+ $
-                    this_gal+'_'+this_array+'_'+ $
-                    this_product+'_tpeak12p5kms'+ $
-                    res_str+'.fits'
-
-                 writefits, tpeak12p5_fname, tpeak_12p5, tpeak_hdr
-
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; MOMENT 0
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; Moment 0
                  
                  mom0_hdr = twod_head(cube_hdr)
                  sxaddpar, mom0_hdr, 'BUNIT', 'K*KM/S'
@@ -905,40 +1226,95 @@ pro build_products_7m $
                  mom0_fname = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
-                    this_product+'_mom0'+ $
+                    this_product+'_broad_mom0'+ $
                     res_str+'.fits'
-
-                 writefits, mom0_fname $
-                            , mom0, mom0_hdr
+                 
+                 writefits, mom0_fname, mom0, mom0_hdr
                  
                  emom0_fname = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
-                    this_product+'_emom0'+ $
+                    this_product+'_broad_emom0'+ $
                     res_str+'.fits'
 
-                 writefits, emom0_fname $
-                            , e_mom0, mom0_hdr
+                 writefits, emom0_fname, e_mom0, mom0_hdr
                  
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; MOMENT 1
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; Moment 1
 
-                 blank_mom1 = where((mom0 le e_mom0*mom0_thresh) $
-                                    or (e_mom1 gt mom1_thresh), mom1_ct)
-                 if mom1_ct gt 0 then begin
-                    mom1[blank_mom1] = !values.f_nan
-                    e_mom1[blank_mom1] = !values.f_nan
+; The recipe here gets a little complicated. We always take the
+; "strict" moment1 if we have one. But then we also calculate a
+; moment1 from the broader mask. We only keep this, however, if it
+; agrees with a prior on the velocity field within some tolerance. For
+; now, this is the low resolution velocity field. We also require some
+; nominal signal to noise in the moment0 to believe that we have a
+; reasonable moment1.
+;
+
+; Read the "strict" velocity field and the low resolution prior.
+
+                 vfield_strict_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_mom1'+ $
+                    res_str+'.fits'                    
+
+                 e_vfield_strict_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_emom1'+ $
+                    res_str+'.fits'                    
+
+                 if file_test(vfield_strict_fname) eq 0 then begin
+                    message, 'No strict velocity field information found ... '+ $
+                             vfield_strict_fname+' ... skipping.', /info
+                    continue
+                 endif
+
+                 vfield_strict = readfits(vfield_strict_fname, prior_hdr)
+                 e_vfield_strict = readfits(e_vfield_strict_fname, prior_hdr)
+
+                 vfield_prior_fname = $
+                    release_dir+'process/'+ $
+                    this_gal+'_'+this_array+'_'+ $
+                    this_product+'_strict_mom1'+ $
+                    '_'+lowres_string+'.fits'
+
+                 if file_test(vfield_prior_fname) eq 0 then begin
+                    message, 'No prior velocity field information found ... '+ $
+                             vfield_prior_fname+' ... skipping.', /info
+                    continue
+                 endif
+
+                 vfield_prior = readfits(vfield_prior_fname, prior_hdr)
+
+; Now build the combined moment1 map
+
+                 has_strict_vfield = $
+                    finite(vfield_strict)
+                 
+                 mom1_reject_ind = $
+                    where((has_strict_vfield eq 0) and $
+                          ((abs(mom1 - vfield_prior) gt vfield_reject_thresh) or $
+                           (mom0 le e_mom0*mom0_thresh_for_mom1))$
+                          , mom1_reject_ct)
+                 if mom1_reject_ct gt 0 then begin
+                    mom1[mom1_reject_ind] = !values.f_nan
+                    e_mom1[mom1_reject_ind] = !values.f_nan
+                 endif
+
+                 strict_ind = where(has_strict_vfield, strict_ct)
+                 if strict_ct gt 0 then begin
+                    mom1[strict_ind] = vfield_strict[strict_ind]
+                    e_mom1[strict_ind] = e_vfield_strict[strict_ind]
                  endif
 
                  mom1_hdr = twod_head(cube_hdr)
                  sxaddpar, mom1_hdr, 'BUNIT', 'KM/S'
-                 mom1[blank_ind] = !values.f_nan
 
                  mom1_fname = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
-                    this_product+'_mom1'+ $
+                    this_product+'_broad_mom1'+ $
                     res_str+'.fits'
 
                  writefits, mom1_fname $
@@ -947,46 +1323,21 @@ pro build_products_7m $
                  emom1_fname = $
                     release_dir+'process/'+ $
                     this_gal+'_'+this_array+'_'+ $
-                    this_product+'_emom1'+ $
+                    this_product+'_broad_emom1'+ $
                     res_str+'.fits'
                  
                  writefits, emom1_fname $
                             , e_mom1, mom1_hdr
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; MOMENT 2
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-                 blank_mom2 = where((mom0 le e_mom0*mom0_thresh) $
-                                    or (e_mom1 gt mom1_thresh), mom2_ct)
-                 if mom2_ct gt 0 then begin
-                    mom2[blank_mom2] = !values.f_nan
-                    e_mom2[blank_mom2] = !values.f_nan
-                 endif
-
-                 mom2_hdr = twod_head(cube_hdr)
-                 sxaddpar, mom2_hdr, 'BUNIT', 'KM/S'
-                 mom2[blank_ind] = !values.f_nan
-
-                 mom2_fname = $
-                    release_dir+'process/'+ $
-                    this_gal+'_'+this_array+'_'+ $
-                    this_product+'_mom2'+ $
-                    res_str+'.fits'
-
-                 writefits, mom2_fname $
-                            , mom2, mom1_hdr
-                 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; DISPLAY
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  
-                 !p.multi = [0, 2, 2]
+                 !p.multi = [0, 2, 1]
                  loadct, 33
-                 disp, tpeak, /sq
-                 disp, tpeak_12p5, /sq
                  disp, mom0, /sq
                  disp, mom1, /sq
+                 !p.multi = [0, 1, 1]
 
               endfor
 
@@ -997,5 +1348,6 @@ pro build_products_7m $
      endfor
 
   endif
+
 
 end

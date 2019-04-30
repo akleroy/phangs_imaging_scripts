@@ -106,8 +106,15 @@ ngc6300		../singledish/cycle5_data/ALMA_TP.NGC6300.CO21.image.VLSRK.fits				co21
 ngc7456		../singledish/cycle5_data/ALMA_TP.NGC7456.CO21.image.VLSRK.fits				co21
 ngc7496		../singledish/cycle5_data/ALMA_TP.NGC7496.CO21.image.VLSRK.fits				co21
 # Cycle 6
-#ngc0253	WAITING
-#ngc0300	WAITING
+#circinus	WAITING
+ngc0253_1	../singledish/cycle6_data/ALMA_TP.NGC_253a.CO21.image.VLSRK.fits			co21
+ngc0253_2	../singledish/cycle6_data/ALMA_TP.NGC_253b.CO21.image.VLSRK.fits			co21
+ngc0253_3	../singledish/cycle6_data/ALMA_TP.NGC_253c.CO21.image.VLSRK.fits			co21
+ngc0253_4	../singledish/cycle6_data/ALMA_TP.NGC_253d.CO21.image.VLSRK.fits			co21
+ngc0253_5	../singledish/cycle6_data/ALMA_TP.NGC_253e.CO21.image.VLSRK.fits			co21
+ngc0300_1	../singledish/cycle6_data/ALMA_TP.NGC_300a.CO21.image.VLSRK.fits			co21
+ngc0300_2	../singledish/cycle6_data/ALMA_TP.NGC_300c.CO21.image.VLSRK.fits			co21
+ngc0300_3	../singledish/cycle6_data/ALMA_TP.NGC_300b.CO21.image.VLSRK.fits			co21
 ngc3489		../singledish/cycle6_data/ALMA_TP.NGC3489.CO21.image.VLSRK.fits				co21
 ngc3599		../singledish/cycle6_data/ALMA_TP.NGC3599.CO21.image.VLSRK.fits				co21
 #ngc4476	WAITING

@@ -7,7 +7,7 @@
 # column 5: total power is the same for both (i.e., copy don't merge)
 # Fill in the sizes for LP and 925 targets as we need them.
 # circinus
-ngc0253	  11.888002	-25.288220	1000	450	 0
+ngc0253	  11.888002	-25.288220	1800	1000	 0
 ngc0300	  13.722833	-37.684389	900	600	 0
 ngc1097   41.579375  	-30.274889  	320	360	 0
 ngc1300	  49.921167  	-19.411361  	300	300	 1

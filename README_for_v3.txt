@@ -1,0 +1,221 @@
+PHANGS-ALMA Data Delivery README
+
+This is a delivery of CO 2-1 data for PHANGS-ALMA.
+
+------------
+VERSION: 3.1
+------------
+
+This is the first delivery of our full data set. It is the third major
+delivery to the team, and this is the first version of this
+release. We label this version 3.1. Subsequent versions of this
+release using the same basic processing will be 3.2, 3.2, 3.3, etc.
+
+This includes several pilot programs, the PHANGS-ALMA Large Program,
+several follow up programs, and several archival data sets. If you use
+these data please include the acknowledgment, project codes, and
+references below.
+
+As of this release, almost all data have been delivered. Several
+reobservations and a handful of late-arriving data sets are not yet
+included. These will be incorporated into future version 3 releases.
+
+---------------------
+PROCESSING
+---------------------
+
+These data have all been calibrated in the pipeline for which they
+were delivered. For most, this is a version of CASA 5.X.X but earlier
+data sets include some data calibrated 4.X.X. After calibration, data
+were staged for imaging, regridded, and combined using CASA
+5.4.0. Imaging proceeded in CASA 5.4.0 for this release.
+
+After imaging, data were exported as FITS files and post
+processed. They were convolved to have a round synthesized beam,
+converted to brightness temperature (Kelvin) units. Interferometric
+and total power data were "feathered" together. Multi-part mosaics
+were combined via inverse-noise-squared weighting using the primary
+beam response to indicate the sensitivity. Data were then down-sampled
+to have the minimum pixel size needed to critically sample the beam
+and remove empty space.
+
+To create the products in this release, each cube is convolved to a
+succession of physical resolutions. At each resolution, the pipeline
+estimates the three dimensional noise distribution. "Signal" masks are
+created at each resolution that identify regions with detectable
+signal. By combining masks created at low resolution and high
+sensitivity, high completeness masks are also constructed. These are
+used to build "strict" and "broad" data products at different physical
+resolutions.
+
+---------------------
+WHAT IS IN HERE
+---------------------
+
+This delivery includes three directories. The differences are
+explained below, then the individual map types are explained.
+
+--------------
+strict_maps/
+--------------
+
+This directory contains "moment" maps (for a loose definition of
+moment) at a succession of physical resolutions. These are "strict" in
+the sense that the maps only reflect signal identified in the cube at
+the target resolution. 
+
+ADVANTAGES: This approach has two main advantages: (1) The masking
+suppresses noise, so any calculation that is unstable in the presence
+of noise (moment 2 calculation is the classic example) may want to use
+these data. (2) The selection function applied to the cube to build
+them is very straightforward. These are almost the same as the maps
+used in Sun et al. 2018, Utomo et al. 2018, and Gallagher et al. 2018.
+
+DISADVANTAGES: The downside of this approach is that some (but not
+all) of these maps suffer from substantial incompleteness at higher
+resolution. The next release will include the number in the header,
+but for now see Sun et al. 2018 for examples of the degree of
+incompleteness. Here "incompleteness" means that a significant amount
+of the flux in the cube (even flux that was cleaned) does not pass the
+signal to noise cuts used to build the maps.
+
+Use the strict maps if you want low noise, can live with some
+incompleteness, and want a very reproducible calculation.
+
+--------------
+broad_maps/
+--------------
+
+This directory contains "moment" maps (for a loose definition of
+moment) at a succession of physical resolutions. These are "broad" in
+the sense that the maps are created using regions of the cube known to
+have signal at coarsers resolutions. There is no requirement tha the
+signal be detected at the current resolution.
+
+ADVANTAGES: This approach has the major advantage of high completeness
+and high covering fraction.
+
+DISADVANTAGES: This approach lowers the signal-to-noise and includes
+noise, including potentially noise-only lines of sight, in the final
+data products. Calculations that become unstable in the presence of
+noise do not work as well in these maps.
+
+Use the broad maps if you want high completeness and can live with
+some additional noise.
+
+--------------
+cubes/
+--------------
+
+This directory contains data cubes. For the moment, we provide the
+cubes at their native (round beam) resolution, primary beam corrected,
+downsampled, and converted to Kelvin.
+
+N.B.: The set of released data cubes is still TBD. The data volume for
+the full set of created products is large (pushing 10TB). Our plan,
+not implemented yet, is to add a "support" or "intermediate" directory
+that contains a very large data volume.
+
+---------------------
+Provided maps
+---------------------
+
+Currently we provide the following maps. The file name gives the line
+(e.g., co21 indicates 12CO J=2->1 data), the array combination, the
+resolution, and the data product. When no resolution is specified, the
+map containsnative resolution data.
+
+RESOLUTION: The approximate physical resolution is given in the file
+name. The exact angular resolution is given by the BMAJ and BMIN
+keywords (almost always equal) in the header. We also include the
+adopted distance as a keyword in the header. Note that we allow a
+tolerance of +/- 10% in convolution to target physical
+resolution. That is, a map can have native resolution 85pc or 75pc and
+still have the filename labeled 80pc.
+
+INCLUDED ARRAYS: The combination of arrays is indicated by the file
+name, e.g., 12m+7m indicates joint 12m array and 7m array imaging, but
+NOT total power. 12m+7m+tp indicates data including information from
+all arrays.
+
+.....................
+Intensity metrics
+.....................
+
+mom0 - integrated intensity
+emom0 - uncertainty in mom0
+
+EXPLANATION: This is direct integration of the cube along the velocity
+axis inside the relevant mask. The uncertainty comes from error
+propagation assuming independent velocity channels and using the
+empirical noise estimates. The units are K*km/s.
+
+The mom0 is our best tracer of how much molecular gas there is along
+the line of sight.
+
+tpeak - peak temperature 
+tpeak12p5kms - the peak temperature over any 12.5km/s window
+
+EXPLANATION: Peak intensity (in Kelvin) along the velocity axis for
+each line of sight. For tpeak12p5kms, the peak along velocity axis
+after smoothing the cube with a 5 channel boxcar along the spectral
+axis (but not downsampling). Note that for the tpeak and tpeak12p5kms
+calculations, the mask used covers all spatial pixels in all channels
+where the signal mask has any coverage. This ensures relatively
+uniform noise properties across the map.
+
+The tpeak12p5kms is a good way to see the detailed structure of the
+galaxy at high signal to noise.
+
+.....................
+Velocity metrics
+.....................
+
+mom1 - intensity weighted mean velocity
+emom1 - uncertainty in mom1
+
+EXPLANATION: This is the intensity-weighted mean velocity calculated
+inside the mask. In the case of the "broad" moment1, we reject pixels
+that deviate strongly from the low resolution velocity field as likely
+outliers. This has the advantage of producing smooth velocity fields,
+but could in principle miss some very weird kinematics. The moment1,
+this velocity reflects the average velocity. In the case of multiple
+components this will sit intermediate between the two.
+
+The uncertainty in the moment1 reflects the statistical uncertainty in
+the cube, propagated into the map assuming independent velocity
+channels.
+
+.....................
+Line profile metrics
+.....................
+
+ew - equivalent width
+eew - uncertainty in ew, not currently populated
+
+EXPLANATION: This is the "equivalent width" line width
+diagnostic. This is the line integral (moment 0) divided by the peak
+intensity. That is, this is the rectangular width needed to supply the
+full line width at the peak intensity. A prefactor is then applied to
+recast as the equivalent sigma for the case of a Gaussian line
+profile. This is a highly robust statistic in the sense that it
+behaves well in the presence of noise or multiple components. It can
+easily miss subtleties in the line profile and has some dependence on
+spectral resolution.
+
+mom2 - rms velocity dispersion
+emom2 - uncertainty in mom2, not currently populated
+
+EXPLANATION: This is the "moment2" line width diagnostic. This is the
+intensity-weighted second moment, measuring the rms scatter about the
+intensity weighted mean velocity. This metric is highly sensitive to
+the inclusion of noise. In the presence of multiple spectral peaks, it
+will also be sensitive to the spread between peaks. In that sense,
+convergence between this and the ew is a crude diagnostic of
+Gaussianity. Because of the sensitivity to noise, it is recommended to
+only use moment2 from the 'strict' maps.
+
+Note that the line width maps provided are not yet corrected for the
+line spread function (channel width + channel-to-channel
+correlation). Nor are they corrected for biases due to finite
+sensitivity (this is a particular issue for moment 2).

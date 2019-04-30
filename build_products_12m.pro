@@ -90,9 +90,13 @@ pro build_products_12m $
   endif
   n_res = n_elements(target_res)
 
-  prelim_res = 1250
+; PRELIMINARY RESOLUTION FOR MASKING
+  prelim_res = 500
 
+; LOW RESOLUTION STRING FOR USE IN BROAD MASKS
   lowres_string = '500pc'
+
+; TUNING PARAMETERS FOR THE VELOCITY FIELD
 
   vfield_reject_thresh = 30.
   mom0_thresh_for_mom1 = 2.0
@@ -1125,7 +1129,7 @@ pro build_products_12m $
            if last eq 1B then continue
         endif
 
-        message, "Estimating noise for for "+this_gal, /info
+        message, "Making high level products for "+this_gal, /info
 
         for jj = 0, n_fullarray - 1 do begin
 
