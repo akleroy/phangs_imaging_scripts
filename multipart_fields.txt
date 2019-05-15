@@ -5,8 +5,7 @@
 # column 4: target area RA extent (arcsec)
 # column 4: target area Dec extent (arcsec)
 # column 5: total power is the same for both (i.e., copy don't merge)
-# Fill in the sizes for LP and 925 targets as we need them.
-# circinus
+circinus  213.291458	-65.339222 	600     600      0
 ngc0253	  11.888002	-25.288220	1800	1000	 0
 ngc0300	  13.722833	-37.684389	900	600	 0
 ngc1097   41.579375  	-30.274889  	320	360	 0

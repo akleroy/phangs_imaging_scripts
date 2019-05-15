@@ -1,5 +1,7 @@
 tol = 1d-6
 
+; in cycle 3
+
 cube = readfits('ALMA_TP.M74.v0p2.fits', hdr)
 blank = where(abs(cube - sxpar(hdr,'BLANK')) lt tol)
 cube[blank] = !values.f_nan
@@ -30,3 +32,16 @@ blank = where(abs(cube - sxpar(hdr,'BLANK')) lt tol)
 cube[blank] = !values.f_nan
 writefits, 'ALMA_TP.NGC_1566.CO21.v0p2.gildas.blanked.fits', cube, hdr
 
+
+; in cycle 5
+tol = 1d-6
+
+cube = readfits('ALMA_TP.NGC4293.CO21.blank.image.VLSRK.fits', hdr)
+blank = where(abs(cube - sxpar(hdr,'BLANK')) lt tol)
+cube[blank] = !values.f_nan
+writefits, 'ALMA_TP.NGC4293.CO21.processed.fits', cube, hdr
+
+cube = readfits('ALMA_TP.IC1954.CO21.blank.image.VLSRK.fits', hdr)
+blank = where(abs(cube - sxpar(hdr,'BLANK')) lt tol)
+cube[blank] = !values.f_nan
+writefits, 'ALMA_TP.IC1954.CO21.processed.fits', cube, hdr

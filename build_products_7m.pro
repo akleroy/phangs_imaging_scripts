@@ -89,7 +89,7 @@ pro build_products_7m $
 ; RESOLUTIONS
 
   if n_elements(target_res) eq 0 then begin
-     target_res = [-1, 500, 750, 1000, 1250]
+     target_res = [-1, 60, 90, 120, 150, 500, 750, 1000, 1250]
   endif
   n_res = n_elements(target_res)
 

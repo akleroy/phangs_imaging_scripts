@@ -13,10 +13,16 @@ import glob
 # Control Flow
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
+# ... a list of directories
+data_dirs = [
+    '/data/tycho/0/leroy.42/reduction/alma/PHANGS/',
+    '/data/young/leroy.42/alma_data/PHANGS/',
+    ]
+
 # ... a text list. The script will process only these galaxies.
 
 # ngc1365 and ngc5128
-only = ['ngc4731']
+only = ['ngc1087','ngc4731']
 
 # ... skip these galaxies.
 
@@ -27,16 +33,13 @@ skip = []
 first = ""
 last = ""
 
-#first = "ngc1672"
-#last = "ngc4303"
-
 # ... set this to '12m' or '7m' to stage data only for those
 # arrays. Leave it as None to process all data. If both 12m and 7m
 # data are processed, then the script will also create 12m+7m data. So
 # you need to rerun the staging when both data sets arrive.
 
-#just_array = None
-just_array = ''
+just_array = None
+#just_array = '12m'
 
 # List of lines to process. There's not a lot of error catching
 # here. It needs to be a list and it only knows about co21 and c18o21
@@ -130,7 +133,8 @@ for gal in gals:
             just_array=just_array,
             do_split=True,
             do_statwt=False,
-            quiet=False)
+            quiet=False,
+            data_dirs=data_dirs)
 
     # Optionally, run custom scripts at this stage. This could, for
     # example, flag data or carry out uv continuum subtraction. The

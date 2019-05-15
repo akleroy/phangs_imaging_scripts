@@ -1216,7 +1216,7 @@ pro build_cubes $
                        (pb_cube1[ind12]^2 + pb_cube2[ind12]^2)
                  endif 
 
-                 if npart eq 3 then begin
+                 if n_part eq 3 then begin
                     ind1 = where(cov_part1 eq 1 and $
                                  cov_part2 eq 0 and cov_part3 eq 0, ct1)
                     if ct1 gt 0 then $
@@ -1267,7 +1267,7 @@ pro build_cubes $
                     
                  endif
 
-                 if npart eq 5 then begin
+                 if n_part eq 5 then begin
 
                     weight_cube = finite(cube_out)*0.0
                     cumul_cube = finite(cube_out)*0.0
@@ -1286,26 +1286,26 @@ pro build_cubes $
 
                     ind3 = where(cov_part3 eq 1, ct3)
                     if ct3 gt 0 then begin
-                       cumul_cube[ind3] = cumul_cube[ind3]+cube1[ind3]*pb_cube3[ind3]^2
+                       cumul_cube[ind3] = cumul_cube[ind3]+cube3[ind3]*pb_cube3[ind3]^2
                        weight_cube[ind3] = weight_cube[ind3]+pb_cube3[ind3]^2
                     endif
 
                     ind4 = where(cov_part4 eq 1, ct4)
                     if ct4 gt 0 then begin
-                       cumul_cube[ind4] = cumul_cube[ind4]+cube1[ind4]*pb_cube4[ind4]^2
+                       cumul_cube[ind4] = cumul_cube[ind4]+cube4[ind4]*pb_cube4[ind4]^2
                        weight_cube[ind4] = weight_cube[ind4]+pb_cube4[ind4]^2
                     endif
 
                     ind5 = where(cov_part5 eq 1, ct5)
                     if ct5 gt 0 then begin
-                       cumul_cube[ind5] = cumul_cube[ind5]+cube1[ind5]*pb_cube5[ind5]^2
+                       cumul_cube[ind5] = cumul_cube[ind5]+cube5[ind5]*pb_cube5[ind5]^2
                        weight_cube[ind5] = weight_cube[ind5]+pb_cube5[ind5]^2
                     endif
 
                     cube_out = cumul_cube/weight_cube
                     nind = where(weight_cube eq 0, nct)
                     if nct gt 0 then $
-                       cube_out[nin] = !values.f_nan
+                       cube_out[nind] = !values.f_nan
 
                  endif
 
@@ -1313,7 +1313,7 @@ pro build_cubes $
                  disp, max(cube_out, dim=3, /nan), max=1
                  disp, max(cube1, dim=3, /nan), max=1
                  disp, max(cube2, dim=3, /nan), max=1
-                 if n_part eq 3 then $
+                 if n_part ge 3 then $
                     disp, max(cube3, dim=3, /nan), max=1
 
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -1362,7 +1362,7 @@ pro build_cubes $
            tp2_cube = $
               readfits(tp2_infile, tp2_hdr)
            
-           if n_part eq 3 then begin
+           if n_part ge 3 then begin
 
               tp3_infile = $
                  release_dir+'process/'+ $
@@ -1377,6 +1377,38 @@ pro build_cubes $
 
               tp3_cube = $
                  readfits(tp3_infile, tp3_hdr)
+              
+           endif
+
+           if n_part eq 5 then begin
+
+              tp4_infile = $
+                 release_dir+'process/'+ $
+                 gals[gal_ind[3]]+'_tp_'+ $
+                 this_product+'_k.fits'
+              
+              test = file_search(tp4_infile, count=found)
+              if found eq 0 then begin
+                 message, 'File '+tp4_infile+' not found.', /info
+                 continue
+              endif
+
+              tp4_cube = $
+                 readfits(tp4_infile, tp4_hdr)
+
+              tp5_infile = $
+                 release_dir+'process/'+ $
+                 gals[gal_ind[4]]+'_tp_'+ $
+                 this_product+'_k.fits'
+              
+              test = file_search(tp5_infile, count=found)
+              if found eq 0 then begin
+                 message, 'File '+tp5_infile+' not found.', /info
+                 continue
+              endif
+
+              tp5_cube = $
+                 readfits(tp5_infile, tp5_hdr)
               
            endif
 
@@ -1395,7 +1427,7 @@ pro build_cubes $
               
               target_hdr = tp1_hdr
               cdelt = abs(sxpar(target_hdr,'CDELT1'))
-
+              
               npix_ra = abs(ceil(merge_dra[ii]/3600. / cdelt))
               crpix_ra = npix_ra/2.0
               
@@ -1434,7 +1466,7 @@ pro build_cubes $
                  , outhdr = new_tp2_hdr $
                  , missing=!values.f_nan
               
-              if n_part eq 3 then begin
+              if n_part ge 3 then begin
 
                  cube_hastrom $
                     , data = tp3_cube $
@@ -1446,11 +1478,35 @@ pro build_cubes $
                  
               endif
 
+              if n_part eq 5 then begin
+
+                 cube_hastrom $
+                    , data = tp4_cube $
+                    , hdr_in = tp4_hdr $
+                    , target_hdr = target_hdr $
+                    , outcube = new_tp4 $
+                    , outhdr = new_tp4_hdr $
+                    , missing=!values.f_nan
+
+                 cube_hastrom $
+                    , data = tp5_cube $
+                    , hdr_in = tp5_hdr $
+                    , target_hdr = target_hdr $
+                    , outcube = new_tp5 $
+                    , outhdr = new_tp5_hdr $
+                    , missing=!values.f_nan
+
+              endif
+
               cube_out = new_tp1*!values.f_nan
               
               cov_tp1 = finite(new_tp1)
               cov_tp2 = finite(new_tp2)
-              if n_part eq 3 then cov_tp3 = finite(new_tp3)
+              if n_part ge 3 then cov_tp3 = finite(new_tp3)
+              if n_part eq 5 then begin
+                 cov_tp4 = finite(new_tp4)
+                 cov_tp5 = finite(new_tp5)
+              endif
 
               if n_part eq 2 then begin
 
@@ -1466,7 +1522,9 @@ pro build_cubes $
                  if ct12 gt 0 then $
                     cube_out[ind12] = (new_tp1[ind12] + new_tp2[ind12])/2.0
 
-              endif else begin
+              endif 
+
+              if n_part eq 3 then begin
 
                  ind1 = where(cov_tp1 eq 1 and cov_tp2 eq 0 and $
                               cov_tp3 eq 0, ct1)
@@ -1504,23 +1562,64 @@ pro build_cubes $
                     cube_out[ind123] = (new_tp1[ind123] + new_tp2[ind123] + $
                                         new_tp3[ind123])/3.0
                  
-              endelse
+              endif
+
+              if n_part eq 5 then begin
+
+                 weight_cube = finite(cube_out)*0.0
+                 cumul_cube = finite(cube_out)*0.0
+
+                 ind1 = where(cov_tp1 eq 1, ct1)
+                 if ct1 gt 0 then begin
+                    cumul_cube[ind1] = cumul_cube[ind1]+new_tp1[ind1]*cov_tp1[ind1]^2
+                    weight_cube[ind1] = weight_cube[ind1]+cov_tp1[ind1]
+                 endif
+
+                 ind2 = where(cov_tp2 eq 1, ct2)
+                 if ct2 gt 0 then begin
+                    cumul_cube[ind2] = cumul_cube[ind2]+new_tp2[ind2]*cov_tp2[ind2]^2
+                    weight_cube[ind2] = weight_cube[ind2]+cov_tp2[ind2]
+                 endif
+
+                 ind3 = where(cov_tp3 eq 1, ct3)
+                 if ct3 gt 0 then begin
+                    cumul_cube[ind3] = cumul_cube[ind3]+new_tp3[ind3]*cov_tp3[ind3]^2
+                    weight_cube[ind3] = weight_cube[ind3]+cov_tp3[ind3]
+                 endif
+
+                 ind4 = where(cov_tp4 eq 1, ct4)
+                 if ct4 gt 0 then begin
+                    cumul_cube[ind4] = cumul_cube[ind4]+new_tp4[ind4]*cov_tp4[ind4]^2
+                    weight_cube[ind4] = weight_cube[ind4]+cov_tp4[ind4]
+                 endif
+
+                 ind5 = where(cov_tp5 eq 1, ct5)
+                 if ct5 gt 0 then begin
+                    cumul_cube[ind5] = cumul_cube[ind5]+new_tp5[ind5]*cov_tp5[ind5]^2
+                    weight_cube[ind5] = weight_cube[ind5]+cov_tp5[ind5]
+                 endif
+
+                 cube_out = cumul_cube/weight_cube
+                 nind = where(weight_cube eq 0, nct)
+                 if nct gt 0 then $
+                    cube_out[nind] = !values.f_nan                 
+              endif
               
               writefits, release_dir+'process/'+ $
                          merge_name[ii]+'_tp_'+this_product+'_k.fits' $
                          , cube_out, target_hdr
-              
-           endelse               
 
-        endfor
-        
+           endelse
+
      endfor
-
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'FINISHED MERGING MULTI-PART MOSAICS', /info
-     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
-  endif
+  endfor
+
+  message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+  message, 'FINISHED MERGING MULTI-PART MOSAICS', /info
+  message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+  
+endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; SANITIZE CUBES - TRIM EMPTY SPACE, ETC.

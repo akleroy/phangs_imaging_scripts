@@ -52,6 +52,7 @@ def copy_data(gal=None,
               just_array=None,
               do_split=True,
               do_statwt=False,
+              data_dirs=[''],
               quiet=False):
     """
     Copies data from its original location, which is specified in a
@@ -71,11 +72,10 @@ def copy_data(gal=None,
         return
     gal_specific_key = ms_key[gal]
 
-    # Change to the right directory
-
+    # Change to the right output directory for this galaxy
     this_dir = dir_for_gal(gal)
     
-    # Make the directory if it's missing
+    # Make the output directory if it's missing
     if os.path.isdir(this_dir) == False:
         print "Directory "+this_dir+" not found. Making it."
         os.system('mkdir '+this_dir)
@@ -117,9 +117,25 @@ def copy_data(gal=None,
                 if this_ms.count(just_array) == 0:
                     continue
            
-            # Set up a copy command, overwriting previous versions
 
-            in_file = proj_specific_key[this_ms]            
+            # Identify the input file, checking for its existence in
+            # any of the various root directories.
+            in_file = None
+            for candidate_dir in data_dirs:
+                candidate_file = candidate_dir + proj_specific_key[this_ms]
+                if os.path.exists(candidate_file) == False:
+                    continue
+                in_file = candidate_file
+
+            # We didn't find the file. Alarm and continue to the next file.
+            if in_file == None:
+                print('File '+project_specific_key[this_ms]+' not found.')
+                print('Continuing to next file.')
+                continue
+
+            # Set up a copy command, overwriting previous versions. If
+            # we are going to do some additional processing, make this
+            # an intermediate file ("_copied")
 
             if do_split:
                 copied_file = gal+'_'+this_proj+'_'+this_ms+'_copied.ms'
