@@ -1058,10 +1058,12 @@ def extract_phangs_lines(
 
     target_width = {}
     target_width['co21'] = 2.5
+    target_width['13co21'] = 2.5
     target_width['c18o21'] = 6.0
     
     edge_for_statwt = {}
     edge_for_statwt['co21'] = 25
+    edge_for_statwt['13co21'] = 25
     edge_for_statwt['c18o21'] = 20
 
     # Loop and extract lines for each data set
