@@ -6,14 +6,23 @@ This is a delivery of CO 2-1 data for PHANGS-ALMA.
 VERSION: 3.1
 ------------
 
-This is the first delivery of our full data set. It is the third major
-delivery to the team, and this is the first version of this
-release. We label this version 3.1. Subsequent versions of this
-release using the same basic processing will be 3.2, 3.2, 3.3, etc.
+This is the first delivery of our full PHANGS-ALMA data set. It is the
+third major delivery to the team, and this is the first version of
+this release. 
 
-This includes several pilot programs, the PHANGS-ALMA Large Program,
-several follow up programs, and several archival data sets. If you use
-these data please include the acknowledgment, project codes, and
+We label this version 3.1. Subsequent versions of this release using
+the same basic processing will be 3.2, 3.2, 3.3, etc. Deliveries that
+implement significant processing improvements will be released using
+higher base version numbers (e.g. version 4.X).
+
+This is NOT a frozen release. Versions 3.0, 4.0, etc. are intended to
+be frozen releases. These will stay stable over many months (or
+years). Versions labeled 3.X (3.1, 3.2, etc.) are incremental
+updates. These will change as we implement improvements.
+
+This data delivery includes several pilot programs, the PHANGS-ALMA Large Program,
+several follow-up programs, and several archival data sets. If you use
+these data, please include the acknowledgment, project codes, and
 references below.
 
 As of this release, almost all data have been delivered. Several
@@ -26,8 +35,8 @@ PROCESSING
 
 These data have all been calibrated in the pipeline for which they
 were delivered. For most, this is a version of CASA 5.X.X but earlier
-data sets include some data calibrated 4.X.X. After calibration, data
-were staged for imaging, regridded, and combined using CASA
+data sets include some data calibrated in 4.X.X. After calibration,
+data were staged for imaging, regridded, and combined using CASA
 5.4.0. Imaging proceeded in CASA 5.4.0 for this release.
 
 After imaging, data were exported as FITS files and post
@@ -40,7 +49,9 @@ to have the minimum pixel size needed to critically sample the beam
 and remove empty space.
 
 To create the products in this release, each cube is convolved to a
-succession of physical resolutions. At each resolution, the pipeline
+succession of physical resolutions. The assumed distance to the target
+galaxy is recorded in the FITS header for all convolved data products
+using the DIST keyword (see below). At each resolution, the pipeline
 estimates the three dimensional noise distribution. "Signal" masks are
 created at each resolution that identify regions with detectable
 signal. By combining masks created at low resolution and high
@@ -123,7 +134,7 @@ Provided maps
 Currently we provide the following maps. The file name gives the line
 (e.g., co21 indicates 12CO J=2->1 data), the array combination, the
 resolution, and the data product. When no resolution is specified, the
-map containsnative resolution data.
+map contains native resolution data.
 
 RESOLUTION: The approximate physical resolution is given in the file
 name. The exact angular resolution is given by the BMAJ and BMIN
@@ -178,9 +189,10 @@ EXPLANATION: This is the intensity-weighted mean velocity calculated
 inside the mask. In the case of the "broad" moment1, we reject pixels
 that deviate strongly from the low resolution velocity field as likely
 outliers. This has the advantage of producing smooth velocity fields,
-but could in principle miss some very weird kinematics. The moment1,
-this velocity reflects the average velocity. In the case of multiple
-components this will sit intermediate between the two.
+but could in principle miss some very weird kinematics. For sightlines
+with a single velocity component, the moment1 reflects the average
+velocity of the emission. In the case of two or more components, the
+moment1 will sit intermediate between the two.
 
 The uncertainty in the moment1 reflects the statistical uncertainty in
 the cube, propagated into the map assuming independent velocity
@@ -219,3 +231,15 @@ Note that the line width maps provided are not yet corrected for the
 line spread function (channel width + channel-to-channel
 correlation). Nor are they corrected for biases due to finite
 sensitivity (this is a particular issue for moment 2).
+
+---------------------
+ACKNOWLEDGMENTS
+---------------------
+
+Add me!
+
+---------------------
+HELP AND FEEDBACK
+---------------------
+
+Add me too!
