@@ -683,11 +683,12 @@ pro build_products_7m $
                  release_dir+'process/'+ $
                  this_gal+'_'+this_array+'_'+ $
                  this_product+ $
-                 '_signalmask_500pc.fits'
+                 '_signalmask_'+lowres_string+'.fits'
               
               test = file_search(lores_fname, count=found)
               if found eq 0 then begin
                  message, 'File '+lores_fname+' not found.', /info
+                 
                  continue
               endif                 
               mask_lores = readfits(lores_fname)
