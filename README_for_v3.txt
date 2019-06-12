@@ -3,31 +3,76 @@ PHANGS-ALMA Data Delivery README
 This is a delivery of CO 2-1 data for PHANGS-ALMA.
 
 ------------
-VERSION: 3.1
+VERSION: 3.4
 ------------
 
 This is the first delivery of our full PHANGS-ALMA data set. It is the
 third major delivery to the team, and this is the first version of
 this release. 
 
-We label this version 3.1. Subsequent versions of this release using
-the same basic processing will be 3.2, 3.2, 3.3, etc. Deliveries that
+We label this version 3.4. Subsequent versions of this release using
+the same basic processing will be 3.5, 3.6, 3.7, etc. Deliveries that
 implement significant processing improvements will be released using
 higher base version numbers (e.g. version 4.X).
 
-This is NOT a frozen release. Versions 3.0, 4.0, etc. are intended to
+This is NOT a frozen release. Versions 4.0, 5.0, etc. are intended to
 be frozen releases. These will stay stable over many months (or
 years). Versions labeled 3.X (3.1, 3.2, etc.) are incremental
 updates. These will change as we implement improvements.
 
-This data delivery includes several pilot programs, the PHANGS-ALMA Large Program,
-several follow-up programs, and several archival data sets. If you use
-these data, please include the acknowledgment, project codes, and
-references below.
+This data delivery includes several pilot programs, the PHANGS-ALMA
+Large Program, several follow-up programs, and several archival data
+sets. If you use these data, please include the acknowledgment,
+project codes, and references below.
 
-As of this release, almost all data have been delivered. Several
-reobservations and a handful of late-arriving data sets are not yet
-included. These will be incorporated into future version 3 releases.
+As of this release, almost all data have been delivered. The handful
+of outstanding follow up observations will be incorporated into future
+version releases, but team members should not anticipate another dozen
+galaxies.
+
+Starting with version 3.4, the data products in a PHANGS-ALMA data
+release are associated with a specific version of the PHANGS sample
+table. For this release, the associated sample table is:
+
+phangs_sample_table_v1p2.fits
+
+---------------------
+ACKNOWLEDGMENTS
+---------------------
+
+If you use these data products, please cite the PHANGS-ALMA survey
+paper:
+
+A. K. Leroy, E. Schinnerer et al. (in preparation). 
+
+Please also add the following acknowledgments:
+
+This paper makes use of the following ALMA data:
+ADS/JAO.ALMA#2012.1.00650.S, ADS/JAO.ALMA#2013.1.00803.S,
+ADS/JAO.ALMA#2013.1.01161.S, ADS/JAO.ALMA#2015.1.00782.S,
+ADS/JAO.ALMA#2015.1.00925.S, ADS/JAO.ALMA#2015.1.00956.S,
+ADS/JAO.ALMA#2017.1.00392.S, ADS/JAO.ALMA#2017.1.00886.L,
+ADS/JAO.ALMA#2017.1.00766.S, ADS/JAO.ALMA#2018.1.01321.S,
+ADS/JAO.ALMA#2018.1.01651.L. 
+
+ALMA is a partnership of ESO (representing its member states), NSF
+(USA) and NINS (Japan), together with NRC (Canada), MOST and ASIAA
+(Taiwan), and KASI (Republic of Korea), in cooperation with the
+Republic of Chile. The Joint ALMA Observatory is operated by ESO,
+AUI/NRAO and NAOJ. The National Radio Astronomy Observatory is a
+facility of the National Science Foundation operated under cooperative
+agreement by Associated Universities, Inc.
+
+---------------------
+HELP AND FEEDBACK
+---------------------
+
+We welcome feedback and suggestions on data products and
+documentation. Please direct suggestions to the PHANGS ALMA data
+reduction group (adr@phangs.groups.io). For the immediate next few
+releases (while we work out remaining bugs), it may be useful to
+direct detailed questions directly to Adam Leroy
+(leroy.42@osu.edu). Both is probably best.
 
 ---------------------
 PROCESSING
@@ -231,15 +276,3 @@ Note that the line width maps provided are not yet corrected for the
 line spread function (channel width + channel-to-channel
 correlation). Nor are they corrected for biases due to finite
 sensitivity (this is a particular issue for moment 2).
-
----------------------
-ACKNOWLEDGMENTS
----------------------
-
-Add me!
-
----------------------
-HELP AND FEEDBACK
----------------------
-
-Add me too!
