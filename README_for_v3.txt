@@ -45,6 +45,16 @@ paper:
 
 A. K. Leroy, E. Schinnerer et al. (in preparation). 
 
+*Temporarily*, while the survey paper remains in preparation, if you
+use the "pilot" (2015.1.00925 and 2015.1.00956) sample before
+publication of the survey paper please add a citation that "These maps
+have been previous presented in J. Sun et al. (2018ApJ...860..172S)."
+If you specifically use the NGC 0628 data
+(ADS/JAO.ALMA#2012.1.00650.S) before the publication of the survey
+paper, please reference that these data have also been presented in
+Leroy et al. 2016 (2016ApJ...831...16L) and Kreckel et al. 2018
+(2018ApJ...863L..21K)."
+
 Please also add the following acknowledgments:
 
 This paper makes use of the following ALMA data:
