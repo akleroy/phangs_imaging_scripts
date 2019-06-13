@@ -1,4 +1,5 @@
 pro inspect_clean_masks $
+   , version=version $
    , nopause=nopause $
    , inspect=do_inspect $
    , start = start_num $
@@ -21,10 +22,13 @@ pro inspect_clean_masks $
 ; ... look up the version to based the masks on
 
   if n_elements(version) eq 0 then $
-     version = '2'
+     version = '3'
   
   if version eq '2' then begin
      vstring = 'v2'
+     release_dir = root_imaging_dir+'release/'+vstring+'/'
+  endif else if version eq '3' then begin
+     vstring = 'v3'
      release_dir = root_imaging_dir+'release/'+vstring+'/'
   endif else begin
      print, "Version not recognized. Returning."

@@ -24,6 +24,8 @@ pro build_cubes $
 
   root_imaging_dir = '../'
 
+  version_tag = '3.4'
+
   if n_elements(version) eq 0 then $
      version = '3'
   
@@ -1699,6 +1701,19 @@ endif
                  jtok = calc_jtok(hdr=hdr)
                  cube *= jtok
                  sxaddpar, hdr, 'BUNIT', 'K'
+
+                 sxaddpar, hdr, 'DATAMAX', max(cube,/nan)
+                 sxaddpar, hdr, 'DATAMIN', min(cube,/nan)
+                 sxaddpar, hdr, 'OBJECT', strupcase(this_gal)
+                 sxaddpar, hdr, 'ORIGIN', 'PHANGS-ALMA-'+version_tag
+
+                 sxdelpar, hdr, 'BLANK'
+                 sxdelpar, hdr, 'DATE-OBS'
+                 sxdelpar, hdr, 'OBSERVER'
+
+                 sxdelpar, hdr, 'HISTORY', 'This cube was produced by the PHANGS-ALMA pipeline.'
+                 sxdelpar, hdr, 'HISTORY', 'This is part of data release '+version_tag
+
                  writefits $
                     , release_dir+'process/'+$
                     this_gal+'_'+this_array+'_'+this_product+ $

@@ -38,9 +38,17 @@ pro build_release_v3 $
      if n_elements(just_array) gt 0 then begin
         
         if total(just_array eq '7m') gt 0 then begin
+           print, "Copying maps."
            spawn, 'cp '+in_dir+'*_7m_co21_strict_*.fits '+out_dir+'strict_maps/.'
            spawn, 'cp '+in_dir+'*_7m_co21_broad_*.fits '+out_dir+'broad_maps/.'        
+           print, "Copying cubes."
            spawn, 'cp '+in_dir+'*_7m_co21_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           print, "Copying noise cubes."
+           spawn, 'cp '+in_dir+'*_7m_co21_noise_flat_round_k.fits '+out_dir+'cubes/.'
+           print, "Copying signal masks."
+           spawn, 'cp '+in_dir+'*_7m_co21_signalmask.fits '+out_dir+'cubes/.'
+           print, "Copying hybrid masks."
+           spawn, 'cp '+in_dir+'*_7m_co21_hybridmask.fits '+out_dir+'cubes/.'
            for ii = 1, 5 do $
               spawn, 'rm -rf '+out_dir+'*/*_'+str(ii)+'_7m_co21_*.fits'
         endif
@@ -49,6 +57,9 @@ pro build_release_v3 $
            spawn, 'cp '+in_dir+'*_7m+tp_co21_strict_*.fits '+out_dir+'strict_maps/.'
            spawn, 'cp '+in_dir+'*_7m+tp_co21_broad_*.fits '+out_dir+'broad_maps/.'        
            spawn, 'cp '+in_dir+'*_7m+tp_co21_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_7m+tp_co21_noise_flat_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_7m+tp_co21_signalmask.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_7m+tp_co21_hybridmask.fits '+out_dir+'cubes/.'
            for ii = 1, 5 do $
               spawn, 'rm -rf '+out_dir+'*/*_'+str(ii)+'_7m+tp_co21_*.fits'
         endif
@@ -57,6 +68,9 @@ pro build_release_v3 $
            spawn, 'cp '+in_dir+'*_12m+7m_co21_strict_*.fits '+out_dir+'strict_maps/.'
            spawn, 'cp '+in_dir+'*_12m+7m_co21_broad_*.fits '+out_dir+'broad_maps/.'        
            spawn, 'cp '+in_dir+'*_12m+7m_co21_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m+7m_co21_noise_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m+7m_co21_signalmask.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m+7m_co21_hybridmask.fits '+out_dir+'cubes/.'
            for ii = 1, 5 do $
               spawn, 'rm -rf '+out_dir+'*/*_'+str(ii)+'_12m+7m_co21_*.fits'
         endif
@@ -65,6 +79,9 @@ pro build_release_v3 $
            spawn, 'cp '+in_dir+'*_12m+7m+tp_co21_strict_*.fits '+out_dir+'strict_maps/.'
            spawn, 'cp '+in_dir+'*_12m+7m+tp_co21_broad_*.fits '+out_dir+'broad_maps/.'
            spawn, 'cp '+in_dir+'*_12m+7m+tp_co21_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m+7m+tp_co21_noise_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m+7m+tp_co21_signalmask.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m+7m+tp_co21_hybridmask.fits '+out_dir+'cubes/.'
            for ii = 1, 5 do $
               spawn, 'rm -rf '+out_dir+'*/*_'+str(ii)+'_12m+7m+tp_co21_*.fits'
         endif
