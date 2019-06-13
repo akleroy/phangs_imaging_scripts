@@ -20,10 +20,13 @@ pro make_clean_masks $
 ; ... look up the version to based the masks on
 
   if n_elements(version) eq 0 then $
-     version = '2'
+     version = '3'
   
   if version eq '2' then begin
      vstring = 'v2'
+     release_dir = root_imaging_dir+'release/'+vstring+'/'
+  endif else if version eq '3' then begin
+     vstring = 'v3'
      release_dir = root_imaging_dir+'release/'+vstring+'/'
   endif else begin
      print, "Version not recognized. Returning."
@@ -76,7 +79,9 @@ pro make_clean_masks $
 ; ... these galaxies have central bright sources
 
   has_bright_center = $
-     ['ngc1097' $
+     ['circinus' $
+      , 'ngc0253' $
+      , 'ngc1097' $
       , 'ngc1300' $
       , 'ngc1317' $
       , 'ngc1365' $
@@ -109,6 +114,10 @@ pro make_clean_masks $
       , 'ngc5643' $
       , 'ngc6300' $
       , 'ngc7496' $
+     ]
+
+  is_super_faint = $
+     ['ngc0300' $
      ]
 
   empty = $
@@ -150,11 +159,12 @@ pro make_clean_masks $
      print, ""
 
      dir = release_dir+'process/'
+     print, dir, version, vstring
 
      clean_mask_fname = '../clean_masks/'+this_gal+'_co21_clean_mask.fits'
 
-     if n_elements(only) gt 0 then $
-        if total(only eq gals[ii]) eq 0 then continue
+;if n_elements(only) gt 0 then $
+;   if total(only eq gals[ii]) eq 0 then continue
 
      cube_fname = dir+this_gal+'_7m+tp_co21_flat_round_k.fits'
      if file_test(cube_fname) eq 0 then begin
@@ -171,7 +181,7 @@ pro make_clean_masks $
         print, "... looking for "+cube_fname
         print, "Continuing."
         continue
-     endif    
+     endif
      cube = readfits(cube_fname, cube_hdr)
 
      conv_with_gauss $
@@ -186,8 +196,13 @@ pro make_clean_masks $
      lowres_ppbeam = calc_pixperbeam(hdr=lowres_hdr)
      rms_lowres_cube = mad(lowres_cube)
 
-     lo_thresh_lowres = 3
-     hi_thresh_lowres = 10
+     if total(this_gal[0] eq is_super_faint) ge 1 then begin
+        lo_thresh_lowres = 3
+        hi_thresh_lowres = 5
+     endif else begin
+        lo_thresh_lowres = 3
+        hi_thresh_lowres = 10
+     endelse
 
      make_cprops_mask $
         , indata=lowres_cube $
@@ -200,6 +215,12 @@ pro make_clean_masks $
         , outmask=mask ;lowres_mask
      
      mask = grow_mask(mask, /z_only, iter=4)
+
+     if this_gal[0] eq 'ngc0300' then begin
+        mask[*,*,0:25] = 0B
+        mask[*,*,150:*] = 0B
+        mask = grow_mask(mask, /xy_only, iter=20)
+     endif
 
      if total(this_gal[0] eq has_bright_center) ge 1 then begin
 
