@@ -79,9 +79,19 @@ pro build_cubes $
   n_fullarray = n_elements(fullarray_list)
 
 ; PRODUCTS
-  
-  product_list = ['co21']
+  valid_products = ['co21','c18o21','13co21']
+  if n_elements(product_list) eq 0 then begin
+     product_list = ['co21']
+  endif
   n_product = n_elements(product_list)
+  for ii = 0, n_product-1 do begin
+     this_product = product_list[ii]
+     if total(this_product eq valid_products) eq 0 then begin
+        print, "Illegal product in product list: ", this_product
+        print, "Stopping."
+        stop
+     endif
+  endfor
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; RESET THE DIRECTORY STRUCTURE
@@ -1701,6 +1711,7 @@ endif
                  jtok = calc_jtok(hdr=hdr)
                  cube *= jtok
                  sxaddpar, hdr, 'BUNIT', 'K'
+                 sxaddpar, hdr, 'JTOK', jtok, 'Janskies to Kelvin conversion'
 
                  sxaddpar, hdr, 'DATAMAX', max(cube,/nan)
                  sxaddpar, hdr, 'DATAMIN', min(cube,/nan)
@@ -1711,8 +1722,17 @@ endif
                  sxdelpar, hdr, 'DATE-OBS'
                  sxdelpar, hdr, 'OBSERVER'
 
-                 sxdelpar, hdr, 'HISTORY', 'This cube was produced by the PHANGS-ALMA pipeline.'
-                 sxdelpar, hdr, 'HISTORY', 'This is part of data release '+version_tag
+                 sxdelpar, hdr, 'OBSRA'
+                 sxdelpar, hdr, 'OBSDEC'
+                 sxdelpar, hdr, 'OBSGEO-X'
+                 sxdelpar, hdr, 'OBSGEO-Y'
+                 sxdelpar, hdr, 'OBSGEO-Z'
+
+                 sxdelpar, hdr, 'DISTANCE'
+
+                 sxdelpar, hdr, 'HISTORY'
+                 sxaddpar, hdr, 'HISTORY', 'This cube was produced by the PHANGS-ALMA pipeline.'
+                 sxaddpar, hdr, 'HISTORY', 'This is part of data release '+version_tag
 
                  writefits $
                     , release_dir+'process/'+$
