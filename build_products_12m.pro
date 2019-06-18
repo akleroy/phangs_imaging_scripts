@@ -36,6 +36,11 @@ pro build_products_12m $
      return
   endelse
 
+; SAMPLE TABLE
+  sample_version_string = '1.2'
+  sample_tab_file = 'phangs_sample_table_v1p2.fits'  
+  sample_tab = mrdfits(sample_tab_file, 1, h)
+
 ; GALAXIES
   
 ; ... look up the list of galaxies
@@ -114,7 +119,7 @@ pro build_products_12m $
      dir = release_dir+'process/'
      tol = 0.1
 
-     s = gal_data(gal_for_fullgals)
+     ;s = gal_data(gal_for_fullgals)
 
      ext_to_process = $
         ['flat_round_k' $
@@ -219,6 +224,12 @@ pro build_products_12m $
            if last eq 1B then continue
         endif
 
+        sample_ind = where(s[ii].pgc eq sample_tab.pgc, sample_ct)
+        if sample_ct eq 0 then begin
+           print, "Galaxy not found in sample file. Stopping."
+        endif
+        adopted_distance = sample_tab[sample_ind].dist
+
         message, "Convolving the cubes for "+this_gal, /info
 
         for jj = 0, n_fullarray - 1 do begin
@@ -247,8 +258,11 @@ pro build_products_12m $
 
                  cube = readfits(in_file, hdr)
 
-                 sxaddpar, hdr, 'DIST', s[ii].dist_mpc, 'MPC / USED IN CONVOLUTION'
-                 current_res_pc = s[ii].dist_mpc*!dtor*sxpar(hdr, 'BMAJ')*1d6
+                 sxaddpar, hdr, 'SAMPVER', sample_version_string
+                 sxaddpar, hdr, 'SAMPTAB', sample_tab_file
+                 sxaddpar, hdr, 'DIST', adopted_distance, 'MPC / USED IN CONVOLUTION'
+
+                 current_res_pc = adopted_distance*!dtor*sxpar(hdr, 'BMAJ')*1d6
                  
                  for zz = 0, n_res -1 do begin
                     
@@ -256,7 +270,7 @@ pro build_products_12m $
                     out_file = release_dir+'process/'+ $
                                this_gal+'_'+this_array+'_'+ $
                                this_product+'_'+this_ext+'_'+res_str+'.fits'
-                    target_res_as = target_res[zz]/(s[ii].dist_mpc*1d6)/!dtor*3600.d
+                    target_res_as = target_res[zz]/(adopted_distance*1d6)/!dtor*3600.d
                     
                     if current_res_pc gt (1.0+tol)*target_res[zz] then begin
                        print, strupcase(this_gal)+": Resolution too coarse. Skipping."

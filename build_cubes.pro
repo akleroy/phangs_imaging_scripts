@@ -1722,6 +1722,10 @@ endif
                  sxdelpar, hdr, 'DATE-OBS'
                  sxdelpar, hdr, 'OBSERVER'
 
+                 sxdelpar, hdr, 'O_BLANK'
+                 sxdelpar, hdr, 'O_BSCALE'
+                 sxdelpar, hdr, 'O_BZERO'
+
                  sxdelpar, hdr, 'OBSRA'
                  sxdelpar, hdr, 'OBSDEC'
                  sxdelpar, hdr, 'OBSGEO-X'
