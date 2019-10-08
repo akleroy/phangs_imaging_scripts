@@ -16,6 +16,7 @@ import analysisUtils as au
 # CASA imports
 from taskinit import *
 
+# Import specific CASA tasks
 from concat import concat
 from exportfits import exportfits
 from flagdata import flagdata
@@ -37,14 +38,17 @@ select_7m = 'CM*'
 select_12m = 'DV*,DA*,PM*'
 select_12m7m = ''
 
+# Physical constants
 sol_kms = 2.9979246e5
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to move data around.
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
-# All of these fil shuffling routines know about the PHANGS
-# keys. They're called as part of the pipeline to set up the imaging.
+# All of these file-shuffling routines know about the PHANGS file
+# keys, which define directories, file names, galaxies, etc.. They're
+# called as part of the staging portion of the pipeline in order to
+# set up the imaging.
 
 def copy_data(gal=None,
               just_proj=None,
@@ -399,13 +403,17 @@ def extract_phangs_continuum(
     append_ext='',
     ):
     """
-    Extract all phangs lines and continuum for a galaxy.
+    Extract all continuum for a galaxy, after first flagging all CO
+    lines known to the line list.
     """
 
     if quiet == False:
         print "--------------------------------------------------------"
         print "START: Extracting continuum from data set."
         print "--------------------------------------------------------"
+
+    # The list of lines to flag. Default for PHANGS is to flag only
+    # the CO lines before extracting the continuum.
 
     lines_to_flag = line_list.lines_co+line_list.lines_13co+line_list.lines_c18o
 
@@ -437,7 +445,8 @@ def concat_phangs_continuum(
     quiet=False,
     ):
     """
-    Extract all phangs lines and continuum for a galaxy.
+    Concatenate continuum data sets into a single file for one galaxy
+    or part of galaxy.
     """
 
     if quiet == False:
@@ -1043,7 +1052,7 @@ def extract_phangs_lines(
     lines=['co21', 'c18o21'],
     ):
     """
-    Extract all phangs lines and continuum for a galaxy.
+    Extract all PHANGS lines and the mm continuum for a galaxy.
     """
 
     # Could add sio54, which is generally covered in PHANGS but almost

@@ -10,13 +10,16 @@ pro build_cubes $
    , singledish=do_singledish $
    , stage=do_stage_feather $
    , feather=do_copy_feather $
+   , prepmerge=do_mergeprep $
+   , stagemerge=do_stagemerge $
    , merge=do_merge $
    , sanitize=do_sanitize
 
 ;+
 ;
-; Scripts to build the imaged data into data cubes suitable for
-; analysis.
+;Scripts to build the imaged data into data cubes suitable for
+;analysis. Steps are: copy and primary beam correct, convolve to a
+;round beam, align single dish to 
 ;
 ;-
 
@@ -108,6 +111,9 @@ pro build_cubes $
      
      spawn, 'rm -rf '+release_dir+'process/'
      spawn, 'mkdir '+release_dir+'process/'
+
+     spawn, 'rm -rf '+release_dir+'products/'
+     spawn, 'mkdir '+release_dir+'products/'
 
      spawn, 'rm -rf '+release_dir+'feather/'
      spawn, 'mkdir '+release_dir+'feather/'
@@ -714,23 +720,24 @@ pro build_cubes $
   endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; MERGE MULTI-FIELD CUBES
+; HOMOGENIZE THE RESOLUTION OF MULTI-FIELD CUBES
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
   
-; This part of the script assumes that the directory name is the
-; galaxy name (or at least the name of the synthesized product created
-; by combining the fields).
+; Loop over all parts of each multi-part cube, read the pixel scale
+; and beam size, and then convolve all parts to a common resolution
+; for future linear mosaicking. Write the results to disk as an
+; intermediate product.
 
-  if keyword_set(do_merge) then begin
+  if keyword_set(do_mergeprep) then begin
 
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-     message, 'MERGING MULTI-PART MOSAICS', /info
+     message, 'PREPARING MULTI-PART MOSAICS FOR LINEAR MOSAICKING', /info
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
      
      message, '', /info
-     message, 'Merging multi-part cubes into a single cube.', /info
+     message, 'Moving all parts of a galaxy to a common resolution.', /info
      message, '', /info
-     
+
      dir = release_dir+'process/'
      
      readcol $
@@ -748,7 +755,10 @@ pro build_cubes $
          , 'pbcorr_round' $
         ]
      n_ext = n_elements(ext_to_merge)           
-     
+
+     tol_for_beam = 1.00
+
+;    LOOP OVER MERGING GALAXIES
      for ii = 0, n_merge-1 do begin
         
         if n_elements(only) gt 0 then $
@@ -765,305 +775,263 @@ pro build_cubes $
            continue
         endif
         
+;       LOOP OVER DATA PRODUCTS
         for kk = 0, n_product-1 do begin
            
            this_product = product_list[kk]
 
+;          LOOP OVER ARRAYS
            for jj = 0, n_fullarray - 1 do begin
               
               this_array = fullarray_list[jj]
               if n_elements(just_array) gt 0 then $
                  if total(just_array eq this_array) eq 0 then continue           
               
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; GET A LIST OF FILES TO MERGE AND READ THEM IN
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-              
+;             LOOP OVER EXTENSIONS 
               for ll = 0, n_ext-1 do begin
 
                  this_ext = ext_to_merge[ll]
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; LOOP OVER PARTS FOR THIS GALAXY TO GET A COMMON RESOLUTION
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
                  
-                 cube1_infile = $
-                    release_dir+'process/'+ $
-                    gals[gal_ind[0]]+'_'+ $
-                    this_array+'_'+this_product+'_'+$
-                    this_ext+'.fits'
-                 
-                 test = file_search(cube1_infile, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+cube1_infile+' not found.', /info
-                    continue
-                 endif
-                 cube1 = readfits(cube1_infile, cube1_hdr)
+                 found = 0B
 
-                 array_for_pb = this_array
-                 if array_for_pb eq '7m+tp' then array_for_pb = '7m'
-                 if array_for_pb eq '12m+7m+tp' then array_for_pb = '12m+7m'
-
-                 pb1_infile = $
-                    release_dir+'raw/'+ $
-                    gals[gal_ind[0]]+'_'+ $
-                    array_for_pb+'_'+this_product+'_'+$
-                    'pb'+'.fits'
-
-                 test = file_search(pb1_infile, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+pb1_infile+' not found.', /info
-                    continue
-                 endif
-                 pb_cube1 = readfits(pb1_infile, pb1_hdr)                 
-
-                 cube2_infile = $
-                    release_dir+'process/'+ $
-                    gals[gal_ind[1]]+'_'+ $
-                    this_array+'_'+this_product+'_'+$
-                    this_ext+'.fits'
-
-                 test = file_search(cube2_infile, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+cube2_infile+' not found.', /info
-                    continue
-                 endif
-                 cube2 = readfits(cube2_infile, cube2_hdr)
-
-                 pb2_infile = $
-                    release_dir+'raw/'+ $
-                    gals[gal_ind[1]]+'_'+ $
-                    array_for_pb+'_'+this_product+'_'+$
-                    'pb'+'.fits'
-
-                 test = file_search(pb2_infile, count=found)
-                 if found eq 0 then begin
-                    message, 'File '+pb2_infile+' not found.', /info
-                    continue
-                 endif
-                 pb_cube2 = readfits(pb2_infile, pb2_hdr)
-
-                 if n_part ge 3 then begin
-                    cube3_infile = $
+                 for mm = 0, n_part-1 do begin
+                    
+                    this_gal_part = gals[gal_ind[mm]]
+                    
+                    this_infile = $
                        release_dir+'process/'+ $
-                       gals[gal_ind[2]]+'_'+ $
+                       this_gal_part+'_'+ $
                        this_array+'_'+this_product+'_'+$
                        this_ext+'.fits'
-                    cube3 = readfits(cube3_infile, cube3_hdr)
 
-                    test = file_search(cube3_infile, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+cube3_infile+' not found.', /info
+                    if file_test(this_infile) eq 0 then begin
                        continue
                     endif
-                    
-                    pb3_infile = $
-                       release_dir+'raw/'+ $
-                       gals[gal_ind[2]]+'_'+ $
-                       array_for_pb+'_'+this_product+'_'+$
-                       'pb'+'.fits'
+                    if found eq 0B then begin
+                       first = 1B
+                       found = 1B
+                    endif else begin
+                       first = 0B
+                    endelse
 
-                    test = file_search(pb3_infile, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+pb3_infile+' not found.', /info
-                       continue
-                    endif
-                    pb_cube3 = readfits(pb3_infile, pb3_hdr)
-                    
+                    this_hdr = headfits(this_infile)
+                    this_bmaj = sxpar(this_hdr,'BMAJ')*3600.
+                    this_pix = abs(sxpar(this_hdr,'CDELT1'))*3600.
+                    print, this_infile, " has beam ", this_bmaj, " and pixel ", this_pix
+                    if first then begin
+                       bmaj_list = [this_bmaj] 
+                       pix_list = [this_pix] 
+                       hdr_list = [this_hdr]
+                    endif else begin
+                       bmaj_list = [bmaj_list, this_bmaj]
+                       pix_list = [pix_list, this_pix]
+                       hdr_list = [hdr_list, this_hdr]
+                    endelse
+                 endfor
+
+                 if found eq 0B then begin
+                    print, "No data found for this extension plus products. Continuing."
+                    continue
                  endif
 
-                 if n_part ge 4 then begin
-                    cube4_infile = $
+                 max_bmaj = max(bmaj_list, /nan)
+                 max_pix = max(pix_list, /nan)
+
+                 print, "Maximum beam size is: ", max_bmaj
+                 target_bmaj = sqrt(max_bmaj^2+(2.0*max_pix)^2)
+                 print, "I will target: ", target_bmaj
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; CONVOLVE THIS COMMON RESOLUTION
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+                 for mm = 0, n_part-1 do begin
+                    
+                    this_gal_part = gals[gal_ind[mm]]
+                    
+                    this_infile = $
                        release_dir+'process/'+ $
-                       gals[gal_ind[3]]+'_'+ $
+                       this_gal_part+'_'+ $
                        this_array+'_'+this_product+'_'+$
                        this_ext+'.fits'
-                    cube4 = readfits(cube4_infile, cube4_hdr)
 
-                    test = file_search(cube4_infile, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+cube4_infile+' not found.', /info
+                    if file_test(this_infile) eq 0 then begin
                        continue
                     endif
-                    
-                    pb4_infile = $
-                       release_dir+'raw/'+ $
-                       gals[gal_ind[3]]+'_'+ $
-                       array_for_pb+'_'+this_product+'_'+$
-                       'pb'+'.fits'
 
-                    test = file_search(pb4_infile, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+pb4_infile+' not found.', /info
-                       continue
-                    endif
-                    pb_cube4 = readfits(pb4_infile, pb4_hdr)
-                    
-                 endif
-
-                 if n_part ge 5 then begin
-                    cube5_infile = $
+                    this_outfile = $
                        release_dir+'process/'+ $
-                       gals[gal_ind[4]]+'_'+ $
+                       this_gal_part+'_'+ $
                        this_array+'_'+this_product+'_'+$
-                       this_ext+'.fits'
-                    cube5 = readfits(cube5_infile, cube5_hdr)
+                       this_ext+'_tomerge.fits'
 
-                    test = file_search(cube5_infile, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+cube5_infile+' not found.', /info
+                    this_hdr = headfits(this_infile)
+                    this_bmaj = sxpar(this_hdr,'BMAJ')*3600.
+                    if this_bmaj*tol_for_beam ge target_bmaj then begin
+                       print, "... resolution within specified tolerance of "+str(tol_for_beam)+". I will copy the data."
+                       spawn, 'rm -rf '+this_outfile
+                       spawn, 'cp '+this_infile+' '+this_outfile
+                    endif else begin                   
+
+                       print, "... resolution not within specified tolerance. I will convolve the data."
+                       conv_with_gauss $
+                          , data=this_infile $
+                          , target =[1,1,0.]*target_bmaj $
+                          , out_file=this_outfile $
+                          , /perbeam $
+                          , worked=worked
+                    endelse
+
+                 endfor
+
+              endfor
+
+           endfor
+
+        endfor
+
+     endfor
+
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; BUILD A COMMON HEADER AND REPROJECT THE CUBES ONTO IT
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+; Loop over all parts of each multi-part cube, build a target header
+; with specifications set by a user input file, and then reproject
+; both the cubes and the associated primary beam files onto this
+; astrometry. The primary beam will be used as a weight.
+
+  if keyword_set(do_stagemerge) then begin
+
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'STAGING MULTI-PART MOSAICS FOR LINEAR MOSAICKING', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+     message, '', /info
+     message, 'Building a target header and reprojecting onto it.', /info
+     message, '', /info
+
+     dir = release_dir+'process/'
+     
+     readcol $
+        , 'multipart_fields.txt', format='A,F,F,F,F,I' $
+        , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec, merge_copy_tp $
+        , comment='#'
+
+     in_dir = release_dir+'process/'
+     out_dir = release_dir+'process/'
+
+     n_merge = n_elements(merge_name)
+
+     ext_to_merge = $
+        ['flat_round' $
+         , 'pbcorr_round' $
+        ]
+     n_ext = n_elements(ext_to_merge)           
+
+;    LOOP OVER MERGING GALAXIES
+     for ii = 0, n_merge-1 do begin
+        
+        if n_elements(only) gt 0 then $
+           if total(only eq merge_name[ii]) eq 0 then continue
+
+        if n_elements(skip) gt 0 then $
+           if total(skip eq merge_name[ii]) gt 0 then continue
+        
+        this_merge_gal = merge_name[ii]
+
+        gal_ind = where(dir_for_gal eq this_merge_gal, n_part)
+        if n_part lt 2 then begin
+           message, 'Found less than 2 parts for '+this_merge_gal, /info
+           continue
+        endif
+        
+;       LOOP OVER DATA PRODUCTS
+        for kk = 0, n_product-1 do begin
+           
+           this_product = product_list[kk]
+
+;          LOOP OVER ARRAYS
+           for jj = 0, n_fullarray - 1 do begin
+              
+              this_array = fullarray_list[jj]
+              if n_elements(just_array) gt 0 then $
+                 if total(just_array eq this_array) eq 0 then continue           
+
+              array_for_pb = this_array
+              if array_for_pb eq '7m+tp' then array_for_pb = '7m'
+              if array_for_pb eq '12m+7m+tp' then array_for_pb = '12m+7m'
+
+;             LOOP OVER EXTENSIONS 
+              for ll = 0, n_ext-1 do begin
+
+                 this_ext = ext_to_merge[ll]
+
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; LOOP OVER PARTS FOR THIS GALAXY TO BUILD A TARGET HEADER
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                 
+                 found = 0B
+
+                 for mm = 0, n_part-1 do begin
+                    
+                    this_gal_part = gals[gal_ind[mm]]
+                    
+                    this_infile = $
+                       release_dir+'process/'+ $
+                       this_gal_part+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'_tomerge.fits'
+
+                    if file_test(this_infile) eq 0 then begin
                        continue
                     endif
-                    
-                    pb5_infile = $
-                       release_dir+'raw/'+ $
-                       gals[gal_ind[4]]+'_'+ $
-                       array_for_pb+'_'+this_product+'_'+$
-                       'pb'+'.fits'
+                    if found eq 0B then begin
+                       first = 1B
+                       found = 1B
+                    endif else begin
+                       first = 0B
+                    endelse
 
-                    test = file_search(pb5_infile, count=found)
-                    if found eq 0 then begin
-                       message, 'File '+pb5_infile+' not found.', /info
-                       continue
-                    endif
-                    pb_cube5 = readfits(pb5_infile, pb5_hdr)
-                    
+                    this_hdr = headfits(this_infile)
+                    this_bmaj = sxpar(this_hdr,'BMAJ')*3600.
+                    this_pix = abs(sxpar(this_hdr,'CDELT1'))*3600.
+                    print, this_infile, " has beam ", this_bmaj, " and pixel ", this_pix
+                    if first then begin
+                       bmaj_list = [this_bmaj] 
+                       pix_list = [this_pix] 
+                       hdr_list = [this_hdr]
+                       first_hdr = this_hdr
+                    endif else begin
+                       bmaj_list = [bmaj_list, this_bmaj]
+                       pix_list = [pix_list, this_pix]
+                       hdr_list = [hdr_list, this_hdr]
+                    endelse
+                 endfor
+
+                 if found eq 0B then begin
+                    print, "No data found for this extension plus products. Continuing."
+                    continue
                  endif
 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; FIGURE THE TARGET BEAM AND CONVOLVE
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+                 print, "Beams (should all be the same): ", bmaj_list
+
+                 target_hdr = first_hdr
                  
-                 beam1 = sxpar(cube1_hdr, 'BMAJ')
-                 beam2 = sxpar(cube2_hdr, 'BMAJ')              
-                 beams = [beam1, beam2]
-                 if n_part ge 3 then begin
-                    beam3 = sxpar(cube3_hdr, 'BMAJ')
-                    beams = [beams, beam3]
-                 endif
-                 if n_part ge 4 then begin
-                    beam4 = sxpar(cube4_hdr, 'BMAJ')
-                    beams = [beams, beam4]
-                 endif
-                 if n_part ge 5 then begin
-                    beam5 = sxpar(cube5_hdr, 'BMAJ')
-                    beams = [beams, beam5]
-                 endif
+                 cdelt = abs(sxpar(first_hdr,'CDELT1'))
                  
-                 target_bmaj = max(beams,/nan)
-                 
-                 conv_with_gauss $
-                    , data=cube1 $
-                    , hdr=cube1_hdr $
-                    , target =[1,1,0.]*target_bmaj $
-                    , out_data=smooth_cube1 $
-                    , out_hdr=smooth_cube1_hdr $
-                    , /perbeam $
-                    , worked=worked
-                 if worked eq 0 then begin
-                    message, 'Problem with convolution in merging.', /info
-                    stop
-                 endif
-                 
-                 nan_ind = where(finite(cube1) eq 0, nan_ct)
-                 if nan_ct gt 0 then smooth_cube1[nan_ind] = !values.f_nan
-                 cube1 = smooth_cube1
-                 cube1_hdr = smooth_cube1_hdr
-
-                 conv_with_gauss $
-                    , data=cube2 $
-                    , hdr=cube2_hdr $
-                    , target =[1,1,0.]*target_bmaj $
-                    , out_data=smooth_cube2 $
-                    , out_hdr=smooth_cube2_hdr $
-                    , /perbeam $
-                    , worked=worked
-                 if worked eq 0 then begin
-                    message, 'Problem with convolution in merging.', /info
-                    stop
-                 endif
-                 
-                 nan_ind = where(finite(cube2) eq 0, nan_ct)
-                 if nan_ct gt 0 then smooth_cube2[nan_ind] = !values.f_nan
-                 cube2 = smooth_cube2
-                 cube2_hdr = smooth_cube2_hdr
-
-                 if n_part ge 3 then begin
-
-                    conv_with_gauss $
-                       , data=cube3 $
-                       , hdr=cube3_hdr $
-                       , target =[1,1,0.]*target_bmaj $
-                       , out_data=smooth_cube3 $
-                       , out_hdr=smooth_cube3_hdr $
-                       , /perbeam $
-                       , worked=worked
-                    if worked eq 0 then begin
-                       message, 'Problem with convolution in merging.', /info
-                       stop
-                    endif
-                    
-                    nan_ind = where(finite(cube3) eq 0, nan_ct)
-                    if nan_ct gt 0 then smooth_cube3[nan_ind] = !values.f_nan
-                    cube3 = smooth_cube3
-                    cube3_hdr = smooth_cube3_hdr
-
-                 endif
-
-                 if n_part ge 4 then begin
-
-                    conv_with_gauss $
-                       , data=cube4 $
-                       , hdr=cube4_hdr $
-                       , target =[1,1,0.]*target_bmaj $
-                       , out_data=smooth_cube4 $
-                       , out_hdr=smooth_cube4_hdr $
-                       , /perbeam $
-                       , worked=worked
-                    if worked eq 0 then begin
-                       message, 'Problem with convolution in merging.', /info
-                       stop
-                    endif
-                    
-                    nan_ind = where(finite(cube4) eq 0, nan_ct)
-                    if nan_ct gt 0 then smooth_cube4[nan_ind] = !values.f_nan
-                    cube4 = smooth_cube4
-                    cube4_hdr = smooth_cube4_hdr
-
-                 endif
-
-                 if n_part ge 5 then begin
-
-                    conv_with_gauss $
-                       , data=cube5 $
-                       , hdr=cube5_hdr $
-                       , target =[1,1,0.]*target_bmaj $
-                       , out_data=smooth_cube5 $
-                       , out_hdr=smooth_cube5_hdr $
-                       , /perbeam $
-                       , worked=worked
-                    if worked eq 0 then begin
-                       message, 'Problem with convolution in merging.', /info
-                       stop
-                    endif
-                    
-                    nan_ind = where(finite(cube5) eq 0, nan_ct)
-                    if nan_ct gt 0 then smooth_cube5[nan_ind] = !values.f_nan
-                    cube5 = smooth_cube5
-                    cube5_hdr = smooth_cube5_hdr
-
-                 endif
-
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; BUILD A TARGET HEADER
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-                 target_hdr = cube1_hdr
-
-                 cdelt = abs(sxpar(cube1_hdr,'CDELT1'))
-
                  npix_ra = abs(ceil(merge_dra[ii]/3600. / cdelt))
                  crpix_ra = npix_ra/2.0
-
+                 
                  npix_dec = abs(ceil(merge_ddec[ii]/3600. / cdelt))
                  crpix_dec = npix_dec/2.0
-
+                 
                  sxaddpar, target_hdr, 'CTYPE1', 'RA---SIN'
                  sxdelpar, target_hdr, 'CRVAL1'
                  sxaddpar, target_hdr, 'CRVAL1', double((merge_ra[ii]*1.0)[0])
@@ -1080,558 +1048,242 @@ pro build_cubes $
                  sxdelpar, target_hdr, 'CRPIX2'
                  sxaddpar, target_hdr, 'CRPIX2', crpix_dec[0]*1.0
 
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; ALIGN TO THE TARGET HEADER
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; REPROJECT CUBE AND PRIMARY BEAM ONTO THIS HEADER
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+                 for mm = 0, n_part-1 do begin
+                    
+                    this_gal_part = gals[gal_ind[mm]]
+                    
+; REPROJECT THE RAW IMAGE FROM RAW DIRECTORY ONTO THE GRID
+
+                    this_infile = $
+                       release_dir+'process/'+ $
+                       this_gal_part+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'_tomerge.fits'
+
+                    if file_test(this_infile) eq 0 then begin
+                       continue
+                    endif
+                    
+                    this_outfile = $
+                       release_dir+'process/'+ $
+                       this_gal_part+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'_onmergegrid.fits'
+
+                    cube_hastrom $
+                       , data = this_infile $
+                       , target_hdr = target_hdr $
+                       , outfile = this_outfile $
+                       , missing=!values.f_nan
+
+; REPROJECT THE PRIMARY BEAM IMAGE FROM RAW DIRECTORY ONTO THE GRID
+
+                    this_pbinfile = $
+                       release_dir+'raw/'+ $
+                       this_gal_part+'_'+ $
+                       array_for_pb+'_'+this_product+'_'+$
+                       'pb'+'.fits'
+
+                    this_pboutfile = $
+                       release_dir+'process/'+ $
+                       this_gal_part+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'_mergeweight.fits'
+
+                    cube_hastrom $
+                       , data = this_pbinfile $
+                       , target_hdr = target_hdr $
+                       , outfile = this_pboutfile $
+                       , missing=!values.f_nan
+
+                 endfor                 
+
+              endfor
+
+           endfor
+
+        endfor
+
+     endfor
+
+  endif
+
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+; LINEARLY MOSAIC THE CUBES
+; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+  
+; Linearly mosaic all of the galaxy parts together for each
+; project. Keep a running sum of weights and image values so that we
+; can handle an arbitrary number of fields.
+
+  if keyword_set(do_merge) then begin
+     
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'MERGING MULTI-PART MOSAICS VIA LINEAR MOSAICKING', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+    
+     message, '', /info
+     message, 'Linearly mosaicking together parts of multi-part cubes.', /info
+     message, '', /info
+
+     dir = release_dir+'process/'
+     
+     readcol $
+        , 'multipart_fields.txt', format='A,F,F,F,F,I' $
+        , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec, merge_copy_tp $
+        , comment='#'
+
+     in_dir = release_dir+'process/'
+     out_dir = release_dir+'process/'
+
+     n_merge = n_elements(merge_name)
+
+     ext_to_merge = $
+        ['flat_round' $
+         , 'pbcorr_round' $
+        ]
+     n_ext = n_elements(ext_to_merge)           
+
+;    LOOP OVER MERGING GALAXIES
+     for ii = 0, n_merge-1 do begin
+        
+        if n_elements(only) gt 0 then $
+           if total(only eq merge_name[ii]) eq 0 then continue
+
+        if n_elements(skip) gt 0 then $
+           if total(skip eq merge_name[ii]) gt 0 then continue
+        
+        this_merge_gal = merge_name[ii]
+
+        gal_ind = where(dir_for_gal eq this_merge_gal, n_part)
+        if n_part lt 2 then begin
+           message, 'Found less than 2 parts for '+this_merge_gal, /info
+           continue
+        endif
+        
+;       LOOP OVER DATA PRODUCTS
+        for kk = 0, n_product-1 do begin
+           
+           this_product = product_list[kk]
+
+;          LOOP OVER ARRAYS
+           for jj = 0, n_fullarray - 1 do begin
+              
+              this_array = fullarray_list[jj]
+              if n_elements(just_array) gt 0 then $
+                 if total(just_array eq this_array) eq 0 then continue           
+              
+              for ll = 0, n_ext-1 do begin
+
+                 this_ext = ext_to_merge[ll]
+
+                 found = 0B
+                 first = 1B
                  
-                 cube_hastrom $
-                    , data = cube1 $
-                    , hdr_in = cube1_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = aligned_cube1 $
-                    , outhdr = aligned_cube1_hdr $
-                    , missing=!values.f_nan
-                 cube1 = aligned_cube1
-                 cube1_hdr = aligned_cube1_hdr
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; ACCUMULATE
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-                 cube_hastrom $
-                    , data = pb_cube1 $
-                    , hdr_in = pb1_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = aligned_pb_cube1 $
-                    , outhdr = aligned_pb1_hdr $
-                    , missing=!values.f_nan
-                 pb_cube1 = aligned_pb_cube1
-                 pb1_hdr = aligned_pb1_hdr
+                 for mm = 0, n_part-1 do begin
+                    
+                    this_gal_part = gals[gal_ind[mm]]
+                    
+                    this_infile = $
+                       release_dir+'process/'+ $
+                       this_gal_part+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'_onmergegrid.fits'
+
+                    this_pbinfile = $
+                       release_dir+'process/'+ $
+                       this_gal_part+'_'+ $
+                       this_array+'_'+this_product+'_'+$
+                       this_ext+'_mergeweight.fits'
+
+                    if file_test(this_infile) eq 0 then begin
+                       print, "... missing file "+this_infile
+                       print, "... continuing."
+                       continue
+                    endif
+
+                    if file_test(this_pbinfile) eq 0 then begin
+                       print, "... missing file "+this_pbinfile
+                       print, "... continuing."
+                       continue
+                    endif
+
+                    this_cube = $
+                       readfits(this_infile, this_hdr)
+                    this_weight= $
+                       readfits(this_pbinfile, this_weight_hdr)
+
+                    if first then begin
+                       first_cube_hdr = this_hdr
+                       sum_cube = finite(this_cube)*0.0
+                       weight_cube = finite(this_cube)*0.0
+                       first = 0B
+                    endif                       
+                    
+                    mosaic_ind = where(finite(this_cube), mosaic_ct)
+                    if mosaic_ct gt 0 then begin
+                       sum_cube[mosaic_ind] = $
+                          sum_cube[mosaic_ind] + $
+                          this_cube[mosaic_ind]*this_weight[mosaic_ind]^2
+                       weight_cube[mosaic_ind] = $
+                          weight_cube[mosaic_ind] + $
+                          this_weight[mosaic_ind]^2
+                    endif
+
+                 endfor
                  
-                 cube_hastrom $
-                    , data = cube2 $
-                    , hdr_in = cube2_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = aligned_cube2 $
-                    , outhdr = aligned_cube2_hdr $
-                    , missing=!values.f_nan
-                 cube2 = aligned_cube2
-                 cube2_hdr = aligned_cube2_hdr
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+; DIVIDE, CLEAN UP, AND WRITE TO DISK
+; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-                 cube_hastrom $
-                    , data = pb_cube2 $
-                    , hdr_in = pb2_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = aligned_pb_cube2 $
-                    , outhdr = aligned_pb2_hdr $
-                    , missing=!values.f_nan
-                 pb_cube2 = aligned_pb_cube2
-                 pb2_hdr = aligned_pb2_hdr
+                 combined_cube = sum_cube / weight_cube
+                 covered_ind = where(weight_cube eq 0., covered_ct)
+                 if covered_ct gt 0 then $
+                    combined_cube[covered_ind] = !values.f_nan
 
-                 if n_part ge 3 then begin
-
-                    cube_hastrom $
-                       , data = cube3 $
-                       , hdr_in = cube3_hdr $
-                       , target_hdr = target_hdr $
-                       , outcube = aligned_cube3 $
-                       , outhdr = aligned_cube3_hdr $
-                       , missing=!values.f_nan
-                    cube3 = aligned_cube3
-                    cube3_hdr = aligned_cube3_hdr
-
-                    cube_hastrom $
-                       , data = pb_cube3 $
-                       , hdr_in = pb3_hdr $
-                       , target_hdr = target_hdr $
-                       , outcube = aligned_pb_cube3 $
-                       , outhdr = aligned_pb3_hdr $
-                       , missing=!values.f_nan
-                    pb_cube3 = aligned_pb_cube3
-                    pb3_hdr = aligned_pb3_hdr
-
-                 endif
-
-                 if n_part ge 4 then begin
-
-                    cube_hastrom $
-                       , data = cube4 $
-                       , hdr_in = cube4_hdr $
-                       , target_hdr = target_hdr $
-                       , outcube = aligned_cube4 $
-                       , outhdr = aligned_cube4_hdr $
-                       , missing=!values.f_nan
-                    cube4 = aligned_cube4
-                    cube4_hdr = aligned_cube4_hdr
-
-                    cube_hastrom $
-                       , data = pb_cube4 $
-                       , hdr_in = pb4_hdr $
-                       , target_hdr = target_hdr $
-                       , outcube = aligned_pb_cube4 $
-                       , outhdr = aligned_pb4_hdr $
-                       , missing=!values.f_nan
-                    pb_cube4 = aligned_pb_cube4
-                    pb4_hdr = aligned_pb4_hdr
-
-                 endif
-
-                 if n_part ge 5 then begin
-
-                    cube_hastrom $
-                       , data = cube5 $
-                       , hdr_in = cube5_hdr $
-                       , target_hdr = target_hdr $
-                       , outcube = aligned_cube5 $
-                       , outhdr = aligned_cube5_hdr $
-                       , missing=!values.f_nan
-                    cube5 = aligned_cube5
-                    cube5_hdr = aligned_cube5_hdr
-
-                    cube_hastrom $
-                       , data = pb_cube5 $
-                       , hdr_in = pb5_hdr $
-                       , target_hdr = target_hdr $
-                       , outcube = aligned_pb_cube5 $
-                       , outhdr = aligned_pb5_hdr $
-                       , missing=!values.f_nan
-                    pb_cube5 = aligned_pb_cube5
-                    pb5_hdr = aligned_pb5_hdr
-
-                 endif
-
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; COMBINE THE FILES INTO A SINGLE DATA PRODUCT
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-                 cube_out = cube1*!values.f_nan
-                 
-                 cov_part1 = finite(cube1) and pb_cube1 gt 0.
-                 cov_part2 = finite(cube2) and pb_cube2 gt 0.
-                 if n_part ge 3 then $
-                    cov_part3 = finite(cube3) and pb_cube3 gt 0.
-                 if n_part ge 4 then $
-                    cov_part4 = finite(cube4) and pb_cube4 gt 0.
-                 if n_part ge 5 then $
-                    cov_part5 = finite(cube5) and pb_cube5 gt 0.
-                 
-                 if n_part eq 2 then begin
-                    ind1 = where(cov_part1 eq 1 and cov_part2 eq 0, ct1)
-                    if ct1 gt 0 then $
-                       cube_out[ind1] = cube1[ind1]
-                    
-                    ind2 = where(cov_part1 eq 0 and cov_part2 eq 1, ct2)
-                    if ct2 gt 0 then $
-                       cube_out[ind2] = cube2[ind2]
-                    
-                    ind12 = where(cov_part1 eq 1 and cov_part2 eq 1, ct12)
-                    if ct12 gt 0 then $
-                       cube_out[ind12] = $
-                       (cube1[ind12]*pb_cube1[ind12]^2 + $
-                        cube2[ind12]*pb_cube2[ind12]^2) / $
-                       (pb_cube1[ind12]^2 + pb_cube2[ind12]^2)
-                 endif 
-
-                 if n_part eq 3 then begin
-                    ind1 = where(cov_part1 eq 1 and $
-                                 cov_part2 eq 0 and cov_part3 eq 0, ct1)
-                    if ct1 gt 0 then $
-                       cube_out[ind1] = cube1[ind1]
-                    
-                    ind2 = where(cov_part1 eq 0 and $
-                                 cov_part2 eq 1 and cov_part3 eq 0, ct2)
-                    if ct2 gt 0 then $
-                       cube_out[ind2] = cube2[ind2]
-                    
-                    ind3 = where(cov_part1 eq 0 and $
-                                 cov_part2 eq 0 and cov_part3 eq 1, ct3)
-                    if ct3 gt 0 then $
-                       cube_out[ind3] = cube3[ind3]
-                    
-                    ind12 = where(cov_part1 eq 1 and cov_part2 eq 1 and $
-                                  cov_part3 eq 0, ct12)
-                    if ct12 gt 0 then $
-                       cube_out[ind12] = $
-                       (cube1[ind12]*pb_cube1[ind12]^2 + $
-                        cube2[ind12]*pb_cube2[ind12]^2) / $
-                       (pb_cube1[ind12]^2 + pb_cube2[ind12]^2)
-
-                    ind23 = where(cov_part1 eq 0 and cov_part2 eq 1 and $
-                                  cov_part3 eq 1, ct23)
-                    if ct23 gt 0 then $
-                       cube_out[ind23] = $
-                       (cube2[ind23]*pb_cube2[ind23]^2 + $
-                        cube3[ind23]*pb_cube3[ind23]^2) / $
-                       (pb_cube2[ind23]^2 + pb_cube3[ind23]^2)
-
-                    ind13 = where(cov_part1 eq 1 and cov_part2 eq 0 and $
-                                  cov_part3 eq 1, ct13)
-                    if ct13 gt 0 then $
-                       cube_out[ind13] = $
-                       (cube1[ind13]*pb_cube1[ind13]^2 + $
-                        cube3[ind13]*pb_cube3[ind13]^2) / $
-                       (pb_cube1[ind13]^2 + pb_cube3[ind13]^2)
-
-                    ind123 = where(cov_part1 eq 1 and cov_part2 eq 1 and $
-                                   cov_part3 eq 1, ct123)
-                    if ct123 gt 0 then $
-                       cube_out[ind123] = $
-                       (cube1[ind123]*pb_cube1[ind123]^2 + $
-                        cube2[ind123]*pb_cube2[ind123]^2 + $
-                        cube3[ind123]*pb_cube3[ind123]^2) / $
-                       (pb_cube1[ind123]^2 + pb_cube2[ind123]^2 + pb_cube3[ind123]^2)
-                    
-                 endif
-
-                 if n_part eq 5 then begin
-
-                    weight_cube = finite(cube_out)*0.0
-                    cumul_cube = finite(cube_out)*0.0
-
-                    ind1 = where(cov_part1 eq 1, ct1)
-                    if ct1 gt 0 then begin
-                       cumul_cube[ind1] = cumul_cube[ind1]+cube1[ind1]*pb_cube1[ind1]^2
-                       weight_cube[ind1] = weight_cube[ind1]+pb_cube1[ind1]^2
-                    endif
-
-                    ind2 = where(cov_part2 eq 1, ct2)
-                    if ct2 gt 0 then begin
-                       cumul_cube[ind2] = cumul_cube[ind2]+cube2[ind2]*pb_cube2[ind2]^2
-                       weight_cube[ind2] = weight_cube[ind2]+pb_cube2[ind2]^2
-                    endif
-
-                    ind3 = where(cov_part3 eq 1, ct3)
-                    if ct3 gt 0 then begin
-                       cumul_cube[ind3] = cumul_cube[ind3]+cube3[ind3]*pb_cube3[ind3]^2
-                       weight_cube[ind3] = weight_cube[ind3]+pb_cube3[ind3]^2
-                    endif
-
-                    ind4 = where(cov_part4 eq 1, ct4)
-                    if ct4 gt 0 then begin
-                       cumul_cube[ind4] = cumul_cube[ind4]+cube4[ind4]*pb_cube4[ind4]^2
-                       weight_cube[ind4] = weight_cube[ind4]+pb_cube4[ind4]^2
-                    endif
-
-                    ind5 = where(cov_part5 eq 1, ct5)
-                    if ct5 gt 0 then begin
-                       cumul_cube[ind5] = cumul_cube[ind5]+cube5[ind5]*pb_cube5[ind5]^2
-                       weight_cube[ind5] = weight_cube[ind5]+pb_cube5[ind5]^2
-                    endif
-
-                    cube_out = cumul_cube/weight_cube
-                    nind = where(weight_cube eq 0, nct)
-                    if nct gt 0 then $
-                       cube_out[nind] = !values.f_nan
-
-                 endif
-
-                 !p.multi=[0,2,2]
-                 disp, max(cube_out, dim=3, /nan), max=1
-                 disp, max(cube1, dim=3, /nan), max=1
-                 disp, max(cube2, dim=3, /nan), max=1
-                 if n_part ge 3 then $
-                    disp, max(cube3, dim=3, /nan), max=1
-
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-; WRITE TO DISK
-; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
+                 outfile = $
+                    release_dir+'process/'+ $
+                    this_merge_gal+'_'+ $
+                    this_array+'_'+this_product+'_'+$
+                    this_ext+'.fits'
                  writefits $
+                    , outfile $
+                    , combined_cube, first_cube_hdr
+ 
+                writefits $
                     , release_dir+'process/'+ $
-                    merge_name[ii]+'_'+this_array+'_'+this_product+ $
-                    '_'+this_ext+'.fits' $
-                    , cube_out, target_hdr
-                 
+                    this_merge_gal+'_'+ $
+                    this_array+'_'+this_product+'_'+$
+                    this_ext+'_coverage.fits' $
+                    , weight_cube, first_cube_hdr
+
+                loadct, 33
+                peak_map = max(combined_cube, dim=3, /nan)
+                disp, peak_map $
+                      , /sq, title=outfile, min=0, max=10.*mad(combined_cube) $
+                      , reserve=5, color=cgcolor('white',255)
+
               endfor
               
            endfor
-
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-; MERGE THE TOTAL POWER (USUALLY JUST A COPYING STEP)
-; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-           tp1_infile = $
-              release_dir+'process/'+ $
-              gals[gal_ind[0]]+'_tp_'+ $
-              this_product+'_k.fits'
-
-           test = file_search(tp1_infile, count=found)
-           if found eq 0 then begin
-              message, 'File '+tp1_infile+' not found.', /info
-              continue
-           endif
-
-           tp1_cube = $
-              readfits(tp1_infile, tp1_hdr)
-
-           tp2_infile = $
-              release_dir+'process/'+ $
-              gals[gal_ind[1]]+'_tp_'+ $
-              this_product+'_k.fits'
-
-           test = file_search(tp2_infile, count=found)
-           if found eq 0 then begin
-              message, 'File '+tp2_infile+' not found.', /info
-              continue
-           endif
-
-           tp2_cube = $
-              readfits(tp2_infile, tp2_hdr)
            
-           if n_part ge 3 then begin
-
-              tp3_infile = $
-                 release_dir+'process/'+ $
-                 gals[gal_ind[2]]+'_tp_'+ $
-                 this_product+'_k.fits'
-              
-              test = file_search(tp3_infile, count=found)
-              if found eq 0 then begin
-                 message, 'File '+tp3_infile+' not found.', /info
-                 continue
-              endif
-
-              tp3_cube = $
-                 readfits(tp3_infile, tp3_hdr)
-              
-           endif
-
-           if n_part eq 5 then begin
-
-              tp4_infile = $
-                 release_dir+'process/'+ $
-                 gals[gal_ind[3]]+'_tp_'+ $
-                 this_product+'_k.fits'
-              
-              test = file_search(tp4_infile, count=found)
-              if found eq 0 then begin
-                 message, 'File '+tp4_infile+' not found.', /info
-                 continue
-              endif
-
-              tp4_cube = $
-                 readfits(tp4_infile, tp4_hdr)
-
-              tp5_infile = $
-                 release_dir+'process/'+ $
-                 gals[gal_ind[4]]+'_tp_'+ $
-                 this_product+'_k.fits'
-              
-              test = file_search(tp5_infile, count=found)
-              if found eq 0 then begin
-                 message, 'File '+tp5_infile+' not found.', /info
-                 continue
-              endif
-
-              tp5_cube = $
-                 readfits(tp5_infile, tp5_hdr)
-              
-           endif
-
-;          In this case, just copy the TP from one case because it's
-;          the same for all cases. This is the most common case.
-
-           if merge_copy_tp[ii] then begin
-              writefits, out_dir+merge_name[ii]+'_tp_'+this_product+'_k.fits' $
-                         , tp1_cube, part1_hdr
-           endif else begin
-
-;          In this less common case align the different TP data sets
-;          on to a new grid and average them where they overlap. This
-;          generally shouldn't yield much overlap. Those cases appear
-;          mostly as single cubes.
-              
-              target_hdr = tp1_hdr
-              cdelt = abs(sxpar(target_hdr,'CDELT1'))
-              
-              npix_ra = abs(ceil(merge_dra[ii]/3600. / cdelt))
-              crpix_ra = npix_ra/2.0
-              
-              npix_dec = abs(ceil(merge_ddec[ii]/3600. / cdelt))
-              crpix_dec = npix_dec/2.0
-
-              sxaddpar, target_hdr, 'CTYPE1', 'RA---SIN'
-              sxdelpar, target_hdr, 'CRVAL1'
-              sxaddpar, target_hdr, 'CRVAL1', double((merge_ra[ii]*1.0)[0])
-              sxdelpar, target_hdr, 'NAXIS1'              
-              sxaddpar, target_hdr, 'NAXIS1', long(npix_ra[0]), after='NAXIS'
-              sxdelpar, target_hdr, 'CRPIX1'
-              sxaddpar, target_hdr, 'CRPIX1', crpix_ra[0]*1.0
-
-              sxaddpar, target_hdr, 'CTYPE2', 'DEC--SIN'  
-              sxdelpar, target_hdr, 'CRVAL2'
-              sxaddpar, target_hdr, 'CRVAL2', double((merge_dec[ii]*1.0)[0])
-              sxdelpar, target_hdr, 'NAXIS2'
-              sxaddpar, target_hdr, 'NAXIS2', long(npix_dec[0]), after='NAXIS1'
-              sxdelpar, target_hdr, 'CRPIX2'
-              sxaddpar, target_hdr, 'CRPIX2', crpix_dec[0]*1.0
-              
-              cube_hastrom $
-                 , data = tp1_cube $
-                 , hdr_in = tp1_hdr $
-                 , target_hdr = target_hdr $
-                 , outcube = new_tp1 $
-                 , outhdr = new_tp1_hdr $
-                 , missing=!values.f_nan
-              
-              cube_hastrom $
-                 , data = tp2_cube $
-                 , hdr_in = tp2_hdr $
-                 , target_hdr = target_hdr $
-                 , outcube = new_tp2 $
-                 , outhdr = new_tp2_hdr $
-                 , missing=!values.f_nan
-              
-              if n_part ge 3 then begin
-
-                 cube_hastrom $
-                    , data = tp3_cube $
-                    , hdr_in = tp3_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = new_tp3 $
-                    , outhdr = new_tp3_hdr $
-                    , missing=!values.f_nan
-                 
-              endif
-
-              if n_part eq 5 then begin
-
-                 cube_hastrom $
-                    , data = tp4_cube $
-                    , hdr_in = tp4_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = new_tp4 $
-                    , outhdr = new_tp4_hdr $
-                    , missing=!values.f_nan
-
-                 cube_hastrom $
-                    , data = tp5_cube $
-                    , hdr_in = tp5_hdr $
-                    , target_hdr = target_hdr $
-                    , outcube = new_tp5 $
-                    , outhdr = new_tp5_hdr $
-                    , missing=!values.f_nan
-
-              endif
-
-              cube_out = new_tp1*!values.f_nan
-              
-              cov_tp1 = finite(new_tp1)
-              cov_tp2 = finite(new_tp2)
-              if n_part ge 3 then cov_tp3 = finite(new_tp3)
-              if n_part eq 5 then begin
-                 cov_tp4 = finite(new_tp4)
-                 cov_tp5 = finite(new_tp5)
-              endif
-
-              if n_part eq 2 then begin
-
-                 ind1 = where(cov_tp1 eq 1 and cov_tp2 eq 0, ct1)
-                 if ct gt 0 then $
-                    cube_out[ind1] = new_tp1[ind1]
-                 
-                 ind2 = where(cov_tp1 eq 0 and cov_tp2 eq 1, ct2)
-                 if ct2 gt 0 then $
-                    cube_out[ind2] = new_tp2[ind2]
-                 
-                 ind12 = where(cov_tp1 eq 1 and cov_tp2 eq 1, ct12)
-                 if ct12 gt 0 then $
-                    cube_out[ind12] = (new_tp1[ind12] + new_tp2[ind12])/2.0
-
-              endif 
-
-              if n_part eq 3 then begin
-
-                 ind1 = where(cov_tp1 eq 1 and cov_tp2 eq 0 and $
-                              cov_tp3 eq 0, ct1)
-                 if ct gt 0 then $
-                    cube_out[ind1] = new_tp1[ind1]
-                 
-                 ind2 = where(cov_tp1 eq 0 and cov_tp2 eq 1 and $
-                              cov_tp3 eq 0, ct2)
-                 if ct2 gt 0 then $
-                    cube_out[ind2] = new_tp2[ind2]
-
-                 ind3 = where(cov_tp1 eq 0 and cov_tp2 eq 0 and $
-                              cov_tp3 eq 1, ct3)
-                 if ct3 gt 0 then $
-                    cube_out[ind3] = new_tp2[ind3]
-                 
-                 ind12 = where(cov_tp1 eq 1 and cov_tp2 eq 1 and $
-                               cov_tp3 eq 0, ct12)
-                 if ct12 gt 0 then $
-                    cube_out[ind12] = (new_tp1[ind12] + new_tp2[ind12])/2.0
-
-                 ind23 = where(cov_tp1 eq 0 and cov_tp2 eq 1 and $
-                               cov_tp3 eq 1, ct23)
-                 if ct23 gt 0 then $
-                    cube_out[ind23] = (new_tp2[ind23] + new_tp3[ind23])/2.0
-                 
-                 ind13 = where(cov_tp1 eq 1 and cov_tp2 eq 0 and $
-                               cov_tp3 eq 1, ct13)
-                 if ct13 gt 0 then $
-                    cube_out[ind13] = (new_tp1[ind13] + new_tp3[ind13])/2.0
-
-                 ind123 = where(cov_tp1 eq 1 and cov_tp2 eq 1 and $
-                                cov_tp3 eq 1, ct123)
-                 if ct123 gt 0 then $
-                    cube_out[ind123] = (new_tp1[ind123] + new_tp2[ind123] + $
-                                        new_tp3[ind123])/3.0
-                 
-              endif
-
-              if n_part eq 5 then begin
-
-                 weight_cube = finite(cube_out)*0.0
-                 cumul_cube = finite(cube_out)*0.0
-
-                 ind1 = where(cov_tp1 eq 1, ct1)
-                 if ct1 gt 0 then begin
-                    cumul_cube[ind1] = cumul_cube[ind1]+new_tp1[ind1]*cov_tp1[ind1]^2
-                    weight_cube[ind1] = weight_cube[ind1]+cov_tp1[ind1]
-                 endif
-
-                 ind2 = where(cov_tp2 eq 1, ct2)
-                 if ct2 gt 0 then begin
-                    cumul_cube[ind2] = cumul_cube[ind2]+new_tp2[ind2]*cov_tp2[ind2]^2
-                    weight_cube[ind2] = weight_cube[ind2]+cov_tp2[ind2]
-                 endif
-
-                 ind3 = where(cov_tp3 eq 1, ct3)
-                 if ct3 gt 0 then begin
-                    cumul_cube[ind3] = cumul_cube[ind3]+new_tp3[ind3]*cov_tp3[ind3]^2
-                    weight_cube[ind3] = weight_cube[ind3]+cov_tp3[ind3]
-                 endif
-
-                 ind4 = where(cov_tp4 eq 1, ct4)
-                 if ct4 gt 0 then begin
-                    cumul_cube[ind4] = cumul_cube[ind4]+new_tp4[ind4]*cov_tp4[ind4]^2
-                    weight_cube[ind4] = weight_cube[ind4]+cov_tp4[ind4]
-                 endif
-
-                 ind5 = where(cov_tp5 eq 1, ct5)
-                 if ct5 gt 0 then begin
-                    cumul_cube[ind5] = cumul_cube[ind5]+new_tp5[ind5]*cov_tp5[ind5]^2
-                    weight_cube[ind5] = weight_cube[ind5]+cov_tp5[ind5]
-                 endif
-
-                 cube_out = cumul_cube/weight_cube
-                 nind = where(weight_cube eq 0, nct)
-                 if nct gt 0 then $
-                    cube_out[nind] = !values.f_nan                 
-              endif
-              
-              writefits, release_dir+'process/'+ $
-                         merge_name[ii]+'_tp_'+this_product+'_k.fits' $
-                         , cube_out, target_hdr
-
-           endelse
-
+        endfor
+        
      endfor
      
-  endfor
-
-  message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-  message, 'FINISHED MERGING MULTI-PART MOSAICS', /info
-  message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
-  
-endif
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     message, 'FINISHED MERGING MULTI-PART MOSAICS', /info
+     message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info
+     
+  endif
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; SANITIZE CUBES - TRIM EMPTY SPACE, ETC.

@@ -34,7 +34,7 @@ def read_ms_key(fname='../scripts/ms_file_key.txt'):
         this_ms = words[2]
         this_file = words[3]
 
-        if ms_key.has_key(this_gal) == False:
+        if (this_gal in ms_key.keys()) == False:
             ms_key[this_gal] = {}
         if ms_key[this_gal].has_key(this_proj) == False:
             ms_key[this_gal][this_proj] = {}
@@ -57,7 +57,7 @@ def get_uvdata_key(gal=None,
 
     if gal == None:
         if quiet == False:
-            print "Please specify a galaxy."
+            print("Please specify a galaxy.")
         return None
 
     ms_key = read_ms_key()
@@ -66,7 +66,7 @@ def get_uvdata_key(gal=None,
 
     if ms_key.has_key(gal) == False:
         if quiet == False:
-            print "Galaxy "+gal+" not found in the measurement set key."
+            print("Galaxy "+gal+" not found in the measurement set key.")
         return None
     gal_specific_key = ms_key[gal]
 
@@ -117,11 +117,11 @@ def get_uvdata_key(gal=None,
 
             components = this_calibrated_file.split('/calibrated/')
             if len(components) != 2:
-                print ""
-                print "WARNING! Something is wrong with file "+this_calibrated_file
-                print "We assume that there is one and only one /calibrated/ in the directory."
-                print "Fix this or whatever else is going wrong and rerun. Skipping for now."
-                print ""
+                print("")
+                print("WARNING! Something is wrong with file "+this_calibrated_file)
+                print("We assume that there is one and only one /calibrated/ in the directory.")
+                print("Fix this or whatever else is going wrong and rerun. Skipping for now.")
+                print("")
                 continue
 
             this_dir = components[0]+'/'
@@ -177,11 +177,11 @@ def dir_for_gal(gal=None,
 
     if gal == None:
         if quiet == False:
-            print "Please specify a galaxy."
+            print("Please specify a galaxy.")
         return
 
     dir_key = read_dir_key()
-    if dir_key.has_key(gal):
+    if gal in dir_key.keys():
         this_dir = '../'+dir_key[gal]+'/'
     else:
         this_dir = '../'+gal+'/'
@@ -190,12 +190,31 @@ def dir_for_gal(gal=None,
 
 def list_gal_names():
     """
-    List the full set of galaxy names known from the ms_file_key
+    List the full set of galaxy names known from the ms_file_key.
     """
     ms_key = read_ms_key()
     gal_names = ms_key.keys()
     gal_names.sort()
     return gal_names
+
+def list_wholegal_names():
+    """
+    List only full galaxy names (no parts, e.g., _1 or _2).
+    """
+    ms_key = read_ms_key()
+    dir_key = read_dir_key()
+    part_names = ms_key.keys()
+    wholegal_names = []
+    for this_part in part_names:
+        if this_part in dir_key.keys():
+            this_name = dir_key[this_part]
+        else:
+            this_name = this_part
+        if wholegal_names.count(this_name) > 0:
+            continue
+        wholegal_names.append(this_name)
+    wholegale_names.sort()
+    return wholegal_names    
 
 def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     """
