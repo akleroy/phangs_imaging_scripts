@@ -7,7 +7,6 @@ ngc0247_1	 ngc0247
 ngc0247_2	 ngc0247
 ngc0247_3	 ngc0247
 ngc0247_4	 ngc0247
-ngc0247_5	 ngc0247
 ngc0253_1   	 ngc0253
 ngc0253_2   	 ngc0253
 ngc0253_3   	 ngc0253

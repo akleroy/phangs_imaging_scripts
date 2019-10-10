@@ -133,7 +133,7 @@ def copy_data(gal=None,
 
             # We didn't find the file. Alarm and continue to the next file.
             if in_file == None:
-                print('File '+project_specific_key[this_ms]+' not found.')
+                print('File '+proj_specific_key[this_ms]+' not found.')
                 print('Continuing to next file.')
                 continue
 

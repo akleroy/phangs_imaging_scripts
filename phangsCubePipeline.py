@@ -89,77 +89,148 @@ def stage_cubes_in_casa(
     out_cube_name = out_dir+gal+'_'+array+'_'+product+'.image'
     out_pb_name = out_dir+gal+'_'+array+'_'+product+'.pb'
     
-    importfits(fitsimage=in_cube_name, imagename=out_cube_name,
-               zeroblanks=False, overwrite=overwrite)
-    importfits(fitsimage=in_pb_name, imagename=out_pb_name,
-               zeroblanks=True, overwrite=overwrite)
+    if os.path.isfile(in_cube_name):
+        importfits(fitsimage=in_cube_name, imagename=out_cube_name,
+                   zeroblanks=False, overwrite=overwrite)
+    else:
+        print("File not found "+in_cube_name)
+
+    if os.path.isfile(in_pb_name):
+        importfits(fitsimage=in_pb_name, imagename=out_pb_name,
+                   zeroblanks=True, overwrite=overwrite)
+    else:
+        print("Directory not found "+in_pb_name)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# IMAGE MANIPULATION AND CLEANUP
+# BASIC IMAGE PROCESSING STEPS
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-def primary_beam_correct(
-    gal=None, array=None, product=None,
-    root_dir=None, cutoff=0.5, overwrite=False):
+def phangs_primary_beam_correct(
+    gal=None, array=None, product=None, root_dir=None, 
+    cutoff=0.5, overwrite=False):
     """
-    Construct primary-beam corrected images.
+    Construct primary-beam corrected images using PHANGS naming conventions.
     """
-
-    if gal is None or array is None or product is None or \
-            root_dir is None:
-        print("Missing required input.")
-        return
 
     input_dir = root_dir+'raw/'
     input_cube_name = input_dir+gal+'_'+array+'_'+product+'.image'
     input_pb_name = input_dir+gal+'_'+array+'_'+product+'.pb'
-
     output_dir = root_dir+'process/'
     output_cube_name = output_dir+gal+'_'+array+'_'+product+'_pbcorr.image'
 
-    if overwrite:
-        os.system('rm -rf '+output_cube_name)
-
-    impbcor(imagename=input_cube_name,
-            pbimage=input_pb_name,
-            outfile=output_cube_name,
-            cutoff=cutoff)
-
-def convolve_to_round_beam(
-    gal=None, array=None, product=None,
-    root_dir=None,
-    overwrite=False):
-    """
-    Convolve supplied image to have a round beam.
-    """
+    print("")
+    print("... producing a primary beam corrected image for "+input_cube_name)
+    print("")
     
+    primary_beam_correct(
+        infile=input_cube_name, 
+        pbfile=input_pb_name,
+        outfile=output_cube_name,
+        cutoff=cutoff, overwrite=overwrite)
+
+def primary_beam_correct(
+    infile=None, pbfile=None, outfile=None, 
+    cutoff=0.5, overwrite=False):
+    """
+    Construct a primary-beam corrected image.
+    """
+
+    if infile is None or pbfile is None or outfile is None:
+        print("Missing required input.")
+        return
+
+    if os.path.isdir(infile) == False:
+        print("Input file missing - "+infile)
+        return
+
+    if os.path.isdir(pbfile) == False:
+        print("Primary beam file missing - "+pbfile)
+        return
+
+    if overwrite:
+        os.system('rm -rf '+outfile)
+
+    impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
+
+def phangs_convolve_to_round_beam(
+    gal=None, array=None, product=None, root_dir=None, 
+    force_beam=None, overwrite=False):
+    """
+    Construct primary-beam corrected images using PHANGS naming
+    conventions. Runs on both primary beam corrected cube and flat
+    cube, forcing the same beam for both.
+    """
+
     if gal is None or array is None or product is None or \
             root_dir is None:
         print("Missing required input.")
         return
 
+    print("")
+    print("... convolving to a round beam for "+input_cube_name)
+    print("")
+    
     input_dir = root_dir+'process/'
     input_cube_name = input_dir+gal+'_'+array+'_'+product+'_pbcorr.image'
     output_dir = root_dir+'process/'
     output_cube_name = output_dir+gal+'_'+array+'_'+product+'_pbcorr_round.image'
+
+    round_beam = \
+        convolve_to_round_beam(
+        infile=input_cube_name,
+        outfile=output_cube_name,
+        force_beam=force_beam,
+        overwrite=overwrite)
+
+    print("")
+    print("... found beam of "+str(round_beam)+" arcsec. Forcing flat cube to this.")
+    print("")
+
+    input_dir = root_dir+'raw/'
+    input_cube_name = input_dir+gal+'_'+array+'_'+product+'.image'
+    output_dir = root_dir+'process/'
+    output_cube_name = output_dir+gal+'_'+array+'_'+product+'_flat_round.image'    
+
+    convolve_to_round_beam(
+        infile=input_cube_name,
+        outfile=output_cube_name,
+        force_beam=round_beam,
+        overwrite=overwrite)
     
-    hdr = imhead(input_cube_name)
-    if (hdr['axisunits'][0] != 'rad'):
-        print("ERROR: Based on CASA experience. I expected units of radians.")
-        print("I did not find this. Returning. Adjust code or investigate file "+input_cube_name)
+def convolve_to_round_beam(
+    infile=None, outfile=None, force_beam=None, overwrite=False):
+    """
+    Convolve supplied image to have a round beam.
+    """
+    
+    if infile is None or outfile is None:
+        print("Missing required input.")
         return
-    pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
-    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-        print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
-        print("I did not find this. Returning. Adjust code or investigate file "+input_cube_name)
+    if os.path.isdir(infile) == False:
+        print("Input file missing - "+infile)
         return    
-    bmaj = hdr['restoringbeam']['major']['value']
-    
-    target_bmaj = np.sqrt((bmaj)**2+(2.0*pixel_as)**2)
 
-    imsmooth(imagename=input_cube_name,
-             outfile=output_cube_name,
+    if force_beam is None:
+        hdr = imhead(infile)
+        if (hdr['axisunits'][0] != 'rad'):
+            print("ERROR: Based on CASA experience. I expected units of radians.")
+            print("I did not find this. Returning. Adjust code or investigate file "+infile)
+            return
+
+        pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
+
+        if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+            print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
+            print("I did not find this. Returning. Adjust code or investigate file "+infile)
+            return    
+        bmaj = hdr['restoringbeam']['major']['value']    
+        target_bmaj = np.sqrt((bmaj)**2+(2.0*pixel_as)**2)
+    else:
+        target_bmaj = force_beam
+
+    imsmooth(imagename=infile,
+             outfile=outfile,
              targetres=True,
              major=str(target_bmaj)+'arcsec',
              minor=str(target_bmaj)+'arcsec',
@@ -167,25 +238,44 @@ def convolve_to_round_beam(
              overwrite=overwrite
              )
 
-    input_dir = root_dir+'raw/'
-    input_cube_name = input_dir+gal+'_'+array+'_'+product+'.image'
-
-    output_dir = root_dir+'process/'
-    output_cube_name = output_dir+gal+'_'+array+'_'+product+'_flat_round.image'    
-
-    imsmooth(imagename=input_cube_name,
-             outfile=output_cube_name,
-             targetres=True,
-             major=str(target_bmaj)+'arcsec',
-             minor=str(target_bmaj)+'arcsec',
-             pa='0.0deg',
-             overwrite=overwrite
-             )    
-
-    return
+    return target_bmaj
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# ALIGN AND CONVERT SINGLE DISH DATA
+# SINGLE DISH AND FEATHERING ROUTINES
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+def phangs_stage_single_dish(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Copy and reproject single dish data to prepare for feathering.
+    """
+    
+    sdk = read_singledish_key()
+    if (gal in sdk.keys()) == False:
+        print(gal+" not found in single dish key.")
+    
+    this_key = sdk[gal]
+    if (product in this_key.keys()) == False:
+        print(product+" not found in single dish key for "+gal)
+    
+    sdfile_in = this_key[product]
+    
+    
+
+    pass
+
+def phangs_feather_data(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Feather the interferometric and total power data.
+    """
+
+    pass
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# LINEAR MOSAICKING ROUTINES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     

@@ -11,6 +11,7 @@ import glob
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 interferometric_array_list = ['12m', '7m', '12m+7m']
+full_array_list = ['12m+7m+tp', '12m+7m', '12m', '7m', '7m+tp']
 full_product_list = ['co21','c18o21','13co21']
 gal_part_list = pp.list_gal_names()
 
@@ -50,17 +51,17 @@ just_product = ['co21']
 
 rebuild_directories = False
 
-stage_cubes = True
-primary_beam_correct = True
-convolve_to_round_beam = True
+stage_cubes = False
+primary_beam_correct = False
+convolve_to_round_beam = False
 
-stage_single_dish = True
-write_feather_script = True
-copy_feathered_data = True
+stage_single_dish = False
+feather_data = False
 
-stage_mosaicking = True
-mosaic_data = True
-export_and_cleanup = True
+stage_mosaicking = False
+mosaic_data = False
+
+export_and_cleanup = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop #0 - wipe and rebuild if requested
@@ -116,6 +117,10 @@ for gal in gal_part_list:
 
             print gal, array, product
 
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Part #1 - stage cubes
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
             if stage_cubes:
                 pcp.stage_cubes_in_casa(
                     gal=gal, array=array, product=product, 
@@ -124,21 +129,126 @@ for gal in gal_part_list:
                     )
 
             if primary_beam_correct:
-                pcp.primary_beam_correct(
+                pcp.phangs_primary_beam_correct(
                     gal=gal, array=array, product=product, 
                     root_dir=outroot_dir,
                     overwrite=True
                     )
 
             if convolve_to_round_beam:
-                pcp.convolve_to_round_beam(
+                pcp.phangs_convolve_to_round_beam(
                     gal=gal, array=array, product=product, 
                     root_dir=outroot_dir,
                     overwrite=True
-                    )                
+                    )
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Part #2 - process and feather single dish data
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+            if stage_single_dish:
+                pcp.phangs_stage_single_dish(
+                    gal=gal, array=array, product=product,
+                    root_dir=outroot_dir,
+                    overwrite=True
+                    )
+
+            if feather_data:
+                pcp.phangs_feather_data(
+                    gal=gal, array=array, product=product,
+                    root_dir=outroot_dir,
+                    overwrite=True
+                    )
             
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop #2 - mosaic multi-part cubes
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
+for gal in gal_part_list:
+    
+    if len(only) > 0:
+        if only.count(gal) == 0:
+            print "Skipping "+gal
+            continue
+
+    if len(skip) > 0:
+        if skip.count(gal) > 0:
+            print "Skipping "+gal
+            continue
+
+    if first != "":
+        if gal == first:
+            before_first = False
+        if before_first:
+            continue
+    
+    if last != "":
+        if after_last == True:
+            continue
+        if gal == last:
+            after_last = True
+ 
+    for array in interferometric_array_list:
+
+        if len(just_array) > 0:
+            if just_array.count(array) == 0:
+                print "Skipping "+array
+                continue
+
+        for product in full_product_list:
+
+            if len(just_product) > 0:
+                if just_product.count(product) == 0:
+                    print "Skipping "+product
+                    continue
+
+            print gal, array, product
+
+            pass
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+# Loop #3 - sanitize and units in output
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+for gal in gal_part_list:
+    
+    if len(only) > 0:
+        if only.count(gal) == 0:
+            print "Skipping "+gal
+            continue
+
+    if len(skip) > 0:
+        if skip.count(gal) > 0:
+            print "Skipping "+gal
+            continue
+
+    if first != "":
+        if gal == first:
+            before_first = False
+        if before_first:
+            continue
+    
+    if last != "":
+        if after_last == True:
+            continue
+        if gal == last:
+            after_last = True
+ 
+    for array in interferometric_array_list:
+
+        if len(just_array) > 0:
+            if just_array.count(array) == 0:
+                print "Skipping "+array
+                continue
+
+        for product in full_product_list:
+
+            if len(just_product) > 0:
+                if just_product.count(product) == 0:
+                    print "Skipping "+product
+                    continue
+
+            print gal, array, product
+
+            pass
 

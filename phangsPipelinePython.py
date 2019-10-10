@@ -314,3 +314,34 @@ def read_override_imaging_params(
     infile.close()
 
     return override_dict
+
+def read_singledish_key(
+    fname='../scripts/singledish_key.txt'
+    ):
+    """
+    Read the single dish key.
+    """
+    infile = open(fname, 'r')
+
+    singledish_key = {}
+    while True:
+        line = infile.readline()    
+        if len(line) == 0:
+            break
+        if line[0] == '#':
+            continue
+        words = line.split()
+        if len(words) < 3:
+            continue
+
+        this_gal = words[0]
+        this_file = words[1]
+        this_product = words[2]
+        
+        if (this_gal in singledish_key.keys()) == False:
+            singledish_key[this_gal] = {}
+        singledish_key[this_gal][this_product] = this_file
+            
+    infile.close()
+
+    return singledish_key
