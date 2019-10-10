@@ -67,9 +67,9 @@ def rebuild_directories(outroot_dir=None):
 # SET UP THE CUBES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-def stage_cubes_in_casa(
+def phangs_stage_cubes(
     gal=None, array=None, product=None,
-    outroot_dir=None, 
+    root_dir=None, 
     overwrite=False,
     ):
     """
@@ -100,6 +100,27 @@ def stage_cubes_in_casa(
                    zeroblanks=True, overwrite=overwrite)
     else:
         print("Directory not found "+in_pb_name)
+
+def phangs_stage_single_dish(
+    gal=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Copy the single dish data for further processing
+    """
+    
+    sdk = read_singledish_key()
+    if (gal in sdk.keys()) == False:
+        print(gal+" not found in single dish key.")
+    
+    this_key = sdk[gal]
+    if (product in this_key.keys()) == False:
+        print(product+" not found in single dish key for "+gal)
+    
+    sdfile_in = this_key[product]
+    
+    sdfile_out = root_dir+'raw/'+gal+'_tp_'+product+'.image'    
+    importfits(fitsimage=sdfile_in, imagename=sdfile_out,
+               zeroblanks=False, overwrite=overwrite)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # BASIC IMAGE PROCESSING STEPS
@@ -241,28 +262,15 @@ def convolve_to_round_beam(
     return target_bmaj
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# SINGLE DISH AND FEATHERING ROUTINES
+# ROUTINES FOR FEATHERING THE DATA
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-def phangs_stage_single_dish(
+def prep_for_feather(
     gal=None, array=None, product=None, root_dir=None, 
     overwrite=False):
     """
-    Copy and reproject single dish data to prepare for feathering.
+    Prepare the single dish data for feathering
     """
-    
-    sdk = read_singledish_key()
-    if (gal in sdk.keys()) == False:
-        print(gal+" not found in single dish key.")
-    
-    this_key = sdk[gal]
-    if (product in this_key.keys()) == False:
-        print(product+" not found in single dish key for "+gal)
-    
-    sdfile_in = this_key[product]
-    
-    
-
     pass
 
 def phangs_feather_data(
@@ -271,11 +279,37 @@ def phangs_feather_data(
     """
     Feather the interferometric and total power data.
     """
-
     pass
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # LINEAR MOSAICKING ROUTINES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+def prep_for_mosaic(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Prepare multi-part cubes for mosaicking.
+    """
+    pass
+
+def phangs_feather_data(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Linearly mosaic multipart cubes.
+    """
+    pass
+    
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# CLEANUP
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+def phangs_cleanup_cubes(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Clean up cubes.
+    """
+    pass
     

@@ -35,10 +35,11 @@ skip = []
 first = ""
 last = ""
 
-# ... set as '12m', '7m', or '12m+7m' to process only data from that
-# array. Leave it as None to process all data.
+# ... set as '12m', '7m', '7m+tp', '12m+7m', or '12m+7m+tp' to process
+# only data from that array. Leave it as None to process all data.
 
-just_array = ['7m']
+just_array = []
+#just_array = ['7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -52,203 +53,151 @@ just_product = ['co21']
 rebuild_directories = False
 
 stage_cubes = False
+stage_singledish = False
+
 primary_beam_correct = False
 convolve_to_round_beam = False
 
-stage_single_dish = False
+prep_for_feather = False
 feather_data = False
 
-stage_mosaicking = False
+prep_for_mosaic = False
 mosaic_data = False
 
-export_and_cleanup = False
+cleanup_cubes = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Loop #0 - wipe and rebuild if requested
+# Wipe and rebuild if requested
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 if rebuild_directories:
     pcp.rebuild_directories(outroot_dir=outroot_dir)
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Loop #1 - clean up our existing cubes
+# Loop over all galaxies to stage, process, mosaic, and cleanup
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-before_first = True
-after_last = False
-
-for gal in gal_part_list:
+for this_loop in ['stage', 'process', 'feather', 'mosaic', 'cleanup']:
     
-    if len(only) > 0:
-        if only.count(gal) == 0:
-            print "Skipping "+gal
-            continue
+    print("")
+    print("Looping over all galaxies and products.")
+    print("... this loop is to: "+this_loop)
+    print("")
 
-    if len(skip) > 0:
-        if skip.count(gal) > 0:
-            print "Skipping "+gal
-            continue
+    before_first = True
+    after_last = False
 
-    if first != "":
-        if gal == first:
-            before_first = False
-        if before_first:
-            continue
-    
-    if last != "":
-        if after_last == True:
-            continue
-        if gal == last:
-            after_last = True
- 
-    for array in interferometric_array_list:
-
-        if len(just_array) > 0:
-            if just_array.count(array) == 0:
-                print "Skipping "+array
+    for gal in gal_part_list:
+        
+        if len(only) > 0:
+            if only.count(gal) == 0:
+                print("Skipping "+gal)
                 continue
 
-        for product in full_product_list:
+        if len(skip) > 0:
+            if skip.count(gal) > 0:
+                print("Skipping "+gal)
+                continue
 
-            if len(just_product) > 0:
-                if just_product.count(product) == 0:
-                    print "Skipping "+product
+        if first != "":
+            if gal == first:
+                before_first = False
+                if before_first:
                     continue
+                
+        if last != "":
+            if after_last == True:
+                continue
+            if gal == last:
+                after_last = True
 
-            print gal, array, product
-
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Part #1 - stage cubes
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-            if stage_cubes:
-                pcp.stage_cubes_in_casa(
-                    gal=gal, array=array, product=product, 
-                    outroot_dir = outroot_dir, 
-                    overwrite=True
-                    )
-
-            if primary_beam_correct:
-                pcp.phangs_primary_beam_correct(
-                    gal=gal, array=array, product=product, 
-                    root_dir=outroot_dir,
-                    overwrite=True
-                    )
-
-            if convolve_to_round_beam:
-                pcp.phangs_convolve_to_round_beam(
-                    gal=gal, array=array, product=product, 
-                    root_dir=outroot_dir,
-                    overwrite=True
-                    )
-
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Part #2 - process and feather single dish data
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-            if stage_single_dish:
-                pcp.phangs_stage_single_dish(
-                    gal=gal, array=array, product=product,
-                    root_dir=outroot_dir,
-                    overwrite=True
-                    )
-
-            if feather_data:
-                pcp.phangs_feather_data(
-                    gal=gal, array=array, product=product,
-                    root_dir=outroot_dir,
-                    overwrite=True
-                    )
+        for product in full_product_list:
             
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Loop #2 - mosaic multi-part cubes
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-for gal in gal_part_list:
-    
-    if len(only) > 0:
-        if only.count(gal) == 0:
-            print "Skipping "+gal
-            continue
-
-    if len(skip) > 0:
-        if skip.count(gal) > 0:
-            print "Skipping "+gal
-            continue
-
-    if first != "":
-        if gal == first:
-            before_first = False
-        if before_first:
-            continue
-    
-    if last != "":
-        if after_last == True:
-            continue
-        if gal == last:
-            after_last = True
- 
-    for array in interferometric_array_list:
-
-        if len(just_array) > 0:
-            if just_array.count(array) == 0:
-                print "Skipping "+array
-                continue
-
-        for product in full_product_list:
-
             if len(just_product) > 0:
                 if just_product.count(product) == 0:
-                    print "Skipping "+product
+                    print("Skipping "+product)
                     continue
+                        
+            print(gal, product)
 
-            print gal, array, product
-
-            pass
-
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# Loop #3 - sanitize and units in output
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-for gal in gal_part_list:
-    
-    if len(only) > 0:
-        if only.count(gal) == 0:
-            print "Skipping "+gal
-            continue
-
-    if len(skip) > 0:
-        if skip.count(gal) > 0:
-            print "Skipping "+gal
-            continue
-
-    if first != "":
-        if gal == first:
-            before_first = False
-        if before_first:
-            continue
-    
-    if last != "":
-        if after_last == True:
-            continue
-        if gal == last:
-            after_last = True
+            if this_loop == 'stage' and stage_singledish:
+                pcp.phangs_stage_singledish(
+                    gal=gal, product=product, 
+                    root_dir = outroot_dir, 
+                    overwrite=True
+                    )
  
-    for array in interferometric_array_list:
+            for array in full_array_list:
 
-        if len(just_array) > 0:
-            if just_array.count(array) == 0:
-                print "Skipping "+array
-                continue
+                if len(just_array) > 0:
+                    if just_array.count(array) == 0:
+                        print("Skipping "+array)
+                        continue
 
-        for product in full_product_list:
+                print("..."+array)
 
-            if len(just_product) > 0:
-                if just_product.count(product) == 0:
-                    print "Skipping "+product
-                    continue
+                if this_loop == 'stage' and stage_cubes:
+                    if array == "12m+7m+tp" or array == "7m+tp":
+                        continue
+                    pcp.phangs_stage_cubes(
+                        gal=gal, array=array, product=product, 
+                        root_dir = outroot_dir, 
+                        overwrite=True
+                        )                        
+                    
+                if this_loop == 'process' and primary_beam_correct:
+                    if array == "12m+7m+tp" or array == "7m+tp":
+                        continue
+                    pcp.phangs_primary_beam_correct(
+                        gal=gal, array=array, product=product, 
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
 
-            print gal, array, product
+                if this_loop == 'process' and convolve_to_round_beam:
+                    if array == "12m+7m+tp" or array == "7m+tp":
+                        continue
+                    pcp.phangs_convolve_to_round_beam(
+                        gal=gal, array=array, product=product, 
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
+                    
+                if this_loop == 'feather' and prep_for_feather:
+                    if array == "12m+7m+tp" or array == "7m+tp":
+                        continue
+                    pcp.prep_for_feather(
+                        gal=gal, array=array, product=product,
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
 
-            pass
+                if this_loop == 'feather' and feather_data:
+                    if array == "12m+7m+tp" or array == "7m+tp":
+                        continue
+                    pcp.phangs_feather_data(
+                        gal=gal, array=array, product=product,
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
 
+                if this_loop == 'mosaic' and prep_for_mosaic:
+                    pcp.prep_for_mosaic(
+                        gal=gal, array=array, product=product,
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
+
+                if this_loop == 'mosaic' and mosaic_data:
+                    pcp.phangs_mosaic_data(
+                        gal=gal, array=array, product=product,
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
+
+                if this_loop == 'cleanup' and cleanup_cubes:
+                    pcp.phangs_cleanup_cubes(
+                        gal=gal, array=array, product=product,
+                        root_dir=outroot_dir,
+                        overwrite=True
+                        )
