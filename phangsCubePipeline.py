@@ -150,7 +150,7 @@ def phangs_stage_singledish(
 
 def phangs_primary_beam_correct(
     gal=None, array=None, product=None, root_dir=None, 
-    cutoff=0.5, overwrite=False):
+    cutoff=0.25, overwrite=False):
     """
     Construct primary-beam corrected images using PHANGS naming conventions.
     """
@@ -173,7 +173,7 @@ def phangs_primary_beam_correct(
 
 def primary_beam_correct(
     infile=None, pbfile=None, outfile=None, 
-    cutoff=0.5, overwrite=False):
+    cutoff=0.25, overwrite=False):
     """
     Construct a primary-beam corrected image.
     """
@@ -324,8 +324,9 @@ def prep_for_feather(
 
     # Taper the TP data by the primary beam.
     taperfile_out = root_dir+'process/'+gal+'_tp_'+product+'_taper_'+array+'.image'
-    print(sdfile_out)
-    print(pbfile_name)
+    if overwrite:
+        os.system('rm -rf '+taperfile_out)
+
     impbcor(imagename=sdfile_out, 
             pbimage=pbfile_name, 
             outfile=taperfile_out, 
@@ -365,11 +366,15 @@ def phangs_feather_data(
 
     if overwrite:        
         os.system('rm -rf '+outfile_name)
-    feather(imagename=outfile_name,
+    os.system('rm -rf '+outfile_name+'.temp')
+    feather(imagename=outfile_name+'.temp',
             highres=interf_in,
             lowres=sdfile_in,
             sdfactor=1.0,
             lowpassfiltersd=False)
+    imsubimage(imagename=outfile_name+'.temp', outfile=outfile_name,
+               dropdeg=True)
+    os.system('rm -rf '+outfile_name+'.temp')
     infile_name = outfile_name
 
     # Primary beam correct the feathered data.
@@ -379,8 +384,10 @@ def phangs_feather_data(
     if overwrite:        
         os.system('rm -rf '+outfile_name)
 
+    print(infile_name)
+    print(pbfile_name)
     impbcor(imagename=infile_name,
-            pbimage=pbfile, 
+            pbimage=pbfile_name, 
             outfile=outfile_name, 
             mode='divide', cutoff=cutoff)
 
@@ -402,7 +409,7 @@ def convert_jytok(
         print("Missing required input.")
         return
     
-    is os.path.isdir(infile) == False:
+    if os.path.isdir(infile) == False:
         print("Input file not found: "+infile)
         return
     
@@ -457,9 +464,11 @@ def trim_cube(
         print("Missing required input.")
         return
     
-    is os.path.isdir(infile) == False:
+    if os.path.isdir(infile) == False:
         print("Input file not found: "+infile)
         return
+
+    #
 
 def phangs_cleanup_cubes(
     gal=None, array=None, product=None, root_dir=None, 
@@ -480,9 +489,9 @@ def phangs_cleanup_cubes(
         outfile = root+'_round_k.image'
         outfile_fits = root+'_round_k.fits'
     
-        # Rebin as needed
+        # Trim the cube to a smaller size and rebin as needed
 
-        
+        pass
 
         # Convert to Kelvin
 
@@ -496,6 +505,8 @@ def phangs_cleanup_cubes(
     
         # Clean up headers
 
+        pass
+
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # LINEAR MOSAICKING ROUTINES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -508,7 +519,7 @@ def prep_for_mosaic(
     """
     pass
 
-def phangs_feather_data(
+def phangs_mosaic_data(
     gal=None, array=None, product=None, root_dir=None, 
     overwrite=False):
     """

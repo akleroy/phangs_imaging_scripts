@@ -20,6 +20,8 @@ inroot_dir = '../'
 vstring = 'v3_casa'
 outroot_dir = '../release/'+vstring+'/'
 
+cutoff = 0.25
+
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Control Flow
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -54,13 +56,13 @@ just_product = ['co21']
 rebuild_directories = False
 
 stage_cubes = False
-stage_singledish = True
+stage_singledish = False
 
 primary_beam_correct = False
 convolve_to_round_beam = False
 
-prep_for_feather = False
-feather_data = False
+prep_for_feather = True
+feather_data = True
 
 cleanup_cubes = False
 
@@ -163,7 +165,7 @@ for this_loop in ['stage', 'process', 'feather', 'cleanup']:
                     pcp.phangs_primary_beam_correct(
                         gal=gal_part, array=array, product=product, 
                         root_dir=outroot_dir,
-                        overwrite=True
+                        overwrite=True, cutoff=cutoff,
                         )
 
                 if this_loop == 'process' and convolve_to_round_beam:
@@ -190,7 +192,7 @@ for this_loop in ['stage', 'process', 'feather', 'cleanup']:
                     pcp.phangs_feather_data(
                         gal=gal_part, array=array, product=product,
                         root_dir=outroot_dir,
-                        overwrite=True
+                        overwrite=True, cutoff=cutoff,
                         )
                 
                 if this_loop == 'cleanup' and cleanup_cubes:
