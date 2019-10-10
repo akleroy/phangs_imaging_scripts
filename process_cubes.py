@@ -42,7 +42,7 @@ last = ""
 # only data from that array. Leave it as None to process all data.
 
 #just_array = []
-just_array = ['7m']
+just_array = ['7m','7m+tp']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -61,10 +61,10 @@ stage_singledish = False
 primary_beam_correct = False
 convolve_to_round_beam = False
 
-prep_for_feather = True
-feather_data = True
+prep_for_feather = False
+feather_data = False
 
-cleanup_cubes = False
+cleanup_cubes = True
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Wipe and rebuild if requested

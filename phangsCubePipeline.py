@@ -26,6 +26,7 @@ from imhead import imhead
 from immath import immath
 from impbcor import impbcor
 from importfits import importfits
+from imrebin import imrebin
 from imregrid import imregrid
 from imsmooth import imsmooth
 from imstat import imstat
@@ -411,7 +412,7 @@ def convert_jytok(
     h = 6.6260755e-27
     kb = 1.380658e-16
 
-    if infile is None or outfile is None:
+    if infile is None or (outfile is None and inplace==False):
         print("Missing required input.")
         return
     
@@ -445,7 +446,9 @@ def convert_jytok(
         return    
     bmaj_as = hdr['beammajor']['value']
     bmin_as = hdr['beamminor']['value']
-    beam_in_sr = np.pi*(bmaj_as/2.0*bmin_as/2.0)/np.log(2)
+    bmaj_sr = bmaj_as/3600.*np.pi/180.
+    bmin_sr = bmin_as/3600.*np.pi/180.
+    beam_in_sr = np.pi*(bmaj_sr/2.0*bmin_sr/2.0)/np.log(2)
     jtok = c**2 / beam_in_sr / 1e23 / (2*kb*restfreq_hz**2)
 
     myia = au.createCasaTool(iatool)
@@ -456,7 +459,7 @@ def convert_jytok(
     myia.setbrightnessunit("K")
     myia.close()
 
-    imhead(targetfile, mode='put', hdkey='JTOK', hdvalue=jtok)
+    imhead(target_file, mode='put', hdkey='JTOK', hdvalue=jtok)
 
     return
 
@@ -467,18 +470,83 @@ def trim_cube(
     """
     
     if infile is None or outfile is None:
-        print("Missing required input.")
+        print("TRIM_CUBE: Missing required input.")
         return
     
     if os.path.isdir(infile) == False:
-        print("Input file not found: "+infile)
+        print("TRIM_CUBE: Input file not found: "+infile)
         return
 
-    #
+    # First, rebin if needed
+    hdr = imhead(infile)
+    if (hdr['axisunits'][0] != 'rad'):
+        print("ERROR: Based on CASA experience. I expected units of radians.")
+        print("I did not find this. Returning. Adjust code or investigate file "+infile)
+        return
 
+    pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
+
+    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+        print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
+        print("I did not find this. Returning. Adjust code or investigate file "+infile)
+        return    
+    bmaj = hdr['restoringbeam']['major']['value']    
+    
+    pix_per_beam = bmaj*1.0 / pixel_as*1.0
+    
+    if pix_per_beam > 6:
+        imrebin(
+            imagename=infile,
+            outfile=outfile+'.temp',
+            factor=[2,2,1],
+            crop=True,
+            dropdeg=True,
+            overwrite=overwrite,
+            )
+    else:
+        os.system('cp -r '+infile+' '+outfile+'.temp')
+
+    # Figure out the extent of the image inside the cube
+    myia = au.createCasaTool(iatool)
+    myia.open(outfile+'.temp')
+    mask = myia.getchunk(getmask=True)    
+    myia.close()
+
+    this_shape = mask.shape
+
+    mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    pad = 0
+    xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
+    xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
+
+    mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
+    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
+
+    mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
+    zmin = np.max([0,np.min(np.where(mask_spec_z))-pad])
+    zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[2]-1])
+    
+    box_string = ''+str(xmin)+','+str(ymin)+','+str(xmax)+','+str(ymax)
+    chan_string = ''+str(zmin)+'~'+str(zmax)
+
+    print("... ... ... box selection: "+box_string)
+    print("... ... ... channel selection: "+chan_string)
+
+    if overwrite:
+        os.system('rm -rf '+outfile)
+        imsubimage(
+        imagename=outfile+'.temp',
+        outfile=outfile,
+        box=box_string,
+        chans=chan_string,
+        )
+    
+    os.system('rm -rf '+outfile+'.temp')
+    
 def phangs_cleanup_cubes(
     gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False):
+    overwrite=False, min_pixeperbeam=3):
     """
     Clean up cubes.
     """
@@ -497,7 +565,9 @@ def phangs_cleanup_cubes(
     
         # Trim the cube to a smaller size and rebin as needed
 
-        pass
+        trim_cube(infile=infile, outfile=outfile, 
+                  overwrite=overwrite, inplace=False,
+                  min_pixperbeam=min_pixeperbeam)
 
         # Convert to Kelvin
 
