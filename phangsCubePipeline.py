@@ -51,7 +51,8 @@ def rebuild_directories(outroot_dir=None):
         print("Specify a root directory.")
         return
 
-    check_string = raw_input("Reseting directory structure in "+outroot_dir+". Type 'Yes' to confirm.")
+    check_string = raw_input("Reseting directory structure in "+\
+                                 outroot_dir+". Type 'Yes' to confirm.")
     if check_string != "Yes":
         print("Aborting")
         return
@@ -76,8 +77,9 @@ def phangs_stage_cubes(
     Stage cubes for further processing in CASA. This imports them back
     into CASA as .image files.
     """
+
     if gal is None or array is None or product is None or \
-            outroot_dir is None:
+            root_dir is None:
         print("Missing required input.")
         return
     
@@ -85,10 +87,12 @@ def phangs_stage_cubes(
     in_cube_name = input_dir+gal+'_'+array+'_'+product+'.fits'
     in_pb_name = input_dir+gal+'_'+array+'_'+product+'_pb.fits'
 
-    out_dir = outroot_dir+'raw/'
+    out_dir = root_dir+'raw/'
     out_cube_name = out_dir+gal+'_'+array+'_'+product+'.image'
     out_pb_name = out_dir+gal+'_'+array+'_'+product+'.pb'
     
+    print("... importing data for "+in_cube_name)
+
     if os.path.isfile(in_cube_name):
         importfits(fitsimage=in_cube_name, imagename=out_cube_name,
                    zeroblanks=False, overwrite=overwrite)
@@ -101,24 +105,34 @@ def phangs_stage_cubes(
     else:
         print("Directory not found "+in_pb_name)
 
-def phangs_stage_single_dish(
+def phangs_stage_singledish(
     gal=None, product=None, root_dir=None, 
     overwrite=False):
     """
     Copy the single dish data for further processing
     """
+
+    if gal is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return
     
     sdk = read_singledish_key()
     if (gal in sdk.keys()) == False:
         print(gal+" not found in single dish key.")
+        return
     
     this_key = sdk[gal]
     if (product in this_key.keys()) == False:
         print(product+" not found in single dish key for "+gal)
+        return
     
     sdfile_in = this_key[product]
     
     sdfile_out = root_dir+'raw/'+gal+'_tp_'+product+'.image'    
+
+    print("... importing single dish data for "+sdfile_in)
+
     importfits(fitsimage=sdfile_in, imagename=sdfile_out,
                zeroblanks=False, overwrite=overwrite)
 
@@ -186,15 +200,15 @@ def phangs_convolve_to_round_beam(
             root_dir is None:
         print("Missing required input.")
         return
-
-    print("")
-    print("... convolving to a round beam for "+input_cube_name)
-    print("")
     
     input_dir = root_dir+'process/'
     input_cube_name = input_dir+gal+'_'+array+'_'+product+'_pbcorr.image'
     output_dir = root_dir+'process/'
     output_cube_name = output_dir+gal+'_'+array+'_'+product+'_pbcorr_round.image'
+
+    print("")
+    print("... convolving to a round beam for "+input_cube_name)
+    print("")
 
     round_beam = \
         convolve_to_round_beam(
@@ -271,6 +285,11 @@ def prep_for_feather(
     """
     Prepare the single dish data for feathering
     """
+
+    # Align the relevant TP data to the product.
+
+    # Taper the TP data by the primary beam.
+
     pass
 
 def phangs_feather_data(
@@ -279,6 +298,11 @@ def phangs_feather_data(
     """
     Feather the interferometric and total power data.
     """
+
+    # Feather the inteferometric and "flat" TP data.
+
+    # Primary beam correct the feathered data.
+
     pass
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

@@ -213,7 +213,7 @@ def list_wholegal_names():
         if wholegal_names.count(this_name) > 0:
             continue
         wholegal_names.append(this_name)
-    wholegale_names.sort()
+    wholegal_names.sort()
     return wholegal_names    
 
 def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
