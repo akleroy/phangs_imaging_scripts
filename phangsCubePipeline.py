@@ -305,13 +305,16 @@ def prep_for_feather(
 
     if (os.path.isdir(sdfile_in) == False):
         print("Single dish file not found: "+sdfile_in)
-        
+        return
+
     if (os.path.isdir(interf_in) == False):
         print("Interferometric file not found: "+interf_in)
+        return
 
     if (os.path.isdir(pbfile_name) == False):
         print("Primary beam file not found: "+pbfile_name)
-        
+        return
+
     # Align the relevant TP data to the product.
     sdfile_out = root_dir+'process/'+gal+'_tp_'+product+'_align_'+array+'.image'
     imregrid(imagename=sdfile_in,
@@ -353,12 +356,15 @@ def phangs_feather_data(
 
     if (os.path.isdir(sdfile_in) == False):
         print("Single dish file not found: "+sdfile_in)
+        return
         
     if (os.path.isdir(interf_in) == False):
         print("Interferometric file not found: "+interf_in)
+        return
 
     if (os.path.isdir(pbfile_name) == False):
         print("Primary beam file not found: "+pbfile_name)
+        return
 
     # Feather the inteferometric and "flat" TP data.
     outfile_name = root_dir+'process/'+gal+'_'+array+'+tp_'+product+ \
