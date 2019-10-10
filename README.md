@@ -9,17 +9,40 @@ measurement sets, image the various products, combine the
 interferometer and total power data, and produce products for
 distribution.
 
-It runs in four steps right now:
+It runs in five steps right now:
 
 1) Download and calibrate the data using the observatory scripts.
+
 2) Stage the imaging using stage_imaging.py
+
 3) Image the data using image_data.py
-4) Create the higher level data products using build_release_v0p6.pro
 
-Parts 1-3 run in CASA. Parts 2-3 depend on phangsPipeline.py and use
-the analysisUtils. Part 4 runs in IDL with a stop in CASA to feather.
+4) Create final cubes using one of two methods:
 
-Email me: leroy.42@osu.edu or otherwise get in touch with questions or
+(a) IDL build_cubes.pro
+
+(b) [under development] process_cubes.py
+
+These steps convolve to a round beam, primary beam correct, feather,
+combine multi-part galaxies, and then export final FITS
+cubes. Eventually the two steps will be equivalent and we'll add a
+third version operating purely using spectral cube and astropy. For
+now the IDL pipeline is most complete.
+
+5) Create higher level data products using the IDL scripts
+build_products_7m.pro, build_products_12m.pro. These steps build
+masks, create fixed resolution cubes, and build moment maps and
+similar products.
+
+Then potentially compile cubes into a release using the IDL
+build_release.
+
+Parts 1-3 and 4b run in CASA. Parts 2-4 depend on phangsPipeline.py
+and use the analysisUtils.
+
+Parts 4a and 5 run in IDL with a stop during 4a in CASA to feather.
+
+Email leroy.42@osu.edu or otherwise get in touch with questions or
 suggestions.
 
 SETUP
@@ -34,36 +57,37 @@ under whatever parent directory you choose to use. For the parent directory is
 
 and I'll just refer to the top level thing as PHANGS/
 
-within PHANGS/ I have the following directories:
+within PHANGS/ and a couple other directories also checked by the
+scripts I have the following directories holding calibrated data:
 
-2013.1.00803.S  
-2013.1.01161.S  
-2015.1.00925.S  
-2015.1.00956.S 
+2013.1.00803.S
+2013.1.01161.S
+2015.1.00782.S
+2015.1.00925.S
+2015.1.00956.S
+2017.1.00392.S
+2017.1.00766.S
 2017.1.00886.L
+2018.1.01321.S
+2018.1.01651.S
+2018.A.00062.S
 Cycle1_650
 imaging
-raw
 
-For me, raw/ contains some subdirectories that hold 12m/ 7m/ tp/ data
-and I keep the tarballs here until I'm sure that I'm done with
-them. This isn't used by the scripts at all. You can do this however
-you want.
-
-The rest of the directories DO matter. These hold the uv data and are
-referenced in the imaging directory by
+These hold the uv data and are referenced in the imaging directory by
 
 ms_file_key.txt
 
 You need ms_file_key.txt to point to the calibrated uv data in order
 for the first part of the scripts to work.
 
-You could override the filename in read_ms_key(yourfilename) or you
-can just mimic the directory structure above. I suggest the latter.
+Note that in "stage_imaging.py" you can specify a root directory to
+search. ms_file_key.txt only needs to work relative to the roots that
+you supply in stage_imaging.py.
 
-I keep a list of all the names of data sets and the associated galaxy
-and project in SCIENCE_GOAL_KEY.txt - I suggest that you reference
-this in setting things up.
+You can hack the scripts to get around this, but the easiest thing is
+to just follow this approach. The option to specify the root directory
+in stage_imaging.py makes it pretty easy to do this.
 
 SETTING UP THE PIPELINE
 
@@ -81,8 +105,15 @@ That should get you both the analysis utilities, which you need, and
 the phangs pipeline. Change the directories as appropriate, of course.
 
 As long as those two things import successfully, you should be able to
-run the pipeline. I use CASA 5.1.1 as of this writing but in general
-just try to use the latest CASA.
+run the pipeline. I use CASA 5.4.0 for imaging and staging as of this
+writing but in general just try to use the latest CASA. I'm using
+5.6.1 for process_cubes.
+
+Note that there are two other big pipeline
+modules. phangsPipelinePython.py has file accessing parts of the
+pipeline that don't depend on CASA, and so can be imported
+elsewhere. phangsCubePipeline.py contains routines for dealing with
+images and post processing.
 
 REDUCTION
 
@@ -90,21 +121,28 @@ After untarring, I move things to the appropriate project directory
 under PHANGS/ and then I go to the scripts directory and run the
 script for PI. Some tips:
 
-- you may need multiple versions of CASA installed. Already for the
-  large program I've needed both 4.7.2 and 5.1. Be sure you have the
-  pipeline version.
+- you may need multiple versions of CASA installed. For the large
+  program I've needed both 4.7.2 and 5.1 and for later versions I've
+  needed 5.4.0 and 5.6.1. Be sure you have the pipeline version.
 
-- when you rerun you will need to delete the calibrated directory.
+- when you rerun remember that you will need to delete the calibrated
+  directory.
+
+- if you are adding new data, remember that you will need run the
+  scripts (usually just the calibration application in scriptForPI.py)
+  then look in "../calibrated/" and add the new measurement sets to
+  the ms_file_key.txt . After this, the pipeline is ready to ingest
+  the data into imaging.
 
 COMBINING CASES WITH MULTIPLE MEASUREMENT SETS
 
 When multiple measurement sets (.ms files in calibrated/ ) show up for
 a single target, we can either reflect these in the ms_file_key as,
 e.g., 7m_1 7m_2 and so on OR we can concatenate them in to a single
-data set. 
+data set.
 
-I did this concatenation PRIOR to the large program. To do this, I
-copy the script
+I did this concatenation PRIOR to the large program (but do not do it
+for later projects). To do this, I had been copying the script
 
 combineCalibrated.py
 
@@ -115,8 +153,8 @@ ms_file_key but not in the calibrated/ directory.
 
 With the start of the large program, we have changed conventions. Now
 because various file naming conventions have changed. Moving forward,
-we will just start going with 7m_1 7m_2 and so on, with an entry in
-the ms_file_key.txt for each observation.
+we will just start going with "7m_1", "7m_2", "12m_1", and so on. We
+put an entry in the ms_file_key.txt for each observation.
 
 GETTING THE DATA INTO SHAPE FOR IMAGING
 
@@ -127,8 +165,9 @@ After you have the data calibrated, you need to:
   for imaging.
 
 - make sure that you have dir_key.txt in place. This provides a
-  mapping of directories for all of our non-standard cases, almost
-  always split mosaics. Anything without an entry is taken to be
+  mapping of directories for all of our non-standard cases. These are
+  almost always split mosaics, where we image galaxies in multiple
+  parts. Anything without an entry is taken to be
   one-galaxy-one-science-goal.
 
 - make sure that you have an up-to-date mosaic_definitions.txt . This
@@ -143,7 +182,7 @@ This is a script that you are intended to edit according to your
 current needs (aside: this means you should only check it in to github
 when you are actually editing the functionality).
 
-When you run stage imaging it will try to do three things:
+When you run stage_imaging it will try to do three things:
 
 1) Make the directory for imaging if it doesn't already exist.
 
@@ -158,7 +197,8 @@ on a shared velocity grid to be used for imaging. Also make "channel
 measurement set and then concatenate them into a single measurement
 set for each spectral line.
 
-You can turn these steps on and off at the top of stage_imaging.
+You can turn these steps on and off at the top of stage_imaging by
+flipping the boolean flags on and off.
 
 There you can also specify which array you want to stage (7m, 12m or
 both). And you can specify which galaxies to skip or a list of which
@@ -174,6 +214,10 @@ gal_7m_cont.ms
 
 As well as a bunch of intermediate files. Those files above will be
 used for imaging. Note that some galaxies will lack the c18o21.
+
+Note that the way we do this it that the velocity gridding is done at
+this stage. This might change in the future. But for right now, you
+would need to restage the data at a higher velocity resolution.
 
 IMAGING
 
@@ -207,17 +251,23 @@ The multiscale clean involves a broad clean mask. So far, I have been
 creating these as an output of the last step of the pipeline (data
 product creation) based on the feathered cubes with some heavy
 processing. Then these are placed back in the clean mask directory and
-imaging gets rerun. This means that in principle imaging is an
-iterative process. In practice this mostly just takes one iteration.
+imaging gets rerun. This means that imaging is an iterative
+process. In practice this mostly just takes one iteration: image
+without a clean mask, build a clean mask, then image again.
 
-I'll aim to add some testplot creation to show residuals and the
-current mask and check that in.
+POST-PROCESSING
 
-DATA PRODUCT CREATION
+After imaging, you have one of two options to process the cubes into a
+final form: either use the IDL script build_cubes.pro or use the
+(under development) CASA script process_cubes.py . Both apply primary
+beam corrections, convolve the data to have a round beam, feather the
+data with the single dish data, and export to a final cube.
 
-Right now data product creation occurs using an IDL pipeline. The
-latest version of this as of this writing is build_release_v0p6. But
-I'll revise this after revising the imaging part of the pipeline. So
-expect a new version soon, but this currently should run more or less
-fine once a few changed naming conventions are resolved.
+process_cubes.py works just like stage_imaging and image_data. The IDL
+side of the pipeline is better vetted, and works similarly. You just
+need to call build_cubes with the various switches flipped.
+
+I'll add more on this and on product creation as the pipeline
+approaches public release.
+
 

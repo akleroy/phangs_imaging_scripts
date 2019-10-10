@@ -3,6 +3,7 @@
 
 import os
 import numpy as np
+import pyfits
 import scipy.ndimage as ndimage
 import glob
 
@@ -19,14 +20,16 @@ from taskinit import *
 # Import specific CASA tasks
 from concat import concat
 from exportfits import exportfits
+from feather import feather
 from flagdata import flagdata
 from imhead import imhead
 from immath import immath
-from imstat import imstat
-from imregrid import imregrid
-from importfits import importfits
 from impbcor import impbcor
+from importfits import importfits
+from imregrid import imregrid
 from imsmooth import imsmooth
+from imstat import imstat
+from imsubimage import imsubimage
 from makemask import makemask
 from mstransform import mstransform
 from split import split
@@ -95,7 +98,7 @@ def phangs_stage_cubes(
 
     if os.path.isfile(in_cube_name):
         importfits(fitsimage=in_cube_name, imagename=out_cube_name,
-                   zeroblanks=False, overwrite=overwrite)
+                   zeroblanks=True, overwrite=overwrite)
     else:
         print("File not found "+in_cube_name)
 
@@ -133,8 +136,13 @@ def phangs_stage_singledish(
 
     print("... importing single dish data for "+sdfile_in)
 
-    importfits(fitsimage=sdfile_in, imagename=sdfile_out,
-               zeroblanks=False, overwrite=overwrite)
+    importfits(fitsimage=sdfile_in, imagename=sdfile_out+'.temp',
+               zeroblanks=True, overwrite=overwrite)
+
+    if overwrite:
+        os.system('rm -rf '+sdfile_out)
+    imsubimage(imagename=sdfile_out+'.temp', outfile=sdfile_out,
+               dropdeg=True)
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # BASIC IMAGE PROCESSING STEPS
@@ -285,25 +293,208 @@ def prep_for_feather(
     """
     Prepare the single dish data for feathering
     """
+    
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return    
 
+    sdfile_in = root_dir+'raw/'+gal+'_tp_'+product+'.image'
+    interf_in = root_dir+'process/'+gal+'_'+array+'_'+product+'_flat_round.image'
+    pbfile_name = root_dir+'raw/'+gal+'_'+array+'_'+product+'.pb'    
+
+    if (os.path.isdir(sdfile_in) == False):
+        print("Single dish file not found: "+sdfile_in)
+        
+    if (os.path.isdir(interf_in) == False):
+        print("Interferometric file not found: "+interf_in)
+
+    if (os.path.isdir(pbfile_name) == False):
+        print("Primary beam file not found: "+pbfile_name)
+        
     # Align the relevant TP data to the product.
+    sdfile_out = root_dir+'process/'+gal+'_tp_'+product+'_align_'+array+'.image'
+    imregrid(imagename=sdfile_in,
+             template=interf_in,
+             output=sdfile_out,
+             asvelocity=True,
+             axes=[-1],
+             interpolation='cubic',
+             overwrite=overwrite)
 
     # Taper the TP data by the primary beam.
+    taperfile_out = root_dir+'process/'+gal+'_tp_'+product+'_taper_'+array+'.image'
+    print(sdfile_out)
+    print(pbfile_name)
+    impbcor(imagename=sdfile_out, 
+            pbimage=pbfile_name, 
+            outfile=taperfile_out, 
+            mode='multiply',
+            stokes='I')
 
-    pass
+    return
 
 def phangs_feather_data(
     gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False):
+    cutoff=-1,overwrite=False):
     """
     Feather the interferometric and total power data.
     """
 
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return    
+
+    sdfile_in = root_dir+'process/'+gal+'_tp_'+product+'_taper_'+array+'.image'
+    interf_in = root_dir+'process/'+gal+'_'+array+'_'+product+'_flat_round.image'
+    pbfile_name = root_dir+'raw/'+gal+'_'+array+'_'+product+'.pb' 
+
+    if (os.path.isdir(sdfile_in) == False):
+        print("Single dish file not found: "+sdfile_in)
+        
+    if (os.path.isdir(interf_in) == False):
+        print("Interferometric file not found: "+interf_in)
+
+    if (os.path.isdir(pbfile_name) == False):
+        print("Primary beam file not found: "+pbfile_name)
+
     # Feather the inteferometric and "flat" TP data.
+    outfile_name = root_dir+'process/'+gal+'_'+array+'+tp_'+product+ \
+        '_flat_round.image'
+
+    if overwrite:        
+        os.system('rm -rf '+outfile_name)
+    feather(imagename=outfile_name,
+            highres=interf_in,
+            lowres=sdfile_in,
+            sdfactor=1.0,
+            lowpassfiltersd=False)
+    infile_name = outfile_name
 
     # Primary beam correct the feathered data.
+    outfile_name = root_dir+'process/'+gal+'_'+array+'+tp_'+product+ \
+        '_pbcorr_round.image'
+    
+    if overwrite:        
+        os.system('rm -rf '+outfile_name)
 
-    pass
+    impbcor(imagename=infile_name,
+            pbimage=pbfile, 
+            outfile=outfile_name, 
+            mode='divide', cutoff=cutoff)
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# CLEANUP
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+def convert_jytok(
+    infile=None, outfile=None, overwrite=False, inplace=False):
+    """
+    Convert a cube from Jy/beam to K.
+    """
+
+    c = 2.99792458e10
+    h = 6.6260755e-27
+    kb = 1.380658e-16
+
+    if infile is None or outfile is None:
+        print("Missing required input.")
+        return
+    
+    is os.path.isdir(infile) == False:
+        print("Input file not found: "+infile)
+        return
+    
+    if inplace == False:
+        if overwrite:
+            os.system('rm -rf '+outfile)
+        
+        if os.path.isdir(outfile):
+            print("Output file already present: "+outfile)
+            return
+
+        os.system('cp -r '+infile+' '+outfile)
+        target_file = outfile
+    else:
+        target_file = infile
+
+    hdr = imhead(target_file, mode='list')
+    unit = hdr['bunit']
+    if unit != 'Jy/beam':
+        print("Unit is not Jy/beam. Returning.")
+        return
+    restfreq_hz = hdr['restfreq'][0]
+    bmaj_unit = hdr['beammajor']['unit']
+    if bmaj_unit != 'arcsec':
+        print("Beam unit is not arcsec, which I expected. Returning.")
+        print("Unit instead is "+bmaj_unit)
+        return    
+    bmaj_as = hdr['beammajor']['value']
+    bmin_as = hdr['beamminor']['value']
+    beam_in_sr = np.pi*(bmaj_as/2.0*bmin_as/2.0)/np.log(2)
+    jtok = c**2 / beam_in_sr / 1e23 / (2*kb*restfreq_hz**2)
+
+    myia = au.createCasaTool(iatool)
+    myia.open(target_file)
+    vals = myia.getchunk()
+    vals *= jtok
+    myia.putchunk(vals)
+    myia.setbrightnessunit("K")
+    myia.close()
+
+    imhead(targetfile, mode='put', hdkey='JTOK', hdvalue=jtok)
+
+    return
+
+def trim_cube(    
+    infile=None, outfile=None, overwrite=False, inplace=False, min_pixperbeam=3):
+    """
+    Trim and rebin a cube to smaller size.
+    """
+    
+    if infile is None or outfile is None:
+        print("Missing required input.")
+        return
+    
+    is os.path.isdir(infile) == False:
+        print("Input file not found: "+infile)
+        return
+
+def phangs_cleanup_cubes(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False):
+    """
+    Clean up cubes.
+    """
+
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return
+
+    for this_ext in ['flat', 'pbcorr']:
+
+        root = root_dir+'process/'+gal+'_'+array+'_'+product+'_'+this_ext
+        infile = root+'_round.image'
+        outfile = root+'_round_k.image'
+        outfile_fits = root+'_round_k.fits'
+    
+        # Rebin as needed
+
+        
+
+        # Convert to Kelvin
+
+        convert_jytok(infile=outfile, inplace=True)
+
+        # Export to FITS
+    
+        exportfits(imagename=outfile, fitsimage=outfile_fits,
+                   velocity=True, overwrite=True, dropstokes=True, 
+                   dropdeg=True, bitpix=-32)
+    
+        # Clean up headers
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # LINEAR MOSAICKING ROUTINES
@@ -322,18 +513,6 @@ def phangs_feather_data(
     overwrite=False):
     """
     Linearly mosaic multipart cubes.
-    """
-    pass
-    
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# CLEANUP
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-def phangs_cleanup_cubes(
-    gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False):
-    """
-    Clean up cubes.
     """
     pass
     
