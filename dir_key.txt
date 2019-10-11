@@ -21,6 +21,7 @@ ngc1300_1	 ngc1300
 ngc1300_2	 ngc1300
 ngc1313_1	 ngc1313
 ngc1313_2	 ngc1313
+ngc1313_3	 ngc1313
 ngc1433_1	 ngc1433
 ngc1433_2	 ngc1433
 ngc1566_1	 ngc1566
