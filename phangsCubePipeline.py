@@ -587,13 +587,59 @@ def phangs_cleanup_cubes(
 # LINEAR MOSAICKING ROUTINES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-def prep_for_mosaic(
+def common_res_for_mosaic(
     gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False):
+    overwrite=False, target_res=None):
     """
-    Prepare multi-part cubes for mosaicking.
+    Convolve multi-part cubes to a common res for mosaicking.
     """
-    pass
+    
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return    
+    
+    # Look up parts
+    this_mosaic_key = mosaic_key()
+    if (gal in this_mosaic_key.keys()) == False:
+        print("Galaxy "+gal+" not in mosaic key.")
+        return
+    parts = this_mosaic_key[gal]
+
+    # Figure out target resolution if it is not supplied
+
+    if target_res is None:
+        print("Calculating target resolution ... ")
+        for part in parts:
+            print("Checking "+part)
+            pass
+        
+    print("Convolving to target resolution: "+str(target_res))
+
+    for part in parts:
+        print("Convolving "+part)
+        pass
+
+    return target_res
+
+def align_for_mosaic(
+    gal=None, array=None, product=None, root_dir=None, 
+    overwrite=False, target_res=None):
+    """
+    Convolve multi-part cubes to a common res for mosaicking.
+    """
+    
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return    
+    
+    # Look up parts
+    this_mosaic_key = mosaic_key()
+    if (gal in this_mosaic_key.keys()) == False:
+        print("Galaxy "+gal+" not in mosaic key.")
+        return
+    parts = this_mosaic_key[gal]
 
 def phangs_mosaic_data(
     gal=None, array=None, product=None, root_dir=None, 
@@ -601,5 +647,18 @@ def phangs_mosaic_data(
     """
     Linearly mosaic multipart cubes.
     """
+
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return    
+    
+    # Look up parts
+    this_mosaic_key = mosaic_key()
+    if (gal in this_mosaic_key.keys()) == False:
+        print("Galaxy "+gal+" not in mosaic key.")
+        return
+    parts = this_mosaic_key[gal]
+
     pass
     

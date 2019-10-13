@@ -216,6 +216,33 @@ def list_wholegal_names():
     wholegal_names.sort()
     return wholegal_names    
 
+def mosaic_key():
+    """
+    List the parts that contribute to mosaic.
+    """
+    ms_key = read_ms_key()
+    dir_key = read_dir_key()
+    part_names = ms_key.keys()
+
+    mosaic_key = {}
+    for this_part in part_names:
+        if this_part in dir_key.keys():
+            this_name = dir_key[this_part]
+            if this_name in mosaic_key.keys():
+                current_list = mosaic_key[this_name]
+                if this_part in current_list:
+                    continue
+                else:
+                    current_list.append(this_part)
+                mosaic_key[this_name] = current_list
+            else:
+                mosaic_key[this_name] = [this_part]
+        else:
+            continue
+
+    return mosaic_key
+
+
 def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     """
     Read the file containing the centers and velocities for each
