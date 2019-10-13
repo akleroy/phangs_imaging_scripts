@@ -257,11 +257,11 @@ def convolve_to_round_beam(
 
     if force_beam is None:
         hdr = imhead(infile)
+
         if (hdr['axisunits'][0] != 'rad'):
             print("ERROR: Based on CASA experience. I expected units of radians.")
             print("I did not find this. Returning. Adjust code or investigate file "+infile)
             return
-
         pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
         if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
@@ -587,7 +587,7 @@ def phangs_cleanup_cubes(
 # LINEAR MOSAICKING ROUTINES
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-def common_res_for_mosaic(
+def phangs_common_res_for_mosaic(
     gal=None, array=None, product=None, root_dir=None, 
     overwrite=False, target_res=None):
     """
@@ -598,7 +598,7 @@ def common_res_for_mosaic(
             root_dir is None:
         print("Missing required input.")
         return    
-    
+
     # Look up parts
     this_mosaic_key = mosaic_key()
     if (gal in this_mosaic_key.keys()) == False:
@@ -606,23 +606,94 @@ def common_res_for_mosaic(
         return
     parts = this_mosaic_key[gal]
 
+    for this_ext in ['flat_round', 'pbcorr_round']:           
+
+        infile_list = []
+        outfile_list = []
+        input_dir = root_dir+'process/'
+        for this_part in parts:
+            infile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'.image'
+            infile_list.append(infile)
+            outfile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_tomerge.image'
+            outfile_list.append(outfile)
+
+        common_res_for_mosaic(
+            infile_list=infile_list,
+            outfile_list=outfile_list,
+            overwrite=overwrite, target_res=target_res)
+
+def common_res_for_mosaic(
+    infile_list = None, outfile_list = None,
+    overwrite=False, target_res=None):
+    """
+    Convolve multi-part cubes to a common res for mosaicking.
+    """
+    
+    if (infile_list is None) or \
+            (outfile_list is None):
+        print("Missing required input.")
+        return    
+    
+    if len(infile_list) != len(outfile_list):
+        print("Mismatch in input lists.")
+        return    
+
+    for this_file in infile_list:
+        if os.path.isdir(this_file) == False:
+            print("File not found "+this_file)
+            return
+    
     # Figure out target resolution if it is not supplied
 
     if target_res is None:
         print("Calculating target resolution ... ")
-        for part in parts:
-            print("Checking "+part)
-            pass
+
+        bmaj_list = []
+        pix_list = []
+
+        for infile in infile_list:
+            print("Checking "+infile)
+
+            hdr = imhead(infile)
+
+            if (hdr['axisunits'][0] != 'rad'):
+                print("ERROR: Based on CASA experience. I expected units of radians.")
+                print("I did not find this. Returning. Adjust code or investigate file "+infile)
+                return
+            this_pixel = abs(hdr['incr'][0]/np.pi*180.0*3600.)
+
+            if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+                print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
+                print("I did not find this. Returning. Adjust code or investigate file "+infile)
+                return
+            this_bmaj = hdr['restoringbeam']['major']['value']
+
+            bmaj_list.append(this_bmaj)
+            pix_list.append(this_pixel)
         
-    print("Convolving to target resolution: "+str(target_res))
+        max_bmaj = np.max(bmaj_list)
+        max_pix = np.max(pix_list)
+        target_bmaj = np.sqrt((max_bmaj)**2+(2.0*max_pix)**2)
+    else:
+        target_bmaj = force_beam
 
-    for part in parts:
-        print("Convolving "+part)
-        pass
+    for ii in range(len(infile_list)):
+        this_infile = infile_list[ii]
+        this_outfile = outfile_list[ii]
+        print("Convolving "+this_infile+' to '+this_outfile)
+        
+        imsmooth(imagename=this_infile,
+             outfile=this_outfile,
+             targetres=True,
+             major=str(target_bmaj)+'arcsec',
+             minor=str(target_bmaj)+'arcsec',
+             pa='0.0deg',
+             overwrite=overwrite
+             )
 
-    return target_res
+    return target_bmaj
 
-def align_for_mosaic(
+def phangs_align_for_mosaic(
     gal=None, array=None, product=None, root_dir=None, 
     overwrite=False, target_res=None):
     """

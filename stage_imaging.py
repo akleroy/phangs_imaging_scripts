@@ -21,8 +21,11 @@ data_dirs = [
 
 # ... a text list. The script will process only these galaxies.
 
-# ngc1365 and ngc5128
-only = ['ngc1087','ngc4731']
+# ngc1313_2 problem
+only = [
+    #"ngc1313_2"
+    "ngc7743"
+    ]
 
 # ... skip these galaxies.
 
@@ -48,6 +51,8 @@ just_array = None
 # solution to the rebin-and-regrid problem.
 
 lines = ['co21', 'c18o21']
+#lines = ['co21', 'c18o21','13co21']
+#lines = ['13co21','c18o21']
 #lines = ['c18o21']
 
 # ... set these variables to indicate what steps of the script should
