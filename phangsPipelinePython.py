@@ -308,10 +308,10 @@ def read_multipart_key(fname='../scripts/multipart_fields.txt'):
         this_deltadec = words[4]
         
         multipart_key[this_gal] = {}
-        multipart_key[this_gal]['ra_ctr_deg'] = this_ra_ctr
-        multipart_key[this_gal]['dec_ctr_deg'] = this_dec_ctr
-        multipart_key[this_gal]['delta_ra_as'] = this_deltara
-        multipart_key[this_gal]['delta_dec_as'] = this_deltadec
+        multipart_key[this_gal]['ra_ctr_deg'] = float(this_ra_ctr)
+        multipart_key[this_gal]['dec_ctr_deg'] = float(this_dec_ctr)
+        multipart_key[this_gal]['delta_ra_as'] = float(this_deltara)
+        multipart_key[this_gal]['delta_dec_as'] = float(this_deltadec)
 
     infile.close()
     

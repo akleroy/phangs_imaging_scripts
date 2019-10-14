@@ -52,8 +52,8 @@ just_product = ['co21']
 # ... set these variables to indicate what steps of the script should
 # be performed.
 
-do_common_res = True
-do_align = False
+do_common_res = False
+do_align = True
 do_mosaic = False
 do_cleanup_cubes = False
 

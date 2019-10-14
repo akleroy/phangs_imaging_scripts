@@ -144,6 +144,7 @@ def phangs_stage_singledish(
         os.system('rm -rf '+sdfile_out)
     imsubimage(imagename=sdfile_out+'.temp', outfile=sdfile_out,
                dropdeg=True)
+    os.system('rm -rf '+sdfile_out+'.temp')
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # BASIC IMAGE PROCESSING STEPS
@@ -693,21 +694,130 @@ def common_res_for_mosaic(
 
     return target_bmaj
 
+def build_common_header(
+    infile_list = None, 
+    ra_ctr = None, dec_ctr = None,
+    delta_ra = None, delta_dec = None):
+    """
+    Build a target header to be used as a template by imregrid.
+    """
+    
+    if infile_list is None:
+        print("Missing required input.")
+        return    
+
+    # Logic to determine tuning parameters here if they aren't passed.
+
+    if os.path.isdir(infile_list[0]) == False:
+        print("File not found "+infile_list[0])
+        print("Returning.")
+        return None
+    target_hdr = imregrid(infile_list[0], template='get')
+    
+    # N.B. Could put a lot of general logic here, but we are usually
+    # working in a pretty specific case.
+
+    if (target_hdr['csys']['direction0']['units'][0] != 'rad') or \
+            (target_hdr['csys']['direction0']['units'][1] != 'rad'):
+        print("ERROR: Based on CASA experience. I expected pixel units of radians.")
+        print("I did not find this. Returning. Adjust code or investigate file "+infile_list[0])
+        return
+
+    # Put in our target values for the center after converting to radians
+    ra_ctr_in_rad = ra_ctr * np.pi / 180.
+    dec_ctr_in_rad = dec_ctr * np.pi / 180.
+
+    target_hdr['csys']['direction0']['crval'][0] = ra_ctr_in_rad
+    target_hdr['csys']['direction0']['crval'][1] = dec_ctr_in_rad
+
+    # Adjust the size and central pixel
+    
+    ra_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][0]*180./np.pi*3600.)
+    dec_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][1]*180./np.pi*3600.)
+    ra_axis_size = np.ceil(delta_ra / ra_pix_in_as)
+    new_ra_ctr_pix = ra_axis_size/2.0
+    dec_axis_size = np.ceil(delta_dec / dec_pix_in_as)
+    new_dec_ctr_pix = dec_axis_size/2.0
+    
+    target_hdr['csys']['direction0']['crpix'][0] = new_ra_ctr_pix
+    target_hdr['csys']['direction0']['crpix'][1] = new_dec_ctr_pix
+    
+    if ra_axis_size > 1e4 or dec_axis_size > 1e4:
+        print("WARNING! This is a very big image you plan to create.")
+        print(ra_axis_size, " x ", dec_axis_size)
+        test = raw_input("Continue? Hit [y] if so.")
+        if test != 'y':
+            return
+
+    target_hdr['shap'][0] = int(ra_axis_size)
+    target_hdr['shap'][1] = int(dec_axis_size)
+    
+    return(target_hdr)
+
+def align_for_mosaic(
+    infile_list = None, outfile_list = None,
+    overwrite=False, target_hdr=None):
+    """
+    Align a list of files to a target coordinate system.
+    """
+
+    if infile_list is None or outfile_list is None or \
+            target_hdr is None:
+        print("Missing required input.")
+        return    
+
+    for ii in range(len(infile_list)):
+        this_infile = infile_list[ii]
+        this_outfile = outfile_list[ii]        
+
+        if os.path.isdir(this_infile) == False:
+            print("File "+this_infile+" not found. Continuing.")
+            continue
+
+        imregrid(imagename=this_infile,
+                 template=target_hdr,
+                 output=this_outfile,
+                 asvelocity=True,
+                 axes=[-1],
+                 interpolation='cubic',
+                 overwrite=overwrite)
+
+    return
+
 def phangs_align_for_mosaic(
     gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False, target_res=None):
+    overwrite=False, target_hdr=None):
     """
     Convolve multi-part cubes to a common res for mosaicking.
     """
+
+    if gal is None or array is None or product is None or \
+            root_dir is None:
+        print("Missing required input.")
+        return    
     
     # Look up parts
+
     this_mosaic_key = mosaic_key()
     if (gal in this_mosaic_key.keys()) == False:
         print("Galaxy "+gal+" not in mosaic key.")
         return
     parts = this_mosaic_key[gal]
 
+    # Read the key that defines the extent and center of the mosaic
+    # manually. We will use this to figure out the target header.
+
     multipart_key = read_multipart_key()
+    if (gal in multipart_key.keys()) == False:
+        print("Galaxy "+gal+" not in multipart key.")
+        print("... working on a general header construction algorithm.")
+        print("... for now, go enter a center and size into the multipart key:")        
+        print("... multipart_fields.txt ")
+        return
+    this_ra_ctr = multipart_key[gal]['ra_ctr_deg']
+    this_dec_ctr = multipart_key[gal]['dec_ctr_deg']
+    this_delta_ra = multipart_key[gal]['delta_ra_as']
+    this_delta_dec = multipart_key[gal]['delta_dec_as']
 
     for this_ext in ['flat_round', 'pbcorr_round']:           
 
@@ -723,26 +833,41 @@ def phangs_align_for_mosaic(
             outfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
             outfile_list.append(outfile)
 
-        # PUT MOSAICK HERE
+        # Work out the target header if it does not exist yet.
 
-        # Align primary beam
+        if target_hdr is None:
+            target_hdr = \
+                build_common_header(
+                infile_list = infile_list, 
+                ra_ctr = this_ra_ctr, dec_ctr = this_dec_ctr,
+                delta_ra = this_delta_ra, delta_dec = this_delta_dec)
+            
+        align_for_mosaic(
+            infile_list = infile_list, 
+            outfile_list = outfile_list,
+            overwrite=overwrite, target_hdr=target_hdr)
+
+        # Align primary beam images, too, to use as weight.
 
         infile_list = []
         outfile_list = []
         input_dir = root_dir+'raw/'
         output_dir = root_dir+'process/'
         for this_part in parts:
+            input_array = array
             if array == '7m+tp':
                 input_array = '7m'
             if array == '12m+7m+tp':
                 input_array = '12m+7m'
-            infile = input_dir+this_part+'_'+input_array+ \
-                '_'+product+'_'+this_ext+'_tomerge.image'
+            infile = input_dir+this_part+'_'+input_array+'_'+product+'.pb'
             infile_list.append(infile)
-            outfile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
+            outfile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
             outfile_list.append(outfile)
 
-        # PUT MOSAICK HERE
+        align_for_mosaic(
+            infile_list = infile_list, 
+            outfile_list = outfile_list,
+            overwrite=overwrite, target_hdr=target_hdr)
 
 def phangs_mosaic_data(
     gal=None, array=None, product=None, root_dir=None, 
