@@ -861,13 +861,88 @@ def phangs_align_for_mosaic(
                 input_array = '12m+7m'
             infile = input_dir+this_part+'_'+input_array+'_'+product+'.pb'
             infile_list.append(infile)
-            outfile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
+            outfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
             outfile_list.append(outfile)
 
         align_for_mosaic(
             infile_list = infile_list, 
             outfile_list = outfile_list,
             overwrite=overwrite, target_hdr=target_hdr)
+
+def mosaic_aligned_data(
+    infile_list = None, weightfile_list = None,
+    outfile = None, overwrite=False):
+    """
+    Combine a list of aligned data with primary-beam (i.e., inverse
+    noise) weights using simple linear mosaicking.
+    """
+
+    if infile_list is None or weightfile_list is None or \
+            outfile is None:
+        print("Missing required input.")
+        return    
+
+    sum_file = outfile+'.sum'
+    weight_file = outfile+'.weight'
+
+    if (os.path.isdir(outfile) or \
+            os.path.isdir(sum_file) or \
+            os.path.isdir(weight_file)) and \
+            (overwrite == False):
+        print("Output file present and overwrite off.")
+        print("Returning.")
+        return
+
+    if overwrite:
+        os.system('rm -rf '+outfile+'.temp')
+        os.system('rm -rf '+outfile)
+        os.system('rm -rf '+sum_file)
+        os.system('rm -rf '+weight_file)
+        os.system('rm -rf '+outfile+'.mask')
+
+    imlist = infile_list[:]
+    imlist.extend(weightfile_list)
+    n_image = len(infile_list)
+    lel_exp_sum = ''
+    lel_exp_weight = ''
+    first = True
+    for ii in range(n_image):
+        this_im = 'IM'+str(ii)
+        this_wt = 'IM'+str(ii+n_image)
+        this_lel_sum = '('+this_im+'*'+this_wt+'*'+this_wt+')'
+        this_lel_weight = '('+this_wt+'*'+this_wt+')'
+        if first:
+            lel_exp_sum += this_lel_sum
+            lel_exp_weight += this_lel_weight
+            first=False
+        else:
+            lel_exp_sum += '+'+this_lel_sum
+            lel_exp_weight += '+'+this_lel_weight
+
+    immath(imagename = imlist, mode='evalexpr',
+           expr=lel_exp_sum, outfile=sum_file)
+    
+    myia = au.createCasaTool(iatool)
+    myia.open(sum_file)
+    myia.set(pixelmask=1)
+    myia.close()
+
+    immath(imagename = imlist, mode='evalexpr',
+           expr=lel_exp_weight, outfile=weight_file)
+    myia.open(weight_file)
+    myia.set(pixelmask=1)
+    myia.close()
+
+    immath(imagename = [sum_file, weight_file], mode='evalexpr',
+           expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=outfile+'.temp')
+
+    immath(imagename = weight_file, mode='evalexpr',
+           expr='iif(IM0 > 0.0, 1.0, 0.0)', outfile=outfile+'.mask')
+
+    imsubimage(imagename=outfile+'.temp', outfile=outfile,
+               mask='"'+outfile+'.mask"', dropdeg=True)
+
+    return
 
 def phangs_mosaic_data(
     gal=None, array=None, product=None, root_dir=None, 
@@ -882,11 +957,27 @@ def phangs_mosaic_data(
         return    
     
     # Look up parts
+
     this_mosaic_key = mosaic_key()
     if (gal in this_mosaic_key.keys()) == False:
         print("Galaxy "+gal+" not in mosaic key.")
         return
     parts = this_mosaic_key[gal]
 
-    pass
+    for this_ext in ['flat_round', 'pbcorr_round']:           
+
+        infile_list = []
+        wtfile_list = []
+        input_dir = root_dir+'process/'
+        output_dir = root_dir+'process/'
+        for this_part in parts:
+            infile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
+            infile_list.append(infile)
+            wtfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
+            wtfile_list.append(wtfile)
+
+        outfile = output_dir+gal+'_'+array+'_'+product+'_'+this_ext+'.image'
     
+        mosaic_aligned_data(
+            infile_list = infile_list, weightfile_list = wtfile_list,
+            outfile = outfile, overwrite=overwrite)

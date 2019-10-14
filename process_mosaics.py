@@ -53,8 +53,8 @@ just_product = ['co21']
 # be performed.
 
 do_common_res = False
-do_align = True
-do_mosaic = False
+do_align = False
+do_mosaic = True
 do_cleanup_cubes = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -67,15 +67,13 @@ after_last = False
 for this_gal in mosaic_key.keys():
 
     if len(only) > 0:
-        not_in_list = (only.count(this_gal) == 0) and \
-            (only.count(whole_gal) == 0)
+        not_in_list = (only.count(this_gal) == 0)
         if not_in_list:
             print("Skipping galaxyt "+this_gal)
             continue
 
     if len(skip) > 0:
-        in_list = (skip.count(this_gal) > 0) or \
-            (skip.count(whole_gal) > 0)
+        in_list = (skip.count(this_gal) > 0)
         if in_list:
             print("Skipping galaxy part "+this_gal)
             continue
