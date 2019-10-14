@@ -700,17 +700,49 @@ def phangs_align_for_mosaic(
     Convolve multi-part cubes to a common res for mosaicking.
     """
     
-    if gal is None or array is None or product is None or \
-            root_dir is None:
-        print("Missing required input.")
-        return    
-    
     # Look up parts
     this_mosaic_key = mosaic_key()
     if (gal in this_mosaic_key.keys()) == False:
         print("Galaxy "+gal+" not in mosaic key.")
         return
     parts = this_mosaic_key[gal]
+
+    multipart_key = read_multipart_key()
+
+    for this_ext in ['flat_round', 'pbcorr_round']:           
+
+        # Align data
+
+        infile_list = []
+        outfile_list = []
+        input_dir = root_dir+'process/'
+        output_dir = root_dir+'process/'
+        for this_part in parts:
+            infile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_tomerge.image'
+            infile_list.append(infile)
+            outfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
+            outfile_list.append(outfile)
+
+        # PUT MOSAICK HERE
+
+        # Align primary beam
+
+        infile_list = []
+        outfile_list = []
+        input_dir = root_dir+'raw/'
+        output_dir = root_dir+'process/'
+        for this_part in parts:
+            if array == '7m+tp':
+                input_array = '7m'
+            if array == '12m+7m+tp':
+                input_array = '12m+7m'
+            infile = input_dir+this_part+'_'+input_array+ \
+                '_'+product+'_'+this_ext+'_tomerge.image'
+            infile_list.append(infile)
+            outfile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
+            outfile_list.append(outfile)
+
+        # PUT MOSAICK HERE
 
 def phangs_mosaic_data(
     gal=None, array=None, product=None, root_dir=None, 

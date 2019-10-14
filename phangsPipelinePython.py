@@ -242,7 +242,6 @@ def mosaic_key():
 
     return mosaic_key
 
-
 def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     """
     Read the file containing the centers and velocities for each
@@ -281,6 +280,42 @@ def read_mosaic_key(fname='../scripts/mosaic_definitions.txt'):
     infile.close()
     
     return mosaic_key
+
+def read_multipart_key(fname='../scripts/multipart_fields.txt'):
+    """
+    Read the file containing the definitions of the mosaics
+    for the multi-part fields.
+    """
+    infile = open(fname, 'r')
+    
+    multipart_key = {}
+
+    while True:
+        line  = infile.readline()    
+        if len(line) == 0:
+            break
+        if line[0] == '#':
+            continue
+        words = line.split()
+
+        if len(words) < 5:
+            continue
+
+        this_gal = words[0]
+        this_ra_ctr = words[1]
+        this_dec_ctr = words[2]
+        this_deltara = words[3]
+        this_deltadec = words[4]
+        
+        multipart_key[this_gal] = {}
+        multipart_key[this_gal]['ra_ctr_deg'] = this_ra_ctr
+        multipart_key[this_gal]['dec_ctr_deg'] = this_dec_ctr
+        multipart_key[this_gal]['delta_ra_as'] = this_deltara
+        multipart_key[this_gal]['delta_dec_as'] = this_deltadec
+
+    infile.close()
+    
+    return multipart_key
 
 def read_override_mosaic_params(
     fname='../scripts/override_mosaic_params.txt'
