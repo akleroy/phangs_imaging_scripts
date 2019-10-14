@@ -582,6 +582,35 @@ def phangs_cleanup_cubes(
     
         # Clean up headers
 
+        # In IDL this is the call sequence that I used based on
+        # requests from Annie/Erik/Jiayi. Replicate using pyfits
+        # read/write.
+
+        #sxaddpar, hdr, 'DATAMAX', max(cube,/nan)
+        #sxaddpar, hdr, 'DATAMIN', min(cube,/nan)
+        #sxaddpar, hdr, 'OBJECT', strupcase(this_gal)
+        #sxaddpar, hdr, 'ORIGIN', 'PHANGS-ALMA-'+version_tag
+        
+        #sxdelpar, hdr, 'BLANK'
+        #sxdelpar, hdr, 'DATE-OBS'
+        #sxdelpar, hdr, 'OBSERVER'
+        
+        #sxdelpar, hdr, 'O_BLANK'
+        #sxdelpar, hdr, 'O_BSCALE'
+        #sxdelpar, hdr, 'O_BZERO'
+
+        #sxdelpar, hdr, 'OBSRA'
+        #sxdelpar, hdr, 'OBSDEC'
+        #sxdelpar, hdr, 'OBSGEO-X'
+        #sxdelpar, hdr, 'OBSGEO-Y'
+        #sxdelpar, hdr, 'OBSGEO-Z'
+
+        #sxdelpar, hdr, 'DISTANCE'
+        
+        #sxdelpar, hdr, 'HISTORY'
+        #sxaddpar, hdr, 'HISTORY', 'This cube was produced by the PHANGS-ALMA pipeline.'
+        #sxaddpar, hdr, 'HISTORY', 'This is part of data release '+version_tag
+
         pass
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
