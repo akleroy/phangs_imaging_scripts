@@ -1240,6 +1240,12 @@ pro build_cubes $
 
                  endfor
                  
+                 if first then begin
+                    print, "I did not find any files for "+this_merge_gal
+                    print, "... continuing."
+                    continue
+                 endif
+
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ; DIVIDE, CLEAN UP, AND WRITE TO DISK
 ; -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
