@@ -547,7 +547,7 @@ def trim_cube(
     
 def phangs_cleanup_cubes(
     gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False, min_pixeperbeam=3):
+    overwrite=False, min_pixeperbeam=3, vstring=''):
     """
     Clean up cubes.
     """
@@ -582,36 +582,37 @@ def phangs_cleanup_cubes(
     
         # Clean up headers
 
-        # In IDL this is the call sequence that I used based on
-        # requests from Annie/Erik/Jiayi. Replicate using pyfits
-        # read/write.
+        hdu = pyfits.open(outfile_fits)
+        hdu.writeto(outfile_fits, clobber=True)
 
-        #sxaddpar, hdr, 'DATAMAX', max(cube,/nan)
-        #sxaddpar, hdr, 'DATAMIN', min(cube,/nan)
-        #sxaddpar, hdr, 'OBJECT', strupcase(this_gal)
-        #sxaddpar, hdr, 'ORIGIN', 'PHANGS-ALMA-'+version_tag
-        
-        #sxdelpar, hdr, 'BLANK'
-        #sxdelpar, hdr, 'DATE-OBS'
-        #sxdelpar, hdr, 'OBSERVER'
-        
-        #sxdelpar, hdr, 'O_BLANK'
-        #sxdelpar, hdr, 'O_BSCALE'
-        #sxdelpar, hdr, 'O_BZERO'
+        hdr = hdu[0].header
+        data = hdu[0].data
 
-        #sxdelpar, hdr, 'OBSRA'
-        #sxdelpar, hdr, 'OBSDEC'
-        #sxdelpar, hdr, 'OBSGEO-X'
-        #sxdelpar, hdr, 'OBSGEO-Y'
-        #sxdelpar, hdr, 'OBSGEO-Z'
+        for card in ['BLANK','DATE-OBS','OBSERVER','O_BLANK','O_BSCALE',
+                     'O_BZERO','OBSRA','OBSDEC','OBSGEO-X','OBSGEO-Y','OBSGEO-Z',
+                     'DISTANCE']:
+            if card in hdr.keys():
+                hdr.remove(card)
+            
+        while 'HISTORY' in hdr.keys():
+            hdr.remove('HISTORY')
 
-        #sxdelpar, hdr, 'DISTANCE'
-        
-        #sxdelpar, hdr, 'HISTORY'
-        #sxaddpar, hdr, 'HISTORY', 'This cube was produced by the PHANGS-ALMA pipeline.'
-        #sxaddpar, hdr, 'HISTORY', 'This is part of data release '+version_tag
+        hdr.add_history('This cube was produced by the PHANGS-ALMA pipeline.')
+        hdr.add_history('This is part of data release '+version_tag)
 
-        pass
+        hdr['OBJECT'] = dir_for_gal(gal)
+
+        if vstring == '':
+            hdr['ORIGIN'] = 'PHANGS-ALMA'
+        else:
+            hdr['ORIGIN'] = 'PHANGS-ALMA '+vstring
+
+        datamax = np.nanmax(data)
+        datamin = np.nanmin(data)
+        hdr['DATAMAX'] = datamax
+        hdr['DATAMIN'] = datamin
+
+        return
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # LINEAR MOSAICKING ROUTINES
@@ -949,7 +950,8 @@ def mosaic_aligned_data(
             lel_exp_weight += '+'+this_lel_weight
 
     immath(imagename = imlist, mode='evalexpr',
-           expr=lel_exp_sum, outfile=sum_file)
+           expr=lel_exp_sum, outfile=sum_file,
+           imagemd = imlist[0])
     
     myia = au.createCasaTool(iatool)
     myia.open(sum_file)
