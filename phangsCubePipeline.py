@@ -1001,9 +1001,21 @@ def phangs_mosaic_data(
         output_dir = root_dir+'process/'
         for this_part in parts:
             infile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
-            infile_list.append(infile)
             wtfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
+            if (os.path.isdir(infile) == False):
+                print("Missing "+infile)
+                print("Skipping.")
+                continue
+            if (os.path.isdir(wtfile) == False):
+                print("Missing "+wtfile)
+                print("Skipping.")
+                continue
+            infile_list.append(infile)
             wtfile_list.append(wtfile)
+
+        if len(infile_list) == 0:
+            print("No files to include in the mosaic. Returning.")
+            return
 
         outfile = output_dir+gal+'_'+array+'_'+product+'_'+this_ext+'.image'
     
