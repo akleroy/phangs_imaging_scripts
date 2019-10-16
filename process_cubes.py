@@ -55,14 +55,14 @@ just_product = ['co21']
 
 rebuild_directories = False
 
-stage_cubes = False
-stage_singledish = False
+stage_cubes = True
+stage_singledish = True
 
-primary_beam_correct = False
-convolve_to_round_beam = False
+primary_beam_correct = True
+convolve_to_round_beam = True
 
-prep_for_feather = False
-feather_data = False
+prep_for_feather = True
+feather_data = True
 
 cleanup_cubes = True
 
@@ -76,6 +76,9 @@ if rebuild_directories:
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop over all galaxies to stage, process, mosaic, and cleanup
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+# This outer loop could probably be deprecated, since the cross-talk
+# implied by mosaics is now moved to another program.
 
 for this_loop in ['stage', 'process', 'feather', 'cleanup']:
     

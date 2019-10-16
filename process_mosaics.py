@@ -41,7 +41,8 @@ last = ""
 # only data from that array. Leave it as None to process all data.
 
 #just_array = []
-just_array = ['7m','7m+tp']
+just_array = ['7m'] 
+#just_array = ['7m+tp']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -54,7 +55,7 @@ just_product = ['co21']
 
 do_common_res = False
 do_align = False
-do_mosaic = True
+do_mosaic = False
 do_cleanup_cubes = False
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

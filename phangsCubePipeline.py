@@ -564,6 +564,11 @@ def phangs_cleanup_cubes(
         outfile = root+'_round_k.image'
         outfile_fits = root+'_round_k.fits'
     
+        if os.path.isdir(infile) == False:
+            print("File does not exist: "+infile)
+            print("Returning.")
+            return
+
         # Trim the cube to a smaller size and rebin as needed
 
         trim_cube(infile=infile, outfile=outfile, 
