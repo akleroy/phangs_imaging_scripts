@@ -598,7 +598,8 @@ def phangs_cleanup_cubes(
             hdr.remove('HISTORY')
 
         hdr.add_history('This cube was produced by the PHANGS-ALMA pipeline.')
-        hdr.add_history('This is part of data release '+version_tag)
+        if vstring != '':
+            hdr.add_history('This is part of data release '+vstring)
 
         hdr['OBJECT'] = dir_for_gal(gal)
 
@@ -965,13 +966,16 @@ def mosaic_aligned_data(
     myia.close()
 
     immath(imagename = [sum_file, weight_file], mode='evalexpr',
-           expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=outfile+'.temp')
+           expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=outfile+'.temp',
+           imagemd = sum_file)
 
     immath(imagename = weight_file, mode='evalexpr',
            expr='iif(IM0 > 0.0, 1.0, 0.0)', outfile=outfile+'.mask')
 
     imsubimage(imagename=outfile+'.temp', outfile=outfile,
                mask='"'+outfile+'.mask"', dropdeg=True)
+
+
 
     return
 
