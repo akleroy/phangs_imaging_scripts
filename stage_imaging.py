@@ -21,10 +21,8 @@ data_dirs = [
 
 # ... a text list. The script will process only these galaxies.
 
-# ngc1313_2 problem
 only = [
-    #"ngc1313_2"
-    "ngc7743"
+    "ngc4945_1","ngc4945_2","ngc4945_3"
     ]
 
 # ... skip these galaxies.

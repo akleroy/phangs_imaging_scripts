@@ -118,10 +118,36 @@ pro make_clean_masks $
 
   is_super_faint = $
      ['ngc0300' $
+      , 'ngc3489' $
+      , 'ngc3599' $
+      , 'ngc3489' $
+      , 'ngc4459' $
+      , 'ngc4476' $
+      , 'ngc4477' $
+      , 'ngc4596' $
+      , 'ngc7743' $
      ]
 
   empty = $
      ['ngc3239' $
+     ]
+
+  use_edge_chan = $
+     [ $
+     'ngc3489' $
+     , 'ngc3599' $
+     , 'ngc3489' $
+     , 'ngc4459' $
+     , 'ngc4476' $
+     , 'ngc4477' $
+     , 'ngc4596' $
+     , 'ngc7743' $
+     ]
+
+  small_kernel = $
+     [ $
+     'ngc3599' $
+     , 'ngc4596' $
      ]
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -184,17 +210,32 @@ pro make_clean_masks $
      endif
      cube = readfits(cube_fname, cube_hdr)
 
+     kernel_lores = 33.0
+     chan_lores = 20
+     if total(this_gal[0] eq small_kernel) ge 1 then begin
+        kernel_lores = 20.0
+        chan_lores = 20
+     endif
+
      conv_with_gauss $
         , data=cube*1.0 $
         , hdr=cube_hdr $
-        , target = [1,1,0.] * 33.0 $
+        , target = [1,1,0.] * kernel_lores $
         , out_data=lowres_cube $
         , out_hdr=lowres_hdr $
         , /perbeam        
-     lowres_cube = smooth(lowres_cube, [1,1,20], /nan)
+     lowres_cube = smooth(lowres_cube, [1,1,chan_lores], /nan)
      
      lowres_ppbeam = calc_pixperbeam(hdr=lowres_hdr)
+
      rms_lowres_cube = mad(lowres_cube)
+     if total(this_gal[0] eq use_edge_chan) ge 1 then begin
+        nchan = (size(lowres_cube))[3]
+        n_edge = 50
+        rms_lowres_cube = $
+           0.5*(mad(lowres_cube[*,*,0:(n_edge-1)]) + $
+                mad(lowres_cube[*,*,(nchan-n_edge-1):*]))
+     endif
 
      if total(this_gal[0] eq is_super_faint) ge 1 then begin
         lo_thresh_lowres = 3
@@ -228,7 +269,7 @@ pro make_clean_masks $
         make_axes, lowres_hdr, ri=ri, di=di
         rad = sphdist(ri, di, s.ra_deg, s.dec_deg, /deg)
         center_mask = rad le 20./3600.
-        sz = size(lowres_cube)
+        sz = (size(lowres_cube))
         for kk = 0, sz[3]-1 do begin
            mask[*,*,kk] = mask[*,*,kk] or center_mask
         endfor

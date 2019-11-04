@@ -439,7 +439,21 @@ def convert_jytok(
     if unit != 'Jy/beam':
         print("Unit is not Jy/beam. Returning.")
         return
-    restfreq_hz = hdr['restfreq'][0]
+
+    #restfreq_hz = hdr['restfreq'][0]
+
+    if hdr['cunit3'] != 'Hz':
+        print("I expected frequency as the third axis but did not find it.")
+        print("Returning.")
+        return
+    
+    crpix3 = hdr['crpix3']
+    cdelt3 = hdr['cdelt3']
+    crval3 = hdr['crval3']
+    naxis3 = hdr['shape'][2]
+    faxis_hz = (np.arange(naxis3)+1.-crpix3)*cdelt3+crval3
+    freq_hz = np.mean(faxis_hz)
+    
     bmaj_unit = hdr['beammajor']['unit']
     if bmaj_unit != 'arcsec':
         print("Beam unit is not arcsec, which I expected. Returning.")
@@ -450,7 +464,8 @@ def convert_jytok(
     bmaj_sr = bmaj_as/3600.*np.pi/180.
     bmin_sr = bmin_as/3600.*np.pi/180.
     beam_in_sr = np.pi*(bmaj_sr/2.0*bmin_sr/2.0)/np.log(2)
-    jtok = c**2 / beam_in_sr / 1e23 / (2*kb*restfreq_hz**2)
+    
+    jtok = c**2 / beam_in_sr / 1e23 / (2*kb*freq_hz**2)
 
     myia = au.createCasaTool(iatool)
     myia.open(target_file)

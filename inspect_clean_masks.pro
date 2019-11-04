@@ -1,6 +1,7 @@
 pro inspect_clean_masks $
    , version=version $
    , nopause=nopause $
+   , existence=existence $
    , inspect=do_inspect $
    , start = start_num $
    , array = array $
@@ -105,10 +106,6 @@ pro inspect_clean_masks $
         endif
      endif
      
-     print, ""
-     print, "Inspecting clean mask for "+gals[ii]+' (Galaxy '+str(ii)+')'
-     print, ""
-
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; VERIFY THE CLEAN MASK
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -120,6 +117,14 @@ pro inspect_clean_masks $
         print, "... continuing to next target."
         continue
      endif
+
+     if keyword_set(existence) then begin
+        continue
+     endif
+
+     print, ""
+     print, "Inspecting clean mask for "+gals[ii]+' (Galaxy '+str(ii)+')'
+     print, ""
 
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 ; READ THE DATA CUBE
@@ -153,7 +158,14 @@ pro inspect_clean_masks $
      if sz_mask[3] ne sz_cube[3] then begin
         print, "Spectral axes disagree. Stopping (for now)."
         print, "Implement regridding here if needed."
-        stop
+        cube_hastrom $
+           , data = mask $
+           , hdr_in = mask_hdr $
+           , outcube = aligned_mask $
+           , target_hdr = cube_hdr $   
+           , pinterp=0 $
+           , pmissing=0 $
+           , operation='VEL'
      endif
 
      if sz_mask[1] ne sz_cube[1] or $

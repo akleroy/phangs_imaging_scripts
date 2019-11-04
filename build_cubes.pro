@@ -8,7 +8,7 @@ pro build_cubes $
    , pbcorr=do_pbcorr $
    , roundbeam=do_roundbeam $
    , singledish=do_singledish $
-   , stage=do_stage_feather $
+   , stagefeather=do_stage_feather $
    , feather=do_copy_feather $
    , prepmerge=do_mergeprep $
    , stagemerge=do_stagemerge $

@@ -28,7 +28,9 @@ cutoff = 0.25
 
 # ... a text list. The script will process only these galaxies.
 
-only = []
+#only = []
+only = ['ngc3489','ngc3599','ngc4459','ngc4476',
+        'ngc4477','ngc4596','ngc7743']
 
 # ... skip these galaxies
 skip = []
@@ -42,7 +44,7 @@ last = ""
 # only data from that array. Leave it as None to process all data.
 
 #just_array = []
-just_array = ['7m','7m+tp']
+just_array = ['7m', '7m+tp', '12m+7m','12m+7m+tp']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
@@ -55,14 +57,14 @@ just_product = ['co21']
 
 rebuild_directories = False
 
-stage_cubes = True
-stage_singledish = True
+stage_cubes = False
+stage_singledish = False
 
-primary_beam_correct = True
-convolve_to_round_beam = True
+primary_beam_correct = False
+convolve_to_round_beam = False
 
-prep_for_feather = True
-feather_data = True
+prep_for_feather = False
+feather_data = False
 
 cleanup_cubes = True
 
@@ -76,9 +78,6 @@ if rebuild_directories:
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop over all galaxies to stage, process, mosaic, and cleanup
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-# This outer loop could probably be deprecated, since the cross-talk
-# implied by mosaics is now moved to another program.
 
 for this_loop in ['stage', 'process', 'feather', 'cleanup']:
     
