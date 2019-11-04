@@ -562,7 +562,8 @@ def trim_cube(
     
 def phangs_cleanup_cubes(
     gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False, min_pixeperbeam=3, vstring=''):
+    overwrite=False, min_pixeperbeam=3, roundbeam_tol=0.01, 
+    vstring=''):
     """
     Clean up cubes.
     """
@@ -603,7 +604,6 @@ def phangs_cleanup_cubes(
         # Clean up headers
 
         hdu = pyfits.open(outfile_fits)
-        hdu.writeto(outfile_fits, clobber=True)
 
         hdr = hdu[0].header
         data = hdu[0].data
@@ -633,6 +633,23 @@ def phangs_cleanup_cubes(
         hdr['DATAMAX'] = datamax
         hdr['DATAMIN'] = datamin
 
+        # round the beam if it lies within the specified tolerance
+
+        bmaj = hdr['BMAJ']
+        bmin = hdr['BMIN']
+        if bmaj != bmin:
+            frac_dev = np.abs(bmaj-bmin)/bmaj
+            if frac_dev <= roundbeam_tol:
+                print("Rounding beam.")
+                hdr['BMAJ'] = bmaj
+                hdr['BMIN'] = bmaj
+                hdr['BPA'] = 0.0
+            else:
+                print("Beam too asymmetric to round.")
+                print("... fractional deviation: "+str(frac_dev))
+        
+        hdu.writeto(outfile_fits, clobber=True)
+        
         return
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
