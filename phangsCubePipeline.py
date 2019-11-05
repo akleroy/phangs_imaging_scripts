@@ -38,7 +38,7 @@ from statwt import statwt
 from tclean import tclean
 from uvcontsub import uvcontsub
 from visstat import visstat
-
+from pipelineVersion import version as pipeVer
 # Physical constants
 sol_kms = 2.9979246e5
 
@@ -561,13 +561,16 @@ def trim_cube(
     os.system('rm -rf '+outfile+'.temp')
     
 def phangs_cleanup_cubes(
-    gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False, min_pixeperbeam=3, roundbeam_tol=0.01, 
-    vstring=''):
+        gal=None, array=None, product=None, root_dir=None, 
+        overwrite=False, min_pixeperbeam=3, roundbeam_tol=0.01, 
+        vstring=None):
     """
     Clean up cubes.
     """
 
+    if vstring == '':
+        vstring = pipeVer
+    
     if gal is None or array is None or product is None or \
             root_dir is None:
         print("Missing required input.")
@@ -647,8 +650,8 @@ def phangs_cleanup_cubes(
             else:
                 print("Beam too asymmetric to round.")
                 print("... fractional deviation: "+str(frac_dev))
-        
-        hdu.writeto(outfile_fits, clobber=True)
+                
+        hdu.writeto(outfile_fits, overwrite=True)
         
         return
 
