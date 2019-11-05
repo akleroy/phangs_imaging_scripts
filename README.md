@@ -12,18 +12,18 @@ It runs in five steps right now:
 
 1) Download and calibrate the data using the observatory scripts.
 
-2) Stage the imaging using stage_imaging.py
+2) Stage the imaging using `stage_imaging.py`
 
-3) Image the data using image_data.py
+3) Image the data using `image_data.py`
 
 4) Create final cubes using one of two methods:
 
-(a) IDL build_cubes.pro
+   (a) `IDL build_cubes.pro`
 
-(b) [under development] process_cubes.py
+   (b) [under development] `process_cubes.py`
 
-These steps convolve to a round beam, primary beam correct, feather,
-combine multi-part galaxies, and then export final FITS
+   These steps convolve to a round beam, primary beam correct,
+feather, combine multi-part galaxies, and then export final FITS
 cubes. Eventually the two steps will be equivalent and we'll add a
 third version operating purely using spectral cube and astropy. For
 now the IDL pipeline is most complete.
