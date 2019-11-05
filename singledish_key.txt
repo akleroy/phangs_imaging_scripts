@@ -88,7 +88,7 @@ ngc4569		../singledish/cycle5_data/ALMA_TP.NGC4569.CO21.image.VLSRK.fits    			c
 ngc4571		../singledish/cycle5_data/ALMA_TP.NGC4571.CO21.image.VLSRK.fits				co21
 ngc4579		../singledish/cycle5_data/ALMA_TP.NGC4579.CO21.image.VLSRK.fits				co21
 ngc4689		../singledish/cycle5_data/ALMA_TP.NGC4689.CO21.image.VLSRK.fits				co21
-#ngc4654	TELLURIC CONTAMINATION
+ngc4654		../singledish/cycle5_data/ALMA_TP.NGC4654.CO21.image.VLSRK.fits				co21
 ngc4694		../singledish/cycle5_data/ALMA_TP.NGC4694.CO21.image.VLSRK.fits				co21
 ngc4731		../singledish/cycle5_data/ALMA_TP.NGC4731.CO21.image.VLSRK.fits				co21
 ngc4781		../singledish/cycle5_data/ALMA_TP.NGC4781.CO21.image.VLSRK.fits				co21
