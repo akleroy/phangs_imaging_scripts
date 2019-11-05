@@ -171,13 +171,13 @@ After you have the data calibrated, you need to:
   file allows us to map the calibrated data into the files we will use
   for imaging.
 
-- Make sure that you have dir_key.txt in place. This provides a
+- Make sure that you have `dir_key.txt` in place. This provides a
   mapping of directories for all of our non-standard cases. These are
   almost always split mosaics, where we image galaxies in multiple
   parts. Anything without an entry is taken to be
   one-galaxy-one-science-goal.
 
-- Make sure that you have an up-to-date mosaic_definitions.txt . This
+- Make sure that you have an up-to-date `mosaic_definitions.txt`. This
   file includes the phase centers and velocities to be used in
   imaging and line extraction.
 
