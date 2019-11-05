@@ -568,7 +568,7 @@ def phangs_cleanup_cubes(
     Clean up cubes.
     """
 
-    if vstring == '':
+    if vstring is None:
         vstring = pipeVer
     
     if gal is None or array is None or product is None or \
