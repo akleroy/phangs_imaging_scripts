@@ -563,14 +563,11 @@ def trim_cube(
 def phangs_cleanup_cubes(
         gal=None, array=None, product=None, root_dir=None, 
         overwrite=False, min_pixeperbeam=3, roundbeam_tol=0.01, 
-        vstring=None):
+        vstring=''):
     """
     Clean up cubes.
     """
 
-    if vstring is None:
-        vstring = pipeVer
-    
     if gal is None or array is None or product is None or \
             root_dir is None:
         print("Missing required input.")
@@ -621,6 +618,7 @@ def phangs_cleanup_cubes(
             hdr.remove('HISTORY')
 
         hdr.add_history('This cube was produced by the PHANGS-ALMA pipeline.')
+        hdr.add_history('PHANGS-ALMA Pipeline version ' + pipeVer)
         if vstring != '':
             hdr.add_history('This is part of data release '+vstring)
 
