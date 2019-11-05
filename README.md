@@ -1,7 +1,6 @@
-README for PHANGS Data Reduction
---------------------------------
+## README for PHANGS Data Reduction
 
-EXECUTIVE SUMMARY
+### EXECUTIVE SUMMARY
 
 Download the data. Reduce them using the standard pipeline. This
 pipeline will collect them, extract the lines and continuum, combine
@@ -30,36 +29,41 @@ third version operating purely using spectral cube and astropy. For
 now the IDL pipeline is most complete.
 
 5) Create higher level data products using the IDL scripts
-build_products_7m.pro, build_products_12m.pro. These steps build
+`build_products_7m.pro`, `build_products_12m.pro`. These steps build
 masks, create fixed resolution cubes, and build moment maps and
 similar products.
 
 Then potentially compile cubes into a release using the IDL
 build_release.
 
-Parts 1-3 and 4b run in CASA. Parts 2-4 depend on phangsPipeline.py
-and use the analysisUtils.
+Parts 1-3 and 4b run in CASA. Parts 2-4 depend on `phangsPipeline.py`
+and use the `analysisUtils` available from [here](ftp://ftp.cv.nrao.edu/pub/casaguides/analysis_scripts.tar).
 
 Parts 4a and 5 run in IDL with a stop during 4a in CASA to feather.
 
 Email leroy.42@osu.edu or otherwise get in touch with questions or
 suggestions.
 
-SETUP
+### SETUP
 
 This file and the rest of the scripts should sit in a directory called 
 
+```
 imaging/scripts/
+```
 
 under whatever parent directory you choose to use. For the parent directory is
 
+```
 /data/tycho/0/leroy.42/reduction/alma/PHANGS/
+```
 
-and I'll just refer to the top level thing as PHANGS/
+and I'll just refer to the top level thing as `PHANGS/`
 
 within PHANGS/ and a couple other directories also checked by the
 scripts I have the following directories holding calibrated data:
 
+```
 2013.1.00803.S
 2013.1.01161.S
 2015.1.00782.S
@@ -73,33 +77,38 @@ scripts I have the following directories holding calibrated data:
 2018.A.00062.S
 Cycle1_650
 imaging
+```
 
 These hold the uv data and are referenced in the imaging directory by
 
+```
 ms_file_key.txt
+```
 
-You need ms_file_key.txt to point to the calibrated uv data in order
+You need `ms_file_key.txt` to point to the calibrated uv data in order
 for the first part of the scripts to work.
 
-Note that in "stage_imaging.py" you can specify a root directory to
-search. ms_file_key.txt only needs to work relative to the roots that
-you supply in stage_imaging.py.
+Note that in `stage_imaging.py` you can specify a root directory to
+search. `ms_file_key.txt` only needs to work relative to the roots that
+you supply in `stage_imaging.py`.
 
 You can hack the scripts to get around this, but the easiest thing is
 to just follow this approach. The option to specify the root directory
 in stage_imaging.py makes it pretty easy to do this.
 
-SETTING UP THE PIPELINE
+### SETTING UP THE PIPELINE
 
 The actual imaging part of the pipeline is now mostly concentrated in
-the phangsPipeline.py module. You want this imported as "pp" in able
+the phangsPipeline.py module. You want this imported as `pp` in able
 to be able to run the scripts. I do this by adding the following lines
-to my ~/.casa/init.py:
+to my `~/.casa/init.py`:
 
+```
 sys.path.append("/home/maury/leroy.42/casapy/analysis_scripts/")
 sys.path.append("/data/tycho/0/leroy.42/reduction/alma/PHANGS/imaging/scripts/")
 import analysisUtils as au
 import phangsPipeline as pp
+```
 
 That should get you both the analysis utilities, which you need, and
 the phangs pipeline. Change the directories as appropriate, of course.
@@ -107,15 +116,15 @@ the phangs pipeline. Change the directories as appropriate, of course.
 As long as those two things import successfully, you should be able to
 run the pipeline. I use CASA 5.4.0 for imaging and staging as of this
 writing but in general just try to use the latest CASA. I'm using
-5.6.1 for process_cubes.
+5.6.1 for `process_cubes`.
 
 Note that there are two other big pipeline
-modules. phangsPipelinePython.py has file accessing parts of the
+modules. `phangsPipelinePython.py` has file accessing parts of the
 pipeline that don't depend on CASA, and so can be imported
-elsewhere. phangsCubePipeline.py contains routines for dealing with
+elsewhere. `phangsCubePipeline.py` contains routines for dealing with
 images and post processing.
 
-REDUCTION
+### REDUCTION
 
 After untarring, I move things to the appropriate project directory
 under PHANGS/ and then I go to the scripts directory and run the
