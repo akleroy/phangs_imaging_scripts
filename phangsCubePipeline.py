@@ -61,7 +61,7 @@ def rebuild_directories(outroot_dir=None):
         print("Aborting")
         return
 
-    if os.is_dir(outroot_dir) == False:
+    if os.path.isdir(outroot_dir) == False:
         print("Got make "+outroot_dir+" manually. Then I will make the subdirectories.")
 
     for subdir in ['raw/','process/','products/','feather/','delivery/']:

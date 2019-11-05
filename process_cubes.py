@@ -54,7 +54,7 @@ just_product = ['co21']
 # ... set these variables to indicate what steps of the script should
 # be performed.
 
-rebuild_directories = False
+rebuild_directories = True
 
 stage_cubes = True
 stage_singledish = True

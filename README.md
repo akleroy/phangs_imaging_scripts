@@ -79,11 +79,7 @@ Cycle1_650
 imaging
 ```
 
-These hold the uv data and are referenced in the imaging directory by
-
-```
-ms_file_key.txt
-```
+These hold the uv data and are referenced in the imaging directory by `ms_file_key.txt`.
 
 You need `ms_file_key.txt` to point to the calibrated uv data in order
 for the first part of the scripts to work.
