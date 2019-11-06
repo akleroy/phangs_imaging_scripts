@@ -649,7 +649,7 @@ def phangs_cleanup_cubes(
                 print("Beam too asymmetric to round.")
                 print("... fractional deviation: "+str(frac_dev))
                 
-        hdu.writeto(outfile_fits, overwrite=True)
+        hdu.writeto(outfile_fits, clobber=True)
         
         return
 

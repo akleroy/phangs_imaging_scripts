@@ -54,10 +54,10 @@ just_product = ['co21']
 # ... set these variables to indicate what steps of the script should
 # be performed.
 
-rebuild_directories = True
+rebuild_directories = False
 
-stage_cubes = True
-stage_singledish = True
+stage_cubes = False
+stage_singledish = False
 
 primary_beam_correct = True
 convolve_to_round_beam = True
