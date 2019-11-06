@@ -38,7 +38,7 @@ from statwt import statwt
 from tclean import tclean
 from uvcontsub import uvcontsub
 from visstat import visstat
-
+from pipelineVersion import version as pipeVer
 # Physical constants
 sol_kms = 2.9979246e5
 
@@ -61,7 +61,7 @@ def rebuild_directories(outroot_dir=None):
         print("Aborting")
         return
 
-    if os.is_dir(outroot_dir) == False:
+    if os.path.isdir(outroot_dir) == False:
         print("Got make "+outroot_dir+" manually. Then I will make the subdirectories.")
 
     for subdir in ['raw/','process/','products/','feather/','delivery/']:
@@ -561,9 +561,9 @@ def trim_cube(
     os.system('rm -rf '+outfile+'.temp')
     
 def phangs_cleanup_cubes(
-    gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False, min_pixeperbeam=3, roundbeam_tol=0.01, 
-    vstring=''):
+        gal=None, array=None, product=None, root_dir=None, 
+        overwrite=False, min_pixeperbeam=3, roundbeam_tol=0.01, 
+        vstring=''):
     """
     Clean up cubes.
     """
@@ -618,6 +618,7 @@ def phangs_cleanup_cubes(
             hdr.remove('HISTORY')
 
         hdr.add_history('This cube was produced by the PHANGS-ALMA pipeline.')
+        hdr.add_history('PHANGS-ALMA Pipeline version ' + pipeVer)
         if vstring != '':
             hdr.add_history('This is part of data release '+vstring)
 
@@ -647,7 +648,7 @@ def phangs_cleanup_cubes(
             else:
                 print("Beam too asymmetric to round.")
                 print("... fractional deviation: "+str(frac_dev))
-        
+                
         hdu.writeto(outfile_fits, clobber=True)
         
         return

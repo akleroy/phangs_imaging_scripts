@@ -27,7 +27,7 @@ cutoff = 0.25
 
 # ... a text list. The script will process only these galaxies.
 
-only = []
+only = ['ngc3627']
 
 # ... skip these galaxies
 skip = []
@@ -55,14 +55,14 @@ just_product = ['co21']
 
 do_common_res = False
 do_align = False
-do_mosaic = False
+do_mosaic = True
 do_cleanup_cubes = True
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 # Loop over all galaxies to stage, process, mosaic, and cleanup
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-before_first = True
+before_first = False
 after_last = False
 
 for this_gal in mosaic_key.keys():

@@ -29,8 +29,7 @@ cutoff = 0.25
 # ... a text list. The script will process only these galaxies.
 
 #only = []
-only = ['ngc3489','ngc3599','ngc4459','ngc4476',
-        'ngc4477','ngc4596','ngc7743']
+only = ['ngc3627']
 
 # ... skip these galaxies
 skip = []
@@ -60,11 +59,11 @@ rebuild_directories = False
 stage_cubes = False
 stage_singledish = False
 
-primary_beam_correct = False
-convolve_to_round_beam = False
+primary_beam_correct = True
+convolve_to_round_beam = True
 
-prep_for_feather = False
-feather_data = False
+prep_for_feather = True
+feather_data = True
 
 cleanup_cubes = True
 
