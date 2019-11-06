@@ -1282,7 +1282,7 @@ def extract_continuum(
 
     if os.path.isdir(in_file) == False:
         if quiet == False:
-            print "Input file not found."
+            print("Input file not found: "+in_file)
         return
 
     # pull the parameters from the galaxy in the mosaic file
@@ -1356,14 +1356,17 @@ def extract_continuum(
                  spw=spw_flagging_string,
                  )
         
+    # Here - this comman needs to be examined and refined in CASA
+    # 5.6.1 to see if it can be sped up. Right now things are
+    # devastatingly slow.
     if do_statwt:
         print "... deriving empirical weights using STATWT."
         statwt(vis=out_file,
                spw='',
-               timebin='100s',
-               slidetimebin=True,
-               chanbin='spw',
-               statalg='classic',
+               #timebin='100s',
+               #slidetimebin=True,
+               #chanbin='spw',
+               #statalg='classic',
                datacolumn='data',
                )
 
