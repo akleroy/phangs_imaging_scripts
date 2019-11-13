@@ -1362,14 +1362,12 @@ def extract_continuum(
     if do_statwt:
         print "... deriving empirical weights using STATWT."
         statwt(vis=out_file,
-               spw='',
-               #timebin='100s',
-               #slidetimebin=True,
-               #chanbin='spw',
-               #statalg='classic',
+               timebin='0.001s',
+               slidetimebin=False,
+               chanbin='spw',
+               statalg='classic',
                datacolumn='data',
                )
-
 
     if do_collapse:
         print "... Collapsing the continuum to a single channel."
