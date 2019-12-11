@@ -2,6 +2,20 @@ PHANGS-ALMA Data Delivery README
 
 This is a delivery of CO 2-1 data for PHANGS-ALMA.
 
+------------------------
+IMPORTANT PREFACE
+------------------------
+
+This release, release 3.4, is expected to be the last "v3"
+release. Then v4 is expected to represent a candidate delivery to the
+observatory and public release. Compared to previous v3 versions, the
+most important change is that v3.4 fixes a bug introduced sometime
+after v0p6 in the stitching of mosaics. If you are using a multi-part
+target you should use these data moving forward if at all possible.
+
+The release also includes a additional galaxies and some other
+improvements to the data and processing.
+
 ------------
 VERSION: 3.4
 ------------
@@ -36,6 +50,10 @@ table. For this release, the associated sample table is:
 
 phangs_sample_table_v1p2.fits
 
+That file is copied into the release. Please note that the format of
+the sample table will change with the v4 ALMA release. Then we expect
+the format to remain relatively stable after this.
+
 ---------------------
 ACKNOWLEDGMENTS
 ---------------------
@@ -61,9 +79,10 @@ This paper makes use of the following ALMA data:
 ADS/JAO.ALMA#2012.1.00650.S, ADS/JAO.ALMA#2013.1.00803.S,
 ADS/JAO.ALMA#2013.1.01161.S, ADS/JAO.ALMA#2015.1.00782.S,
 ADS/JAO.ALMA#2015.1.00925.S, ADS/JAO.ALMA#2015.1.00956.S,
+ADS/JAO.ALMA#2015.1.00121.S, ADS/JAO.ALMA#2016.1.00386.S,
 ADS/JAO.ALMA#2017.1.00392.S, ADS/JAO.ALMA#2017.1.00886.L,
 ADS/JAO.ALMA#2017.1.00766.S, ADS/JAO.ALMA#2018.1.01321.S,
-ADS/JAO.ALMA#2018.1.01651.L. 
+ADS/JAO.ALMA#2018.1.01651.S, ADS/JAO.ALMA#2018.A.00062.S
 
 ALMA is a partnership of ESO (representing its member states), NSF
 (USA) and NINS (Japan), together with NRC (Canada), MOST and ASIAA

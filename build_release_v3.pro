@@ -5,9 +5,9 @@ pro build_release_v3 $
 
 ;+
 ;
-;Assemble the cubes and maps made by the build_cubes and
-;build_produts programs into a release for the team. Mostly just
-;copying between directories.
+;Assemble the cubes and maps made by the build_cubes and build_produts
+;programs into a release for the team. Mostly just copying between
+;directories. Will need revision for C18O and continuum.
 ;
 ;-
 
@@ -64,6 +64,17 @@ pro build_release_v3 $
               spawn, 'rm -rf '+out_dir+'*/*_'+str(ii)+'_7m+tp_co21_*.fits'
         endif
 
+        if total(just_array eq '12m') gt 0 then begin
+           spawn, 'cp '+in_dir+'*_12m_co21_strict_*.fits '+out_dir+'strict_maps/.'
+           spawn, 'cp '+in_dir+'*_12m_co21_broad_*.fits '+out_dir+'broad_maps/.'        
+           spawn, 'cp '+in_dir+'*_12m_co21_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m_co21_noise_pbcorr_round_k.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m_co21_signalmask.fits '+out_dir+'cubes/.'
+           spawn, 'cp '+in_dir+'*_12m_co21_hybridmask.fits '+out_dir+'cubes/.'
+           for ii = 1, 5 do $
+              spawn, 'rm -rf '+out_dir+'*/*_'+str(ii)+'_12m+7m_co21_*.fits'
+        endif
+
         if total(just_array eq '12m+7m') gt 0 then begin
            spawn, 'cp '+in_dir+'*_12m+7m_co21_strict_*.fits '+out_dir+'strict_maps/.'
            spawn, 'cp '+in_dir+'*_12m+7m_co21_broad_*.fits '+out_dir+'broad_maps/.'        
@@ -89,6 +100,7 @@ pro build_release_v3 $
      endif
 
      spawn, 'cp README_for_v3.txt '+out_dir+'.'
+     spawn, 'cp phangs_sample_table_v1p2.fits '+out_dir+'.'
 
   endif
 

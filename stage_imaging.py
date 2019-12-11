@@ -22,7 +22,6 @@ data_dirs = [
 # ... a text list. The script will process only these galaxies.
 
 only = [
-    "ngc4945_1","ngc4945_2","ngc4945_3"
     ]
 
 # ... skip these galaxies.
@@ -31,7 +30,7 @@ skip = []
 
 # ... start with this galaxy
 
-first = ""
+first = "ngc3599"
 last = ""
 
 # ... set this to '12m' or '7m' to stage data only for those
@@ -75,12 +74,12 @@ lines = ['co21', 'c18o21']
 # the measurement set, first flagging lines. The velocity windows used
 # for flagging lines is set in "mosaic_definitions.txt"
 
-do_copy = True
+do_copy = False # True
 do_custom_scripts = False
-do_extract_lines = True
-do_concat_lines = True
-do_extract_cont = False
-do_concat_cont = False
+do_extract_lines = False # True
+do_concat_lines = False # True
+do_extract_cont = False # True
+do_concat_cont = True # True
 do_only_new = False
 do_cleanup = False
 

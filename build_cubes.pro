@@ -27,6 +27,8 @@ pro build_cubes $
 
   root_imaging_dir = '../'
 
+  data_dir = 'data_files/'
+
   version_tag = '3.4'
 
   if n_elements(version) eq 0 then $
@@ -44,7 +46,8 @@ pro build_cubes $
   
 ; ... look up the list of galaxies
 
-  readcol, 'ms_file_key.txt', comment='#', format='A,X,A' $
+  readcol, data_dir+'ms_file_key.txt' $
+           , comment='#', format='A,X,A' $
            , ms_file_gal, ms_file_array
   gals = ms_file_gal[sort(ms_file_gal)]
   gals = gals[uniq(gals)]
@@ -52,7 +55,7 @@ pro build_cubes $
 
 ; ... look up the cases with nonstandard directory names
 
-  readcol, 'dir_key.txt', comment='#', format='A,A' $
+  readcol, data_dir+'dir_key.txt', comment='#', format='A,A' $
            , dir_key_gal, dir_key_dir
   dir_for_gal = gals
   for ii = 0, n_elements(dir_key_gal)-1 do begin
@@ -404,7 +407,7 @@ pro build_cubes $
      message, '%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&', /info     
 
      readcol $
-        , 'singledish_key.txt' $
+        , data_dir+'singledish_key.txt' $
         , format='A,A,A', comment='#' $
         , sd_gal, sd_fname, sd_product
 
@@ -741,7 +744,7 @@ pro build_cubes $
      dir = release_dir+'process/'
      
      readcol $
-        , 'multipart_fields.txt', format='A,F,F,F,F,I' $
+        , data_dir+'multipart_fields.txt', format='A,F,F,F,F,I' $
         , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec, merge_copy_tp $
         , comment='#'
 
@@ -920,7 +923,7 @@ pro build_cubes $
      dir = release_dir+'process/'
      
      readcol $
-        , 'multipart_fields.txt', format='A,F,F,F,F,I' $
+        , data_dir+'multipart_fields.txt', format='A,F,F,F,F,I' $
         , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec, merge_copy_tp $
         , comment='#'
 
@@ -1133,7 +1136,7 @@ pro build_cubes $
      dir = release_dir+'process/'
      
      readcol $
-        , 'multipart_fields.txt', format='A,F,F,F,F,I' $
+        , data_dir+'multipart_fields.txt', format='A,F,F,F,F,I' $
         , merge_name, merge_ra, merge_dec, merge_dra, merge_ddec, merge_copy_tp $
         , comment='#'
 

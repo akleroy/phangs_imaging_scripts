@@ -33,13 +33,13 @@ skip = []
 
 # ... start with this galaxy
 
-first = ""
+first = "ngc3599"
 last = ""
 
 # ... set as '12m', '7m', or '12m+7m' to process only data from that
 # array. Leave it as None to process all data.
 
-just_array = ['12m','12m+7m']
+just_array = ['12m','12m+7m','7m']
 
 # ... set as the products to be handled. Valid choices for the basic
 # PHANGS data are 'co21', 'c18o21', 'cont', 'co21_chan0', and
