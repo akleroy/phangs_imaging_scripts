@@ -293,55 +293,72 @@ def trim_cube(
 def export_and_cleanup(
     infile=None,
     outfile=None,
-    overwrite=False, 
-    vstring=''):
+    overwrite=False,    
+    remove_cards=[],
+    add_cards=[],
+    add_history=[],
+    zap_history=True,
+    roundbeam_tol=0.01):
     """
-    Clean up cubes.
+    Export from a CASA image file to a FITS file, in the process
+    cleaning up header keywords that are usually confusing or
+    useless. Optionally add new keywords to the header and check
+    whether the beam is close enough to being round that it makes
+    sense to overwrite it.
     """
     
     if infile is None or outfile is None:
         print("EXPORT_AND_CLEANUP: Missing required input.")
         return
 
-    exportfits(imagename=outfile, fitsimage=outfile_fits,
+    exportfits(imagename=infile, 
+               fitsimage=outfile,
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=-32)
     
-        # Clean up headers
+    # Clean up headers
 
-        hdu = pyfits.open(outfile_fits)
+    hdu = pyfits.open(outfile)
 
-        hdr = hdu[0].header
-        data = hdu[0].data
+    hdr = hdu[0].header
+    data = hdu[0].data
+    
+    # Cards to remove by default
 
-        for card in ['BLANK','DATE-OBS','OBSERVER','O_BLANK','O_BSCALE',
-                     'O_BZERO','OBSRA','OBSDEC','OBSGEO-X','OBSGEO-Y','OBSGEO-Z',
-                     'DISTANCE']:
-            if card in hdr.keys():
-                hdr.remove(card)
+    for card in ['BLANK','DATE-OBS','OBSERVER','O_BLANK','O_BSCALE',
+                 'O_BZERO','OBSRA','OBSDEC','OBSGEO-X','OBSGEO-Y','OBSGEO-Z',
+                 'DISTANCE']:
+        if card in hdr.keys():
+            hdr.remove(card)
             
+    # User cards to remove
+
+    for card in remove_cards:
+        if card in hdr.keys():
+            hdr.remove(card)
+            
+    # Delete history
+    
+    if zap_history:
         while 'HISTORY' in hdr.keys():
             hdr.remove('HISTORY')
 
-        hdr.add_history('This cube was produced by the PHANGS-ALMA pipeline.')
-        hdr.add_history('PHANGS-ALMA Pipeline version ' + pipeVer)
-        if vstring != '':
-            hdr.add_history('This is part of data release '+vstring)
+    # Add history
 
-        hdr['OBJECT'] = dir_for_gal(gal)
+    for history_line in add_history:
+        add_history(history_line)
+            
+    # Get the data min and max right
 
-        if vstring == '':
-            hdr['ORIGIN'] = 'PHANGS-ALMA'
-        else:
-            hdr['ORIGIN'] = 'PHANGS-ALMA '+vstring
+    datamax = np.nanmax(data)
+    datamin = np.nanmin(data)
+    hdr['DATAMAX'] = datamax
+    hdr['DATAMIN'] = datamin
 
-        datamax = np.nanmax(data)
-        datamin = np.nanmin(data)
-        hdr['DATAMAX'] = datamax
-        hdr['DATAMIN'] = datamin
+    # Round the beam recorded in the header if it lies within the
+    # specified tolerance.
 
-        # round the beam if it lies within the specified tolerance
-
+    if roundbeam_tol > 0.0:
         bmaj = hdr['BMAJ']
         bmin = hdr['BMIN']
         if bmaj != bmin:
@@ -354,10 +371,12 @@ def export_and_cleanup(
             else:
                 print("Beam too asymmetric to round.")
                 print("... fractional deviation: "+str(frac_dev))
-                
-        hdu.writeto(outfile_fits, clobber=True)
+    
+    # Overwrite
+
+    hdu.writeto(outfile, clobber=True)
         
-        return
+    return()
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # LINEAR MOSAICKING ROUTINES
