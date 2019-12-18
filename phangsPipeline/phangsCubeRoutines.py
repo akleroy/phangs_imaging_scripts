@@ -378,32 +378,43 @@ def export_and_cleanup(
         
     return()
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# LINEAR MOSAICKING ROUTINES
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+#endregion
+
+#region Linear mosaicking routines
 
 def common_res_for_mosaic(
-    infile_list = None, outfile_list = None,
-    overwrite=False, target_res=None):
+    infile_list = None, 
+    outfile_list = None,
+    target_res=None,
+    doconvolve=True,
+    pixel_padding=2.0,
+    overwrite=False):
     """
-    Convolve multi-part cubes to a common res for mosaicking.
-    """
-    
-    if (infile_list is None) or \
-            (outfile_list is None):
-        print("Missing required input.")
-        return    
-    
-    if len(infile_list) != len(outfile_list):
-        print("Mismatch in input lists.")
-        return    
+    Convolve multi-part cubes to a common res for mosaicking. It will
+    calculate the common resolution based on the beam size of all of
+    the input files, unless it is fed a fixed target resolution. It
+    returns the target resolution. If doconvolve is True, it also
+    convolves all of the input files to output files with that
+    resolution. For this it needs a list of output files matched to
+    the input file list, either as another list or a dictionary.
 
+    Has a tuning keyword 'pixel_padding' to indicate how many pixels
+    worth of padding is added in quadrature to the maximum beam size
+    to get the common beam.
+    """
+    
+    # Check that the input files exist
+
+    if infile_list is None:
+        print("Missing required infile_list.")
+        return(None)   
+    
     for this_file in infile_list:
         if os.path.isdir(this_file) == False:
             print("File not found "+this_file)
-            return
+            return(None)
     
-    # Figure out target resolution if it is not supplied
+    # Figure out target resolution if it is not supplied by the user
 
     if target_res is None:
         print("Calculating target resolution ... ")
@@ -419,13 +430,13 @@ def common_res_for_mosaic(
             if (hdr['axisunits'][0] != 'rad'):
                 print("ERROR: Based on CASA experience. I expected units of radians.")
                 print("I did not find this. Returning. Adjust code or investigate file "+infile)
-                return
+                return(None)
             this_pixel = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
             if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
                 print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
                 print("I did not find this. Returning. Adjust code or investigate file "+infile)
-                return
+                return(None)
             this_bmaj = hdr['restoringbeam']['major']['value']
 
             bmaj_list.append(this_bmaj)
@@ -433,13 +444,48 @@ def common_res_for_mosaic(
         
         max_bmaj = np.max(bmaj_list)
         max_pix = np.max(pix_list)
-        target_bmaj = np.sqrt((max_bmaj)**2+(2.0*max_pix)**2)
+        target_bmaj = np.sqrt((max_bmaj)**2+(pixel_padding*max_pix)**2)
     else:
         target_bmaj = force_beam
 
-    for ii in range(len(infile_list)):
-        this_infile = infile_list[ii]
-        this_outfile = outfile_list[ii]
+    if not doconvolve:
+        return(target_bmaj)
+
+    # If doconvolve is True then make sure that we have output files
+    # and that they match the input files.
+
+    if outfile_list is None:
+        print("Missing outfile_list required for convolution.")
+        return(None)
+
+    if (type(outfile_list) != type([])) and (type(outfile_list) != type({})):
+        print("outfile_list must be dictionary or list.")
+        return(None)
+
+    if type(outfile_list) == type([]):
+        if len(infile_list) != len(outfile_list):
+            print("Mismatch in input and output list lengths.")
+            return
+        outfile_dict = {}
+        for ii in range(len(infile_list)):
+            outfile_dict[infile_list[ii]] = outfile_list[ii]
+
+    if type(outfile_list) == type({}):
+        outfile_dict = outfile_list
+
+    missing_keys = 0
+    for infile in infile_list:
+        if infile not in outfile_dict.keys():
+            print("Missing output file for infile: "+infile)
+            missing_keys += 1
+    if missing_keys > 0:
+        print("Missing "+str(missing_keys)+" output file names.")
+        return(target_bmaj)
+
+    # With a target resolution and matched lists we can proceed.
+
+    for this_infile in infile_list:
+        this_outfile = outfile_dict[this_infile]
         print("Convolving "+this_infile+' to '+this_outfile)
         
         imsmooth(imagename=this_infile,
@@ -451,12 +497,14 @@ def common_res_for_mosaic(
              overwrite=overwrite
              )
 
-    return target_bmaj
+    return(target_bmaj)
 
 def build_common_header(
     infile_list = None, 
-    ra_ctr = None, dec_ctr = None,
-    delta_ra = None, delta_dec = None):
+    ra_ctr = None, 
+    dec_ctr = None,
+    delta_ra = None, 
+    delta_dec = None):
     """
     Build a target header to be used as a template by imregrid.
     """
@@ -757,9 +805,9 @@ def phangs_mosaic_data(
             infile_list = infile_list, weightfile_list = wtfile_list,
             outfile = outfile, overwrite=overwrite)
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# ROUTINES FOR FEATHERING THE DATA
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+#endregion
+
+#region Feathering routines
 
 def prep_for_feather(
     gal=None, array=None, product=None, root_dir=None, 
@@ -871,3 +919,4 @@ def phangs_feather_data(
             outfile=outfile_name, 
             mode='divide', cutoff=cutoff)
 
+#endregion
