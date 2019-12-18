@@ -1,0 +1,57 @@
+# Configuration, product, and array definition key for use in the
+# PHANGS-ALMA pipeline. This file defines the products (lines,
+# continuum) and combinations of arrays (12m, 7m, etc.) that will be
+# processed and combined in the pipeline.
+
+# Column 1: type of field
+# Column 2: name (this can be anything, it appears in file names)
+# Column 3: parameters (this has specific syntax known by the pipeline)
+
+line_product	co21		co21,2.5kms
+line_product	13co21		13co21,2.5kms
+line_product	c18o21		c18o21,6.0kms
+cont_product	cont		co,13co,c18o,hcn,hcop
+
+interf_config	12m		12m
+interf_config	12m+7m		12m,7m
+interf_config	7m		7m
+
+feather_config	12m+7m+tp	12m+7m
+feather_config	7m+tp		7m
+
+# -----------------------------------
+# interf_config
+# -----------------------------------
+
+# An "interferometric configuration" to be imaged. This is an
+# aggregation of all uv from the arrays listed in "parameters." The
+# parameters are the individual arrays in a comma-delimited
+# list. uv-data are assigned to arrays in the measurement set key. So,
+# e.g., inteferometric configuration 12m+7m will combine 12m uv data
+# and 7m uv data and these will be imaged together.
+
+# -----------------------------------
+# feather_config
+# -----------------------------------
+
+# A "feather configuration" to be created by post-processing. This
+# combines an interferometric configuration (not an array, it has to
+# be one of the defined interf_configs because we need an image) and
+# total power. The parameters should be the name of the interf_config
+# to be feathered.
+
+# -----------------------------------
+# line_product
+# -----------------------------------
+
+# A "line product" to be created and imaged as a uv data set and then
+# a cube. The parameters are the name of a line known by the line list
+# and the desired velocity resolution in km/s.
+
+# -----------------------------------
+# cont_product
+# -----------------------------------
+
+# A "continuum product" to be created and imaged as a uv data set and
+# then a map. The parameters are the names of the "line families" or
+# individual lines to flag in the uv data before proceeding.

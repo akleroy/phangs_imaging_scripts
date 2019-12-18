@@ -1897,7 +1897,7 @@ def export_to_fits(
 # Routines to image the data
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-class cleanCall:
+class CleanCall:
     
     def __init__(self):
         self.vis = None
@@ -2016,7 +2016,7 @@ def make_dirty_map(
     Create a dirty map from a visibility set.
     """
 
-    if type(clean_call) != type(cleanCall()):
+    if type(clean_call) != type(CleanCall()):
         print "Supply a valid clean call."
 
     clean_call.niter = 0
@@ -2052,7 +2052,7 @@ def multiscale_loop(
     
     # Check that we have a vile clean call
 
-    if type(clean_call) != type(cleanCall()):
+    if type(clean_call) != type(CleanCall()):
         print "Supply a valid clean call."
     
     # Figure out the scales to use in pixel units
@@ -2108,7 +2108,7 @@ def singlescale_loop(
     
     # Check that we have a vile clean call
 
-    if type(clean_call) != type(cleanCall()):
+    if type(clean_call) != type(CleanCall()):
         print "Supply a valid clean call."
         
     clean_call.deconvolver = 'hogbom'
@@ -2311,7 +2311,7 @@ def buildPhangsCleanCall(
 
     # Initialize the call
 
-    clean_call = cleanCall()
+    clean_call = CleanCall()
 
     # Set the files needed
 
