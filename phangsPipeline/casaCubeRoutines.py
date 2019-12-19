@@ -35,6 +35,7 @@ from imregrid import imregrid
 from imsmooth import imsmooth
 from imstat import imstat
 from imsubimage import imsubimage
+from imval import imval
 from makemask import makemask
 from mstransform import mstransform
 from split import split
@@ -499,71 +500,207 @@ def common_res_for_mosaic(
 
     return(target_bmaj)
 
+def calculate_mosaic_extent(
+    infile_list = None, 
+    force_ra_ctr = None, 
+    force_dec_ctr = None,
+    ):
+    """
+    Given a list of input files, calculate the center and extent of
+    the mosaic needed to cover them all. Optionally, force the center
+    of the mosaic to some value. In that case, the extent is
+    calculated to be the rectangle centered on the supplied (RA,
+    Dec). 
+
+    If the RA and Dec. center are supplied they are assumed to be in
+    decimal degrees.
+    """
+
+    if infile_list is None:
+        print("Missing required infile_list.")
+        return(None)
+
+    for this_infile in infile_list:
+        if not os.path.isdir(this_infile):
+            print("File not found "+this_infile)
+            print("Returning.")
+            return(None)
+
+    # The list of corner RA and Dec positions.
+    ra_list = []
+    dec_list = []
+
+    # TBD
+    freq_list = []
+
+    for this_infile in infile_list:
+        this_hdr = imhead(this_infile)
+
+        if this_hdr['axisnames'][0] != 'Right Ascension':
+            print("Expected axis 0 to be Right Ascension. Returning.")
+            return(None)
+        if this_hdr['axisunits'][0] != 'rad':
+            print("Expected axis units to be radians. Returning.")
+            return(None)
+        if this_hdr['axisnames'][1] != 'Declination':
+            print("Expected axis 1 to be Declination. Returning.")
+            return(None)
+        if this_hdr['axisunits'][1] != 'rad':
+            print("Expected axis units to be radians. Returning.")
+            return(None)
+
+        this_shape = this_hdr['shape']
+        xlo = 0
+        xhi = this_shape[0]-1
+        ylo = 0
+        yhi = this_shape[1]-1
+
+        pixbox = str(xlo)+','+str(ylo)+','+str(xlo)+','+str(ylo)
+        blc = imval(this_infile, chans='0', box=pixbox)
+
+        pixbox = str(xlo)+','+str(yhi)+','+str(xlo)+','+str(yhi)
+        tlc = imval(this_infile, chans='0', box=pixbox)
+        
+        pixbox = str(xhi)+','+str(yhi)+','+str(xhi)+','+str(yhi)
+        trc = imval(this_infile, chans='0', box=pixbox)
+
+        pixbox = str(xhi)+','+str(ylo)+','+str(xhi)+','+str(ylo)
+        brc = imval(this_infile, chans='0', box=pixbox)
+        
+        ra_list.append(blc['coords'][0][0])
+        ra_list.append(tlc['coords'][0][0])
+        ra_list.append(trc['coords'][0][0])
+        ra_list.append(brc['coords'][0][0])
+
+        dec_list.append(blc['coords'][0][1])
+        dec_list.append(tlc['coords'][0][1])
+        dec_list.append(trc['coords'][0][1])
+        dec_list.append(brc['coords'][0][1])
+        
+    min_ra = np.min(ra_list)
+    max_ra = np.max(ra_list)
+    min_dec = np.min(dec_list)
+    max_dec = np.max(dec_list)
+
+    # TBD
+    min_freq = None
+    max_freq = None
+
+    if force_ra_ctr == None:
+        ra_ctr = (max_ra+min_ra)*0.5
+    else:
+        ra_ctr = force_ra_ctr*np.pi/180.
+
+    if force_dec_ctr == None:
+        dec_ctr = (max_dec+min_dec)*0.5
+    else:
+        dec_ctr = force_dec_ctr*np.pi/180.
+
+    delta_ra = 2.0*np.max([np.abs(max_ra-ra_ctr),np.abs(min_ra-ra_ctr)])
+    delta_ra *= np.cos(dec_ctr)
+    delta_dec = 2.0*np.max([np.abs(max_dec-dec_ctr),np.abs(min_dec-dec_ctr)])
+    
+    output = {
+        'ra_ctr':[ra_ctr*180./np.pi,'degrees'],
+        'dec_ctr':[dec_ctr*180./np.pi,'degrees'],
+        'delta_ra':[delta_ra*180./np.pi*3600.,'arcsec'],
+        'delta_dec':[delta_dec*180./np.pi*3600.,'arcsec'],
+        }
+
+    return(output)
+
 def build_common_header(
     infile_list = None, 
     ra_ctr = None, 
     dec_ctr = None,
     delta_ra = None, 
-    delta_dec = None):
+    delta_dec = None,
+    template_file = None,
+    allowbigimage = False,
+    toobig=1e4):
     """
-    Build a target header to be used as a template by imregrid.
+    Build a target header to be used as a template by imregrid. RA_CTR
+    and DEC_CTR are assumed to be in decimal degrees. DELTA_RA and
+    DELTA_DEC are assumed to be in arcseconds.
     """
     
     if infile_list is None:
-        print("Missing required input.")
-        return    
+        print("Missing required infile_list.")
+        return(None)
 
-    # Logic to determine tuning parameters here if they aren't passed.
+    for this_infile in infile_list:
+        if not os.path.isdir(this_infile):
+            print("File not found "+this_infile)
+            print("Returning.")
+            return(None)
 
-    if os.path.isdir(infile_list[0]) == False:
-        print("File not found "+infile_list[0])
-        print("Returning.")
-        return None
-    target_hdr = imregrid(infile_list[0], template='get')
+    if template_file is not None:
+        if os.path.isdir(template_file) == False:
+            print("The specified template file does not exist.")
+            return(None)
+
+    # Base the target header on a template. If no template is supplied
+    # than the template is the first file in the list.
+
+    if template_file is None:
+        template_file = infile_list[0]
+
+    target_hdr = imregrid(template_file, template='get')
     
-    # N.B. Could put a lot of general logic here, but we are usually
-    # working in a pretty specific case.
+    # Get the pixel scale. This makes some assumptions. We could put a
+    # lot of general logic here, but we are usually working in a
+    # pretty specific case.
 
     if (target_hdr['csys']['direction0']['units'][0] != 'rad') or \
             (target_hdr['csys']['direction0']['units'][1] != 'rad'):
         print("ERROR: Based on CASA experience. I expected pixel units of radians.")
         print("I did not find this. Returning. Adjust code or investigate file "+infile_list[0])
-        return
+        return(None)
 
-    # Put in our target values for the center after converting to radians
+    # Add our target center pixel values to the header after
+    # converting to radians.
+
     ra_ctr_in_rad = ra_ctr * np.pi / 180.
     dec_ctr_in_rad = dec_ctr * np.pi / 180.
 
     target_hdr['csys']['direction0']['crval'][0] = ra_ctr_in_rad
     target_hdr['csys']['direction0']['crval'][1] = dec_ctr_in_rad
 
-    # Adjust the size and central pixel
+    # Calculate the size of the image in pixels and set the central
+    # pixel coordinate for the RA and Dec axis.
     
     ra_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][0]*180./np.pi*3600.)
-    dec_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][1]*180./np.pi*3600.)
     ra_axis_size = np.ceil(delta_ra / ra_pix_in_as)
     new_ra_ctr_pix = ra_axis_size/2.0
+
+    dec_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][1]*180./np.pi*3600.)
     dec_axis_size = np.ceil(delta_dec / dec_pix_in_as)
     new_dec_ctr_pix = dec_axis_size/2.0
     
+    # Check that the axis size isn't too big. This is likely to be a
+    # bug. If allowbigimage is True then bypass this, otherwise exit.
+
+    if not allowbigimage:
+        if ra_axis_size > toobig or dec_axis_size > toobig:
+            print("WARNING! This is a very big image you plan to create, ", ra_axis_size, " x ", dec_axis_size)
+            print("To make an image this big set allowbigimage=True. Returning.")
+            return(None)
+
+    # Enter the new values into the header and return.
+
     target_hdr['csys']['direction0']['crpix'][0] = new_ra_ctr_pix
     target_hdr['csys']['direction0']['crpix'][1] = new_dec_ctr_pix
     
-    if ra_axis_size > 1e4 or dec_axis_size > 1e4:
-        print("WARNING! This is a very big image you plan to create.")
-        print(ra_axis_size, " x ", dec_axis_size)
-        test = raw_input("Continue? Hit [y] if so.")
-        if test != 'y':
-            return
-
     target_hdr['shap'][0] = int(ra_axis_size)
     target_hdr['shap'][1] = int(dec_axis_size)
     
     return(target_hdr)
 
 def align_for_mosaic(
-    infile_list = None, outfile_list = None,
-    overwrite=False, target_hdr=None):
+    infile_list = None,
+    outfile_list = None,
+    target_hdr=None,
+    overwrite=False):
     """
     Align a list of files to a target coordinate system.
     """
