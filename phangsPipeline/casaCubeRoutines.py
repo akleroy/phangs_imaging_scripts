@@ -6,9 +6,6 @@ but also may be of general utility.
 
 #region Imports and definitions
 
-# NB: CASA doesn't always include the pwd in the module search path. I
-# had to modify my init.py file to get this to import. See the README.
-
 import os
 import numpy as np
 import pyfits # CASA has pyfits, not astropy
@@ -17,32 +14,10 @@ import glob
 # Analysis utilities
 import analysisUtils as au
 
-# CASA imports
-from taskinit import *
+# CASA stuff
+import casaStuff as casa
 
-# Import specific CASA tasks. Not all of these are used by this
-# package, so this could be pared in the future.
-from concat import concat
-from exportfits import exportfits
-from feather import feather
-from flagdata import flagdata
-from imhead import imhead
-from immath import immath
-from impbcor import impbcor
-from importfits import importfits
-from imrebin import imrebin
-from imregrid import imregrid
-from imsmooth import imsmooth
-from imstat import imstat
-from imsubimage import imsubimage
-from imval import imval
-from makemask import makemask
-from mstransform import mstransform
-from split import split
-from statwt import statwt
-from tclean import tclean
-from uvcontsub import uvcontsub
-from visstat import visstat
+# Pipeline versionining
 from pipelineVersion import version as pipeVer
 
 #endregion
@@ -74,7 +49,7 @@ def primary_beam_correct(
     if overwrite:
         os.system('rm -rf '+outfile)
 
-    impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
+    casa.impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
 
     return()
     
@@ -97,7 +72,7 @@ def convolve_to_round_beam(
         return    
 
     if force_beam is None:
-        hdr = imhead(infile)
+        hdr = casa.imhead(infile)
 
         if (hdr['axisunits'][0] != 'rad'):
             print("ERROR: Based on CASA experience. I expected units of radians.")
@@ -114,16 +89,61 @@ def convolve_to_round_beam(
     else:
         target_bmaj = force_beam
 
-    imsmooth(imagename=infile,
-             outfile=outfile,
-             targetres=True,
-             major=str(target_bmaj)+'arcsec',
-             minor=str(target_bmaj)+'arcsec',
-             pa='0.0deg',
-             overwrite=overwrite
-             )
+    casa.imsmooth(imagename=infile,
+                  outfile=outfile,
+                  targetres=True,
+                  major=str(target_bmaj)+'arcsec',
+                  minor=str(target_bmaj)+'arcsec',
+                  pa='0.0deg',
+                  overwrite=overwrite
+                  )
 
     return(target_bmaj)
+
+def calc_jytok(
+    hdr=None,
+    infile=None):
+    """
+    Calculate the Jy/beam -> Kelvin conversion. Accepts a header
+    already read using imhead or a file name that it will parse.
+    """
+
+    c = 2.99792458e10
+    h = 6.6260755e-27
+    kb = 1.380658e-16
+
+    if hdr is None:
+        if infile is None:
+            print("No header and no infile. Returning.")
+            return(None)
+        hdr = casa.imhead(target_file, mode='list')
+
+    if hdr['cunit3'] != 'Hz':
+        print("I expected frequency as the third axis but did not find it.")
+        print("Returning.")
+        return(None)
+    
+    crpix3 = hdr['crpix3']
+    cdelt3 = hdr['cdelt3']
+    crval3 = hdr['crval3']
+    naxis3 = hdr['shape'][2]
+    faxis_hz = (np.arange(naxis3)+1.-crpix3)*cdelt3+crval3
+    freq_hz = np.mean(faxis_hz)
+    
+    bmaj_unit = hdr['beammajor']['unit']
+    if bmaj_unit != 'arcsec':
+        print("Beam unit is not arcsec, which I expected. Returning.")
+        print("Unit instead is "+bmaj_unit)
+        return    
+    bmaj_as = hdr['beammajor']['value']
+    bmin_as = hdr['beamminor']['value']
+    bmaj_sr = bmaj_as/3600.*np.pi/180.
+    bmin_sr = bmin_as/3600.*np.pi/180.
+    beam_in_sr = np.pi*(bmaj_sr/2.0*bmin_sr/2.0)/np.log(2)
+    
+    jytok = c**2 / beam_in_sr / 1e23 / (2*kb*freq_hz**2)
+
+    return(jytok)
 
 def convert_jytok(
     infile=None, 
@@ -133,10 +153,6 @@ def convert_jytok(
     """
     Convert a cube from Jy/beam to K.
     """
-
-    c = 2.99792458e10
-    h = 6.6260755e-27
-    kb = 1.380658e-16
 
     if infile is None or (outfile is None and inplace==False):
         print("Missing required input.")
@@ -159,46 +175,73 @@ def convert_jytok(
     else:
         target_file = infile
 
-    hdr = imhead(target_file, mode='list')
+    hdr = casa.imhead(target_file, mode='list')
     unit = hdr['bunit']
     if unit != 'Jy/beam':
         print("Unit is not Jy/beam. Returning.")
         return
-
-    if hdr['cunit3'] != 'Hz':
-        print("I expected frequency as the third axis but did not find it.")
-        print("Returning.")
-        return
     
-    crpix3 = hdr['crpix3']
-    cdelt3 = hdr['cdelt3']
-    crval3 = hdr['crval3']
-    naxis3 = hdr['shape'][2]
-    faxis_hz = (np.arange(naxis3)+1.-crpix3)*cdelt3+crval3
-    freq_hz = np.mean(faxis_hz)
-    
-    bmaj_unit = hdr['beammajor']['unit']
-    if bmaj_unit != 'arcsec':
-        print("Beam unit is not arcsec, which I expected. Returning.")
-        print("Unit instead is "+bmaj_unit)
-        return    
-    bmaj_as = hdr['beammajor']['value']
-    bmin_as = hdr['beamminor']['value']
-    bmaj_sr = bmaj_as/3600.*np.pi/180.
-    bmin_sr = bmin_as/3600.*np.pi/180.
-    beam_in_sr = np.pi*(bmaj_sr/2.0*bmin_sr/2.0)/np.log(2)
-    
-    jtok = c**2 / beam_in_sr / 1e23 / (2*kb*freq_hz**2)
+    jytok = calc_jytok(hdr=hdr)
 
     myia = au.createCasaTool(iatool)
     myia.open(target_file)
     vals = myia.getchunk()
-    vals *= jtok
+    vals *= jytok
     myia.putchunk(vals)
     myia.setbrightnessunit("K")
     myia.close()
 
-    imhead(target_file, mode='put', hdkey='JTOK', hdvalue=jtok)
+    casa.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
+
+    return()
+
+def convert_ktojy(
+    infile=None, 
+    outfile=None, 
+    overwrite=False, 
+    inplace=False):
+    """
+    Convert a cube from K to Jy/beam.
+    """
+
+    if infile is None or (outfile is None and inplace==False):
+        print("Missing required input.")
+        return
+    
+    if os.path.isdir(infile) == False:
+        print("Input file not found: "+infile)
+        return
+    
+    if inplace == False:
+        if overwrite:
+            os.system('rm -rf '+outfile)
+        
+        if os.path.isdir(outfile):
+            print("Output file already present: "+outfile)
+            return
+
+        os.system('cp -r '+infile+' '+outfile)
+        target_file = outfile
+    else:
+        target_file = infile
+
+    hdr = casa.imhead(target_file, mode='list')
+    unit = hdr['bunit']
+    if unit != 'K':
+        print("Unit is not K. Returning.")
+        return
+    
+    jytok = calc_jytok(hdr=hdr)
+
+    myia = au.createCasaTool(iatool)
+    myia.open(target_file)
+    vals = myia.getchunk()
+    vals *= 1.0/jytok
+    myia.putchunk(vals)
+    myia.setbrightnessunit("Jy/beam")
+    myia.close()
+
+    casa.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
     return()
 
@@ -223,7 +266,7 @@ def trim_cube(
         return
 
     # First, rebin if needed
-    hdr = imhead(infile)
+    hdr = casa.imhead(infile)
     if (hdr['axisunits'][0] != 'rad'):
         print("ERROR: Based on CASA experience. I expected units of radians.")
         print("I did not find this. Returning. Adjust code or investigate file "+infile)
@@ -240,7 +283,7 @@ def trim_cube(
     pix_per_beam = bmaj*1.0 / pixel_as*1.0
     
     if pix_per_beam > 6:
-        imrebin(
+        casa.imrebin(
             imagename=infile,
             outfile=outfile+'.temp',
             factor=[2,2,1],
@@ -280,7 +323,7 @@ def trim_cube(
 
     if overwrite:
         os.system('rm -rf '+outfile)
-        imsubimage(
+        casa.imsubimage(
             imagename=outfile+'.temp',
             outfile=outfile,
             box=box_string,
@@ -312,10 +355,10 @@ def export_and_cleanup(
         print("EXPORT_AND_CLEANUP: Missing required input.")
         return
 
-    exportfits(imagename=infile, 
-               fitsimage=outfile,
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=-32)
+    casa.exportfits(imagename=infile, 
+                    fitsimage=outfile,
+                    velocity=True, overwrite=True, dropstokes=True, 
+                    dropdeg=True, bitpix=-32)
     
     # Clean up headers
 
@@ -426,7 +469,7 @@ def common_res_for_mosaic(
         for infile in infile_list:
             print("Checking "+infile)
 
-            hdr = imhead(infile)
+            hdr = casa.imhead(infile)
 
             if (hdr['axisunits'][0] != 'rad'):
                 print("ERROR: Based on CASA experience. I expected units of radians.")
@@ -489,14 +532,14 @@ def common_res_for_mosaic(
         this_outfile = outfile_dict[this_infile]
         print("Convolving "+this_infile+' to '+this_outfile)
         
-        imsmooth(imagename=this_infile,
-             outfile=this_outfile,
-             targetres=True,
-             major=str(target_bmaj)+'arcsec',
-             minor=str(target_bmaj)+'arcsec',
-             pa='0.0deg',
-             overwrite=overwrite
-             )
+        casa.imsmooth(imagename=this_infile,
+                      outfile=this_outfile,
+                      targetres=True,
+                      major=str(target_bmaj)+'arcsec',
+                      minor=str(target_bmaj)+'arcsec',
+                      pa='0.0deg',
+                      overwrite=overwrite
+                      )
 
     return(target_bmaj)
 
@@ -534,7 +577,7 @@ def calculate_mosaic_extent(
     freq_list = []
 
     for this_infile in infile_list:
-        this_hdr = imhead(this_infile)
+        this_hdr = casa.imhead(this_infile)
 
         if this_hdr['axisnames'][0] != 'Right Ascension':
             print("Expected axis 0 to be Right Ascension. Returning.")
@@ -645,7 +688,7 @@ def build_common_header(
     if template_file is None:
         template_file = infile_list[0]
 
-    target_hdr = imregrid(template_file, template='get')
+    target_hdr = casa.imregrid(template_file, template='get')
     
     # Get the pixel scale. This makes some assumptions. We could put a
     # lot of general logic here, but we are usually working in a
@@ -705,10 +748,11 @@ def align_for_mosaic(
     Align a list of files to a target coordinate system.
     """
 
-    if infile_list is None or outfile_list is None or \
+    if infile_list is None or \
+            outfile_list is None or \
             target_hdr is None:
         print("Missing required input.")
-        return    
+        return(None)
 
     for ii in range(len(infile_list)):
         this_infile = infile_list[ii]
@@ -718,113 +762,31 @@ def align_for_mosaic(
             print("File "+this_infile+" not found. Continuing.")
             continue
 
-        imregrid(imagename=this_infile,
-                 template=target_hdr,
-                 output=this_outfile,
-                 asvelocity=True,
-                 axes=[-1],
-                 interpolation='cubic',
-                 overwrite=overwrite)
+        casa.imregrid(imagename=this_infile,
+                      template=target_hdr,
+                      output=this_outfile,
+                      asvelocity=True,
+                      axes=[-1],
+                      interpolation='cubic',
+                      overwrite=overwrite)
 
-    return
-
-def phangs_align_for_mosaic(
-    gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False, target_hdr=None):
-    """
-    Convolve multi-part cubes to a common res for mosaicking.
-    """
-
-    if gal is None or array is None or product is None or \
-            root_dir is None:
-        print("Missing required input.")
-        return    
-    
-    # Look up parts
-
-    this_mosaic_key = mosaic_key()
-    if (gal in this_mosaic_key.keys()) == False:
-        print("Galaxy "+gal+" not in mosaic key.")
-        return
-    parts = this_mosaic_key[gal]
-
-    # Read the key that defines the extent and center of the mosaic
-    # manually. We will use this to figure out the target header.
-
-    multipart_key = read_multipart_key()
-    if (gal in multipart_key.keys()) == False:
-        print("Galaxy "+gal+" not in multipart key.")
-        print("... working on a general header construction algorithm.")
-        print("... for now, go enter a center and size into the multipart key:")        
-        print("... multipart_fields.txt ")
-        return
-    this_ra_ctr = multipart_key[gal]['ra_ctr_deg']
-    this_dec_ctr = multipart_key[gal]['dec_ctr_deg']
-    this_delta_ra = multipart_key[gal]['delta_ra_as']
-    this_delta_dec = multipart_key[gal]['delta_dec_as']
-
-    for this_ext in ['flat_round', 'pbcorr_round']:           
-
-        # Align data
-
-        infile_list = []
-        outfile_list = []
-        input_dir = root_dir+'process/'
-        output_dir = root_dir+'process/'
-        for this_part in parts:
-            infile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_tomerge.image'
-            infile_list.append(infile)
-            outfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
-            outfile_list.append(outfile)
-
-        # Work out the target header if it does not exist yet.
-
-        if target_hdr is None:
-            target_hdr = \
-                build_common_header(
-                infile_list = infile_list, 
-                ra_ctr = this_ra_ctr, dec_ctr = this_dec_ctr,
-                delta_ra = this_delta_ra, delta_dec = this_delta_dec)
-            
-        align_for_mosaic(
-            infile_list = infile_list, 
-            outfile_list = outfile_list,
-            overwrite=overwrite, target_hdr=target_hdr)
-
-        # Align primary beam images, too, to use as weight.
-
-        infile_list = []
-        outfile_list = []
-        input_dir = root_dir+'raw/'
-        output_dir = root_dir+'process/'
-        for this_part in parts:
-            input_array = array
-            if array == '7m+tp':
-                input_array = '7m'
-            if array == '12m+7m+tp':
-                input_array = '12m+7m'
-            infile = input_dir+this_part+'_'+input_array+'_'+product+'.pb'
-            infile_list.append(infile)
-            outfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
-            outfile_list.append(outfile)
-
-        align_for_mosaic(
-            infile_list = infile_list, 
-            outfile_list = outfile_list,
-            overwrite=overwrite, target_hdr=target_hdr)
+    return(None)
 
 def mosaic_aligned_data(
-    infile_list = None, weightfile_list = None,
-    outfile = None, overwrite=False):
+    infile_list = None, 
+    weightfile_list = None,
+    outfile = None, 
+    overwrite=False):
     """
     Combine a list of aligned data with primary-beam (i.e., inverse
     noise) weights using simple linear mosaicking.
     """
 
-    if infile_list is None or weightfile_list is None or \
+    if infile_list is None or \
+            weightfile_list is None or \
             outfile is None:
         print("Missing required input.")
-        return    
+        return(None)
 
     sum_file = outfile+'.sum'
     weight_file = outfile+'.weight'
@@ -835,7 +797,7 @@ def mosaic_aligned_data(
             (overwrite == False):
         print("Output file present and overwrite off.")
         print("Returning.")
-        return
+        return(None)
 
     if overwrite:
         os.system('rm -rf '+outfile+'.temp')
@@ -863,197 +825,240 @@ def mosaic_aligned_data(
             lel_exp_sum += '+'+this_lel_sum
             lel_exp_weight += '+'+this_lel_weight
 
-    immath(imagename = imlist, mode='evalexpr',
-           expr=lel_exp_sum, outfile=sum_file,
-           imagemd = imlist[0])
+    casa.immath(imagename = imlist, mode='evalexpr',
+                expr=lel_exp_sum, outfile=sum_file,
+                imagemd = imlist[0])
     
     myia = au.createCasaTool(iatool)
     myia.open(sum_file)
     myia.set(pixelmask=1)
     myia.close()
 
-    immath(imagename = imlist, mode='evalexpr',
-           expr=lel_exp_weight, outfile=weight_file)
+    casa.immath(imagename = imlist, mode='evalexpr',
+                expr=lel_exp_weight, outfile=weight_file)
     myia.open(weight_file)
     myia.set(pixelmask=1)
     myia.close()
 
-    immath(imagename = [sum_file, weight_file], mode='evalexpr',
-           expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=outfile+'.temp',
-           imagemd = sum_file)
+    casa.immath(imagename = [sum_file, weight_file], mode='evalexpr',
+                expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=outfile+'.temp',
+                imagemd = sum_file)
 
-    immath(imagename = weight_file, mode='evalexpr',
-           expr='iif(IM0 > 0.0, 1.0, 0.0)', outfile=outfile+'.mask')
-
-    imsubimage(imagename=outfile+'.temp', outfile=outfile,
-               mask='"'+outfile+'.mask"', dropdeg=True)
-
-
-
-    return
-
-def phangs_mosaic_data(
-    gal=None, array=None, product=None, root_dir=None, 
-    overwrite=False):
-    """
-    Linearly mosaic multipart cubes.
-    """
-
-    if gal is None or array is None or product is None or \
-            root_dir is None:
-        print("Missing required input.")
-        return    
+    casa.immath(imagename = weight_file, mode='evalexpr',
+                expr='iif(IM0 > 0.0, 1.0, 0.0)', outfile=outfile+'.mask')
     
-    # Look up parts
+    casa.imsubimage(imagename=outfile+'.temp', outfile=outfile,
+                    mask='"'+outfile+'.mask"', dropdeg=True)
 
-    this_mosaic_key = mosaic_key()
-    if (gal in this_mosaic_key.keys()) == False:
-        print("Galaxy "+gal+" not in mosaic key.")
-        return
-    parts = this_mosaic_key[gal]
-
-    for this_ext in ['flat_round', 'pbcorr_round']:           
-
-        infile_list = []
-        wtfile_list = []
-        input_dir = root_dir+'process/'
-        output_dir = root_dir+'process/'
-        for this_part in parts:
-            infile = input_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_onmergegrid.image'
-            wtfile = output_dir+this_part+'_'+array+'_'+product+'_'+this_ext+'_mergeweight.image'
-            if (os.path.isdir(infile) == False):
-                print("Missing "+infile)
-                print("Skipping.")
-                continue
-            if (os.path.isdir(wtfile) == False):
-                print("Missing "+wtfile)
-                print("Skipping.")
-                continue
-            infile_list.append(infile)
-            wtfile_list.append(wtfile)
-
-        if len(infile_list) == 0:
-            print("No files to include in the mosaic. Returning.")
-            return
-
-        outfile = output_dir+gal+'_'+array+'_'+product+'_'+this_ext+'.image'
-    
-        mosaic_aligned_data(
-            infile_list = infile_list, weightfile_list = wtfile_list,
-            outfile = outfile, overwrite=overwrite)
+    return(None)
 
 #endregion
 
-#region Feathering routines
+#region Feathering and single dish routines
 
-def prep_for_feather(
-    gal=None, array=None, product=None, root_dir=None, 
+def prep_sd_for_feather(
+    interf_file=None,
+    sdfile_in=None,
+    sdfile_out=None,
+    doimport=True,
+    checkunits=True,
+    doalign=True,
     overwrite=False):
     """
-    Prepare the single dish data for feathering
+    Prepare single dish data for feathering. Import the data from
+    FITS, check the units to make sure that they are in Jy/beam, and
+    align the single dish data to the interferometric grid.
     """
+
+    # Check inputs
     
-    if gal is None or array is None or product is None or \
-            root_dir is None:
-        print("Missing required input.")
-        return    
+    if (os.path.isdir(interf_file) == False):
+        print("Interferometric file not found: "+interf_file)
+        return(None)
 
-    sdfile_in = root_dir+'raw/'+gal+'_tp_'+product+'.image'
-    interf_in = root_dir+'process/'+gal+'_'+array+'_'+product+'_flat_round.image'
-    pbfile_name = root_dir+'raw/'+gal+'_'+array+'_'+product+'.pb'    
-
-    if (os.path.isdir(sdfile_in) == False):
+    if (os.path.isdir(sdfile_in) == False) and (os.path.isfile(sdfile_in) == False):
         print("Single dish file not found: "+sdfile_in)
-        return
+        return(None)
 
-    if (os.path.isdir(interf_in) == False):
-        print("Interferometric file not found: "+interf_in)
-        return
+    if sdfile_out is None:
+        print("Output single dish file name not supplied via sdfile_out=")
+        return(None)
 
-    if (os.path.isdir(pbfile_name) == False):
-        print("Primary beam file not found: "+pbfile_name)
-        return
+    if (os.path.isdir(sdfile_out+'.temp')):
+        if not overwrite:
+            print("Temporary file is present but overwrite set to False. Returning.")
+            return(None)
+        else:
+            os.system('rm -rf '+sdfile_out+'.temp')
 
-    # Align the relevant TP data to the product.
-    sdfile_out = root_dir+'process/'+gal+'_tp_'+product+'_align_'+array+'.image'
-    imregrid(imagename=sdfile_in,
-             template=interf_in,
-             output=sdfile_out,
-             asvelocity=True,
-             axes=[-1],
-             interpolation='cubic',
-             overwrite=overwrite)
+    current_file = sdfile_in    
 
-    # Taper the TP data by the primary beam.
-    taperfile_out = root_dir+'process/'+gal+'_tp_'+product+'_taper_'+array+'.image'
+    # Import from FITS if needed.
+    
+    if doimport:
+        if (sdfile_in[-4:] == 'FITS') and os.path.isfile(sdfile_in):
+            print("Importing from FITS.")
+            if overwrite:
+                os.system('rm -rf '+sdfile_out+'.temp')
+            importfits(fitsimage=sdfile_in, imagename=sdfile_out+'.temp',
+                       zeroblanks=True, overwrite=overwrite)
+            current_file = sdfile_out+'.temp'
+
+    # Check units on the singledish file.
+
+    if checkunits:
+        hdr = casa.imhead(current_file, mode='list')
+        unit = hdr['bunit']
+        if unit == 'K':
+            print("Unit is Kelvin. Converting.")
+            convert_ktojy(infile=current_file, 
+                          overwrite=overwrite, inplace=True)
+
+    # Align the single dish data to the interferometric data
+
+    if doalign:
+        casa.imregrid(imagename=current_file,
+                      template=interf_in,
+                      output=sdfile_out,
+                      asvelocity=True,
+                      axes=[-1],
+                      interpolation='cubic',
+                      overwrite=overwrite)
+
     if overwrite:
-        os.system('rm -rf '+taperfile_out)
+        os.system('rm -rf '+sdfile_out+'.temp')
 
-    impbcor(imagename=sdfile_out, 
-            pbimage=pbfile_name, 
-            outfile=taperfile_out, 
-            mode='multiply',
-            stokes='I')
+    return(None)
 
-    return
-
-def phangs_feather_data(
-    gal=None, array=None, product=None, root_dir=None, 
-    cutoff=-1,overwrite=False):
+def feather_two_cubes(   
+    interf_file=None,
+    sd_file=None,
+    out_file=None,
+    apodize=False,
+    apod_file=None,
+    apod_cutoff=-1.0,
+    blank=False,
+    overwrite=False):
     """
-    Feather the interferometric and total power data.
+    Feather the interferometric and total power data. Optionally,
+    first apply some steps to homogenize the two data sets.
     """
 
-    if gal is None or array is None or product is None or \
-            root_dir is None:
-        print("Missing required input.")
-        return    
-
-    sdfile_in = root_dir+'process/'+gal+'_tp_'+product+'_taper_'+array+'.image'
-    interf_in = root_dir+'process/'+gal+'_'+array+'_'+product+'_flat_round.image'
-    pbfile_name = root_dir+'raw/'+gal+'_'+array+'_'+product+'.pb' 
-
-    if (os.path.isdir(sdfile_in) == False):
-        print("Single dish file not found: "+sdfile_in)
+    if (os.path.isdir(sd_file) == False):
+        print("Single dish file not found: "+sd_file)
         return
         
-    if (os.path.isdir(interf_in) == False):
-        print("Interferometric file not found: "+interf_in)
+    if (os.path.isdir(interf_file) == False):
+        print("Interferometric file not found: "+interf_file)
         return
 
-    if (os.path.isdir(pbfile_name) == False):
-        print("Primary beam file not found: "+pbfile_name)
-        return
+    if apodize:
+        if (os.path.isdir(apod_file) == False):
+            print("Apodization requested, but file not found: "+apod_file)
+            return
 
-    # Feather the inteferometric and "flat" TP data.
-    outfile_name = root_dir+'process/'+gal+'_'+array+'+tp_'+product+ \
-        '_flat_round.image'
+    os.system('rm -rf '+sd_file+'.temp')
+    os.system('rm -rf '+interf_file+'.temp')
+    os.system('rm -rf '+out_file+'.temp')
+
+    if blank:        
+        current_interf_file = interf_file+'.temp'
+        current_sd_file = sd_file+'.temp'
+
+        os.system('cp -rf '+interf_file+' '+current_interf_file)
+        os.system('cp -rf '+sd_file+' '+current_sd_file)
+
+        myia = au.createCasaTool(iatool)
+
+        myia.open(interf_file)
+        interf_mask = myia.getchunk(getmask=True)
+        myia.close()
+
+        myia.open(sd_file)
+        sd_mask = myia.getchunk(getmask=True)
+        myia.close()
+        
+        # CASA calls unmasked values True and masked values False. The
+        # region with values in both cubes is the product.
+
+        combined_mask = sd_mask*interf_mask
+
+        # This isn't a great solution. Just zero out the masked
+        # values. It will do what we want in the FFT but the CASA mask
+        # bookkeeping is being left in the dust. The workaround is
+        # complicated, though, because you can't directly manipulate
+        # pixel masks for some reason.
+
+        if np.sum(combined_mask == False) > 0:
+            myia.open(interf_file)
+            interf_data = myia.getchunk()
+            interf_data[combined_mask == False] = 0.0
+            myia.putchunk(interf_data)
+            myia.close()
+
+            myia.open(sd_file)
+            sd_data = myia.getchunk()
+            sd_data[combined_mask == False] = 0.0
+            myia.putchunk(sd_data)
+            myia.close()
+
+    else:
+        current_interf_file = interf_file
+        current_sd_file = sd_file
+
+    # If apodization is requested, multiply both data sets by the same
+    # taper and create a new, temporary output data set.
+
+    if apodize:
+        casa.impbcor(imagename=current_sd_file,
+                     pbimage=apod_file, 
+                     outfile=current_sd_file+'.temp', 
+                     mode='multiply', 
+                     cutoff=cutoff)
+        current_sd_file = current_sd_file+'.temp'
+        
+        casa.impbcor(imagename=current_interf_file,
+                     pbimage=apod_file, 
+                     outfile=current_interf_file+'.temp', 
+                     mode='multiply', 
+                     cutoff=cutoff)
+        current_interf_file = current_interf_file+'.temp'
+
+    # Call feather, followed by an imsubimage to deal with degenerate
+    # axis stuff.
 
     if overwrite:        
-        os.system('rm -rf '+outfile_name)
-    os.system('rm -rf '+outfile_name+'.temp')
-    feather(imagename=outfile_name+'.temp',
-            highres=interf_in,
-            lowres=sdfile_in,
-            sdfactor=1.0,
-            lowpassfiltersd=False)
-    imsubimage(imagename=outfile_name+'.temp', outfile=outfile_name,
-               dropdeg=True)
-    os.system('rm -rf '+outfile_name+'.temp')
-    infile_name = outfile_name
+        os.system('rm -rf '+out_file)
+    os.system('rm -rf '+out_file+'.temp')
+    casa.feather(imagename=out_file+'.temp',
+                 highres=current_interf_file,
+                 lowres=current_sd_file,
+                 sdfactor=1.0,
+                 lowpassfiltersd=False)
+    casa.imsubimage(imagename=out_file+'.temp', 
+                    outfile=out_file,
+                    dropdeg=True)
+    os.system('rm -rf '+out_file+'.temp')
 
-    # Primary beam correct the feathered data.
-    outfile_name = root_dir+'process/'+gal+'_'+array+'+tp_'+product+ \
-        '_pbcorr_round.image'
-    
-    if overwrite:        
-        os.system('rm -rf '+outfile_name)
+    # If we apodized, now divide out the common kernel.
 
-    print(infile_name)
-    print(pbfile_name)
-    impbcor(imagename=infile_name,
-            pbimage=pbfile_name, 
-            outfile=outfile_name, 
-            mode='divide', cutoff=cutoff)
+    if apodize:
+        os.system('rm -rf '+out_file+'.temp')
+        os.system('mv '+out_file+' '+out_file+'.temp')
+        casa.impbcor(imagename=out_file+'.temp',
+                     pbimage=apod_file, 
+                     outfile=out_file, 
+                     mode='divide', 
+                     cutoff=cutoff)
+
+    # Remove temporary files
+
+    os.system('rm -rf '+sd_file+'.temp')
+    os.system('rm -rf '+interf_file+'.temp')
+    os.system('rm -rf '+out_file+'.temp')
+
+    os.system('rm -rf '+sd_file+'.temp.temp')
+    os.system('rm -rf '+interf_file+'.temp.temp')
+    os.system('rm -rf '+out_file+'.temp.temp')
 
 #endregion
