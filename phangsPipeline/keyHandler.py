@@ -6,7 +6,8 @@ structure, etc. This part is pure python.
 
 import os
 import glob
-from phangsPipeline import line_list as ll
+#from phangsPipeline import line_list as ll
+import line_list as ll
 
 class KeyHandler:
     """
@@ -921,7 +922,7 @@ class KeyHandler:
         if self._target_list is None:
             self._build_target_list()
 
-        self._whole_target_list = self._target_list.copy()
+        self._whole_target_list = list(self._target_list)
 
         if self._linearmosaic_dict is None:
             return()
