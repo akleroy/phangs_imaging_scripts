@@ -6,8 +6,15 @@ structure, etc. This part is pure python.
 
 import os
 import glob
-#from phangsPipeline import line_list as ll
-import line_list as ll
+try:
+    import line_list as ll
+except ImportError:
+    from phangsPipeline import line_list as ll
+
+try:
+    import utils
+except ImportError:
+    from phangsPipeline import utils as utils
 
 class KeyHandler:
     """
@@ -39,7 +46,7 @@ class KeyHandler:
 
         self.build_key_handler(master_key)
 
-    #region Initialize the key handler and read files.
+#region Initialize the key handler and read files.
 
     def build_key_handler(self,master_key=None):
         """
@@ -848,9 +855,9 @@ class KeyHandler:
     
         return()
 
-    #endregion
+#endregion
 
-    #region Programs to cross-link and build internal structures
+#region Programs to cross-link and build internal structures
 
     def _build_target_list(self, check=True):
         """
@@ -971,9 +978,9 @@ class KeyHandler:
 
         return()
 
-    #endregion
+#endregion
 
-    #region Programs to run checks on the keyHandler and the data
+#region Programs to run checks on the keyHandler and the data
 
     def check_target_existence(self):
         """
@@ -1116,9 +1123,9 @@ class KeyHandler:
 
         return(missing_dirs)
         
-    #endregion
+#endregion
 
-    #region Access data and lists
+#region Access data and lists
     
     def _get_dir_for_target(self, target=None, changeto=False, imaging=True):
         """
@@ -1164,13 +1171,16 @@ class KeyHandler:
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, imaging=False))
 
-    def get_all_targets(self):
+    def get_targets(self, only=None, skip=None, first=None, last=None):
         """
         List the full set of targets.
         """
-        return(self._target_list)
+        this_target_list = \
+            utils.select_from_list(self._target_list, first=first, last=last \
+                                       , skip=skip, only=only, loose=True)
+        return(this_target_list)
 
-    def get_all_targets_in_ms_key(self):
+    def get_targets_in_ms_key(self, only=None, skip=None, first=None, last=None):
         """
         List all targets that have uv data
         """
@@ -1179,18 +1189,88 @@ class KeyHandler:
         for target in targets:
             if target in self._ms_dict.keys():
                 targets_with_ms.append(target)
-        targets_with_ms.sort()
-        return(targets_with_ms)
 
-    def get_all_linear_mosaics(self):
+        this_target_list = \
+            utils.select_from_list(targets_with_ms, first=first, last=last \
+                                       , skip=skip, only=only, loose=True)
+        return(this_target_list)
+
+    def get_linear_mosaic_targets(self, only=None, skip=None, first=None, last=None):
         """
         List all linear mosaics.
         """
         if self._linearmosaic_dict is None:
             return(None)
         mosaic_targets = list(self._linearmosaic_dict.keys())
-        mosaic_targets.sort()
-        return(mosaic_targets)
+
+        this_target_list = \
+            utils.select_from_list(mosaic_targets, first=first, last=last \
+                                       , skip=skip, only=only, loose=True)
+        return(this_target_list)
+
+
+    def get_whole_targets(self, only=None, skip=None, first=None, last=None):
+        """
+        List only full galaxy names (no parts, e.g., _1 or _2). Very
+        similar to the directory list.
+        """
+        this_whole_target_list = \
+            utils.select_from_list(self._whole_target_list, first=first, last=last \
+                                       , skip=skip, only=only, loose=True)
+        return(this_whole_target_list)
+
+    def get_interf_configs(self, only=None, skip=None):
+        """
+        Get a list of interferometer array configurations
+        """
+        if type(self._config_dict) != type({}):
+            return(None)
+        if 'interf_config' not in self._config_dict.keys():
+            return(None)
+        interf_configs = self._config_dict['interf_config'].keys()
+        this_list = \
+            utils.select_from_list(interf_configs, skip=skip, only=only, loose=True)
+        return(this_list)
+
+    def get_feather_configs(self, only=None, skip=None):
+        """
+        Get a list of feathered single dish + interferometer array configruations.
+        """
+        if type(self._config_dict) != type({}):
+            return(None)
+        if 'feather_config' not in self._config_dict.keys():
+            return(None)
+        feather_configs = self._config_dict['feather_config'].keys()
+        this_list = \
+            utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
+        return(this_list)
+
+    def get_line_products(self, only=None, skip=None):
+        """
+        Get a list of line 'products,' i.e., line plus velocity
+        resolution combinations.
+        """
+        if type(self._config_dict) != type({}):
+            return(None)
+        if 'line_product' not in self._config_dict.keys():
+            return(None)
+        line_products = self._config_dict['line_product'].keys()
+        this_list = \
+            utils.select_from_list(line_products, skip=skip, only=only, loose=True)
+        return(this_list)
+
+    def get_continuum_products(self, only=None, skip=None):
+        """
+        Get a list of continuum 'products'.
+        """
+        if type(self._config_dict) != type({}):
+            return(None)
+        if 'cont_product' not in self._config_dict.keys():
+            return(None)
+        cont_products = self._config_dict['cont_product'].keys()
+        this_list = \
+            utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
+        return(this_list)
 
     def get_parts_for_linear_mosaic(self, target=None):
         """
@@ -1213,13 +1293,6 @@ class KeyHandler:
         
         return(self._linearmosaic_dict[target])
 
-    def get_all_whole_targets(self):
-        """
-        List only full galaxy names (no parts, e.g., _1 or _2). Very
-        similar to the directory list.
-        """
-        return(self._whole_target_list)
-
     def is_target_in_mosaic(self, target):
         """
         Return true or false depending on whether the target is in a linear mosaic.
@@ -1240,9 +1313,9 @@ class KeyHandler:
         self._dochecks = dochecks
         return
 
-    #endregion
+#endregion
     
-    #region Manipulate files and file structure
+#region Manipulate files and file structure
 
     def make_missing_directories(self, imaging=False, postprocess=False):
         """
@@ -1284,4 +1357,4 @@ class KeyHandler:
 
         return(False)
 
-    #endregion
+#endregion
