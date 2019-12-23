@@ -857,9 +857,9 @@ def mosaic_aligned_data(
 #region Feathering and single dish routines
 
 def prep_sd_for_feather(
-    interf_file=None,
     sdfile_in=None,
     sdfile_out=None,
+    interf_file=None,
     doimport=True,
     checkunits=True,
     doalign=True,
