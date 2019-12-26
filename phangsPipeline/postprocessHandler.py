@@ -4,12 +4,11 @@ Parts of the PHANGS pipeline to handle post-processing cubes.
 
 import os
 import glob
-import keyHandler
 import casaCubeRoutines as ccr
 import casaMosaicRoutines as cmr
 import casaFeatherRoutines as cfr
 
-class postprocessHandler:
+class PostProcessHandler:
     """
     Class to handle post-processing of ALMA data. Post-processing here
     begins with the results of imaging and proceeds through reduced,
@@ -18,7 +17,7 @@ class postprocessHandler:
 
     def __init__(
         self,
-        keyHandler = None,
+        key_handler = None,
         dry_run = False,
         quiet = False,
         dochecks = True
@@ -37,21 +36,22 @@ class postprocessHandler:
         self._no_cont = False
         self._no_line = False
 
-        if keyHandler is not None:
-            self._kh = keyHandler
+        if key_handler is not None:
+            self._kh = key_handler
 
-        self.set_targets()
-        self.set_mosaic_targets()
+        # Initialize the list variables
+        self.set_targets(nobuild=True)
+        self.set_mosaic_targets(nobuild=True)
+        self.set_line_products(nobuild=True)
+        self.set_cont_products(nobuild=True)
+        self.set_interf_configs(nobuild=True)
+        self.set_feather_configs(nobuild=True)
 
-        self.set_line_products()
-        self.set_cont_products()
+        self._build_lists()
 
-        self.set_interf_configs()
-        self.set_feather_configs()
+        self.set_dry_run(dry_run)
 
-        self._set_dry_run(dry_run)
-
-        return()
+        return(None)
 
 #region Control what data gets processed
 
@@ -60,8 +60,8 @@ class postprocessHandler:
         first=None, 
         last=None, 
         skip=[], 
-        only=[], 
-        loose=True):
+        only=[],
+        nobuild=False):
         """
         Set conditions on the list of targets to be considered. By
         default, consider all targets.
@@ -70,9 +70,9 @@ class postprocessHandler:
         self._targets_last = last
         self._targets_skip = skip
         self._targets_only = only
-        self._targets_loose = loose
 
-        self._build_lists()
+        if not nobuild:
+            self._build_lists()
         return(None)
 
     def set_mosaic_targets(
@@ -80,8 +80,8 @@ class postprocessHandler:
         first=None, 
         last=None, 
         skip=[], 
-        only=[], 
-        loose=True):
+        only=[],
+        nobuild=False):
         """
         Set conditions on the list of mosaics to be considered. By
         default, consider all mosaics.
@@ -90,48 +90,51 @@ class postprocessHandler:
         self._mosaics_last = last
         self._mosaics_skip = skip
         self._mosaics_only = only
-        self._mosaics_loose = loose
 
-        self._build_lists()
+        if not nobuild:
+            self._build_lists()
         return(None)
 
     def set_line_products(
         self, 
         skip=[], 
         only=[], 
-        loose=True):
+        nobuild=False,
+        ):
         """
         Set conditions on the list of line products to be
         considered. By default, consider all products.
         """
         self._lines_skip = skip
         self._lines_only = only
-        self._lines_loose = loose
 
-        self._build_lists()
+        if not nobuild:
+            self._build_lists()
         return(None)
 
     def set_cont_products(
         self, 
         skip=[], 
         only=[], 
-        loose=True):
+        nobuild=False,
+        ):
         """
         Set conditions on the list of continuum products to be
         considered. By default, consider all products.
         """
         self._cont_skip = skip
         self._cont_only = only
-        self._cont_loose = loose
 
-        self._build_lists()
+        if not nobuild:
+            self._build_lists()
         return(None)
 
     def set_interf_configs(
         self, 
         skip=[], 
         only=[], 
-        loose=True):
+        nobuild=False,
+        ):
         """
         Set conditions on the list of interferometric array
         configurations to be considered. By default, consider all
@@ -139,16 +142,17 @@ class postprocessHandler:
         """
         self._interf_configs_skip = skip
         self._interf_configs_only = only
-        self._interf_configs_loose = loose
 
-        self._build_lists()
+        if not nobuild:
+            self._build_lists()
         return(None)
 
     def set_feather_configs(
         self, 
         skip=[], 
-        only=[], 
-        loose=True):
+        only=[],
+        nobuild=False,
+        ):
         """
         Set conditions on the list of feathered array
         configurations to be considered. By default, consider all
@@ -156,9 +160,9 @@ class postprocessHandler:
         """
         self._feather_configs_skip = skip
         self._feather_configs_only = only
-        self._feather_configs_loose = loose
 
-        self._build_lists()
+        if not nobuild:
+            self._build_lists()
         return(None)
 
     def set_no_line(
@@ -211,7 +215,6 @@ class postprocessHandler:
             skip = self._targets_skip,
             first = self._targets_first,
             last = self._targets_last,
-            loose = self._targets_loose
             )
 
         self._mosaics_list = self._kh.get_linear_mosaic_targets(            
@@ -219,7 +222,6 @@ class postprocessHandler:
             skip = self._mosaics_skip,
             first = self._mosaics_first,
             last = self._mosaics_last,
-            loose = self._mosaics_loose,
             )
 
         if self._no_line:
@@ -228,29 +230,58 @@ class postprocessHandler:
             self._line_products_list = self._kh.get_line_products(
                 only = self._lines_only,
                 skip = self._lines_skip,
-                loose = self._lines_loose,
                 )
 
         if self._no_cont:
             self._cont_products_list = []
         else:
-            self._cont_products_list = self._kh.get_cont_products(
+            self._cont_products_list = self._kh.get_continuum_products(
                 only = self._cont_only,
                 skip = self._cont_skip,
-                loose = self._cont_loose
                 )
 
         self._interf_configs_list = self._kh.get_interf_configs(
             only = self._interf_configs_only,
             skip = self._interf_configs_skip,
-            loose = self._interf_configs_loose
             )
 
         self._feather_configs_list = self._kh.get_feather_configs(
             only = self._feather_configs_only,
             skip = self._feather_configs_skip,
-            loose = self._feather_configs_loose
             )
+
+    def _all_products(
+        self
+        ):
+        """
+        Get a combined list of line and continuum products.
+        """
+        
+        if self._cont_products_list is None:
+            if self._line_products_list is None:
+                return([])
+            else:
+                return(self._line_products_list)
+
+        if self._line_products_list is None:
+            if self._cont_products_list is None:
+                return([])
+            else:
+                return(self._cont_products_list)
+
+        if len(self._cont_products_list) is 0:
+            if self._line_products_list is None:
+                return ([])
+            else:
+                return(self._line_products_list)
+
+        if len(self._line_products_list) is 0:
+            if self._cont_products_list is None:
+                return([])
+            else:
+                return(self._cont_products_list)
+        
+        return(self._line_products_list + self._cont_products_list)
 
 #endregion
 
@@ -273,10 +304,8 @@ class postprocessHandler:
 
                 indir = self._kh.get_imaging_dir_for_target(this_target)
                 outdir = self._kh.get_postprocess_dir_for_target(this_target)
-
-                all_products_list = [self._line_products_list, self._cont_products_list]
                 
-                for this_product in all_products_list:
+                for this_product in self._all_products():
 
                     if this_product is None:
                         continue
@@ -286,8 +315,9 @@ class postprocessHandler:
                     fname = self._kh.get_cube_filename(
                         target = this_target,
                         config = this_config,
-                        product = product,
+                        product = this_product,
                         ext = None,
+                        casa = True,
                         casaext = '.image')
 
                     infile = indir + fname
@@ -307,8 +337,9 @@ class postprocessHandler:
                     fname = self._kh.get_cube_filename(
                         target = this_target,
                         config = this_config,
-                        product = product,
+                        product = this_product,
                         ext = None,
+                        casa = True,
                         casaext = '.pb')
 
                     infile = indir + fname
