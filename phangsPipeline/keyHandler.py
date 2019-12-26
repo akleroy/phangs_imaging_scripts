@@ -1313,6 +1313,35 @@ class KeyHandler:
         self._dochecks = dochecks
         return
 
+    def get_cube_filename(
+        self, 
+        target=None, 
+        config=None,
+        product=None,
+        ext=None,
+        casa=False,
+        casaext='.image',
+        ):
+        """
+        Get the file name for a data cube using the pipeline convention.
+        """
+
+        if target is None or config is None or product is None:
+            if not self._quiet:
+                print("Need a target and a configuration and a product.")
+                return(None)
+        
+        filename = target+'_'+config+'_'+product
+        if ext is not None:
+            filename += '_'+ext
+
+        if not casa:
+            filename += '.fits'
+        else:
+            filename += casaext
+
+        return(filename)
+
 #endregion
     
 #region Manipulate files and file structure
