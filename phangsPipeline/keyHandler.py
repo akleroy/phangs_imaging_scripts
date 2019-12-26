@@ -1329,10 +1329,29 @@ class KeyHandler:
         if target is None or config is None or product is None:
             if not self._quiet:
                 print("Need a target and a configuration and a product.")
-                return(None)
+            return(None)
+        
+        if type(target) is not type(''):
+            if not self._quiet:
+                print("Target needs to be a string.", target)
+            return(None)
+
+        if type(product) is not type(''):
+            if not self._quiet:
+                print("Product needs to be a string.", product)
+            return(None)
+
+        if type(config) is not type(''):
+            if not self._quiet:
+                print("Config needs to be a string.", config)
+            return(None)
         
         filename = target+'_'+config+'_'+product
         if ext is not None:
+            if type(ext) is not type(''):
+                if not self._quiet:
+                    print("Ext needs to be a string or None.", ext)
+                return(None)
             filename += '_'+ext
 
         if not casa:
