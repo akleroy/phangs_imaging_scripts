@@ -208,7 +208,7 @@ class postprocessHandler:
 
         self._targets_list = self._kh.get_targets(            
             only = self._targets_only,
-            skip = self._targets_skip
+            skip = self._targets_skip,
             first = self._targets_first,
             last = self._targets_last,
             loose = self._targets_loose
@@ -216,7 +216,7 @@ class postprocessHandler:
 
         self._mosaics_list = self._kh.get_linear_mosaic_targets(            
             only = self._mosaics_only,
-            skip = self._mosaics_skip
+            skip = self._mosaics_skip,
             first = self._mosaics_first,
             last = self._mosaics_last,
             loose = self._mosaics_loose,
@@ -227,8 +227,8 @@ class postprocessHandler:
         else:
             self._line_products_list = self._kh.get_line_products(
                 only = self._lines_only,
-                skip = self._lines_skip
-                loose = self._lines_loose
+                skip = self._lines_skip,
+                loose = self._lines_loose,
                 )
 
         if self._no_cont:
@@ -236,19 +236,19 @@ class postprocessHandler:
         else:
             self._cont_products_list = self._kh.get_cont_products(
                 only = self._cont_only,
-                skip = self._cont_skip
+                skip = self._cont_skip,
                 loose = self._cont_loose
                 )
 
         self._interf_configs_list = self._kh.get_interf_configs(
             only = self._interf_configs_only,
-            skip = self._interf_configs_skip
+            skip = self._interf_configs_skip,
             loose = self._interf_configs_loose
             )
 
         self._feather_configs_list = self._kh.get_feather_configs(
             only = self._feather_configs_only,
-            skip = self._feather_configs_skip
+            skip = self._feather_configs_skip,
             loose = self._feather_configs_loose
             )
 
@@ -293,6 +293,15 @@ class postprocessHandler:
                     infile = indir + fname
                     outfile = outdir + fname
                     
+                    if self._dry_run:
+                        print("DRY_RUN: I would call ccr.copy_dropdeg from "+infile+" to "+outfile)
+                    else:
+                        ccr.copy_dropdeg(
+                            infile=infile,
+                            outfile=outfile,
+                            overwrite=True,
+                            quiet=self._quiet)
+
                     # Also copy the primary beam response
 
                     fname = self._kh.get_cube_filename(
@@ -305,7 +314,14 @@ class postprocessHandler:
                     infile = indir + fname
                     outfile = outdir + fname
 
-                    
+                    if self._dry_run:
+                        print("DRY_RUN: I would call ccr.copy_dropdeg from "+infile+" to "+outfile)
+                    else:                    
+                        ccr.copy_dropdeg(
+                            infile=infile,
+                            outfile=outfile,
+                            overwrite=True,
+                            quiet=self._quiet)
 
         return()
 
@@ -431,97 +447,6 @@ class postprocessHandler:
 #endregion
 
 # This is all earlier...
-
-    def stage_cubes(
-        self,
-        ):
-        """
-        Copy the cubes to start the post-processing into the relevant
-        directory.
-        """
-
-        # Iteration
-        
-        input_dir = dir_for_gal(gal)
-        in_cube_name = input_dir+gal+'_'+array+'_'+product+'.fits'
-        in_pb_name = input_dir+gal+'_'+array+'_'+product+'_pb.fits'
-        
-        out_dir = root_dir+'raw/'
-        out_cube_name = out_dir+gal+'_'+array+'_'+product+'.image'
-        out_pb_name = out_dir+gal+'_'+array+'_'+product+'.pb'
-        
-        print("... importing data for "+in_cube_name)
-
-        if os.path.isfile(in_cube_name):
-            importfits(fitsimage=in_cube_name, imagename=out_cube_name,
-                       zeroblanks=True, overwrite=overwrite)
-        else:
-            print("File not found "+in_cube_name)
-
-        if os.path.isfile(in_pb_name):
-            importfits(fitsimage=in_pb_name, imagename=out_pb_name,
-                       zeroblanks=True, overwrite=overwrite)
-        else:
-            print("Directory not found "+in_pb_name)
-
-        pass
-
-    def primary_beam_correct(
-        self,
-        ):
-        """
-        Apply primary beam correction.
-        """
-        pass
-
-    def convolve_to_round_beam(
-        self,
-        ):
-        """
-        Convolve all data to round beam.
-        """
-        pass
-
-    def convolve_for_mosaic(
-        self,
-        ):
-        """
-        Convolve data to be mosaicked to share a common resolution.
-        """
-        pass
-
-    def align_for_mosaic(
-        self,
-        ):
-        """
-        Align data to be mosaicked on a common astrometric grid.
-        """
-        pass
-
-
-    def execute_linear_mosaic(
-        self,
-        ):
-        """
-        Linearly mosaic aligned, common resolution data.
-        """
-        pass
-
-    def prep_singledish_for_feather(
-        self,
-        ):
-        """
-        Import single dish data and prepare for feathering.
-        """
-        pass
-
-    def execute_feather(
-        self,
-        ):
-        """
-        Feather together single dish and interferometer data.
-        """
-        pass    
 
 def phangs_stage_singledish(
     gal=None, product=None, root_dir=None, 

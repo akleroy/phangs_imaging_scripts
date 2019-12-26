@@ -24,6 +24,53 @@ from pipelineVersion import version as pipeVer
 
 #region FITS file manipulation, scaling, extraction, and unit handling
 
+def copy_dropdeg(
+    infile=None, 
+    outfile=None, 
+    overwrite=False,
+    quiet=False):
+    """
+    Copy using imsubimage to drop degenerate axes. Optionally handle
+    overwriting and importing from FITS.
+    """
+
+    if os.path.isdir(outfile):
+        if not overwrite:
+            if not quiet:
+                print("Output file already present and overwrite false. Returning.")
+            return(False)
+        os.system('rm -rf '+outfile)
+
+    used_temp_outfile = False
+    if (infile[-4:] == 'FITS') and os.path.isfile(infile):
+        if not quiet:
+            print("Importing from FITS.")
+        temp_outfile = outfile+'.temp'
+        if os.path.isdir(temp_outfile):
+            if not overwrite:
+                if not quiet:
+                    print("Temporary output file already present and overwrite false. Returning.")
+                return(False)
+            os.system('rm -rf '+temp_outfile)
+        
+        importfits(fitsimage=infile, imagename=temp_outfile,
+                   zeroblanks=True, overwrite=overwrite)
+        used_temp_outfile = True
+
+    if used_temp_outfile:
+        casa.imsubimage(
+            imagename=temp_outfile, 
+            outfile=outfile,
+            dropdeg=True)
+        os.system('rm -rf '+temp_outfile)
+    else:
+        casa.imsubimage(
+            imagename=infile, 
+            outfile=outfile,
+            dropdeg=True)
+    
+    return(True)
+
 def primary_beam_correct(
     infile=None, 
     pbfile=None, 
