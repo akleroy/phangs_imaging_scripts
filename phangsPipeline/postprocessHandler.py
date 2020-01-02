@@ -296,7 +296,8 @@ class PostProcessHandler:
         do_round = False,
         do_singledish = False,
         do_feather = False,
-        do_sanitize = False,
+        do_compress = False,
+        do_convert = False,
         do_export = False,
         ):
         """
@@ -448,11 +449,11 @@ class PostProcessHandler:
                             outfile = postprocess_dir + fname
 
                             if not self._quiet:
-                                print()
+                                print(" ")
                                 print("Staging via ccr.copy_dropdeg: ")
                                 print("... from "+infile)
                                 print("... to "+outfile)
-                                print()
+                                print(" ")
                             
                             if not self._dry_run:
                                 ccr.copy_dropdeg(
@@ -470,12 +471,12 @@ class PostProcessHandler:
                         pbfile = postprocess_dir + pb_file
 
                         if not self._quiet:
-                            print()
+                            print(" ")
                             print("Primary beam correcting via ccr.primary_beam_correct: ")
                             print("... from "+infile)
                             print("... to "+outfile)
                             print("... using "+pbfile)
-                            print()
+                            print(" ")
 
                         if not self._dry_run:
                             ccr.primary_beam_corrrect(
@@ -489,44 +490,38 @@ class PostProcessHandler:
 
                     if do_round and config_type == 'interf':
                         
-                        for fname in [orig_file, pbcorr_file]:
-                            
-                            infile = postprocess_dir + fname
-                            if fname == orig_file:
-                                outfile = postprocess_dir + round_file
+                        infile = postprocess_dir + pbcorr_file
+                        outfile = postprocess_dir + pbcorr_round_file
 
-                            if fname == pbcorr_file:
-                                outfile = postprocess_dir + pbcorr_round_file
-
-                            if not self._quiet:
-                                print()
-                                print("Convolving to have a round beam via ccr.convolve_to_round_beam: ")
-                                print("... from "+infile)
-                                print("... to "+outfile)
-                                print()
+                        if not self._quiet:
+                            print(" ")
+                            print("Convolving to have a round beam via ccr.convolve_to_round_beam: ")
+                            print("... from "+infile)
+                            print("... to "+outfile)
+                            print(" ")
                         
-                            if not self._dry_run:
-                                ccr.convolve_to_round_beam(
-                                    infile=infile,
-                                    outfile=outfile,
-                                    overwrite=True,
-                                    quiet=self._quiet)
+                        if not self._dry_run:
+                            ccr.convolve_to_round_beam(
+                                infile=infile,
+                                outfile=outfile,
+                                overwrite=True,
+                                quiet=self._quiet)
 
                     # Stage the singledish data for feathering
 
                     if do_singledish and config_type == 'interf':
 
-                        template = postprocess_dir + orig_file
+                        template = postprocess_dir + pbcorr_round_file
                         infile = orig_sd_file
                         outfile = postprocess_dir + prepped_sd_file
 
                         if not self._quiet:
-                            print()
+                            print(" ")
                             print("Prepping single dish target for feather via cfr.prep_sd_for_feather: ")
                             print("... original file "+infile)
                             print("... prepped file "+outfile)
                             print("... template "+template)
-                            print()
+                            print(" ")
                         
                         if not self._dry_run:
                             cfr.prep_sd_for_feather(
@@ -543,8 +538,24 @@ class PostProcessHandler:
 
                     if do_feather and config_type == 'interf':
 
+                        interf_file = postprocess_dir + pbcorr_round_file
+                        sd_file = postprocess_dir + prepped_sd_file
+
+                        corresponding_feather_config = self._kh.get_feather_config_for_interf_config(
+                            interf_config=this_config
+                            )
+                            
+                        feather_file = postprocess_dir + self._kh.get_cube_filename(                            
+                            target = this_target,
+                            config = corresponding_feather_config,
+                            product = this_product,
+                            ext = 'pbcorr_round',
+                            casa = True,
+                            casaext = '.image'
+                            )
+
                         if not self._quiet:
-                            print()
+                            print(" ")
                             print("Feathering interferometric and single dish data using cfr.feather_two_cubes: ")
                             print("... interferometric data "+interf_file)
                             print("... single dish data "+sd_file)
@@ -554,7 +565,7 @@ class PostProcessHandler:
                                 
                             if not self._quiet:
                                 print("Apodizing using file "+apod_file)
-                                print()
+                                print(" ")
 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -572,7 +583,7 @@ class PostProcessHandler:
 
                             if not self._quiet:
                                 print("No apodization.")
-                                print()
+                                print(" ")
                                 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -590,93 +601,72 @@ class PostProcessHandler:
 
                     if do_compress:
 
-                        for fname in [round_file, pbcorr_round_file]:
+                        infile = postprocess_dir + pbcorr_round_file
+                        outfile = postprocess_dir + pbcorr_trimmed_file
 
-                            if fname == round_file:
-                                infile = postprocess_dir + round_file
-                                outfile = postprocess_dir + trimmed_file
+                        if not self._quiet:
+                            print(" ")
+                            print("Reducing cube volume using ccr.trim_cube: ")
+                            print("... original file "+infile)
+                            print("... output file "+outfile)
+                            print(" ")
 
-                            if fname == pbcorr_round_file:
-                                infile = postprocess_dir + pbcorr_round_file
-                                outfile = postprocess_dir + pbcorr_trimmed_file
-
-                            if not self._quiet:
-                                print()
-                                print("Reducing cube volume using ccr.trim_cube: ")
-                                print("... original file "+infile)
-                                print("... output file "+outfile)
-                                print()
-
-                            if not self._dry_run:
-                                ccr.trim_cube(
-                                    infile=infile,
-                                    outfile=outfile,
-                                    overwrite=True,
-                                    inplace=False,
-                                    min_pixerperbeam=3,
-                                    quiet=self._quiet)
+                        if not self._dry_run:
+                            ccr.trim_cube(
+                                infile=infile,
+                                outfile=outfile,
+                                overwrite=True,
+                                inplace=False,
+                                min_pixerperbeam=3,
+                                quiet=self._quiet)
 
                     # Change units from Jy/beam to Kelvin.
 
                     if do_convert:
 
-                        for fname in [trimmed_file, pbcorr_trimmed_file]:
+                        infile = postprocess_dir + pbcorr_trimmed_file
+                        outfile = postprocess_dir + pbcorr_trimmed_k_file
+                        
+                        if not self._quiet:
+                            print(" ")
+                            print("Converting cube units using ccr.convert_jytok : ")
+                            print("... original file "+infile)
+                            print("... output file "+outfile)
+                            print(" ")
 
-                            if fname == trimmed_file:
-                                infile = postprocess_dir + trimmed_file
-                                outfile = postprocess_dir + trimmed_k_file
-
-                            if fname == pbcorr_trimmed_file:
-                                infile = postprocess_dir + pbcorr_round_file
-                                outfile = postprocess_dir + pbcorr_trimmed_k_file
-
-                            if not self._quiet:
-                                print()
-                                print("Converting cube units using ccr.convert_jytok : ")
-                                print("... original file "+infile)
-                                print("... output file "+outfile)
-                                print()
-
-                            if not self._dry_run:
-                                ccr.convert_jytok(
-                                    infile=infile,
-                                    outfile=outfile,
-                                    overwrite=True,
-                                    inplace=False,
-                                    quiet=self._quiet)
+                        if not self._dry_run:
+                            ccr.convert_jytok(
+                                infile=infile,
+                                outfile=outfile,
+                                overwrite=True,
+                                inplace=False,
+                                quiet=self._quiet)
 
                     # Export to FITS and clean up output
 
                     if do_export:
 
-                        for fname in [trimmed_k_file, pbcorr_trimmed_k_file]:
-                            
-                            if fname == trimmed_k_file:
-                                infile = postprocess_dir + trimmed_k_file
-                                outfile = postprocess_dir + trimmed_k_fits
+                        infile = postprocess_dir + pbcorr_trimmed_k_file
+                        outfile = postprocess_dir + pbcorr_trimmed_k_fits
 
-                            if fname == pbcorr_trimmed_k_file:
-                                infile = postprocess_dir + pbcorr_trimmed_k_file
-                                outfile = postprocess_dir + pbcorr_trimmed_k_fits
+                        if not self._quiet:
+                            print(" ")
+                            print("Export to FITS and clean up header using ccr.export_and_cleanup: ")
+                            print("... original file "+infile)
+                            print("... prepped file "+outfile)
+                            print(" ")
 
-                            if not self._quiet:
-                                print()
-                                print("Export to FITS and clean up header using ccr.export_and_cleanup: ")
-                                print("... original file "+infile)
-                                print("... prepped file "+outfile)
-                                print()
-
-                            if not self._dry_run:
-                                ccr.export_and_cleanup(
-                                    infile=infile,
-                                    outfile=outfile,
-                                    overwrite=False,    
-                                    remove_cards=[],
-                                    add_cards=[],
-                                    add_history=[],
-                                    zap_history=True,
-                                    roundbeam_tol=0.01,
-                                    quiet=self._quiet)
+                        if not self._dry_run:
+                            ccr.export_and_cleanup(
+                                infile=infile,
+                                outfile=outfile,
+                                overwrite=False,    
+                                remove_cards=[],
+                                add_cards=[],
+                                add_history=[],
+                                zap_history=True,
+                                roundbeam_tol=0.01,
+                                quiet=self._quiet)
                             
         return()
 
@@ -702,9 +692,9 @@ class PostProcessHandler:
         Apply primary beam correction to the interferometer data.
         """
  
-       self._master_loop(do_pbcorr=True)
-
-       return()
+        self._master_loop(do_pbcorr=True)
+        
+        return()
 
     def convolve_to_round_beam(
         self

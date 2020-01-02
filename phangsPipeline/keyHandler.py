@@ -106,6 +106,7 @@ class KeyHandler:
 
         self._build_whole_target_list()
         self._map_targets_to_mosaics()
+        self._map_interf_and_feather_configs()
 
         if not self._quiet:
             print("")
@@ -681,7 +682,7 @@ class KeyHandler:
 
             if this_type == "feather_config":
                 arrays_to_include = this_params
-                self._config_dict[this_type][this_value]['interf_configs'] = \
+                self._config_dict[this_type][this_value]['interf_config'] = \
                     arrays_to_include
 
             if this_type == "line_product":
@@ -975,6 +976,29 @@ class KeyHandler:
         if not self._quiet:
             print("Total of "+str(len(self._mosaic_assign_dict.keys()))+ \
                       " targets assigned to mosaics.")
+
+        return()
+
+    def _map_interf_and_feather_configs(self):
+        """
+        Map interferferometric and feather configurations to one another.
+        """
+
+        if 'interf_config' not in self._config_dict.keys():
+            return()
+
+        # Initialize
+        for interf_config in self._config_dict['interf_config'].keys():
+            
+            self._config_dict['interf_config']['feather_config'] = None
+            
+            if 'feather_config' not in self._config_dict.keys():
+                continue
+            
+            for feather_config in self._config_dict['feather_config'].keys():
+                if self._config_dict['feather_config'][feather_config]['interf_config'] != interf_config:
+                    continue
+                self._config_dict['interf_config'][interf_config]['feather_config'] = feather_config
 
         return()
 
@@ -1409,7 +1433,55 @@ class KeyHandler:
                 print("Did not find single dish data for "+target+" "+product)
             return(None)
         
-        return(last_found_found)
+        return(last_found_file)
+
+    def get_feather_config_for_interf_config(
+        self,
+        interf_config=None
+        ):
+        """
+        Get the interferometric configuration to go with a feather configuration.
+        """
+        
+        if interf_config is None:
+            return(None)
+
+        if 'interf_config' not in self._config_dict.keys():
+            return(None)
+
+        interf_config_dict = self._config_dict['interf_config']
+
+        if interf_config not in interf_config_dict.keys():
+            return(None)
+
+        if 'feather_config' not in interf_config_dict[interf_config].keys():
+            return(None)
+
+        return(interf_config_dict[interf_config]['feather_config'])
+
+    def get_interf_config_for_feather_config(
+        self,
+        feather_config=None
+        ):
+        """
+        Get the feather configuration to go with an interferometric configuration.
+        """
+        
+        if feather_config is None:
+            return(None)
+
+        if 'interf_config' not in self._config_dict.keys():
+            return(None)
+
+        feather_config_dict = self._config_dict['feather_config']
+
+        if feather_config not in feather_config_dict.keys():
+            return(None)
+
+        if 'interf_config' not in feather_config_dict[feather_config].keys():
+            return(None)
+
+        return(feather_config_dict[feather_config]['interf_config'])
 
 #endregion
     
