@@ -285,6 +285,194 @@ class PostProcessHandler:
 
 #endregion
 
+#region Master loop
+
+    def _master_loop(
+        self,
+        do_stage = False,
+        do_pbcorr = False,
+        do_round = False,
+        do_singledish = False,
+        do_feather = False,
+        do_units = False,
+        do_export = False,
+        ):
+        """
+        The master loop that steps over all targets, products, and configurations.
+        """              
+        
+        if self._targets_list is None or self._interf_configs_list is None:            
+            if not self._quiet:
+                print("MASTER LOOP: Need a target and interferometer configuration list. Returning.")
+            return(None)
+    
+        for this_target in self._targets_list:
+            for this_config in self._interf_configs_list:
+
+                imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                
+                postprocess_dir = self._kh.get_postprocess_dir_for_target(this_target)
+                
+                for this_product in self._all_products():
+
+                    if this_product is None:
+                        continue
+
+                    orig_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = None,
+                        casa = True,
+                        casaext = '.image')
+
+                    pb_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = None,
+                        casa = True,
+                        casaext = '.pb')
+
+                    pbcorr_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'pbcorr',
+                        casa = True,
+                        casaext = '.image')
+
+                    round_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'round',
+                        casa = True,
+                        casaext = '.image')
+
+                    pbcorr_round_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'pbcorr_round',
+                        casa = True,
+                        casaext = '.image')
+
+                    round_k_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'round_k',
+                        casa = True,
+                        casaext = '.image')
+
+                    pbcorr_round_k_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'pbcorr_round_k',
+                        casa = True,
+                        casaext = '.image')
+
+                    # Copy the data from the original location to the
+                    # postprocessing directories.
+
+                    if do_stage:
+
+                        for fname in [orig_file, pb_file]:
+                            
+                            infile = imaging_dir + fname
+                            outfile = postprocess_dir + fname
+
+                            if not self._quiet:
+                                print()
+                                print("Staging via ccr.copy_dropdeg: ")
+                                print("... from "+infile)
+                                print("... to "+outfile)
+                                print()
+                            
+                            if not self._dry_run:
+                                ccr.copy_dropdeg(
+                                    infile=infile,
+                                    outfile=outfile,
+                                    overwrite=True,
+                                    quiet=self._quiet)
+
+                    # Apply the primary beam correction to the data.
+
+                    if do_pbcorr:
+
+                        infile = postprocess_dir + orig_file
+                        outfile = postprocess_dir + pbcorr_file
+                        pbfile = postprocess_dir + pb_file
+
+                        if not self._quiet:
+                            print()
+                            print("Primary beam correcting via ccr.primary_beam_correct: ")
+                            print("... from "+infile)
+                            print("... to "+outfile)
+                            print("... using "+pbfile)
+                            print()
+
+                        if not self._dry_run:
+                            ccr.primary_beam_corrrect(
+                                infile=infile,
+                                outfile=outfile,
+                                pbfile=pbfile,
+                                overwrite=True,
+                                quiet=self._quiet)
+
+                    # Convolve the data to have a round beam.
+
+                    if do_round:
+                        
+                        for fname in [orig_file, pbcorr_file]:
+                            
+                            infile = postprocess_dir + fname
+                            if fname == orig_file:
+                                outfile = postprocess_dir + round_file
+
+                            if fname == pbcorr_file:
+                                outfile = postprocess_dir + pbcorr_round_file
+
+                            if not self._quiet:
+                                print()
+                                print("Convolving to have a round beam via ccr.convolve_to_round_beam: ")
+                                print("... from "+infile)
+                                print("... to "+outfile)
+                                print()
+                        
+                            if not self._dry_run:
+                                ccr.convolve_to_round_beam(
+                                    infile=infile,
+                                    outfile=outfile,
+                                    overwrite=True,
+                                    quiet=self._quiet)
+
+                    # Stage the singledish data for feathering
+
+                    if do_singledish:
+                        pass
+                    
+                    # Feather the single dish and interferometer data
+
+                    if do_feather:
+                        pass
+                    
+                    # Convert units
+
+                    if do_units:
+                        pass
+
+                    # Export to FITS and clean up output
+
+                    if do_export:
+                        pass
+                    
+        return()
+
+#endregion
+
 #region Stage and correct data
 
     def stage_interferometer_data(
@@ -294,65 +482,7 @@ class PostProcessHandler:
         Copy the interferometer data to start post-processing.
         """              
         
-        if self._targets_list is None or self._interf_configs_list is None:            
-            if not self._quiet:
-                print("Need a target and interferometer configuration list. Returning.")
-            return(None)
-    
-        for this_target in self._targets_list:
-            for this_config in self._interf_configs_list:
-
-                indir = self._kh.get_imaging_dir_for_target(this_target)
-                outdir = self._kh.get_postprocess_dir_for_target(this_target)
-                
-                for this_product in self._all_products():
-
-                    if this_product is None:
-                        continue
-
-                    # Copy the image file
-
-                    fname = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = None,
-                        casa = True,
-                        casaext = '.image')
-
-                    infile = indir + fname
-                    outfile = outdir + fname
-                    
-                    if self._dry_run:
-                        print("DRY_RUN: I would call ccr.copy_dropdeg from "+infile+" to "+outfile)
-                    else:
-                        ccr.copy_dropdeg(
-                            infile=infile,
-                            outfile=outfile,
-                            overwrite=True,
-                            quiet=self._quiet)
-
-                    # Also copy the primary beam response
-
-                    fname = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = None,
-                        casa = True,
-                        casaext = '.pb')
-
-                    infile = indir + fname
-                    outfile = outdir + fname
-
-                    if self._dry_run:
-                        print("DRY_RUN: I would call ccr.copy_dropdeg from "+infile+" to "+outfile)
-                    else:                    
-                        ccr.copy_dropdeg(
-                            infile=infile,
-                            outfile=outfile,
-                            overwrite=True,
-                            quiet=self._quiet)
+        self._master_loop(do_stage=True)
 
         return()
 
@@ -363,35 +493,16 @@ class PostProcessHandler:
         Apply primary beam correction to the interferometer data.
         """
  
-        if self._targets_list is None or self._interf_configs_list is None:            
-            if not self._quiet:
-                print("Need a target and interferometer configuration list. Returning.")
-            return(None)
-    
-        for this_target in self._targets_list:
-            for this_config in self._interf_configs_list:
-                if self._line_products_list is None:
-                    continue
-                
-                for this_product in self._line_products_list:
-                    pass
+       self._master_loop(do_pbcorr=True)
 
-        for this_target in self._targets_list:
-            for this_config in self._interf_configs_list:
-                if self._cont_products_list is None:
-                    continue
-
-                for this_product in self._cont_products_list:
-                    pass
-
-        return()
+       return()
 
     def convolve_to_round_beam(
         self
         ):
         """
         Convolve the interferometer data to have a round beam.
-        """
+        """                    
 
         if self._targets_list is None or self._interf_configs_list is None:            
             if not self._quiet:
