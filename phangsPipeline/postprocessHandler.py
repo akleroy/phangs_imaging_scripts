@@ -294,7 +294,7 @@ class PostProcessHandler:
         do_round = False,
         do_singledish = False,
         do_feather = False,
-        do_units = False,
+        do_cleanup = False,
         do_export = False,
         ):
         """
@@ -307,16 +307,35 @@ class PostProcessHandler:
             return(None)
     
         for this_target in self._targets_list:
-            for this_config in self._interf_configs_list:
 
-                imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-                
-                postprocess_dir = self._kh.get_postprocess_dir_for_target(this_target)
-                
-                for this_product in self._all_products():
+            imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+            
+            postprocess_dir = self._kh.get_postprocess_dir_for_target(this_target)
 
-                    if this_product is None:
-                        continue
+            # Loop over line and continuum products
+
+            for this_product in self._all_products():
+                
+                if this_product is None:
+                    continue
+                
+                # Loop over interferometric configurations only
+                
+                full_config_list = []
+                config_type_list = []
+
+                for this_config in self._interf_configs_list:
+                    full_config_list.append(this_config)
+                    config_type_list.append('interf')
+
+                for this_config in self._feather_configs_list:
+                    full_config_list.append(this_config)
+                    config_type_list.append('feather')
+
+                for ii in range(len(full_config_list)):
+
+                    this_config = full_config_list[ii]
+                    config_type = config_type_list[ii]
 
                     orig_file = self._kh.get_cube_filename(
                         target = this_target,
@@ -333,6 +352,10 @@ class PostProcessHandler:
                         ext = None,
                         casa = True,
                         casaext = '.pb')
+
+                    sd_file = self._kh.get_singledish_filename(
+                        target = this_target,
+                        product = this_product)
 
                     pbcorr_file = self._kh.get_cube_filename(
                         target = this_target,
@@ -377,7 +400,7 @@ class PostProcessHandler:
                     # Copy the data from the original location to the
                     # postprocessing directories.
 
-                    if do_stage:
+                    if do_stage and config_type == 'interf':
 
                         for fname in [orig_file, pb_file]:
                             
@@ -400,7 +423,7 @@ class PostProcessHandler:
 
                     # Apply the primary beam correction to the data.
 
-                    if do_pbcorr:
+                    if do_pbcorr and config_type == 'interf':
 
                         infile = postprocess_dir + orig_file
                         outfile = postprocess_dir + pbcorr_file
@@ -424,7 +447,7 @@ class PostProcessHandler:
 
                     # Convolve the data to have a round beam.
 
-                    if do_round:
+                    if do_round and config_type == 'interf':
                         
                         for fname in [orig_file, pbcorr_file]:
                             
@@ -451,24 +474,50 @@ class PostProcessHandler:
 
                     # Stage the singledish data for feathering
 
-                    if do_singledish:
-                        pass
-                    
+                    if do_singledish and config_type == 'interf':
+
+                        template = postprocess_dir + orig_file
+                        infile = sdfile
+                        outfile = postprocess_dir + prepped_sd_file
+
+                        if not self._quiet:
+                            print()
+                            print("Prepping single dish target for feather via cfr.prep_sd_for_feather: ")
+                            print("... original file "+infile)
+                            print("... prepped file "+outfile)
+                            print("... template "+template)
+                            print()
+                        
+                        if not self._dry_run:
+                            cfr.prep_sd_for_feather(
+                                sdfile_in=infile,
+                                sdfile_out=outfile,
+                                interf_file=template,
+                                doimport=True,
+                                checkunits=True,
+                                doalign=True,
+                                overwrite=True,
+                                quiet=self._quiet)
+                            
                     # Feather the single dish and interferometer data
 
-                    if do_feather:
-                        pass
-                    
-                    # Convert units
+                    if do_feather and config_type == 'interf':
 
-                    if do_units:
+                        pass
+                                
+                    # "Clean up" - meaning reduce volume and change
+                    # units.
+
+                    if do_cleanup:
+
                         pass
 
                     # Export to FITS and clean up output
 
                     if do_export:
+
                         pass
-                    
+
         return()
 
 #endregion
@@ -504,29 +553,10 @@ class PostProcessHandler:
         Convolve the interferometer data to have a round beam.
         """                    
 
-        if self._targets_list is None or self._interf_configs_list is None:            
-            if not self._quiet:
-                print("Need a target and interferometer configuration list. Returning.")
-            return(None)
-    
-        for this_target in self._targets_list:
-            for this_config in self._interf_configs_list:
-                if self._line_products_list is None:
-                    continue
-                
-                for this_product in self._line_products_list:
-                    pass
-
-        for this_target in self._targets_list:
-            for this_config in self._interf_configs_list:
-                if self._cont_products_list is None:
-                    continue
-
-                for this_product in self._cont_products_list:
-                    pass
+        self._master_loop(do_round=True)
 
         return()
-
+        
     def stage_singledish_data(
         self
         ):

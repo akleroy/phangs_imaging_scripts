@@ -31,33 +31,41 @@ def prep_sd_for_feather(
     doimport=True,
     checkunits=True,
     doalign=True,
-    overwrite=False):
+    overwrite=False,
+    quiet=False):
     """
     Prepare single dish data for feathering. Import the data from
     FITS, check the units to make sure that they are in Jy/beam, and
     align the single dish data to the interferometric grid.
     """
 
+    this_stub = 'PREP_SD_FOR_FEATHER: '
+
     # Check inputs
     
     if (os.path.isdir(interf_file) == False):
-        print("Interferometric file not found: "+interf_file)
+        if not quiet:
+            print(this_stub+"Interferometric file not found: "+interf_file)
         return(None)
 
     if (os.path.isdir(sdfile_in) == False) and (os.path.isfile(sdfile_in) == False):
-        print("Single dish file not found: "+sdfile_in)
+        if not quiet:
+            print(this_stub+"Single dish file not found: "+sdfile_in)
         return(None)
 
     if sdfile_out is None:
-        print("Output single dish file name not supplied via sdfile_out=")
+        if not quiet:
+            print(this_stub+"Output single dish file name not supplied via sdfile_out=")
         return(None)
 
-    if (os.path.isdir(sdfile_out+'.temp')):
+    tempfile_name = sdfile_out+'.temp'
+    if (os.path.isdir(tempfile_name)):
         if not overwrite:
-            print("Temporary file is present but overwrite set to False. Returning.")
+            if not quiet:
+                print(this_stub+"Temporary file is present but overwrite set to False - "+tempfile_name)
             return(None)
         else:
-            os.system('rm -rf '+sdfile_out+'.temp')
+            os.system('rm -rf '+tempfile_name)
 
     current_file = sdfile_in    
 
@@ -65,12 +73,19 @@ def prep_sd_for_feather(
     
     if doimport:
         if (sdfile_in[-4:] == 'FITS') and os.path.isfile(sdfile_in):
-            print("Importing from FITS.")
-            if overwrite:
-                os.system('rm -rf '+sdfile_out+'.temp')
-            importfits(fitsimage=sdfile_in, imagename=sdfile_out+'.temp',
+            if not quiet:
+                print(this_stub+"Importing from FITS.")
+            if (os.path.isdir(tempfile_name)):
+                if overwrite:
+                    os.system('rm -rf '+tempfile_name)
+                else:
+                    if not quiet:
+                        print(this_stub+"Temporary file is present but overwrite set to False - "+tempfile_name)
+                    return(None)
+                    
+            importfits(fitsimage=sdfile_in, imagename=tempfile_name,
                        zeroblanks=True, overwrite=overwrite)
-            current_file = sdfile_out+'.temp'
+            current_file = tempfile_name
 
     # Check units on the singledish file.
 
@@ -78,23 +93,28 @@ def prep_sd_for_feather(
         hdr = casa.imhead(current_file, mode='list')
         unit = hdr['bunit']
         if unit == 'K':
-            print("Unit is Kelvin. Converting.")
-            convert_ktojy(infile=current_file, 
-                          overwrite=overwrite, inplace=True)
+            if not quiet:
+                print(this_stub+"Unit is Kelvin. Converting.")
+            convert_ktojy(
+                infile=current_file, 
+                overwrite=overwrite, 
+                inplace=True)
 
     # Align the single dish data to the interferometric data
 
     if doalign:
-        casa.imregrid(imagename=current_file,
-                      template=interf_in,
-                      output=sdfile_out,
-                      asvelocity=True,
-                      axes=[-1],
-                      interpolation='cubic',
-                      overwrite=overwrite)
+        casa.imregrid(
+            imagename=current_file,
+            template=interf_in,
+            output=sdfile_out,
+            asvelocity=True,
+            axes=[-1],
+            interpolation='cubic',
+            overwrite=overwrite)
 
-    if overwrite:
-        os.system('rm -rf '+sdfile_out+'.temp')
+    if (os.path.isdir(tempfile_name)):
+        if overwrite:
+            os.system('rm -rf '+tempfile_name)
 
     return(None)
 
@@ -106,24 +126,30 @@ def feather_two_cubes(
     apod_file=None,
     apod_cutoff=-1.0,
     blank=False,
-    overwrite=False):
+    overwrite=False,
+    quiet=False):
     """
     Feather the interferometric and total power data. Optionally,
     first apply some steps to homogenize the two data sets.
     """
 
+    this_stub = 'FEATHER_TWO_CUBES: '
+
     if (os.path.isdir(sd_file) == False):
-        print("Single dish file not found: "+sd_file)
-        return
+        if not quiet:
+            print(this_stub+"Single dish file not found: "+sd_file)
+        return(False)
         
     if (os.path.isdir(interf_file) == False):
-        print("Interferometric file not found: "+interf_file)
-        return
+        if not quiet:
+            print(this_stub+"Interferometric file not found: "+interf_file)
+        return(False)
 
     if apodize:
         if (os.path.isdir(apod_file) == False):
-            print("Apodization requested, but file not found: "+apod_file)
-            return
+            if not quiet:
+                print(this_stub+"Apodization requested, but file not found: "+apod_file)
+            return(False)
 
     os.system('rm -rf '+sd_file+'.temp')
     os.system('rm -rf '+interf_file+'.temp')
@@ -228,5 +254,7 @@ def feather_two_cubes(
     os.system('rm -rf '+sd_file+'.temp.temp')
     os.system('rm -rf '+interf_file+'.temp.temp')
     os.system('rm -rf '+out_file+'.temp.temp')
+
+    return(True)
 
 #endregion

@@ -1361,6 +1361,56 @@ class KeyHandler:
 
         return(filename)
 
+    def get_singledish_filename(
+        self, 
+        target=None, 
+        product=None,
+        ):
+        """
+        Return the single dish filename for a target and product combination.
+        """
+        
+        if self._singledish_dict is None:
+            return(None)
+
+        if target == None:
+            if not self._quiet:
+                print("Please specify a target.")
+            return(None)
+
+        if target not in self._singledish_dict.keys():
+            print("Not in single dish keys: "+target)
+            return(None)
+
+        this_dict = self._singledish_dict[target]
+        
+        if product not in this_dict.keys():
+            print("Product not found for "+target+" : "+product)
+            return(None)            
+        
+        found = False
+        found_count = 0
+        last_found_file = None
+        for this_root in self._singledish_roots:
+            this_fname = this_root + this_dict[product]
+            if os.path.isfile(this_fname) or os.path.isdir(this_file):
+                found = True
+                found_count += 1
+                last_found_file = this_fname
+        
+        if found_count > 1:
+            if not self._quiet:                        
+                print("Found multiple copies of single dish data for "+target+" "+product)
+                print("Returning last one.")
+            return(last_found_file)
+        
+        if found_count == 0:
+            if not self._quiet:                        
+                print("Did not find single dish data for "+target+" "+product)
+            return(None)
+        
+        return(last_found_found)
+
 #endregion
     
 #region Manipulate files and file structure
