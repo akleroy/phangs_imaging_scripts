@@ -349,27 +349,35 @@ def trim_cube(
     across the beam. Used to reduce the volume of cubes.
     """
     
+    this_stub = 'TRIM_CUBE: '
+
     if infile is None or outfile is None:
-        print("TRIM_CUBE: Missing required input.")
-        return
+        if not quiet:
+            print(this_stub+"Missing required input.")
+        return(False)
     
     if os.path.isdir(infile) == False:
-        print("TRIM_CUBE: Input file not found: "+infile)
-        return
+        if not quiet:
+            print(this_stub+"Input file not found: "+infile)
+        return(False)
 
     # First, rebin if needed
     hdr = casa.imhead(infile)
     if (hdr['axisunits'][0] != 'rad'):
-        print("ERROR: Based on CASA experience. I expected units of radians.")
-        print("I did not find this. Returning. Adjust code or investigate file "+infile)
-        return
+        if not quiet:
+            print(this_stub+"ERROR: Based on CASA experience. I expected units of radians.")
+            print(this_stub+"I did not find this. Returning.")
+            print(this_stub+"Adjust code or investigate file "+infile)
+        return(False)
 
     pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
     if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-        print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
-        print("I did not find this. Returning. Adjust code or investigate file "+infile)
-        return    
+        if not quiet:
+            print(this_stub+"ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
+            print(this_stub+"I did not find this. Returning.")
+            print(this_stub+"Adjust code or investigate file "+infile)
+        return(False)
     bmaj = hdr['restoringbeam']['major']['value']    
     
     pix_per_beam = bmaj*1.0 / pixel_as*1.0
@@ -410,8 +418,9 @@ def trim_cube(
     box_string = ''+str(xmin)+','+str(ymin)+','+str(xmax)+','+str(ymax)
     chan_string = ''+str(zmin)+'~'+str(zmax)
 
-    print("... ... ... box selection: "+box_string)
-    print("... ... ... channel selection: "+chan_string)
+    if not quiet:
+        print(this_stub+"... box selection: "+box_string)
+        print(this_stub+"... channel selection: "+chan_string)
 
     if overwrite:
         os.system('rm -rf '+outfile)
@@ -424,7 +433,7 @@ def trim_cube(
     
     os.system('rm -rf '+outfile+'.temp')
 
-    return()
+    return(True)
     
 def export_and_cleanup(
     infile=None,
@@ -444,9 +453,18 @@ def export_and_cleanup(
     sense to overwrite it.
     """
     
+    this_stub = 'EXPORT_AND_CLEANUP: '
+
     if infile is None or outfile is None:
-        print("EXPORT_AND_CLEANUP: Missing required input.")
-        return
+        if not quiet:
+            print(this_stub+"Missing required input.")
+        return(False)
+
+    if os.path.isfile(outfile):
+        if not overwrite:
+            if not quiet:
+                print(this_stub+"Output exists and overwrite set to false - "+outfile)
+            return(False)
 
     casa.exportfits(imagename=infile, 
                     fitsimage=outfile,
@@ -506,8 +524,8 @@ def export_and_cleanup(
                 hdr['BMIN'] = bmaj
                 hdr['BPA'] = 0.0
             else:
-                print("Beam too asymmetric to round.")
-                print("... fractional deviation: "+str(frac_dev))
+                print(this_stub+"Beam too asymmetric to round.")
+                print(this_stub+"... fractional deviation: "+str(frac_dev))
     
     # Overwrite
 
