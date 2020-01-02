@@ -73,6 +73,58 @@ def copy_dropdeg(
     
     return(True)
 
+def align_to_target(
+    infile=None,
+    outfile=None,
+    template=None,
+    interpolation='cubic',
+    asvelocity=True,
+    overwrite=False,
+    axes=[-1],
+    quiet=False
+    ):
+    """
+    Align one cube to another, creating a copy. Right now a thin
+    wrapper to imregrid used mostly to avoid exposing CASA directly
+    into the postprocessHandler. Might evolve in the future.
+    """
+
+    this_stub = 'ALIGN_TO_TARGET: '
+    
+    if infile is None or template is None or outfile is None:
+        if not quiet:
+            print(this_stub+"Missing required input.")
+        return(False)
+
+    if os.path.isdir(infile) == False and os.path.isfile(infile) == False:
+        if not quiet:
+            print(this_stub+"Input file missing - "+infile)
+        return(False)
+
+    if os.path.isdir(template) == False and os.path.isfile(template) == False:
+        if not quiet:
+            print(this_stub+"Template file missing - "+template)
+        return(False)
+
+    if os.path.isfile(outfile) or os.path.isdir(outfile):
+        if overwrite:
+            os.system('rm -rf '+outfile)
+        else:            
+            if not quiet:
+                print(this_stub+"Output exists and overwrite set to false - "+outfile)
+            return(False)
+    
+    casa.imregrid(
+        imagename=infile,
+        template=template,
+        output=outfile,       
+        interpolation=interpolation,
+        asvelocity=asvelocity,
+        axes=axes,
+        overwrite=True)
+
+    return(True)
+
 def primary_beam_correct(
     infile=None, 
     pbfile=None, 
@@ -341,7 +393,7 @@ def trim_cube(
     outfile=None, 
     overwrite=False, 
     inplace=False, 
-    min_pixperbeam=3,
+    min_pixperbeam=3,    
     quiet=False):
     """
     Trim empty space from around the edge of a cube. Also rebin the
@@ -434,7 +486,7 @@ def trim_cube(
     os.system('rm -rf '+outfile+'.temp')
 
     return(True)
-    
+
 def export_and_cleanup(
     infile=None,
     outfile=None,

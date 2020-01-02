@@ -105,7 +105,7 @@ def prep_sd_for_feather(
     if doalign:
         casa.imregrid(
             imagename=current_file,
-            template=interf_in,
+            template=interf_file,
             output=sdfile_out,
             asvelocity=True,
             axes=[-1],

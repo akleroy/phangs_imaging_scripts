@@ -5,6 +5,7 @@ from phangsPipeline import postprocessHandler as pph
 # Instantiate handlers
 this_kh = kh.KeyHandler()
 this_pph = pph.PostProcessHandler(key_handler=this_kh, dry_run=True)
+this_pph.set_dry_run(False)
 
 # Set which data to process
 this_pph.set_interf_configs(only=['7m'])

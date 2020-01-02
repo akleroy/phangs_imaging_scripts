@@ -408,6 +408,14 @@ class PostProcessHandler:
                         casa = True,
                         casaext = '.image')
 
+                    trimmed_pb_file = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'trimmed',
+                        casa = True,
+                        casaext = '.pb')
+
                     trimmed_k_file = self._kh.get_cube_filename(
                         target = this_target,
                         config = this_config,
@@ -436,6 +444,13 @@ class PostProcessHandler:
                         config = this_config,
                         product = this_product,
                         ext = 'pbcorr_trimmed_k',
+                        casa = False)
+
+                    trimmed_pb_fits = self._kh.get_cube_filename(
+                        target = this_target,
+                        config = this_config,
+                        product = this_product,
+                        ext = 'trimmed_pb',
                         casa = False)
 
                     # Copy the data from the original location to the
@@ -479,7 +494,7 @@ class PostProcessHandler:
                             print(" ")
 
                         if not self._dry_run:
-                            ccr.primary_beam_corrrect(
+                            ccr.primary_beam_correct(
                                 infile=infile,
                                 outfile=outfile,
                                 pbfile=pbfile,
@@ -569,7 +584,7 @@ class PostProcessHandler:
 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
-                                    interf_in=interf_file,
+                                    interf_file=interf_file,
                                     sd_file=sd_file,
                                     out_file=feather_file,
                                     apodize=True,
@@ -587,7 +602,7 @@ class PostProcessHandler:
                                 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
-                                    interf_in=interf_file,
+                                    interf_file=interf_file,
                                     sd_file=sd_file,
                                     out_file=feather_file,
                                     apodize=False,
@@ -619,6 +634,27 @@ class PostProcessHandler:
                                 inplace=False,
                                 min_pixerperbeam=3,
                                 quiet=self._quiet)
+
+                        infile_pb = postprocess_dir + pb_file
+                        outfile_pb = postprocess_dir + trimmed_pb_file
+                        template = outfile
+
+                        if not self._quiet:
+                            print(" ")
+                            print("Aligning primary beam image to new astrometry: ")
+                            print("... original file "+infile_pb)
+                            print("... output file "+outfile_pb)
+                            print("... template "+template)
+                            print(" ")
+
+                        if not self._dry_run:
+                            ccr.align_to_target(
+                                infile=infile_pb,
+                                outfile=outfile_pb,
+                                template=template,
+                                interpolation='cubic',
+                                quiet=self._quiet
+                                )
 
                     # Change units from Jy/beam to Kelvin.
 
