@@ -632,7 +632,7 @@ class PostProcessHandler:
                                 outfile=outfile,
                                 overwrite=True,
                                 inplace=False,
-                                min_pixerperbeam=3,
+                                min_pixperbeam=3,
                                 quiet=self._quiet)
 
                         infile_pb = postprocess_dir + pb_file
