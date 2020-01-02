@@ -9,6 +9,7 @@ this_pph.set_dry_run(False)
 
 # Set which data to process
 this_pph.set_interf_configs(only=['7m'])
+this_pph.set_feather_configs(only=['7m+tp'])
 this_pph.set_line_products(only=['co21'])
 this_pph.set_no_cont(True)
 this_pph.set_targets(only=['ngc3521_1'])

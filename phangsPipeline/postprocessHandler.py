@@ -637,7 +637,7 @@ class PostProcessHandler:
 
                         infile_pb = postprocess_dir + pb_file
                         outfile_pb = postprocess_dir + trimmed_pb_file
-                        template = outfile
+                        template = postprocess_dir + pbcorr_trimmed_file
 
                         if not self._quiet:
                             print(" ")
@@ -653,6 +653,7 @@ class PostProcessHandler:
                                 outfile=outfile_pb,
                                 template=template,
                                 interpolation='cubic',
+                                overwrite=True,
                                 quiet=self._quiet
                                 )
 
@@ -685,22 +686,40 @@ class PostProcessHandler:
                         infile = postprocess_dir + pbcorr_trimmed_k_file
                         outfile = postprocess_dir + pbcorr_trimmed_k_fits
 
+                        pb_infile = postprocess_dir + trimmed_pb_file
+                        pb_outfile = postprocess_dir + trimmed_pb_fits
+
                         if not self._quiet:
                             print(" ")
                             print("Export to FITS and clean up header using ccr.export_and_cleanup: ")
-                            print("... original file "+infile)
-                            print("... prepped file "+outfile)
+                            print("... input cube "+infile)
+                            print("... output cube "+outfile)
+                            print("... input primary beam "+pb_infile)
+                            print("... output primary beam "+pb_outfile)
                             print(" ")
 
                         if not self._dry_run:
                             ccr.export_and_cleanup(
                                 infile=infile,
                                 outfile=outfile,
-                                overwrite=False,    
+                                overwrite=True,    
                                 remove_cards=[],
                                 add_cards=[],
                                 add_history=[],
                                 zap_history=True,
+                                round_beam=True,
+                                roundbeam_tol=0.01,
+                                quiet=self._quiet)
+
+                            ccr.export_and_cleanup(
+                                infile=pb_infile,
+                                outfile=pb_outfile,
+                                overwrite=True,    
+                                remove_cards=[],
+                                add_cards=[],
+                                add_history=[],
+                                zap_history=True,
+                                round_beam=False,
                                 roundbeam_tol=0.01,
                                 quiet=self._quiet)
                             
