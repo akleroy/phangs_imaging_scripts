@@ -318,7 +318,7 @@ def convert_jytok(
     
     jytok = calc_jytok(hdr=hdr)
 
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(target_file)
     vals = myia.getchunk()
     vals *= jytok
@@ -376,7 +376,7 @@ def convert_ktojy(
     
     jytok = calc_jytok(hdr=hdr)
 
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(target_file)
     vals = myia.getchunk()
     vals *= 1.0/jytok
@@ -447,7 +447,7 @@ def trim_cube(
         os.system('cp -r '+infile+' '+outfile+'.temp')
 
     # Figure out the extent of the image inside the cube
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(outfile+'.temp')
     mask = myia.getchunk(getmask=True)    
     myia.close()
@@ -510,6 +510,11 @@ def export_and_cleanup(
     if infile is None or outfile is None:
         if not quiet:
             print(this_stub+"Missing required input.")
+        return(False)
+
+    if os.path.isfile(infile) == False:
+        if not quiet:
+            print(this_stub+"Input file does not exist - "+infile)
         return(False)
 
     if os.path.isfile(outfile):

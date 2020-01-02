@@ -31,6 +31,7 @@ def prep_sd_for_feather(
     doimport=True,
     checkunits=True,
     doalign=True,
+    dropdeg=True,
     overwrite=False,
     quiet=False):
     """
@@ -58,61 +59,86 @@ def prep_sd_for_feather(
             print(this_stub+"Output single dish file name not supplied via sdfile_out=")
         return(None)
 
+    current_infile = sdfile_in    
+    current_outfile = sdfile_out
     tempfile_name = sdfile_out+'.temp'
-    if (os.path.isdir(tempfile_name)):
-        if not overwrite:
-            if not quiet:
-                print(this_stub+"Temporary file is present but overwrite set to False - "+tempfile_name)
-            return(None)
-        else:
-            os.system('rm -rf '+tempfile_name)
-
-    current_file = sdfile_in    
-
+    
     # Import from FITS if needed.
     
     if doimport:
-        if (sdfile_in[-4:] == 'FITS') and os.path.isfile(sdfile_in):
+        if (current_infile[-4:] == 'FITS') and os.path.isfile(current_infile):
             if not quiet:
                 print(this_stub+"Importing from FITS.")
-            if (os.path.isdir(tempfile_name)):
+                    
+            importfits(
+                fitsimage=current_infile, 
+                imagename=current_outfile,
+                zeroblanks=True, 
+                overwrite=overwrite)
+            current_infile = current_outfile
+
+    if dropdeg:
+        if current_infile == current_outfile:
+            if os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name):
                 if overwrite:
                     os.system('rm -rf '+tempfile_name)
                 else:
-                    if not quiet:
-                        print(this_stub+"Temporary file is present but overwrite set to False - "+tempfile_name)
-                    return(None)
-                    
-            importfits(fitsimage=sdfile_in, imagename=tempfile_name,
-                       zeroblanks=True, overwrite=overwrite)
-            current_file = tempfile_name
+                    print(this_stub+"Temp file needed but exists and overwrite=False - "+tempfile_name)
+            os.system('cp -r '+current_infile+' '+tempfile_name)
+            current_infile = tempfile_name            
+            os.system('rm -rf '+current_outfile)
 
-    # Check units on the singledish file.
+        if os.path.isdir(current_outfile) or os.path.isfile(current_outfile):
+            if overwrite:
+                os.system('rm -rf '+current_outfile)
+            else:
+                print(this_stub+"Output file needed exists and overwrite=False - "+current_outfile)
 
-    if checkunits:
-        hdr = casa.imhead(current_file, mode='list')
-        unit = hdr['bunit']
-        if unit == 'K':
-            if not quiet:
-                print(this_stub+"Unit is Kelvin. Converting.")
-            convert_ktojy(
-                infile=current_file, 
-                overwrite=overwrite, 
-                inplace=True)
+        casa.imsubimage(
+            imagename=current_infile, 
+            outfile=current_outfile,
+            dropdeg=True)
+
+        current_infile = current_outfile
 
     # Align the single dish data to the interferometric data
 
     if doalign:
+        if current_infile == current_outfile:
+            if os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name):
+                if overwrite:
+                    os.system('rm -rf '+tempfile_name)
+                else:
+                    print(this_stub+"Temp file needed but exists and overwrite=False - "+tempfile_name)
+            os.system('cp -r '+current_infile+' '+tempfile_name)
+            current_infile = tempfile_name            
+            os.system('rm -rf '+current_outfile)
+
         casa.imregrid(
-            imagename=current_file,
+            imagename=current_infile,
             template=interf_file,
-            output=sdfile_out,
+            output=current_outfile,
             asvelocity=True,
             axes=[-1],
             interpolation='cubic',
             overwrite=overwrite)
 
-    if (os.path.isdir(tempfile_name)):
+        current_infile = current_outfile
+
+    # Check units on the singledish file.
+
+    if checkunits:
+        hdr = casa.imhead(current_outfile, mode='list')
+        unit = hdr['bunit']
+        if unit == 'K':
+            if not quiet:
+                print(this_stub+"Unit is Kelvin. Converting.")
+            convert_ktojy(
+                infile=current_outfile, 
+                overwrite=overwrite, 
+                inplace=True)
+
+    if (os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name)):
         if overwrite:
             os.system('rm -rf '+tempfile_name)
 
@@ -162,7 +188,7 @@ def feather_two_cubes(
         os.system('cp -rf '+interf_file+' '+current_interf_file)
         os.system('cp -rf '+sd_file+' '+current_sd_file)
 
-        myia = au.createCasaTool(iatool)
+        myia = au.createCasaTool(casa.iatool)
 
         myia.open(interf_file)
         interf_mask = myia.getchunk(getmask=True)
