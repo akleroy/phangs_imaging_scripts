@@ -495,6 +495,7 @@ def export_and_cleanup(
     add_cards=[],
     add_history=[],
     zap_history=True,
+    round_beam=True,
     roundbeam_tol=0.01,
     quiet=False):
     """
@@ -512,7 +513,7 @@ def export_and_cleanup(
             print(this_stub+"Missing required input.")
         return(False)
 
-    if os.path.isfile(infile) == False:
+    if os.path.isdir(infile) == False:
         if not quiet:
             print(this_stub+"Input file does not exist - "+infile)
         return(False)
@@ -525,8 +526,11 @@ def export_and_cleanup(
 
     casa.exportfits(imagename=infile, 
                     fitsimage=outfile,
-                    velocity=True, overwrite=True, dropstokes=True, 
-                    dropdeg=True, bitpix=-32)
+                    velocity=True, 
+                    overwrite=True, 
+                    dropstokes=True, 
+                    dropdeg=True, 
+                    bitpix=-32)
     
     # Clean up headers
 
@@ -570,19 +574,20 @@ def export_and_cleanup(
     # Round the beam recorded in the header if it lies within the
     # specified tolerance.
 
-    if roundbeam_tol > 0.0:
-        bmaj = hdr['BMAJ']
-        bmin = hdr['BMIN']
-        if bmaj != bmin:
-            frac_dev = np.abs(bmaj-bmin)/bmaj
-            if frac_dev <= roundbeam_tol:
-                print("Rounding beam.")
-                hdr['BMAJ'] = bmaj
-                hdr['BMIN'] = bmaj
-                hdr['BPA'] = 0.0
-            else:
-                print(this_stub+"Beam too asymmetric to round.")
-                print(this_stub+"... fractional deviation: "+str(frac_dev))
+    if round_beam:
+        if roundbeam_tol > 0.0:
+            bmaj = hdr['BMAJ']
+            bmin = hdr['BMIN']
+            if bmaj != bmin:
+                frac_dev = np.abs(bmaj-bmin)/bmaj
+                if frac_dev <= roundbeam_tol:
+                    print("Rounding beam.")
+                    hdr['BMAJ'] = bmaj
+                    hdr['BMIN'] = bmaj
+                    hdr['BPA'] = 0.0
+                else:
+                    print(this_stub+"Beam too asymmetric to round.")
+                    print(this_stub+"... fractional deviation: "+str(frac_dev))
     
     # Overwrite
 
