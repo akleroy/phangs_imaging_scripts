@@ -391,8 +391,6 @@ class PostProcessHandler:
                         target = this_target,
                         product = this_product)
 
-                    has_singledish = (orig_sd_file is not None)
-
                     # Primary beam corrected file
 
                     pbcorr_file = self._kh.get_cube_filename(
@@ -496,10 +494,24 @@ class PostProcessHandler:
                         ext = 'trimmed_pb',
                         casa = False)
 
+                    # Put together some flags indicating whether these
+                    # data have single dish, are a mosaic, are JUST a
+                    # mosaic (i.e., have no MS files / original
+                    # images), etc.
+
+                    has_imaging = os.path.isdir(imaging_dir + orig_file)
+                    has_singledish = (orig_sd_file is not None)
+                    is_mosaic = self._kh.is_target_linear_mosaic(this_target)
+                    if is_mosaic:                        
+                        mosaic_parts = self._kh.get_parts_for_linear_mosaic(this_target)
+                    else:
+                        mosaic_parts = None
+
                     # Copy the data from the original location to the
                     # postprocessing directories.
 
-                    if do_stage and config_type == 'interf':
+                    if do_stage and config_type == 'interf' and \
+                            has_imaging:
 
                         for fname in [orig_file, pb_file]:
                             
@@ -523,7 +535,8 @@ class PostProcessHandler:
 
                     # Apply the primary beam correction to the data.
 
-                    if do_pbcorr and config_type == 'interf':
+                    if do_pbcorr and config_type == 'interf' and \
+                            has_imaging:
 
                         infile = postprocess_dir + orig_file
                         outfile = postprocess_dir + pbcorr_file
@@ -548,7 +561,8 @@ class PostProcessHandler:
 
                     # Convolve the data to have a round beam.
 
-                    if do_round and config_type == 'interf':
+                    if do_round and config_type == 'interf' and \
+                            has_imaging:
                         
                         infile = postprocess_dir + pbcorr_file
                         outfile = postprocess_dir + pbcorr_round_file
@@ -570,7 +584,8 @@ class PostProcessHandler:
 
                     # Stage the singledish data for feathering
 
-                    if do_singledish and config_type == 'interf' and has_singledish:
+                    if do_singledish and config_type == 'interf' and \
+                            has_singledish and has_imaging:
 
                         template = postprocess_dir + pbcorr_round_file
                         infile = orig_sd_file
@@ -598,7 +613,8 @@ class PostProcessHandler:
                             
                     # Feather the single dish and interferometer data
 
-                    if do_feather and config_type == 'interf' and has_singledish:
+                    if do_feather and config_type == 'interf' and \
+                            has_singledish and has_imaging:
 
                         interf_file = postprocess_dir + pbcorr_round_file
                         sd_file = postprocess_dir + prepped_sd_file
