@@ -329,9 +329,11 @@ class PostProcessHandler:
         the other programs.
         """              
         
+        this_stub = 'POSTPROCESS MASTER LOOP: '
+
         if self._targets_list is None or self._interf_configs_list is None:            
             if not self._quiet:
-                print("MASTER LOOP: Need a target and interferometer configuration list. Returning.")
+                print(this_stub+"Need a target and interferometer configuration list.")
             return(None)
     
         for this_target in self._targets_list:
@@ -505,11 +507,12 @@ class PostProcessHandler:
                             outfile = postprocess_dir + fname
 
                             if not self._quiet:
-                                print(" ")
-                                print("Staging via ccr.copy_dropdeg: ")
-                                print("... from "+infile)
-                                print("... to "+outfile)
-                                print(" ")
+                                print(this_stub+" ")
+                                print(this_stub+"Staging data: ")
+                                print(this_stub+"... using ccr.copy_dropdeg")
+                                print(this_stub+"... from "+infile)
+                                print(this_stub+"... to "+outfile)
+                                print(this_stub+" ")
                             
                             if not self._dry_run:
                                 ccr.copy_dropdeg(
@@ -527,12 +530,13 @@ class PostProcessHandler:
                         pbfile = postprocess_dir + pb_file
 
                         if not self._quiet:
-                            print(" ")
-                            print("Primary beam correcting via ccr.primary_beam_correct: ")
-                            print("... from "+infile)
-                            print("... to "+outfile)
-                            print("... using "+pbfile)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Primary beam correcting:")
+                            print(this_stub+"... using ccr.primary_beam_correct")
+                            print(this_stub+"... from "+infile)
+                            print(this_stub+"... to "+outfile)
+                            print(this_stub+"... using "+pbfile)
+                            print(this_stub+" ")
 
                         if not self._dry_run:
                             ccr.primary_beam_correct(
@@ -550,11 +554,12 @@ class PostProcessHandler:
                         outfile = postprocess_dir + pbcorr_round_file
 
                         if not self._quiet:
-                            print(" ")
-                            print("Convolving to have a round beam via ccr.convolve_to_round_beam: ")
-                            print("... from "+infile)
-                            print("... to "+outfile)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Convolving to have a round beam:")
+                            print(this_stub+"... using ccr.convolve_to_round_beam")
+                            print(this_stub+"... from "+infile)
+                            print(this_stub+"... to "+outfile)
+                            print(this_stub+" ")
                         
                         if not self._dry_run:
                             ccr.convolve_to_round_beam(
@@ -572,12 +577,13 @@ class PostProcessHandler:
                         outfile = postprocess_dir + prepped_sd_file
 
                         if not self._quiet:
-                            print(" ")
-                            print("Prepping single dish target for feather via cfr.prep_sd_for_feather: ")
-                            print("... original file "+infile)
-                            print("... prepped file "+outfile)
-                            print("... template "+template)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Prepping single dish target for feathering:")
+                            print(this_stub+"... using cfr.prep_sd_for_feather")
+                            print(this_stub+"... original file "+infile)
+                            print(this_stub+"... prepped file "+outfile)
+                            print(this_stub+"... template "+template)
+                            print(this_stub+" ")
                         
                         if not self._dry_run:
                             cfr.prep_sd_for_feather(
@@ -611,11 +617,13 @@ class PostProcessHandler:
                             )
 
                         if not self._quiet:
-                            print(" ")
-                            print("Feathering interferometric and single dish data using cfr.feather_two_cubes: ")
-                            print("... interferometric data "+interf_file)
-                            print("... single dish data "+sd_file)
-                            print("... output "+feather_file)
+                            print(this_stub+" ")
+                            print(this_stub+"Feathering interferometric and single dish data:")
+                            print(this_stub+"... using cfr.feather_two_cubes")
+                            print(this_stub+"... interferometric data "+interf_file)
+                            print(this_stub+"... single dish data "+sd_file)
+                            print(this_stub+"... output "+feather_file)
+                            print(this_stub+"... feather method: "+self._feather_method)
 
                         # Feather has a couple of algorithmic choices
                         # associated with it. Run the method that the
@@ -624,8 +632,8 @@ class PostProcessHandler:
                         if self._feather_method == 'apodize':
                                 
                             if not self._quiet:
-                                print("Apodizing using file "+apod_file)
-                                print(" ")
+                                print(this_stub+"... apodizing using file "+apod_file)
+                                print(this_stub+" ")
 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -642,8 +650,7 @@ class PostProcessHandler:
                         if self._feather_method == 'pbcorr':
 
                             if not self._quiet:
-                                print("No apodization.")
-                                print(" ")
+                                print(this_stub+" ")
                                 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -665,11 +672,12 @@ class PostProcessHandler:
                         outfile = postprocess_dir + pbcorr_trimmed_file
 
                         if not self._quiet:
-                            print(" ")
-                            print("Reducing cube volume using ccr.trim_cube: ")
-                            print("... original file "+infile)
-                            print("... output file "+outfile)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Reducing cube volume:")
+                            print(this_stub+"... using ccr.trim_cube")
+                            print(this_stub+"... original file "+infile)
+                            print(this_stub+"... output file "+outfile)
+                            print(this_stub+" ")
 
                         if not self._dry_run:
                             ccr.trim_cube(
@@ -685,12 +693,13 @@ class PostProcessHandler:
                         template = postprocess_dir + pbcorr_trimmed_file
 
                         if not self._quiet:
-                            print(" ")
-                            print("Aligning primary beam image to new astrometry: ")
-                            print("... original file "+infile_pb)
-                            print("... output file "+outfile_pb)
-                            print("... template "+template)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Aligning primary beam image to new astrometry:")
+                            print(this_stub+"... using ccr.align_to_target")
+                            print(this_stub+"... original file "+infile_pb)
+                            print(this_stub+"... output file "+outfile_pb)
+                            print(this_stub+"... template "+template)
+                            print(this_stub+" ")
 
                         if not self._dry_run:
                             ccr.align_to_target(
@@ -710,11 +719,12 @@ class PostProcessHandler:
                         outfile = postprocess_dir + pbcorr_trimmed_k_file
                         
                         if not self._quiet:
-                            print(" ")
-                            print("Converting cube units using ccr.convert_jytok : ")
-                            print("... original file "+infile)
-                            print("... output file "+outfile)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Converting cube units:")
+                            print(this_stub+"... using ccr.convert_jytok")
+                            print(this_stub+"... original file "+infile)
+                            print(this_stub+"... output file "+outfile)
+                            print(this_stub+" ")
 
                         if not self._dry_run:
                             ccr.convert_jytok(
@@ -735,13 +745,14 @@ class PostProcessHandler:
                         pb_outfile = postprocess_dir + trimmed_pb_fits
 
                         if not self._quiet:
-                            print(" ")
-                            print("Export to FITS and clean up header using ccr.export_and_cleanup: ")
-                            print("... input cube "+infile)
-                            print("... output cube "+outfile)
-                            print("... input primary beam "+pb_infile)
-                            print("... output primary beam "+pb_outfile)
-                            print(" ")
+                            print(this_stub+" ")
+                            print(this_stub+"Export to FITS and clean up header: ")
+                            print(this_stub+"... using ccr.export_and_cleanup")
+                            print(this_stub+"... input cube "+infile)
+                            print(this_stub+"... output cube "+outfile)
+                            print(this_stub+"... input primary beam "+pb_infile)
+                            print(this_stub+"... output primary beam "+pb_outfile)
+                            print(this_stub+" ")
 
                         if not self._dry_run:
                             ccr.export_and_cleanup(
