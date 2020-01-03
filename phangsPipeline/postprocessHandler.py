@@ -174,6 +174,7 @@ class PostProcessHandler:
         Toggle the program to line products.
         """
         self._no_line = no_line
+        self._build_lists()
 
     def set_no_cont(
         self,
@@ -182,6 +183,7 @@ class PostProcessHandler:
         Toggle the program to skip continuum products.
         """
         self._no_cont = no_cont
+        self._build_lists()
 
     def set_dry_run(
         self,
@@ -340,6 +342,8 @@ class PostProcessHandler:
                     this_config = full_config_list[ii]
                     config_type = config_type_list[ii]
 
+                    # Original cube and primary beam file
+                    
                     orig_file = self._kh.get_cube_filename(
                         target = this_target,
                         config = this_config,
@@ -356,9 +360,15 @@ class PostProcessHandler:
                         casa = True,
                         casaext = '.pb')
 
+                    # Original single dish file
+
                     orig_sd_file = self._kh.get_singledish_filename(
                         target = this_target,
                         product = this_product)
+
+                    has_singledish = (orig_sd_file is not None)
+
+                    # Primary beam corrected file
 
                     pbcorr_file = self._kh.get_cube_filename(
                         target = this_target,
@@ -367,6 +377,8 @@ class PostProcessHandler:
                         ext = 'pbcorr',
                         casa = True,
                         casaext = '.image')
+
+                    # Files with round beams
 
                     round_file = self._kh.get_cube_filename(
                         target = this_target,
@@ -384,6 +396,8 @@ class PostProcessHandler:
                         casa = True,
                         casaext = '.image')
 
+                    # Aligned and imported single dish file
+
                     prepped_sd_file = self._kh.get_cube_filename(
                         target = this_target,
                         config = this_config,
@@ -391,6 +405,8 @@ class PostProcessHandler:
                         ext = 'singledish',
                         casa = True,
                         casaext = '.image')
+
+                    # Compressed file with edges trimmed off
 
                     trimmed_file = self._kh.get_cube_filename(
                         target = this_target,
@@ -415,6 +431,8 @@ class PostProcessHandler:
                         ext = 'trimmed',
                         casa = True,
                         casaext = '.pb')
+
+                    # Files converted to Kelvin and FITS counterparts
 
                     trimmed_k_file = self._kh.get_cube_filename(
                         target = this_target,
@@ -524,7 +542,7 @@ class PostProcessHandler:
 
                     # Stage the singledish data for feathering
 
-                    if do_singledish and config_type == 'interf':
+                    if do_singledish and config_type == 'interf' and has_singledish:
 
                         template = postprocess_dir + pbcorr_round_file
                         infile = orig_sd_file
@@ -551,7 +569,7 @@ class PostProcessHandler:
                             
                     # Feather the single dish and interferometer data
 
-                    if do_feather and config_type == 'interf':
+                    if do_feather and config_type == 'interf' and has_singledish:
 
                         interf_file = postprocess_dir + pbcorr_round_file
                         sd_file = postprocess_dir + prepped_sd_file
