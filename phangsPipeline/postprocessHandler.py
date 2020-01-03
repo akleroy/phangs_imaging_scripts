@@ -202,6 +202,25 @@ class PostProcessHandler:
         self._kh = key_handler
         self._build_lists()
 
+    def set_feather_method(
+        self,
+        method='pbcorr'
+        ):
+        """
+        Set the approach to feathering used in the pipeline.
+        """
+        valid_choices = ['pbcorr','apodize']
+        if method.lower() not in valid_choices:
+            if not self._quiet:
+                print("Not a valid feather method: "+method)
+            return(False)
+        self._feather_method = method
+        return(True)
+
+#endregion
+
+#region Behind the scenes infrastructure and book keeping.
+
     def _build_lists(
         self
         ):
@@ -303,7 +322,11 @@ class PostProcessHandler:
         do_export = False,
         ):
         """
-        The master loop that steps over all targets, products, and configurations.
+        The master loop that steps over all targets, products, and
+        configurations. This is the core of the post-processing
+        pipeline. It calls the various CASA routines and uses the
+        keyHandler to build various file names. It's best accessed via
+        the other programs.
         """              
         
         if self._targets_list is None or self._interf_configs_list is None:            
@@ -593,6 +616,10 @@ class PostProcessHandler:
                             print("... interferometric data "+interf_file)
                             print("... single dish data "+sd_file)
                             print("... output "+feather_file)
+
+                        # Feather has a couple of algorithmic choices
+                        # associated with it. Run the method that the
+                        # user has selected.
 
                         if self._feather_method == 'apodize':
                                 
