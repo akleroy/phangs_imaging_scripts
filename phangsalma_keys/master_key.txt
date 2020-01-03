@@ -24,7 +24,7 @@ cleanmask_key		cleanmask_key.txt
 
 config_key		config_definitions.txt
 target_key		target_definitions.txt
-linearmosaic_key	linearmosaic_definitions.txt
+linmos_key		linearmosaic_definitions.txt
 override_key		overrides.txt
 dir_key			dir_key.txt
 

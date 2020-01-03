@@ -6,6 +6,7 @@ structure, etc. This part is pure python.
 
 import os
 import glob
+
 try:
     import line_list as ll
 except ImportError:
@@ -15,6 +16,10 @@ try:
     import utils
 except ImportError:
     from phangsPipeline import utils as utils
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class KeyHandler:
     """
@@ -28,7 +33,6 @@ class KeyHandler:
                  dochecks=True,
                  ):
 
-        self._quiet = quiet
         self._dochecks = dochecks
 
         self._master_key = None
@@ -37,9 +41,9 @@ class KeyHandler:
         self._config_dict = None
         
         self._ms_dict = None
-        self._singledish_dict = None
+        self._sd_dict = None
         self._cleanmask_dict = None
-        self._linearmosaic_dict = None
+        self._linmos_dict = None
 
         self._dir_for_target = None
         self._override_dict = None
@@ -53,71 +57,57 @@ class KeyHandler:
         Construct the key handler object.
         """
 
-        if not self._quiet:
-            print("-------------------------------------------------")
-            print("Initializing the PHANGS-ALMA pipeline KeyHandler.")
-            print("-------------------------------------------------")
+        logger.info("Initializing the PHANGS-ALMA pipeline KeyHandler.")
 
-        if not self._quiet:
-            print("")
-            print("READING THE MASTER KEY.")
-            print("")
+        logger.info("Reading the master key.")
 
         if os.path.isfile(master_key) is False:
-            print("Master key "+master_key+" not found. Aborting.")
+            logger.error("Master key "+master_key+" not found. Aborting.")
             return False
         pwd = os.getcwd()
         self._master_key = pwd + '/' + master_key
         self._read_master_key()
 
-        if not self._quiet:
-            print("")
-            print("READING INDIVIDUAL FILES.")
-            print("")
+        logger.info("Reading individual key files.")
 
         self._read_config_keys()
         self._read_ms_keys()
         self._read_dir_keys()
         self._read_target_keys()    
-        self._read_singledish_keys()
-        self._read_linearmosaic_keys() 
+        self._read_sd_keys()
+        self._read_linmos_keys() 
         self._read_override_keys()
         
-        if not self._quiet:
-            print("")
-            print("RUNNING CHECKS AND CROSS-LINKS.")
-            print("")
+        logger.info("Running checks and cross-links.")
 
-        if self._dochecks and not self._quiet:
+        if self._dochecks:
             self.check_ms_existence()
 
-        if self._dochecks and not self._quiet:
-            self.check_singledish_existence()
+        if self._dochecks:
+            self.check_sd_existence()
 
         self._target_list = []
         self._missing_targets = []
         self._build_target_list()
-        if self._dochecks and not self._quiet:
+        if self._dochecks:
             self.check_target_existence()
 
         self._expand_dir_key()
-        if self._dochecks and not self._quiet:
+        if self._dochecks:
             self.check_dir_existence()
 
         self._build_whole_target_list()
         self._map_targets_to_mosaics()
         self._map_interf_and_feather_configs()
 
-        if not self._quiet:
-            print("")
-            print("COMPLETE.")
-            print("")
+        logger.info("Master key reading and checks complete.")
 
     def _read_master_key(self):
         """
         Read the master key.
         """
         
+        logger.debug("Master key file: "+self._master_key)
         fname = self._master_key
         infile = open(fname, 'r')
         
@@ -129,14 +119,14 @@ class KeyHandler:
         self._release_root = None
 
         self._ms_roots = []
-        self._singledish_roots = []
+        self._sd_roots = []
         self._ms_keys = []
-        self._singledish_keys = []
+        self._sd_keys = []
         self._cleanmask_keys = []
 
         self._config_keys = []
         self._target_keys = []
-        self._linearmosaic_keys = []
+        self._linmos_keys = []
         self._dir_keys = []
         self._override_keys = []
 
@@ -166,7 +156,7 @@ class KeyHandler:
                 if first_imaging_root:
                     first_imaging_root = False
                 else:
-                    print("Warning, multiple imaging_root definitions. Using the last one.")
+                    logger.warning("Multiple imaging_root definitions. Using the last one.")
                 lines_read += 1
 
             if this_key == 'postprocess_root':
@@ -174,7 +164,7 @@ class KeyHandler:
                 if first_postprocess_root:
                     first_postprocess_root = False
                 else:
-                    print("Warning, multiple postprocess_root definitions. Using the last one.")
+                    logger.warning("Multiple postprocess_root definitions. Using the last one.")
                 lines_read += 1
 
             if this_key == 'release_root':
@@ -182,7 +172,7 @@ class KeyHandler:
                 if first_release_root:
                     first_release_root = False
                 else:
-                    print("Warning, multiple release_root definitions. Using the last one.")
+                    logger.warning("Multiple release_root definitions. Using the last one.")
                 lines_read += 1
             
             if this_key == 'key_dir':
@@ -190,7 +180,7 @@ class KeyHandler:
                 if first_key_dir:
                     first_key_dir = False
                 else:
-                    print("Warning, multiple key directory definitions. Using the last one.")
+                    logger.warning("Multiple key directory definitions. Using the last one.")
                 lines_read += 1
             
             if this_key == 'ms_root':
@@ -198,7 +188,7 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'singledish_root':
-                self._singledish_roots.append(this_value)
+                self._sd_roots.append(this_value)
                 lines_read += 1
             
             if this_key == 'ms_key':
@@ -225,17 +215,15 @@ class KeyHandler:
                 self._override_keys.append(this_value)
                 lines_read += 1
             
-            if this_key == 'linearmosaic_key':
-                self._linearmosaic_keys.append(this_value)
+            if this_key == 'linmos_key':
+                self._linmos_keys.append(this_value)
                 lines_read += 1
 
             if this_key == 'singledish_key':
-                self._singledish_keys.append(this_value)
+                self._sd_keys.append(this_value)
                 lines_read += 1
 
-        if not self._quiet:
-            print("Read in master key: "+self._master_key)
-            print("... successfully imported "+str(lines_read)+" key/value pairs.")
+        logger.info("Successfully imported "+str(lines_read)+" key/value pairs.")
         
         infile.close()
 
@@ -252,39 +240,35 @@ class KeyHandler:
 
         self._key_dir_exists = os.path.isdir(self._key_dir)
         if not self._key_dir_exists:
-            if not self._quiet:
-                print("Missing the key directory. Currently set to ", self._key_dir)
-                print("I need this to proceed. Set key_dir in your master_key file.")
+            logger.error("Missing the key directory. Currently set to ", self._key_dir)
+            logger.error("I need the key directory to proceed. Set key_dir in your master_key file.")
             all_valid = False
             errors += 1
             return(all_valid)
 
         self._imaging_root_exists = os.path.isdir(self._imaging_root)
         if not self._imaging_root_exists:
-            if not self._quiet:
-                print("The imaging root directory does not exist. Currently set to ", self._imaging_root)
-                print("I need this to proceed. Set imaging_root in your master_key file.")
+            logger.error("The imaging root directory does not exist. Currently set to ", self._imaging_root)
+            logger.error("I need the imaging root to proceed. Set imaging_root in your master_key file.")
             all_valid = False
             errors += 1
             return(all_valid)
 
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys,
-             self._linearmosaic_keys, self._singledish_keys, self._config_keys, self._cleanmask_keys]
+             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir+this_key)
                 if not this_key_exists:
                     all_valid = False
                     errors += 1
-                    if not self._quiet:
-                        print("key ", this_key, " is defined but does not exist in "+self._key_dir)
+                    logger.error("key ", this_key, " is defined but does not exist in "+self._key_dir)
 
-        if not self._quiet:
-            if all_valid:
-                print("Checked file existence and all files found.")
-            else:
-                print("Checked file existence. Found "+str(errors)+"errors.")
+        if all_valid:
+            logger.info("Checked file existence and all files found.")
+        else:
+            logger.error("Checked file existence. Found "+str(errors)+"errors.")
         
         return(all_valid)
 
@@ -297,8 +281,7 @@ class KeyHandler:
         for this_key in self._ms_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+this_fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
             self._read_one_ms_key(fname=this_fname)
 
@@ -311,8 +294,7 @@ class KeyHandler:
 
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
-            if not self._quiet:
-                print("I tried to read key "+fname+" but it does not exist.")
+            logger.error("I tried to read key "+fname+" but it does not exist.")
             return()
 
         infile = open(fname, 'r')
@@ -327,19 +309,11 @@ class KeyHandler:
 
             words = line.split()
 
-            if len(words) < 4:
-                if not self._quiet:
-                    print("Skipping line because it does not match ms_key format.")
-                    print("Format is space delimited: target project_tag array_tag filename .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 4:
-                if not self._quiet:
-                    print("Skipping line because it does not match ms_key format.")
-                    print("Format is space delimited: target project_tag array_tag filename .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 4:
+                logger.warning("Skipping line because it does not match ms_key format.")
+                logger.warning("Format is space delimited: target project_tag array_tag filename .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             this_target = words[0]
@@ -361,7 +335,7 @@ class KeyHandler:
 
             # Check if the array tag exists already
             if this_array_tag in self._ms_dict[this_target][this_proj_tag].keys():
-                print("Possible double entry/mistake for: ", this_target, this_proj_tag, this_array_tag)
+                logger.warning("Possible double entry/mistake for: ", this_target, this_proj_tag, this_array_tag)
 
             # Add the filename to the dictionary
             self._ms_dict[this_target][this_proj_tag][this_array_tag] = this_file
@@ -369,8 +343,7 @@ class KeyHandler:
             
         infile.close() 
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the ms dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the ms dictionary.")
 
         return()
 
@@ -383,8 +356,7 @@ class KeyHandler:
         for this_key in self._dir_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+this_fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
             self._read_one_dir_key(fname=this_fname)
 
@@ -397,8 +369,7 @@ class KeyHandler:
 
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
-            if not self._quiet:
-                print("I tried to read key "+fname+" but it does not exist.")
+            logger.error("I tried to read key "+fname+" but it does not exist.")
             return()
 
         infile = open(fname, 'r')
@@ -415,19 +386,11 @@ class KeyHandler:
 
             words = line.split()
                 
-            if len(words) < 2:
-                if not self._quiet:
-                    print("Skipping line because it does not match dir_key format.")
-                    print("Format is space delimited: target directory .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 2:
-                if not self._quiet:
-                    print("Skipping line because it does not match dir_key format.")
-                    print("Format is space delimited: target directory .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 2:
+                logger.warning("Skipping line because it does not match dir_key format.")
+                logger.warning("Format is space delimited: target directory .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             this_target = words[0]
@@ -442,8 +405,7 @@ class KeyHandler:
         
         infile.close()
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the directory mapping dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the directory mapping dictionary.")
 
         return()
 
@@ -457,8 +419,7 @@ class KeyHandler:
         for this_key in self._target_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+fname+" but it does not exist.")
+                logger.error("I tried to read key "+fname+" but it does not exist.")
                 return()
             self._read_one_target_key(fname=this_fname)
 
@@ -485,19 +446,11 @@ class KeyHandler:
                 continue
             words = line.split()
 
-            if len(words) < 5:
-                if not self._quiet:
-                    print("Skipping line because it does not match target_key format.")
-                    print("Format is space delimited: target RA Dec vsys vwidth .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 5:
-                if not self._quiet:
-                    print("Skipping line because it does not match target_key format.")
-                    print("Format is space delimited: target RA Dec vsys vwidth .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 5:
+                logger.warning("Skipping line because it does not match target_key format.")
+                logger.warning("Format is space delimited: target RA Dec vsys vwidth .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             # Initialize the dictionary the first time we get a result.
@@ -520,28 +473,26 @@ class KeyHandler:
 
         infile.close()
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the target definition dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the target definition dictionary.")
     
         return()
 
-    def _read_singledish_keys(self):
+    def _read_sd_keys(self):
         """
         Read all of the single dish keys.
         """
 
-        self._singledish_dict = {}
-        for this_key in self._singledish_keys:
+        self._sd_dict = {}
+        for this_key in self._sd_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+this_fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
-            self._read_one_singledish_key(fname=this_fname)
+            self._read_one_sd_key(fname=this_fname)
 
         return()
 
-    def _read_one_singledish_key(self,fname=None):
+    def _read_one_sd_key(self,fname=None):
         """
         Read one single dish key. Called by read_single_dish_keys()
         """
@@ -566,19 +517,11 @@ class KeyHandler:
 
             words = line.split()
 
-            if len(words) < 3:
-                if not self._quiet:
-                    print("Skipping line because it does not match singledish_key format.")
-                    print("Format is space delimited: target filename product/line .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 3:
-                if not self._quiet:
-                    print("Skipping line because it does not match singledish_key format.")
-                    print("Format is space delimited: target filename product/line .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 3:
+                logger.warning("Skipping line because it does not match singledish_key format.")
+                logger.warning("Format is space delimited: target filename product/line .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             this_target = words[0]
@@ -586,19 +529,18 @@ class KeyHandler:
             this_product = words[2]
 
             # Initialize the dictionary the first time we get a result.
-            if self._singledish_dict is None:
-                self._singledish_dict = {}
+            if self._sd_dict is None:
+                self._sd_dict = {}
         
-            if this_target not in self._singledish_dict.keys():
-                self._singledish_dict[this_target] = {}
+            if this_target not in self._sd_dict.keys():
+                self._sd_dict[this_target] = {}
 
-            self._singledish_dict[this_target][this_product] = this_file
+            self._sd_dict[this_target][this_product] = this_file
             lines_read += 1
 
         infile.close()
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the single dish dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the single dish dictionary.")
     
         return()
 
@@ -611,8 +553,7 @@ class KeyHandler:
         for this_key in self._config_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+this_fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
             self._read_one_config_key(fname=this_fname)
 
@@ -639,19 +580,11 @@ class KeyHandler:
                 continue
 
             words = line.split()
-            if len(words) < 3:
-                if not self._quiet:
-                    print("Skipping line because it does not match configuration definition format.")
-                    print("Format is space delimited: vis_file param new_value .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 3:
-                if not self._quiet:
-                    print("Skipping line because it does not match configuration definition format.")
-                    print("Format is space delimited: vis_file param new_value .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 3:
+                logger.warning("Skipping line because it does not match configuration definition format.")
+                logger.warning("Format is space delimited: vis_file param new_value .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             this_type = words[0]
@@ -670,8 +603,8 @@ class KeyHandler:
             if (this_value not in self._config_dict[this_type].keys()):
                 self._config_dict[this_type][this_value] = {}
             else:
-                print("Got a repeat configuration definition of "+this_type+" "+this_value)
-                print("... using the latest one, but this may be a problem.")
+                logger.warning("Got a repeat configuration definition of "+this_type+" "+this_value)
+                logger.warning("... using the latest one, but this may be a problem.")
 
             # Now do logic on particular types of setups.
 
@@ -702,31 +635,29 @@ class KeyHandler:
 
         infile.close()
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the configuration definition dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the configuration definition dictionary.")
 
         return()
 
-    def _read_linearmosaic_keys(self):
+    def _read_linmos_keys(self):
         """
         Read all of the linear mosaic keys.
         """
 
-        self._linearmosaic_dict = {}
-        for this_key in self._linearmosaic_keys:
+        self._linmos_dict = {}
+        for this_key in self._linmos_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+this_fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
-            self._read_one_linearmosaic_key(fname=this_fname)
+            self._read_one_linmos_key(fname=this_fname)
 
         return()
 
-    def _read_one_linearmosaic_key(self, fname=None):
+    def _read_one_linmos_key(self, fname=None):
         """
         Read one file containing the assignments of targets to linear
-        mosaics. Called by read_linearmosaic_keys().
+        mosaics. Called by read_linmos_keys().
         """
                 
         # should not get to this, but check just in case
@@ -745,42 +676,33 @@ class KeyHandler:
                 continue
             words = line.split()
 
-            if len(words) < 2:
-                if not self._quiet:
-                    print("Skipping line because it does not match linearmosaic key format.")
-                    print("Format is space delimited: mosaic_target assigned_target .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 2:
-                if not self._quiet:
-                    print("Skipping line because it does not match linearmosaic key format.")
-                    print("Format is space delimited: mosaic_target assigned_target .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 2:
+                logger.warning("Skipping line because it does not match linmos key format.")
+                logger.warning("Format is space delimited: mosaic_target assigned_target .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             this_mosaic_name = words[0]
             this_target_name = words[1]
     
             # Initialize the dictionary the first time we get a result.
-            if self._linearmosaic_dict is None:
-                self._linearmosaic_dict = {}
+            if self._linmos_dict is None:
+                self._linmos_dict = {}
 
-            if this_mosaic_name not in self._linearmosaic_dict.keys():
-                self._linearmosaic_dict[this_mosaic_name] = [this_target_name]
+            if this_mosaic_name not in self._linmos_dict.keys():
+                self._linmos_dict[this_mosaic_name] = [this_target_name]
             else:
-                current_targets = self._linearmosaic_dict[this_mosaic_name]
+                current_targets = self._linmos_dict[this_mosaic_name]
                 if this_target_name not in current_targets:
                     current_targets.append(this_target_name)
-                self._linearmosaic_dict[this_mosaic_name] = current_targets
+                self._linmos_dict[this_mosaic_name] = current_targets
 
             lines_read += 1
 
         infile.close()
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the linear mosaic definition dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the linear mosaic definition dictionary.")
 
         return()
 
@@ -793,8 +715,7 @@ class KeyHandler:
         for this_key in self._override_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                if not self._quiet:
-                    print("I tried to read key "+this_fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
             self._read_one_override_key(fname=this_fname)
 
@@ -821,19 +742,11 @@ class KeyHandler:
                 continue
 
             words = line.split()
-            if len(words) < 3:
-                if not self._quiet:
-                    print("Skipping line because it does not match override format.")
-                    print("Format is space delimited: vis_file param new_value .")
-                    print("Line is: ")
-                    print(line)
-                continue
-            if len(words) > 3:
-                if not self._quiet:
-                    print("Skipping line because it does not match override format.")
-                    print("Format is space delimited: vis_file param new_value .")
-                    print("Line is: ")
-                    print(line)
+            if len(words) != 3:
+                logger.warning("Skipping line because it does not match override format.")
+                logger.warning("Format is space delimited: vis_file param new_value .")
+                logger.warning("Line is: ")
+                logger.warning(line)
                 continue
 
             this_target = words[0]
@@ -851,8 +764,7 @@ class KeyHandler:
 
         infile.close()
 
-        if not self._quiet:
-            print("Read "+str(lines_read)+" lines into the override dictionary.")
+        logger.info("Read "+str(lines_read)+" lines into the override dictionary.")
     
         return()
 
@@ -867,7 +779,7 @@ class KeyHandler:
         """
         
         if self._target_dict is None:
-            print("I don't have a target dictionary. Can't proceed.")
+            logger.error("I don't have a target dictionary. Can't proceed.")
             return
 
         self._target_list = list(self._target_dict.keys())
@@ -881,8 +793,7 @@ class KeyHandler:
             ms_targets = self._ms_dict.keys()
             for target in ms_targets:
                 if target not in self._target_list:
-                    if not self._quiet:
-                        print(target, " is in the measurement set key but not the target list.")
+                    logger.error(target, " is in the measurement set key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -890,26 +801,23 @@ class KeyHandler:
             dir_targets = self._dir_for_target.keys()
             for target in dir_targets:
                 if target not in self._target_list:
-                    if not self._quiet:
-                        print(target, " is in the directory key but not the target list.")
+                    logger.error(target, " is in the directory key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
-        if self._singledish_dict is not None:
-            singledish_targets = self._singledish_dict.keys()
-            for target in singledish_targets:
+        if self._sd_dict is not None:
+            sd_targets = self._sd_dict.keys()
+            for target in sd_targets:
                 if target not in self._target_list:
-                    if not self._quiet:
-                        print(target, " is in the single dish key but not the target list.")
+                    logger.error(target, " is in the single dish key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
-        if self._linearmosaic_dict is not None:
-            linearmosaic_targets = self._linearmosaic_dict.keys()
-            for target in linearmosaic_targets:
+        if self._linmos_dict is not None:
+            linmos_targets = self._linmos_dict.keys()
+            for target in linmos_targets:
                 if target not in self._target_list:
-                    if not self._quiet:
-                        print(target, " is in the linear mosaic key but not the target list.")
+                    logger.error(target, " is in the linear mosaic key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
             
@@ -924,7 +832,7 @@ class KeyHandler:
         """
 
         if self._target_dict is None:
-            print("I don't have a target dictionary. Can't proceed.")
+            logger.error("I don't have a target dictionary. Can't proceed.")
             return()
 
         if self._target_list is None:
@@ -932,21 +840,20 @@ class KeyHandler:
 
         self._whole_target_list = list(self._target_list)
 
-        if self._linearmosaic_dict is None:
+        if self._linmos_dict is None:
             return()
 
-        linearmosaic_targets = self._linearmosaic_dict.keys()
-        for this_mosaic in linearmosaic_targets:
+        linmos_targets = self._linmos_dict.keys()
+        for this_mosaic in linmos_targets:
             if this_mosaic not in self._whole_target_list:
                 self._whole_target_list.append(this_mosaic)
-            for this_part in self._linearmosaic_dict[this_mosaic]:
+            for this_part in self._linmos_dict[this_mosaic]:
                 if this_part in self._whole_target_list:
                     self._whole_target_list.remove(this_part)
 
         self._whole_target_list.sort()
 
-        if not self._quiet:
-            print("Total of "+str(len(self._whole_target_list))+" 'whole' targets.")
+        logger.info("Total of "+str(len(self._whole_target_list))+" 'whole' targets.")
 
         return()
 
@@ -956,7 +863,7 @@ class KeyHandler:
         """
 
         if self._target_dict is None:
-            print("I don't have a target dictionary. Can't proceed.")
+            logger.error("I don't have a target dictionary. Can't proceed.")
             return()
 
         if self._target_list is None:
@@ -964,18 +871,17 @@ class KeyHandler:
 
         self._mosaic_assign_dict = {}
 
-        if self._linearmosaic_dict is None:
+        if self._linmos_dict is None:
             return()
 
-        linearmosaic_targets = self._linearmosaic_dict.keys()
-        for this_mosaic in linearmosaic_targets:
-            part_list = self._linearmosaic_dict[this_mosaic]
+        linmos_targets = self._linmos_dict.keys()
+        for this_mosaic in linmos_targets:
+            part_list = self._linmos_dict[this_mosaic]
             for this_part in part_list:
                 self._mosaic_assign_dict[this_part] = this_mosaic
 
-        if not self._quiet:
-            print("Total of "+str(len(self._mosaic_assign_dict.keys()))+ \
-                      " targets assigned to mosaics.")
+        logger.info("Total of "+str(len(self._mosaic_assign_dict.keys()))+ \
+                        " targets assigned to mosaics.")
 
         return()
 
@@ -1012,11 +918,11 @@ class KeyHandler:
         """
 
         if self._missing_targets is None:
-            print("Missing target list not constructed.")
+            logger.error("Missing target list not constructed.")
             
-        print("Missing a total of "+str(len(self._missing_targets))+" target definitions.")
+        logger.error("Missing a total of "+str(len(self._missing_targets))+" target definitions.")
         for target in self._missing_targets:
-            print("missing: "+target)
+            logger.error("missing: "+target)
             
         return()
     
@@ -1042,49 +948,49 @@ class KeyHandler:
                             found = True
                             found_count += 1
                             local_found_count += 1
-                    if local_found_count > 1 and not self._quiet:                        
-                        print("Found multiple copies of ms for "+target+" "+project_tag+" "+array_tag)
+                    if local_found_count > 1:                        
+                        logger.error("Found multiple copies of ms for "+target+" "+project_tag+" "+array_tag)
                     if found:
                         continue
                     missing_count += 1
-                    if not self._quiet:
-                        print("Missing ms for "+target+" "+project_tag+" "+array_tag)
+                    logger.error("Missing ms for "+target+" "+project_tag+" "+array_tag)
         
-        if not self._quiet:
-            print("Verified the existence of "+str(found_count)+" measurement sets. Missing "+str(missing_count)+" measurement set key entries.")
+        logger.info("Verified the existence of "+str(found_count)+" measurement sets.")
+        logger.info("Missing "+str(missing_count)+" measurement set key entries.")
+
         return()
 
-    def check_singledish_existence(self):
+    def check_sd_existence(self):
         """
         Check that the FITS files in the singledish key all exist in
         the specified directories.
         """
 
-        if self._singledish_dict is None:
+        if self._sd_dict is None:
             return()
 
         found_count = 0
         missing_count = 0
-        for target in self._singledish_dict.keys():
-            for product in self._singledish_dict[target].keys():
+        for target in self._sd_dict.keys():
+            for product in self._sd_dict[target].keys():
                 found = False
                 local_found_count = 0
-                for this_root in self._singledish_roots:
-                    this_fname = this_root + self._singledish_dict[target][product]
+                for this_root in self._sd_roots:
+                    this_fname = this_root + self._sd_dict[target][product]
                     if os.path.isfile(this_fname):
                         found = True
                         found_count += 1
                         local_found_count += 1
-                if local_found_count > 1 and not self._quiet:                        
-                    print("Found multiple copies of singledish data for "+target+" "+product)
+                if local_found_count > 1:                        
+                    logger.error("Found multiple copies of singledish data for "+target+" "+product)
                 if found:
                     continue
                 missing_count += 1
-                if not self._quiet:
-                    print("Missing singledish data for "+target+" "+product)
+                logger.error("Missing singledish data for "+target+" "+product)
         
-        if not self._quiet:
-            print("Verified the existence of "+str(found_count)+" single dish data sets. Missing "+str(missing_count)+" single dish key entries.")
+        logger.info("Verified the existence of "+str(found_count)+" single dish data sets.")
+        logger.info("Missing "+str(missing_count)+" single dish key entries.")
+
         return()
 
     def _expand_dir_key(self):
@@ -1131,19 +1037,17 @@ class KeyHandler:
                 if os.path.isdir(self._imaging_root+this_dir):
                     found_dirs += 1
                 else:
-                    if not self._quiet:
-                        print("Missing imaging directory :"+self._imaging_root+this_dir)
+                    logger.error("Missing imaging directory :"+self._imaging_root+this_dir)
                     missing_dirs.append(self._imaging_root+this_dir)
 
             if postprocess:
                 if os.path.isdir(self._postprocess_root+this_dir):
                     found_dirs += 1
                 else:
-                    if not self._quiet:
-                        print("Missing post-processing directory :"+self._postprocess_root+this_dir)
+                    logging.error("Missing post-processing directory :"+self._postprocess_root+this_dir)
                     missing_dirs.append(self._postprocess_root+this_dir)
         
-        print("Found "+str(found_dirs)+" directories. Missing "+str(len(missing_dirs))+" directories.")
+        logging.info("Found "+str(found_dirs)+" directories. Missing "+str(len(missing_dirs))+" directories.")
 
         return(missing_dirs)
         
@@ -1158,13 +1062,11 @@ class KeyHandler:
         """
 
         if target == None:
-            if not self._quiet:
-                print("Please specify a target.")
+            logging.error("Please specify a target.")
             return(None)
 
         if target not in self._dir_for_target.keys():
-            if not self._quiet:
-                print("Target "+target+" is not in the list of targets.")
+            logging.error("Target "+target+" is not in the list of targets.")
             return(None)
             
         if imaging:
@@ -1174,8 +1076,7 @@ class KeyHandler:
 
         if changeto:
             if not os.path.isdir(this_dir):
-                if not self._quiet:
-                    print("You requested to change to "+this_dir+" but it does not exist.")
+                logging.error("You requested to change to "+this_dir+" but it does not exist.")
                 return(this_dir)
             os.chdir(this_dir)
             return(this_dir)
@@ -1219,13 +1120,13 @@ class KeyHandler:
                                        , skip=skip, only=only, loose=True)
         return(this_target_list)
 
-    def get_linear_mosaic_targets(self, only=None, skip=None, first=None, last=None):
+    def get_linmos_targets(self, only=None, skip=None, first=None, last=None):
         """
         List all linear mosaics.
         """
-        if self._linearmosaic_dict is None:
+        if self._linmos_dict is None:
             return(None)
-        mosaic_targets = list(self._linearmosaic_dict.keys())
+        mosaic_targets = list(self._linmos_dict.keys())
 
         this_target_list = \
             utils.select_from_list(mosaic_targets, first=first, last=last \
@@ -1296,7 +1197,7 @@ class KeyHandler:
             utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
         return(this_list)
 
-    def is_target_linear_mosaic(self, target=None):
+    def is_target_linmos(self, target=None):
         """
         Return true or false based on whether the target is a linear
         mosaic. True means that this target is the OUTPUT of a linear
@@ -1305,49 +1206,38 @@ class KeyHandler:
         if target == None:
             return(False)
 
-        if self._linearmosaic_dict is None:
-            if not self._quiet:
-                print("No linear mosaic dictionary defined.")
+        if self._linmos_dict is None:
+            logging.error("No linear mosaic dictionary defined.")
             return(False)
 
-        if target in self._linearmosaic_dict.keys():
+        if target in self._linmos_dict.keys():
             return(True)
 
         return(False)
 
-    def get_parts_for_linear_mosaic(self, target=None):
+    def get_parts_for_linmos(self, target=None):
         """
         Return the parts for a linear mosaic.
         """
         if target == None:
-            if not self._quiet:
-                print("Please specify a target.")
+            logging.error("Please specify a target.")
             return(None)
 
-        if self._linearmosaic_dict is None:
-            if not self._quiet:
-                print("No linear mosaic dictionary defined.")
+        if self._linmos_dict is None:
+            logging.error("No linear mosaic dictionary defined.")
             return(None)
 
-        if target not in self._linearmosaic_dict.keys():
-            if not self._quiet:
-                print("No linear mosaic defined for "+target)
+        if target not in self._linmos_dict.keys():
+            logging.error("No linear mosaic defined for "+target)
             return(None)
         
-        return(self._linearmosaic_dict[target])
+        return(self._linmos_dict[target])
 
     def is_target_in_mosaic(self, target):
         """
         Return true or false depending on whether the target is in a linear mosaic.
         """
         return(target in self._mosaic_assign_dict.keys())
-
-    def set_quiet(self, quiet=True):
-        """
-        Set the feedback level.
-        """
-        self._quiet = quiet
-        return
 
     def set_dochecks(self, dochecks=True):
         """
@@ -1370,30 +1260,25 @@ class KeyHandler:
         """
 
         if target is None or config is None or product is None:
-            if not self._quiet:
-                print("Need a target and a configuration and a product.")
+            logging.error("Need a target and a configuration and a product.")
             return(None)
         
         if type(target) is not type(''):
-            if not self._quiet:
-                print("Target needs to be a string.", target)
+            logging.error("Target needs to be a string.", target)
             return(None)
 
         if type(product) is not type(''):
-            if not self._quiet:
-                print("Product needs to be a string.", product)
+            logging.error("Product needs to be a string.", product)
             return(None)
 
         if type(config) is not type(''):
-            if not self._quiet:
-                print("Config needs to be a string.", config)
+            logging.error("Config needs to be a string.", config)
             return(None)
         
         filename = target+'_'+config+'_'+product
         if ext is not None:
             if type(ext) is not type(''):
-                if not self._quiet:
-                    print("Ext needs to be a string or None.", ext)
+                logging.error("Ext needs to be a string or None.", ext)
                 return(None)
             filename += '_'+ext
 
@@ -1404,7 +1289,7 @@ class KeyHandler:
 
         return(filename)
 
-    def get_singledish_filename(
+    def get_sd_filename(
         self, 
         target=None, 
         product=None,
@@ -1413,28 +1298,27 @@ class KeyHandler:
         Return the single dish filename for a target and product combination.
         """
         
-        if self._singledish_dict is None:
+        if self._sd_dict is None:
             return(None)
 
         if target == None:
-            if not self._quiet:
-                print("Please specify a target.")
+            logging.error("Please specify a target.")
             return(None)
 
-        if target not in self._singledish_dict.keys():
-            print("Not in single dish keys: "+target)
+        if target not in self._sd_dict.keys():
+            logging.error("Not in single dish keys: "+target)
             return(None)
 
-        this_dict = self._singledish_dict[target]
+        this_dict = self._sd_dict[target]
         
         if product not in this_dict.keys():
-            print("Product not found for "+target+" : "+product)
+            logging.error("Product not found for "+target+" : "+product)
             return(None)            
         
         found = False
         found_count = 0
         last_found_file = None
-        for this_root in self._singledish_roots:
+        for this_root in self._sd_roots:
             this_fname = this_root + this_dict[product]
             if os.path.isfile(this_fname) or os.path.isdir(this_file):
                 found = True
@@ -1442,14 +1326,12 @@ class KeyHandler:
                 last_found_file = this_fname
         
         if found_count > 1:
-            if not self._quiet:                        
-                print("Found multiple copies of single dish data for "+target+" "+product)
-                print("Returning last one.")
+            logging.error("Found multiple copies of single dish data for "+target+" "+product)
+            logging.error("Returning last one, but this is likely an error.")
             return(last_found_file)
         
         if found_count == 0:
-            if not self._quiet:                        
-                print("Did not find single dish data for "+target+" "+product)
+            logging.error("Did not find single dish data for "+target+" "+product)
             return(None)
         
         return(last_found_file)
@@ -1502,6 +1384,19 @@ class KeyHandler:
 
         return(feather_config_dict[feather_config]['interf_config'])
 
+    def get_overrides(self, key=None, param=None):
+        """
+        Check the override dictionary for entries given some key,
+        parameter pair.
+        """
+        
+        if self._override_dict is None:
+            return(None)
+
+        # TBD
+
+        pass
+
 #endregion
     
 #region Manipulate files and file structure
@@ -1512,22 +1407,19 @@ class KeyHandler:
         """
         
         if not imaging and not postprocess:
-            if not self._quiet:
-                print("Set either imaging or postprocess to True. Returning.")
+            logging.error("Set either imaging or postprocess to True. Returning.")
             return(False)
 
         if imaging:
             if not os.path.isdir(self._imaging_root):
-                if not self._quiet:
-                    print("Missing imaging root directory. Returning.")
-                    print("Create: "+self._imaging_root)
+                logging.error("Missing imaging root directory. Returning.")
+                logging.error("Create: "+self._imaging_root)
                 return(False)
 
         if postprocess:
             if not os.path.isdir(self._postprocess_root):
-                if not self._quiet:
-                    print("Missing postprocess root directory. Returning.")
-                    print("Create: "+self._postprocess_root)
+                logging.error("Missing postprocess root directory. Returning.")
+                logging.error("Create: "+self._postprocess_root)
                 return(False)
 
         missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess)
@@ -1538,8 +1430,7 @@ class KeyHandler:
         
         missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess)
 
-        if not self._quiet:
-            print("Made "+str(made_directories)+" directories. Now "+str(len(missing_dirs))+" missing.")
+        logging.info("Made "+str(made_directories)+" directories. Now "+str(len(missing_dirs))+" missing.")
 
         if len(missing_dirs) == 0:
             return(True)

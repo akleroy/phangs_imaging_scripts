@@ -8,6 +8,10 @@ import casaCubeRoutines as ccr
 import casaMosaicRoutines as cmr
 import casaFeatherRoutines as cfr
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 class PostProcessHandler:
     """
     Class to handle post-processing of ALMA data. Post-processing here
@@ -19,11 +23,9 @@ class PostProcessHandler:
         self,
         key_handler = None,
         dry_run = False,
-        quiet = False,
         dochecks = True
         ):
-        
-        self._quiet = quiet
+
         self._dochecks = dochecks
         
         self._targets_list = None
@@ -211,8 +213,7 @@ class PostProcessHandler:
         """
         valid_choices = ['pbcorr','apodize']
         if method.lower() not in valid_choices:
-            if not self._quiet:
-                print("Not a valid feather method: "+method)
+            logger.error("Not a valid feather method: "+method)
             return(False)
         self._feather_method = method
         return(True)
@@ -229,8 +230,7 @@ class PostProcessHandler:
         """
 
         if self._kh is None:
-            if not self._quiet:
-                print("Cannot build lists without a keyHandler.")
+            logger.error("Cannot build lists without a keyHandler.")
             return(None)
 
         self._targets_list = self._kh.get_targets(            
@@ -240,7 +240,7 @@ class PostProcessHandler:
             last = self._targets_last,
             )
 
-        self._mosaics_list = self._kh.get_linear_mosaic_targets(            
+        self._mosaics_list = self._kh.get_linmos_targets(            
             only = self._mosaics_only,
             skip = self._mosaics_skip,
             first = self._mosaics_first,
@@ -279,7 +279,7 @@ class PostProcessHandler:
         """
         Get a combined list of line and continuum products.
         """
-        
+
         if self._cont_products_list is None:
             if self._line_products_list is None:
                 return([])
@@ -315,9 +315,10 @@ class PostProcessHandler:
         do_stage = False,
         do_pbcorr = False,
         do_round = False,
-        do_singledish = False,
-        do_prepmosaic = False,
-        do_linearmosaic = False,
+        do_sd = False,
+        do_conv_for_mosaic = False,
+        do_align_for_mosaic = False,
+        do_linmos = False,
         do_feather = False,
         do_compress = False,
         do_convert = False,
@@ -330,12 +331,11 @@ class PostProcessHandler:
         keyHandler to build various file names. It's best accessed via
         the other programs.
         """              
-        
+
         this_stub = 'POSTPROCESS MASTER LOOP: '
 
         if self._targets_list is None or self._interf_configs_list is None:            
-            if not self._quiet:
-                print(this_stub+"Need a target and interferometer configuration list.")
+            logger.error("Need a target and interferometer configuration list.")
             return(None)
     
         for this_target in self._targets_list:
@@ -389,7 +389,7 @@ class PostProcessHandler:
 
                     # Original single dish file
 
-                    orig_sd_file = self._kh.get_singledish_filename(
+                    orig_sd_file = self._kh.get_sd_filename(
                         target = this_target,
                         product = this_product)
 
@@ -502,10 +502,10 @@ class PostProcessHandler:
                     # images), etc.
 
                     has_imaging = os.path.isdir(imaging_dir + orig_file)
-                    has_singledish = (orig_sd_file is not None)
-                    is_mosaic = self._kh.is_target_linear_mosaic(this_target)
+                    has_sd = (orig_sd_file is not None)
+                    is_mosaic = self._kh.is_target_linmos(this_target)
                     if is_mosaic:                        
-                        mosaic_parts = self._kh.get_parts_for_linear_mosaic(this_target)
+                        mosaic_parts = self._kh.get_parts_for_linmos(this_target)
                     else:
                         mosaic_parts = None
 
@@ -515,7 +515,7 @@ class PostProcessHandler:
                     # mosaic.
 
                     if (config_type == 'feather') and \
-                            (not is_mosaic) and (not has_singledish):
+                            (not is_mosaic) and (not has_sd):
                         continue
 
                     # Copy the data from the original location to the
@@ -529,20 +529,15 @@ class PostProcessHandler:
                             infile = imaging_dir + fname
                             outfile = postprocess_dir + fname
 
-                            if not self._quiet:
-                                print(this_stub+" ")
-                                print(this_stub+"Staging data: ")
-                                print(this_stub+"... using ccr.copy_dropdeg")
-                                print(this_stub+"... from "+infile)
-                                print(this_stub+"... to "+outfile)
-                                print(this_stub+" ")
-                            
+                            logger.info("Staging data using ccr.copy_dropdeg")
+                            logger.debug("Staging from "+infile)
+                            logger.debug("Staging to "+outfile)
+
                             if not self._dry_run:
                                 ccr.copy_dropdeg(
                                     infile=infile,
                                     outfile=outfile,
-                                    overwrite=True,
-                                    quiet=self._quiet)
+                                    overwrite=True)
 
                     # Apply the primary beam correction to the data.
 
@@ -553,22 +548,17 @@ class PostProcessHandler:
                         outfile = postprocess_dir + pbcorr_file
                         pbfile = postprocess_dir + pb_file
 
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Primary beam correcting:")
-                            print(this_stub+"... using ccr.primary_beam_correct")
-                            print(this_stub+"... from "+infile)
-                            print(this_stub+"... to "+outfile)
-                            print(this_stub+"... using "+pbfile)
-                            print(this_stub+" ")
+                        logger.info("Primary beam correcting using ccr.primary_beam_correct")
+                        logger.debug("Correcting from "+infile)
+                        logger.debug("Correcting to "+outfile)
+                        logger.debug("Correcting using "+pbfile)
 
                         if not self._dry_run:
                             ccr.primary_beam_correct(
                                 infile=infile,
                                 outfile=outfile,
                                 pbfile=pbfile,
-                                overwrite=True,
-                                quiet=self._quiet)
+                                overwrite=True)
 
                     # Convolve the data to have a round beam.
 
@@ -578,38 +568,29 @@ class PostProcessHandler:
                         infile = postprocess_dir + pbcorr_file
                         outfile = postprocess_dir + pbcorr_round_file
 
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Convolving to have a round beam:")
-                            print(this_stub+"... using ccr.convolve_to_round_beam")
-                            print(this_stub+"... from "+infile)
-                            print(this_stub+"... to "+outfile)
-                            print(this_stub+" ")
+                        logger.info("Convolving to have a round beam using ccr.convolve_to_round_beam")
+                        logger.debug("Convolving from "+infile)
+                        logger.debug("Convolving to "+outfile)
                         
                         if not self._dry_run:
                             ccr.convolve_to_round_beam(
                                 infile=infile,
                                 outfile=outfile,
-                                overwrite=True,
-                                quiet=self._quiet)
+                                overwrite=True)
 
                     # Stage the singledish data for feathering
 
-                    if do_singledish and config_type == 'interf' and \
-                            has_singledish and has_imaging:
+                    if do_sd and config_type == 'interf' and \
+                            has_sd and has_imaging:
 
                         template = postprocess_dir + pbcorr_round_file
                         infile = orig_sd_file
                         outfile = postprocess_dir + prepped_sd_file
-
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Prepping single dish target for feathering:")
-                            print(this_stub+"... using cfr.prep_sd_for_feather")
-                            print(this_stub+"... original file "+infile)
-                            print(this_stub+"... prepped file "+outfile)
-                            print(this_stub+"... template "+template)
-                            print(this_stub+" ")
+                        
+                        logger.info("Prepping single dish target for feathering using cfr.prep_sd_for_feather.")
+                        logger.debug("Copying original file "+infile)
+                        logger.debug("Copying to prepped file "+outfile)
+                        logger.debug("Using interferometric template "+template)
                         
                         if not self._dry_run:
                             cfr.prep_sd_for_feather(
@@ -619,19 +600,64 @@ class PostProcessHandler:
                                 doimport=True,
                                 checkunits=True,
                                 doalign=True,
-                                overwrite=True,
-                                quiet=self._quiet)
+                                overwrite=True)
 
                     # Prepare data for linear mosaicking
 
-                    if do_prepmosaic and config_type == 'interf' and \
+                    if do_conv_for_mosaic and config_type == 'interf' and \
                             is_mosaic:
 
-                        pass
+                        # Build the list of input files
+
+                        infile_list = []
+                        outfile_list = []
+
+                        # TBD - build list of files
+
+                        logger.info("Convolving data for linear mosaicking using cmr.common_res_for_mosaic.")
+                        logger.debug("Convolving original files ", infile_list)
+                        logger.debug("Convolving to convolved output ", outfile_list)
+
+                        # Allow overrides for the pixel padding (the
+                        # number of pixels added to the greatest
+                        # common beam for calculating the target
+                        # resolution) and the target resolution.
+
+                        pixel_padding = 2.0
+                        target_res = None
+                        
+                        # TBD - check override dict.
+
+                        if not self._dry_run:
+                            cmr.common_res_for_mosaic(
+                                infile_list = infile_list,
+                                outfile_list = outfile_list,
+                                doconvolve = True,
+                                target_res = target_res,
+                                pixel_padding = pixel_padding,
+                                overwrite=True,
+                                )
+
+                    # Generate a header and align data to this for the
+                    # linear mosaic
+
+                    if do_align_for_mosaic and config_type == 'interf' and \
+                            is_mosaic:
+
+                        # Build the list of input files
+
+                        infile_list = []
+                        outfile_list = []
+
+                        logger.info("Aligning data for linear mosaicking using cmr._for_mosaic.")
+                        logger.debug("Using original files ", infile_list)
+                        logger.debug("Ending with aligned files ", outfile_list)
+
+                        # TBD
 
                     # Execute linear mosaicking
 
-                    if do_linearmosaic and config_type == 'interf' and \
+                    if do_linmos and config_type == 'interf' and \
                             is_mosaic:
 
                         pass
@@ -639,7 +665,7 @@ class PostProcessHandler:
                     # Feather the single dish and interferometer data
 
                     if do_feather and config_type == 'interf' and \
-                            has_singledish and has_imaging:
+                            has_sd and has_imaging:
 
                         interf_file = postprocess_dir + pbcorr_round_file
                         sd_file = postprocess_dir + prepped_sd_file
@@ -657,14 +683,11 @@ class PostProcessHandler:
                             casaext = '.image'
                             )
 
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Feathering interferometric and single dish data:")
-                            print(this_stub+"... using cfr.feather_two_cubes")
-                            print(this_stub+"... interferometric data "+interf_file)
-                            print(this_stub+"... single dish data "+sd_file)
-                            print(this_stub+"... output "+feather_file)
-                            print(this_stub+"... feather method: "+self._feather_method)
+                        logger.info("Feathering interferometric and single dish data using cfr.feather_two_cubes.")
+                        logger.debug("Feathering interferometric data "+interf_file)
+                        logger.debug("Feathering single dish data "+sd_file)
+                        logger.debug("Feathering output "+feather_file)
+                        logger.debug("Feathering method: "+self._feather_method)
 
                         # Feather has a couple of algorithmic choices
                         # associated with it. Run the method that the
@@ -672,9 +695,7 @@ class PostProcessHandler:
 
                         if self._feather_method == 'apodize':
                                 
-                            if not self._quiet:
-                                print(this_stub+"... apodizing using file "+apod_file)
-                                print(this_stub+" ")
+                            logger.debug("Apodizing using file "+apod_file)
 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -685,13 +706,9 @@ class PostProcessHandler:
                                     apod_file=apod_file,
                                     apod_cutoff=0.0,
                                     blank=True,
-                                    overwrite=True,
-                                    quiet=self._quiet)
+                                    overwrite=True)
 
                         if self._feather_method == 'pbcorr':
-
-                            if not self._quiet:
-                                print(this_stub+" ")
                                 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -702,8 +719,7 @@ class PostProcessHandler:
                                     apod_file=None,
                                     apod_cutoff=-1.0,
                                     blank=True,
-                                    overwrite=True,
-                                    quiet=self._quiet)
+                                    overwrite=True)
 
                     # Compress, reducing cube volume.
 
@@ -712,13 +728,9 @@ class PostProcessHandler:
                         infile = postprocess_dir + pbcorr_round_file
                         outfile = postprocess_dir + pbcorr_trimmed_file
 
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Reducing cube volume:")
-                            print(this_stub+"... using ccr.trim_cube")
-                            print(this_stub+"... original file "+infile)
-                            print(this_stub+"... output file "+outfile)
-                            print(this_stub+" ")
+                        logger.info("Reducing cube volume using ccr.trim_cube.")
+                        logger.debug("Trimming from original file "+infile)
+                        logger.debug("Trimming to output file "+outfile)
 
                         if not self._dry_run:
                             ccr.trim_cube(
@@ -726,21 +738,16 @@ class PostProcessHandler:
                                 outfile=outfile,
                                 overwrite=True,
                                 inplace=False,
-                                min_pixperbeam=3,
-                                quiet=self._quiet)
+                                min_pixperbeam=3)
 
                         infile_pb = postprocess_dir + pb_file
                         outfile_pb = postprocess_dir + trimmed_pb_file
                         template = postprocess_dir + pbcorr_trimmed_file
 
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Aligning primary beam image to new astrometry:")
-                            print(this_stub+"... using ccr.align_to_target")
-                            print(this_stub+"... original file "+infile_pb)
-                            print(this_stub+"... output file "+outfile_pb)
-                            print(this_stub+"... template "+template)
-                            print(this_stub+" ")
+                        logger.info("Aligning primary beam image to new astrometry using ccr.align_to_target.")
+                        logger.debug("Aligning original file "+infile_pb)
+                        logger.debug("Aligning to produce output file "+outfile_pb)
+                        logger.debug("Aligning to template "+template)
 
                         if not self._dry_run:
                             ccr.align_to_target(
@@ -749,7 +756,6 @@ class PostProcessHandler:
                                 template=template,
                                 interpolation='cubic',
                                 overwrite=True,
-                                quiet=self._quiet
                                 )
 
                     # Change units from Jy/beam to Kelvin.
@@ -759,13 +765,9 @@ class PostProcessHandler:
                         infile = postprocess_dir + pbcorr_trimmed_file
                         outfile = postprocess_dir + pbcorr_trimmed_k_file
                         
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Converting cube units:")
-                            print(this_stub+"... using ccr.convert_jytok")
-                            print(this_stub+"... original file "+infile)
-                            print(this_stub+"... output file "+outfile)
-                            print(this_stub+" ")
+                        logger.info("Converting cube units using ccr.convert_jytok")
+                        logger.debug("Converting from original file "+infile)
+                        logger.debug("Converting to output file "+outfile)
 
                         if not self._dry_run:
                             ccr.convert_jytok(
@@ -773,7 +775,7 @@ class PostProcessHandler:
                                 outfile=outfile,
                                 overwrite=True,
                                 inplace=False,
-                                quiet=self._quiet)
+                                )
 
                     # Export to FITS and clean up output
 
@@ -785,15 +787,11 @@ class PostProcessHandler:
                         pb_infile = postprocess_dir + trimmed_pb_file
                         pb_outfile = postprocess_dir + trimmed_pb_fits
 
-                        if not self._quiet:
-                            print(this_stub+" ")
-                            print(this_stub+"Export to FITS and clean up header: ")
-                            print(this_stub+"... using ccr.export_and_cleanup")
-                            print(this_stub+"... input cube "+infile)
-                            print(this_stub+"... output cube "+outfile)
-                            print(this_stub+"... input primary beam "+pb_infile)
-                            print(this_stub+"... output primary beam "+pb_outfile)
-                            print(this_stub+" ")
+                        logger.info("Export to FITS and clean up header using ccr.export_and_cleanup")
+                        logger.debug("Writing out input cube "+infile)
+                        logger.debug("Writing output cube "+outfile)
+                        logger.debug("Writing from primary beam "+pb_infile)
+                        logger.debug("Writing output primary beam "+pb_outfile)
 
                         if not self._dry_run:
                             ccr.export_and_cleanup(
@@ -806,7 +804,7 @@ class PostProcessHandler:
                                 zap_history=True,
                                 round_beam=True,
                                 roundbeam_tol=0.01,
-                                quiet=self._quiet)
+                                )
 
                             ccr.export_and_cleanup(
                                 infile=pb_infile,
@@ -818,7 +816,7 @@ class PostProcessHandler:
                                 zap_history=True,
                                 round_beam=False,
                                 roundbeam_tol=0.01,
-                                quiet=self._quiet)
+                                )
                             
         return()
 
@@ -859,7 +857,7 @@ class PostProcessHandler:
 
         return()
         
-    def stage_singledish_data(
+    def stage_sd_data(
         self
         ):
         """
@@ -867,7 +865,7 @@ class PostProcessHandler:
         interferometer data set.
         """
 
-        self._master_loop(do_singledish=True)
+        self._master_loop(do_sd=True)
 
         return()
 
@@ -914,43 +912,5 @@ class PostProcessHandler:
         self._master_loop(do_export=True)
 
         return()
-
-#endregion
-
-#region Mosaic data together.
-
-    def convolve_for_mosaic(
-        self
-        ):
-        """
-        Convolve all interfereometer data in a mosaic to share a
-        common beam.
-        """
-        pass
-
-    def align_for_mosaic(
-        self
-        ):
-        """
-        Build a shared header for a mosaic and align all data to that
-        new header.
-        """
-        pass
-
-    def mosaic_interf_data(
-        self
-        ):
-        """
-        Mosaic the interferometric data.
-        """
-        pass
-
-    def mosaic_singledish_data(
-        self
-        ):
-        """
-        Mosaic the single dish data.
-        """
-        pass    
 
 #endregion
