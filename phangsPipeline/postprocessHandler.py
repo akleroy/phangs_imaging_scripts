@@ -316,6 +316,8 @@ class PostProcessHandler:
         do_pbcorr = False,
         do_round = False,
         do_singledish = False,
+        do_prepmosaic = False,
+        do_linearmosaic = False,
         do_feather = False,
         do_compress = False,
         do_convert = False,
@@ -507,6 +509,15 @@ class PostProcessHandler:
                     else:
                         mosaic_parts = None
 
+                    # Skip out of the loop if we are in a feather
+                    # configuration and working with a target that
+                    # does not have single dish data and is not a
+                    # mosaic.
+
+                    if (config_type == 'feather') and \
+                            (not is_mosaic) and (not has_singledish):
+                        continue
+
                     # Copy the data from the original location to the
                     # postprocessing directories.
 
@@ -610,6 +621,20 @@ class PostProcessHandler:
                                 doalign=True,
                                 overwrite=True,
                                 quiet=self._quiet)
+
+                    # Prepare data for linear mosaicking
+
+                    if do_prepmosaic and config_type == 'interf' and \
+                            is_mosaic:
+
+                        pass
+
+                    # Execute linear mosaicking
+
+                    if do_linearmosaic and config_type == 'interf' and \
+                            is_mosaic:
+
+                        pass
                             
                     # Feather the single dish and interferometer data
 
@@ -679,7 +704,7 @@ class PostProcessHandler:
                                     blank=True,
                                     overwrite=True,
                                     quiet=self._quiet)
-                                 
+
                     # Compress, reducing cube volume.
 
                     if do_compress:
