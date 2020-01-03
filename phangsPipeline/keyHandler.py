@@ -1296,6 +1296,25 @@ class KeyHandler:
             utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
         return(this_list)
 
+    def is_target_linear_mosaic(self, target=None):
+        """
+        Return true or false based on whether the target is a linear
+        mosaic. True means that this target is the OUTPUT of a linear
+        mosaic operation.
+        """
+        if target == None:
+            return(False)
+
+        if self._linearmosaic_dict is None:
+            if not self._quiet:
+                print("No linear mosaic dictionary defined.")
+            return(False)
+
+        if target in self._linearmosaic_dict.keys():
+            return(True)
+
+        return(False)
+
     def get_parts_for_linear_mosaic(self, target=None):
         """
         Return the parts for a linear mosaic.
