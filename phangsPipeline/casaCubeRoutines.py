@@ -11,6 +11,10 @@ import numpy as np
 import pyfits # CASA has pyfits, not astropy
 import glob
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # Analysis utilities
 import analysisUtils as au
 
@@ -27,31 +31,26 @@ from pipelineVersion import version as pipeVer
 def copy_dropdeg(
     infile=None, 
     outfile=None, 
-    overwrite=False,
-    quiet=False):
+    overwrite=False
+    ):
     """
     Copy using imsubimage to drop degenerate axes. Optionally handle
     overwriting and importing from FITS.
     """
 
-    this_stub = 'COPY_DROPDEG: '
-
     if os.path.isdir(outfile):
         if not overwrite:
-            if not quiet:
-                print(this_stub+"Output exists and overwrite set to false - "+outfile)
+            logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
         os.system('rm -rf '+outfile)
 
     used_temp_outfile = False
     if (infile[-4:] == 'FITS') and os.path.isfile(infile):
-        if not quiet:
-            print(this_stub+"Importing from FITS.")
+        logger.info("Importing from FITS.")
         temp_outfile = outfile+'.temp'
         if os.path.isdir(temp_outfile):
             if not overwrite:
-                if not quiet:
-                    print(this_stub+"Temp file exists and overwrite set to false - "+temp_outfile)
+                logger.error("Temp file exists and overwrite set to false - "+temp_outfile)
                 return(False)
             os.system('rm -rf '+temp_outfile)
         
@@ -80,8 +79,7 @@ def align_to_target(
     interpolation='cubic',
     asvelocity=True,
     overwrite=False,
-    axes=[-1],
-    quiet=False
+    axes=[-1]
     ):
     """
     Align one cube to another, creating a copy. Right now a thin
@@ -89,29 +87,23 @@ def align_to_target(
     into the postprocessHandler. Might evolve in the future.
     """
 
-    this_stub = 'ALIGN_TO_TARGET: '
-    
     if infile is None or template is None or outfile is None:
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(False)
 
     if os.path.isdir(infile) == False and os.path.isfile(infile) == False:
-        if not quiet:
-            print(this_stub+"Input file missing - "+infile)
+        logger.error("Input file missing - "+infile)
         return(False)
 
     if os.path.isdir(template) == False and os.path.isfile(template) == False:
-        if not quiet:
-            print(this_stub+"Template file missing - "+template)
+        logger.error("Template file missing - "+template)
         return(False)
 
     if os.path.isfile(outfile) or os.path.isdir(outfile):
         if overwrite:
             os.system('rm -rf '+outfile)
         else:            
-            if not quiet:
-                print(this_stub+"Output exists and overwrite set to false - "+outfile)
+            logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
     
     casa.imregrid(
@@ -130,8 +122,8 @@ def primary_beam_correct(
     pbfile=None, 
     outfile=None, 
     cutoff=0.25, 
-    overwrite=False,
-    quiet=False):
+    overwrite=False
+    ):
     """
     Construct a primary-beam corrected image.
     """
@@ -139,26 +131,22 @@ def primary_beam_correct(
     this_stub = 'PRIMARY_BEAM_CORRECT: '
 
     if infile is None or pbfile is None or outfile is None:
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(False)
 
     if os.path.isdir(infile) == False:
-        if not quiet:
-            print(this_stub+"Input file missing - "+infile)
+        logger.error("Input file missing - "+infile)
         return(False)
 
     if os.path.isdir(pbfile) == False:
-        if not quiet:
-            print(this_stub+"Primary beam file missing - "+pbfile)
+        logger.error("Primary beam file missing - "+pbfile)
         return(False)
 
     if os.path.isfile(outfile) or os.path.isdir(outfile):
         if overwrite:
             os.system('rm -rf '+outfile)
         else:            
-            if not quiet:
-                print(this_stub+"Output exists and overwrite set to false - "+outfile)
+            logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
 
     casa.impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
@@ -169,8 +157,8 @@ def convolve_to_round_beam(
     infile=None, 
     outfile=None, 
     force_beam=None, 
-    overwrite=False,
-    quiet=False):
+    overwrite=False
+    ):
     """
     Convolve supplied image to have a round beam. Optionally, force
     that beam to some size, else it figures out the beam.
@@ -179,31 +167,25 @@ def convolve_to_round_beam(
     this_stub = 'CONVOLVE_TO_ROUND_BEAM: '
 
     if infile is None or outfile is None:
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(None)
 
     if os.path.isdir(infile) == False:
-        if not quiet:
-            print(this_stub+"Input file missing - "+infile)
+        logger.error("Input file missing - "+infile)
         return(None)
 
     if force_beam is None:
         hdr = casa.imhead(infile)
 
         if (hdr['axisunits'][0] != 'rad'):
-            if not quiet:
-                print(this_stub+"ERROR: Based on CASA experience. I expected units of radians.")
-                print(this_stub+"I did not find this. Returning.")
-                print(this_stub+"Adjust code or investigate file "+infile)
+            logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
+            logger.error("Adjust code or investigate file "+infile)
             return(None)
         pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
         if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-            if not quiet:
-                print(this_stub+"ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
-                print(this_stub+"I did not find this. Returning.")
-                print(this_stub+"Adjust code or investigate file "+infile)
+            logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
+            logger.error("Adjust code or investigate file "+infile)
             return(None)
         bmaj = hdr['restoringbeam']['major']['value']    
         target_bmaj = np.sqrt((bmaj)**2+(2.0*pixel_as)**2)
@@ -223,8 +205,8 @@ def convolve_to_round_beam(
 
 def calc_jytok(
     hdr=None,
-    infile=None,
-    quiet=False):
+    infile=None
+    ):
     """
     Calculate the Jy/beam -> Kelvin conversion. Accepts a header
     already read using imhead or a file name that it will parse.
@@ -238,15 +220,12 @@ def calc_jytok(
 
     if hdr is None:
         if infile is None:
-            if not quiet:                
-                print(this_stub+"No header and no infile. Returning.")
+            logger.error("No header and no infile. Returning.")
             return(None)
         hdr = casa.imhead(target_file, mode='list')
 
     if hdr['cunit3'] != 'Hz':
-        if not quiet:
-            print(this_stub+"I expected frequency as the third axis but did not find it.")
-            print(this_stub+"Returning.")
+        logger.error("I expected frequency as the third axis but did not find it. Returning.")
         return(None)
     
     crpix3 = hdr['crpix3']
@@ -258,9 +237,7 @@ def calc_jytok(
     
     bmaj_unit = hdr['beammajor']['unit']
     if bmaj_unit != 'arcsec':
-        if not quiet:
-            print(this_stub+"Beam unit is not arcsec, which I expected. Returning.")
-            print(this_stub+"Unit instead is "+bmaj_unit)
+        logger.error("Beam unit is not arcsec, which I expected. Returning. Unit instead is "+bmaj_unit)
         return(None)
     bmaj_as = hdr['beammajor']['value']
     bmin_as = hdr['beamminor']['value']
@@ -276,8 +253,8 @@ def convert_jytok(
     infile=None, 
     outfile=None, 
     overwrite=False, 
-    inplace=False,
-    quiet=False):
+    inplace=False
+    ):
     """
     Convert a cube from Jy/beam to K.
     """
@@ -285,13 +262,11 @@ def convert_jytok(
     this_stub = 'CONVERT_JYTOK: '
 
     if infile is None or (outfile is None and inplace==False):
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(False)
     
     if os.path.isdir(infile) == False:
-        if not quiet:
-            print(this_stub+"Input file not found: "+infile)
+        logger.error("Input file not found: "+infile)
         return(False)
     
     if inplace == False:
@@ -299,8 +274,7 @@ def convert_jytok(
             if overwrite:
                 os.system('rm -rf '+outfile)
             else:
-                if not quiet:
-                    print(this_stub+"Output file already present: "+outfile)
+                logger.error("Output file already present: "+outfile)
                 return(False)
 
         os.system('cp -r '+infile+' '+outfile)
@@ -311,9 +285,7 @@ def convert_jytok(
     hdr = casa.imhead(target_file, mode='list')
     unit = hdr['bunit']
     if unit != 'Jy/beam':
-        if not quiet:
-            print(this_stub+"Input unit is not Jy/beam for file "+target_file)
-            print(this_stub+"Instead found "+unit)
+        logger.error("Input unit is not Jy/beam for file "+target_file+" . Instead found "+unit)
         return(False)
     
     jytok = calc_jytok(hdr=hdr)
@@ -334,22 +306,18 @@ def convert_ktojy(
     infile=None, 
     outfile=None, 
     overwrite=False, 
-    inplace=False,
-    quiet=False):
+    inplace=False
+    ):
     """
     Convert a cube from K to Jy/beam.
     """
 
-    this_stub = 'CONVERT_KTOJY: '
-
     if infile is None or (outfile is None and inplace==False):
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(False)
     
     if os.path.isdir(infile) == False:
-        if not quiet:
-            print(this_stub+"Input file not found: "+infile)
+        logger.error("Input file not found: "+infile)
         return(False)
     
     if inplace == False:
@@ -357,8 +325,7 @@ def convert_ktojy(
             if overwrite:
                 os.system('rm -rf '+outfile)
             else:
-                if not quiet:
-                    print(this_stub+"Output file already present: "+outfile)
+                logger.error("Output file already present: "+outfile)
                 return(False)
 
         os.system('cp -r '+infile+' '+outfile)
@@ -369,9 +336,7 @@ def convert_ktojy(
     hdr = casa.imhead(target_file, mode='list')
     unit = hdr['bunit']
     if unit != 'K':
-        if not quiet:
-            print(this_stub+"Input unit is not K for file "+target_file)
-            print(this_stub+"Instead found "+unit)
+        logger.error("Input unit is not K for file "+target_file+" . Instead found "+unit)
         return(False)
     
     jytok = calc_jytok(hdr=hdr)
@@ -394,41 +359,34 @@ def trim_cube(
     overwrite=False, 
     inplace=False, 
     min_pixperbeam=3,    
-    quiet=False):
+    ):
     """
     Trim empty space from around the edge of a cube. Also rebin the
     cube to smaller size, while ensuring a minimum number of pixels
     across the beam. Used to reduce the volume of cubes.
     """
     
-    this_stub = 'TRIM_CUBE: '
-
     if infile is None or outfile is None:
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(False)
     
     if os.path.isdir(infile) == False:
         if not quiet:
-            print(this_stub+"Input file not found: "+infile)
+            print("Input file not found: "+infile)
         return(False)
 
     # First, rebin if needed
     hdr = casa.imhead(infile)
     if (hdr['axisunits'][0] != 'rad'):
-        if not quiet:
-            print(this_stub+"ERROR: Based on CASA experience. I expected units of radians.")
-            print(this_stub+"I did not find this. Returning.")
-            print(this_stub+"Adjust code or investigate file "+infile)
+        logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
+        logger.error("Adjust code or investigate file "+infile)
         return(False)
 
     pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
     if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-        if not quiet:
-            print(this_stub+"ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
-            print(this_stub+"I did not find this. Returning.")
-            print(this_stub+"Adjust code or investigate file "+infile)
+        logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
+        logger.error("Adjust code or investigate file "+infile)
         return(False)
     bmaj = hdr['restoringbeam']['major']['value']    
     
@@ -470,9 +428,8 @@ def trim_cube(
     box_string = ''+str(xmin)+','+str(ymin)+','+str(xmax)+','+str(ymax)
     chan_string = ''+str(zmin)+'~'+str(zmax)
 
-    if not quiet:
-        print(this_stub+"... box selection: "+box_string)
-        print(this_stub+"... channel selection: "+chan_string)
+    logger.info("... box selection: "+box_string)
+    logger.info("... channel selection: "+chan_string)
 
     if overwrite:
         os.system('rm -rf '+outfile)
@@ -496,8 +453,8 @@ def export_and_cleanup(
     add_history=[],
     zap_history=True,
     round_beam=True,
-    roundbeam_tol=0.01,
-    quiet=False):
+    roundbeam_tol=0.01
+    ):
     """
     Export from a CASA image file to a FITS file, in the process
     cleaning up header keywords that are usually confusing or
@@ -505,23 +462,18 @@ def export_and_cleanup(
     whether the beam is close enough to being round that it makes
     sense to overwrite it.
     """
-    
-    this_stub = 'EXPORT_AND_CLEANUP: '
 
     if infile is None or outfile is None:
-        if not quiet:
-            print(this_stub+"Missing required input.")
+        logger.error("Missing required input.")
         return(False)
 
     if os.path.isdir(infile) == False:
-        if not quiet:
-            print(this_stub+"Input file does not exist - "+infile)
+        logger.error("Input file does not exist - "+infile)
         return(False)
 
     if os.path.isfile(outfile):
         if not overwrite:
-            if not quiet:
-                print(this_stub+"Output exists and overwrite set to false - "+outfile)
+            logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
 
     casa.exportfits(imagename=infile, 
@@ -581,13 +533,13 @@ def export_and_cleanup(
             if bmaj != bmin:
                 frac_dev = np.abs(bmaj-bmin)/bmaj
                 if frac_dev <= roundbeam_tol:
-                    print("Rounding beam.")
+                    logger.info("Rounding beam.")
                     hdr['BMAJ'] = bmaj
                     hdr['BMIN'] = bmaj
                     hdr['BPA'] = 0.0
                 else:
-                    print(this_stub+"Beam too asymmetric to round.")
-                    print(this_stub+"... fractional deviation: "+str(frac_dev))
+                    logger.info("Beam too asymmetric to round.")
+                    logger.info("... fractional deviation: "+str(frac_dev))
     
     # Overwrite
 

@@ -11,6 +11,10 @@ import numpy as np
 import pyfits # CASA has pyfits, not astropy
 import glob
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # Analysis utilities
 import analysisUtils as au
 
