@@ -11,6 +11,10 @@ import numpy as np
 import pyfits # CASA has pyfits, not astropy
 import glob
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # Analysis utilities
 import analysisUtils as au
 
@@ -32,31 +36,25 @@ def prep_sd_for_feather(
     checkunits=True,
     doalign=True,
     dropdeg=True,
-    overwrite=False,
-    quiet=False):
+    overwrite=False):
     """
     Prepare single dish data for feathering. Import the data from
     FITS, check the units to make sure that they are in Jy/beam, and
     align the single dish data to the interferometric grid.
     """
 
-    this_stub = 'PREP_SD_FOR_FEATHER: '
-
     # Check inputs
     
     if (os.path.isdir(interf_file) == False):
-        if not quiet:
-            print(this_stub+"Interferometric file not found: "+interf_file)
+        logger.error("Interferometric file not found: "+interf_file)
         return(None)
 
     if (os.path.isdir(sdfile_in) == False) and (os.path.isfile(sdfile_in) == False):
-        if not quiet:
-            print(this_stub+"Single dish file not found: "+sdfile_in)
+        logger.error("Single dish file not found: "+sdfile_in)
         return(None)
 
     if sdfile_out is None:
-        if not quiet:
-            print(this_stub+"Output single dish file name not supplied via sdfile_out=")
+        logger.error("Output single dish file name not supplied via sdfile_out=")
         return(None)
 
     current_infile = sdfile_in    
@@ -67,8 +65,7 @@ def prep_sd_for_feather(
     
     if doimport:
         if (current_infile[-4:] == 'FITS') and os.path.isfile(current_infile):
-            if not quiet:
-                print(this_stub+"Importing from FITS.")
+            logger.info("Importing from FITS.")
                     
             importfits(
                 fitsimage=current_infile, 
@@ -83,7 +80,8 @@ def prep_sd_for_feather(
                 if overwrite:
                     os.system('rm -rf '+tempfile_name)
                 else:
-                    print(this_stub+"Temp file needed but exists and overwrite=False - "+tempfile_name)
+                    logger.error("Temp file needed but exists and overwrite=False - "+tempfile_name)
+                    return(None)
             os.system('cp -r '+current_infile+' '+tempfile_name)
             current_infile = tempfile_name            
             os.system('rm -rf '+current_outfile)
@@ -92,7 +90,8 @@ def prep_sd_for_feather(
             if overwrite:
                 os.system('rm -rf '+current_outfile)
             else:
-                print(this_stub+"Output file needed exists and overwrite=False - "+current_outfile)
+                logger.error("Output file needed exists and overwrite=False - "+current_outfile)
+                return(None)
 
         casa.imsubimage(
             imagename=current_infile, 
@@ -109,7 +108,8 @@ def prep_sd_for_feather(
                 if overwrite:
                     os.system('rm -rf '+tempfile_name)
                 else:
-                    print(this_stub+"Temp file needed but exists and overwrite=False - "+tempfile_name)
+                    logger.error("Temp file needed but exists and overwrite=False - "+tempfile_name)
+                    return(None)
             os.system('cp -r '+current_infile+' '+tempfile_name)
             current_infile = tempfile_name            
             os.system('rm -rf '+current_outfile)
@@ -131,8 +131,7 @@ def prep_sd_for_feather(
         hdr = casa.imhead(current_outfile, mode='list')
         unit = hdr['bunit']
         if unit == 'K':
-            if not quiet:
-                print(this_stub+"Unit is Kelvin. Converting.")
+            logger.info("Unit is Kelvin. Converting.")
             convert_ktojy(
                 infile=current_outfile, 
                 overwrite=overwrite, 
@@ -152,29 +151,24 @@ def feather_two_cubes(
     apod_file=None,
     apod_cutoff=-1.0,
     blank=False,
-    overwrite=False,
-    quiet=False):
+    overwrite=False
+    ):
     """
     Feather the interferometric and total power data. Optionally,
     first apply some steps to homogenize the two data sets.
     """
 
-    this_stub = 'FEATHER_TWO_CUBES: '
-
     if (os.path.isdir(sd_file) == False):
-        if not quiet:
-            print(this_stub+"Single dish file not found: "+sd_file)
+        logger.error("Single dish file not found: "+sd_file)
         return(False)
         
     if (os.path.isdir(interf_file) == False):
-        if not quiet:
-            print(this_stub+"Interferometric file not found: "+interf_file)
+        logger.error("Interferometric file not found: "+interf_file)
         return(False)
 
     if apodize:
         if (os.path.isdir(apod_file) == False):
-            if not quiet:
-                print(this_stub+"Apodization requested, but file not found: "+apod_file)
+            logger.error("Apodization requested, but file not found: "+apod_file)
             return(False)
 
     os.system('rm -rf '+sd_file+'.temp')
