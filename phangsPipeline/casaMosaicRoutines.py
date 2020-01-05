@@ -26,7 +26,7 @@ from pipelineVersion import version as pipeVer
 
 #endregion
 
-#region Linear mosaicking routines
+#region Routines to match resolution
 
 def common_res_for_mosaic(
     infile_list = None, 
@@ -34,7 +34,8 @@ def common_res_for_mosaic(
     target_res=None,
     doconvolve=True,
     pixel_padding=2.0,
-    overwrite=False):
+    overwrite=False
+    ):
     """
     Convolve multi-part cubes to a common res for mosaicking. It will
     calculate the common resolution based on the beam size of all of
@@ -52,36 +53,36 @@ def common_res_for_mosaic(
     # Check that the input files exist
 
     if infile_list is None:
-        print("Missing required infile_list.")
+        logger.error("Missing required infile_list.")
         return(None)   
     
     for this_file in infile_list:
         if os.path.isdir(this_file) == False:
-            print("File not found "+this_file)
+            logger.error("File not found "+this_file)
             return(None)
     
     # Figure out target resolution if it is not supplied by the user
 
     if target_res is None:
-        print("Calculating target resolution ... ")
+        logger.debug("Calculating target resolution ... ")
 
         bmaj_list = []
         pix_list = []
 
         for infile in infile_list:
-            print("Checking "+infile)
+            logger.info("Checking "+infile)
 
             hdr = casa.imhead(infile)
 
             if (hdr['axisunits'][0] != 'rad'):
-                print("ERROR: Based on CASA experience. I expected units of radians.")
-                print("I did not find this. Returning. Adjust code or investigate file "+infile)
+                logger.error("ERROR: Based on CASA experience. I expected units of radians.")
+                logger.error("I did not find this. Returning. Adjust code or investigate file "+infile)
                 return(None)
             this_pixel = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
             if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-                print("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
-                print("I did not find this. Returning. Adjust code or investigate file "+infile)
+                logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
+                logger.error("I did not find this. Returning. Adjust code or investigate file "+infile)
                 return(None)
             this_bmaj = hdr['restoringbeam']['major']['value']
 
@@ -101,17 +102,17 @@ def common_res_for_mosaic(
     # and that they match the input files.
 
     if outfile_list is None:
-        print("Missing outfile_list required for convolution.")
-        return(None)
+        logger.error("Missing outfile_list required for convolution.")
+        return(target_bmaj)
 
     if (type(outfile_list) != type([])) and (type(outfile_list) != type({})):
-        print("outfile_list must be dictionary or list.")
-        return(None)
+        logger.error("outfile_list must be dictionary or list.")
+        return(target_bmaj)
 
     if type(outfile_list) == type([]):
         if len(infile_list) != len(outfile_list):
-            print("Mismatch in input and output list lengths.")
-            return
+            logger.error("Mismatch in input and output list lengths.")
+            return(target_bmaj)
         outfile_dict = {}
         for ii in range(len(infile_list)):
             outfile_dict[infile_list[ii]] = outfile_list[ii]
@@ -122,17 +123,17 @@ def common_res_for_mosaic(
     missing_keys = 0
     for infile in infile_list:
         if infile not in outfile_dict.keys():
-            print("Missing output file for infile: "+infile)
+            logger.error("Missing output file for infile: "+infile)
             missing_keys += 1
     if missing_keys > 0:
-        print("Missing "+str(missing_keys)+" output file names.")
+        logger.error("Missing "+str(missing_keys)+" output file names.")
         return(target_bmaj)
 
     # With a target resolution and matched lists we can proceed.
 
     for this_infile in infile_list:
         this_outfile = outfile_dict[this_infile]
-        print("Convolving "+this_infile+' to '+this_outfile)
+        logger.debug("Convolving "+this_infile+' to '+this_outfile)
         
         casa.imsmooth(imagename=this_infile,
                       outfile=this_outfile,
@@ -144,6 +145,10 @@ def common_res_for_mosaic(
                       )
 
     return(target_bmaj)
+
+#endregion
+
+#region Routines to match astrometry
 
 def calculate_mosaic_extent(
     infile_list = None, 
@@ -162,36 +167,35 @@ def calculate_mosaic_extent(
     """
 
     if infile_list is None:
-        print("Missing required infile_list.")
+        logger.error("Missing required infile_list.")
         return(None)
 
     for this_infile in infile_list:
         if not os.path.isdir(this_infile):
-            print("File not found "+this_infile)
-            print("Returning.")
+            logger.error("File not found "+this_infile+"Returning.")
             return(None)
 
     # The list of corner RA and Dec positions.
     ra_list = []
     dec_list = []
 
-    # TBD
+    # TBD - right now we assume matched frequency/velocity axis
     freq_list = []
 
     for this_infile in infile_list:
         this_hdr = casa.imhead(this_infile)
 
         if this_hdr['axisnames'][0] != 'Right Ascension':
-            print("Expected axis 0 to be Right Ascension. Returning.")
+            logger.error("Expected axis 0 to be Right Ascension. Returning.")
             return(None)
         if this_hdr['axisunits'][0] != 'rad':
-            print("Expected axis units to be radians. Returning.")
+            logger.error("Expected axis units to be radians. Returning.")
             return(None)
         if this_hdr['axisnames'][1] != 'Declination':
-            print("Expected axis 1 to be Declination. Returning.")
+            logger.error("Expected axis 1 to be Declination. Returning.")
             return(None)
         if this_hdr['axisunits'][1] != 'rad':
-            print("Expected axis units to be radians. Returning.")
+            logger.error("Expected axis units to be radians. Returning.")
             return(None)
 
         this_shape = this_hdr['shape']
@@ -227,7 +231,7 @@ def calculate_mosaic_extent(
     min_dec = np.min(dec_list)
     max_dec = np.max(dec_list)
 
-    # TBD
+    # TBD - right now we assume matched frequency/velocity axis
     min_freq = None
     max_freq = None
 
@@ -262,7 +266,8 @@ def build_common_header(
     delta_dec = None,
     template_file = None,
     allowbigimage = False,
-    toobig=1e4):
+    toobig=1e4
+    ):
     """
     Build a target header to be used as a template by imregrid. RA_CTR
     and DEC_CTR are assumed to be in decimal degrees. DELTA_RA and
@@ -270,18 +275,17 @@ def build_common_header(
     """
     
     if infile_list is None:
-        print("Missing required infile_list.")
+        logger.error("Missing required infile_list.")
         return(None)
 
     for this_infile in infile_list:
         if not os.path.isdir(this_infile):
-            print("File not found "+this_infile)
-            print("Returning.")
+            logger.error("File not found "+this_infile+" . Returning.")
             return(None)
 
     if template_file is not None:
         if os.path.isdir(template_file) == False:
-            print("The specified template file does not exist.")
+            logger.error("The specified template file does not exist.")
             return(None)
 
     # Base the target header on a template. If no template is supplied
@@ -298,8 +302,8 @@ def build_common_header(
 
     if (target_hdr['csys']['direction0']['units'][0] != 'rad') or \
             (target_hdr['csys']['direction0']['units'][1] != 'rad'):
-        print("ERROR: Based on CASA experience. I expected pixel units of radians.")
-        print("I did not find this. Returning. Adjust code or investigate file "+infile_list[0])
+        logger.error("ERROR: Based on CASA experience. I expected pixel units of radians.")
+        logger.error("I did not find this. Returning. Adjust code or investigate file "+infile_list[0])
         return(None)
 
     # Add our target center pixel values to the header after
@@ -327,8 +331,8 @@ def build_common_header(
 
     if not allowbigimage:
         if ra_axis_size > toobig or dec_axis_size > toobig:
-            print("WARNING! This is a very big image you plan to create, ", ra_axis_size, " x ", dec_axis_size)
-            print("To make an image this big set allowbigimage=True. Returning.")
+            logger.error("WARNING! This is a very big image you plan to create, ", ra_axis_size, " x ", dec_axis_size)
+            logger.error(" To make an image this big set allowbigimage=True. Returning.")
             return(None)
 
     # Enter the new values into the header and return.
@@ -345,7 +349,8 @@ def align_for_mosaic(
     infile_list = None,
     outfile_list = None,
     target_hdr=None,
-    overwrite=False):
+    overwrite=False
+    ):
     """
     Align a list of files to a target coordinate system.
     """
@@ -353,7 +358,7 @@ def align_for_mosaic(
     if infile_list is None or \
             outfile_list is None or \
             target_hdr is None:
-        print("Missing required input.")
+        logger.error("Missing required input.")
         return(None)
 
     for ii in range(len(infile_list)):
@@ -361,7 +366,7 @@ def align_for_mosaic(
         this_outfile = outfile_list[ii]        
 
         if os.path.isdir(this_infile) == False:
-            print("File "+this_infile+" not found. Continuing.")
+            logger.error("File "+this_infile+" not found. Continuing.")
             continue
 
         casa.imregrid(imagename=this_infile,
@@ -374,11 +379,87 @@ def align_for_mosaic(
 
     return(None)
 
+def common_astrometry_for_mosaic(
+    infile_list = None,
+    outfile_list = None,
+    weightfiles_in = None,
+    weightfiles_out = None,
+    ra_ctr = None, 
+    dec_ctr = None,
+    delta_ra = None, 
+    delta_dec = None,
+    allowbigimage = False,
+    toobig=1e4,
+    overwrite=False,
+    ):
+    """
+    Build a common astrometry for a mosaic and align all image and weight files to that astrometry.
+    """
+
+    # Error checking
+
+    # Determine common header using only the input images
+
+    logger.info('Generating extent of target header.')
+    extent = calculate_mosaic_extent(
+        infile_list = infile_list, 
+        force_ra_ctr = ra_ctr, 
+        force_dec_ctr = dec_ctr)
+    if ra_ctr is None:
+        ra_ctr = extent['ra_ctr'][0]
+    if dec_ctr is None:
+        dec_ctr = extent['dec_ctr'][0]
+    if delta_ra is None:
+        delta_ra = extent['delta_ra'][0]
+    if delta_dec is None:
+        delta_dec = extent['delta_dec'][0]
+
+    logger.info('Generating target header.')
+    target_hdr = build_common_header(
+        infile_list = infile_list, 
+        ra_ctr = ra_ctr, 
+        dec_ctr = dec_ctr,
+        delta_ra = delta_ra, 
+        delta_dec = delta_dec,
+        allowbigimage = allowbigimage,
+        toobig=toobig,
+        )
+
+    # Align the input files to the new astrometry
+    logger.info('Aligning image files.')
+    align_for_mosaic(
+        infile_list = infile_list,
+        outfile_list = outfile_list,
+        target_hdr=target_hdr,
+        overwrite=overwrite
+        )
+
+    # Align the weight files to the new astrometry
+    if weightfiles_in is not None:
+        logger.info('Aligning weighting files.')
+        align_for_mosaic(
+            infile_list = weightfiles_in,
+            outfile_list = weightfiles_out,
+            target_hdr=target_hdr,
+            overwrite=overwrite
+            )
+
+    return(None)
+
+#endregion
+
+#region Routines to deal with weighting
+
+#endregion
+
+#region Routines to carry out the mosaicking
+
 def mosaic_aligned_data(
     infile_list = None, 
     weightfile_list = None,
     outfile = None, 
-    overwrite=False):
+    overwrite=False
+    ):
     """
     Combine a list of aligned data with primary-beam (i.e., inverse
     noise) weights using simple linear mosaicking.
@@ -387,7 +468,7 @@ def mosaic_aligned_data(
     if infile_list is None or \
             weightfile_list is None or \
             outfile is None:
-        print("Missing required input.")
+        logger.error("Missing required input.")
         return(None)
 
     sum_file = outfile+'.sum'
@@ -397,8 +478,7 @@ def mosaic_aligned_data(
             os.path.isdir(sum_file) or \
             os.path.isdir(weight_file)) and \
             (overwrite == False):
-        print("Output file present and overwrite off.")
-        print("Returning.")
+        logger.error("Output file present and overwrite off. Returning.")
         return(None)
 
     if overwrite:
