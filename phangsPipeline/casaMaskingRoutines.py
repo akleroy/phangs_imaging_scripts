@@ -7,6 +7,7 @@ manipulation steps in CASA.
 
 import os
 import numpy as np
+from scipy.special import erfc
 import pyfits # CASA has pyfits, not astropy
 import glob
 
@@ -27,13 +28,113 @@ from pipelineVersion import version as pipeVer
 
 #region Noise estimation
 
-def stat_clean_cube(cube_file=None):
+def estimate_noise(
+    data=None,
+    mask=None,
+    method='mad',
+    niter=3,
+    ):
     """
-    Calculate statistics for an image cube.
+    Return a noise estimate given a vector and associated mask.
     """
-    if cube_file == None:
-        print "No cube file specified. Returning"
-        return
+    
+    if data is None:
+        logger.error("No data supplied.")
+        return(None)
+
+    if mask is not None:
+        if len(mask) != len(data):
+            logger.error("Mask and data have mismatched sizes.")
+            return(None)
+    
+    valid_methods = ['std','mad','chauv']
+    if method not in valid_methods:
+        logger.error("Invalid method - "+method+" valid methods are "+str(valid_methods))
+        return(None)
+    
+    if mask is None:
+        use_mask = np.isfinite(data)
+    else:
+        use_mask = mask*np.isfinite(data)
+
+    if np.sum(use_mask) == 0:
+        logger.error("No valid data. Returning NaN.")
+        return(np.nan)
+
+    use_data = data[use_mask]
+
+    if method == 'std':
+        this_noise = np.std(use_data)
+        return(this_noise)
+
+    if method == 'mad':
+        this_med = np.median(use_data)
+        this_dev = np.abs(use_data - this_med)
+        this_mad = np.median(this_dev)
+        this_noise = this_mad / 0.6745
+        return(this_noise)
+
+    if method == 'chauv':
+        for ii in range(niter):
+            this_mean = np.mean(use_data)
+            this_std = np.std(use_data)
+            this_dev = np.abs((use_data-this_mean)/this_std)/2.0**0.5
+            this_prob = erfc(this_dev)
+                        
+            chauv_crit = 1.0/(2.0*len(use_data))
+            keep = this_prob > chauv_crit
+            if np.sum(keep) == 0:
+                logger.error("Rejected all data. Returning NaN.")
+                return(np.nan)
+            use_data = use_data[keep]
+            
+        this_noise = np.std(use_data)
+        return(this_noise)
+
+    return(None)
+    
+def test_noise(
+    ):
+    """
+    Test the noise estimation routine.
+    """
+    
+    tol = 1e-2
+
+    vec = np.random.randn(1e5)
+    mad_est = estimate_noise(vec, method='mad')
+    std_est = estimate_noise(vec, method='std')
+    chauv_est = estimate_noise(vec, method='chauv')
+    
+    logger.info("mad estimate accuracy: "+str(np.abs(mad_est-1.0)))
+    if np.abs(mad_est - 1.0) > tol:
+        logger.error("mad estimate exceeds tolerance.")
+
+    logger.info("std estimate accuracy: "+str(np.abs(std_est-1.0)))
+    if np.abs(std_est - 1.0) > tol:
+        logger.error("std estimate exceeds tolerance.")
+
+    logger.info("chauv estimate accuracy: "+str(np.abs(chauv_est-1.0)))
+    if np.abs(chauv_est - 1.0) > tol:
+        logger.error("chauv estimate exceeds tolerance.")
+
+def noise_for_cube(
+    infile=None,
+    mask=None,
+    method='mad',
+    ):
+    """
+    Get a single noise estimate for an image cube.
+    """
+
+    if infile is None:
+        logger.error('No infile specified.')
+        return(None)
+    
+    if not os.path.isdir(infile) and not os.path.isfile(infile):
+        logger.error('Infile specified but not found - '+infile)
+        return(None)
+        
     imstat_dict = imstat(cube_file)
     
     return imstat_dict

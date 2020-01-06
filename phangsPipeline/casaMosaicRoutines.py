@@ -20,6 +20,7 @@ import analysisUtils as au
 
 # CASA stuff
 import casaStuff as casa
+import casaMaskingRoutines as cma
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -331,7 +332,8 @@ def build_common_header(
 
     if not allowbigimage:
         if ra_axis_size > toobig or dec_axis_size > toobig:
-            logger.error("WARNING! This is a very big image you plan to create, ", ra_axis_size, " x ", dec_axis_size)
+            logger.error("WARNING! This is a very big image you plan to create, "+str(ra_axis_size)+ \
+                             " x "+str(dec_axis_size))
             logger.error(" To make an image this big set allowbigimage=True. Returning.")
             return(None)
 
@@ -498,7 +500,7 @@ def generate_weight_file(
     if input_file is not None:
         valid_types = ['pb', 'noise', 'weight']
         if input_type not in valid_types:
-            logger.error("Valid input types are :", valid_types)
+            logger.error("Valid input types are :"+str(valid_types))
             return(None)
 
     if input_file is None and input_value is None:
