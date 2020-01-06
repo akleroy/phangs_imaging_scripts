@@ -64,10 +64,12 @@ def prep_sd_for_feather(
     # Import from FITS if needed.
     
     if doimport:
-        if (current_infile[-4:] == 'FITS') and os.path.isfile(current_infile):
+        if ((current_infile[-4:] == 'FITS') or \
+                (current_infile[-4:] == 'fits')) and \
+                os.path.isfile(current_infile):
             logger.info("Importing from FITS.")
                     
-            importfits(
+            casa.importfits(
                 fitsimage=current_infile, 
                 imagename=current_outfile,
                 zeroblanks=False,
