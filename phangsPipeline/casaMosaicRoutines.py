@@ -396,7 +396,15 @@ def common_astrometry_for_mosaic(
     Build a common astrometry for a mosaic and align all image and weight files to that astrometry.
     """
 
-    # Error checking
+    # Error checking - mostly the subprograms do this.
+
+    if infile_list is None:
+        logger.error("Infile list missing.")
+        return(None)
+
+    if outfile_list is None:
+        logger.error("Outfile list missing.")
+        return(None)
 
     # Determine common header using only the input images
 
@@ -426,6 +434,7 @@ def common_astrometry_for_mosaic(
         )
 
     # Align the input files to the new astrometry
+
     logger.info('Aligning image files.')
     align_for_mosaic(
         infile_list = infile_list,
@@ -435,6 +444,7 @@ def common_astrometry_for_mosaic(
         )
 
     # Align the weight files to the new astrometry
+
     if weightfiles_in is not None:
         logger.info('Aligning weighting files.')
         align_for_mosaic(
@@ -449,6 +459,71 @@ def common_astrometry_for_mosaic(
 #endregion
 
 #region Routines to deal with weighting
+
+def generate_weight_file(
+    image_file = None,
+    input_file = None,    
+    input_type = 'pb',
+    input_value = 1.0,
+    outfile = None,
+    scale_by_noise = False,
+    scale_by_factor = 1.0,
+    overwrite=False,
+    ):
+    """
+    Generate a weight file for use in a linear mosaic.
+    """
+
+    # Check input
+
+    if image_file is None and input_file is None:
+        logger.error("I need either an input or an image template file.")
+        return(None)
+
+    if outfile is None:
+        logger.error("Specify output file.")
+        return(None)
+
+    if input_file is not None:
+        valid_types = ['pb', 'noise', 'weight']
+        if input_type not in valid_types:
+            logger.error("Valid input types are :", valid_types)
+            return(None)
+
+    if input_file is None and input_value is None:
+        logger.error("Need either an input value or an input file.")
+        return(None)
+
+    if scale_by_noise and image_file is None:
+        logger.error("I can only scale by the noise if I get an image file to caluclate the noise. Returning.")
+        return(None)
+
+    # Case 1 : We just have an input value.
+
+    # ... copy the input file and replace all values with the input value.
+
+    # Case 2 : We have an input image
+
+    # ... the type is noise. The weight image goes as 1/noise^2
+
+    # ... the type is primary beam. The weight image goes as pb^2 (because noise goes as 1/pb)
+    
+    # ... the type is weight. This is just weight image.
+
+    # Scale by a provided factor.
+
+    # Scale by the noise if requested.
+
+    if scale_by_noise:
+
+        # Figure out the noise.
+
+        # Scale by 1/noise^2
+
+        pass
+
+    return(None)
+    
 
 #endregion
 
