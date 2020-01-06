@@ -32,7 +32,7 @@ def estimate_noise(
     data=None,
     mask=None,
     method='mad',
-    niter=3,
+    niter=None,
     ):
     """
     Return a noise estimate given a vector and associated mask.
@@ -47,6 +47,9 @@ def estimate_noise(
             logger.error("Mask and data have mismatched sizes.")
             return(None)
     
+    if niter is None:
+        niter = 3
+
     valid_methods = ['std','mad','chauv']
     if method not in valid_methods:
         logger.error("Invalid method - "+method+" valid methods are "+str(valid_methods))
@@ -92,36 +95,13 @@ def estimate_noise(
         return(this_noise)
 
     return(None)
-    
-def test_noise(
-    ):
-    """
-    Test the noise estimation routine.
-    """
-    
-    tol = 1e-2
-
-    vec = np.random.randn(1e5)
-    mad_est = estimate_noise(vec, method='mad')
-    std_est = estimate_noise(vec, method='std')
-    chauv_est = estimate_noise(vec, method='chauv')
-    
-    logger.info("mad estimate accuracy: "+str(np.abs(mad_est-1.0)))
-    if np.abs(mad_est - 1.0) > tol:
-        logger.error("mad estimate exceeds tolerance.")
-
-    logger.info("std estimate accuracy: "+str(np.abs(std_est-1.0)))
-    if np.abs(std_est - 1.0) > tol:
-        logger.error("std estimate exceeds tolerance.")
-
-    logger.info("chauv estimate accuracy: "+str(np.abs(chauv_est-1.0)))
-    if np.abs(chauv_est - 1.0) > tol:
-        logger.error("chauv estimate exceeds tolerance.")
 
 def noise_for_cube(
     infile=None,
-    mask=None,
+    maskfile=None,
+    exclude_mask=True,
     method='mad',
+    niter=None,
     ):
     """
     Get a single noise estimate for an image cube.
@@ -132,12 +112,76 @@ def noise_for_cube(
         return(None)
     
     if not os.path.isdir(infile) and not os.path.isfile(infile):
+        logger.error('infile specified but not found - '+infile)
+        return(None)
+
+    if maskfile is not None:
+        if not os.path.isdir(maskfile) and not os.path.isfile(maskfile):
+            logger.error('maskfile specified but not found - '+maskfile)
+            return(None)
+            
+    myia = au.createCasaTool(iatool)
+    myia.open(infile)
+    data = myia.getchunk()
+    mask = myia.getchunk(getmask=True)
+    myia.close()
+
+    if maskfile is not None:
+        myia.open(maskfile)
+        user_mask = myia.getchunk()
+        user_mask_mask = myia.getchunk(getmask=True)
+        myia.close()
+        if exclude_mask:
+            mask = mask*user_mask_mask*(user_mask < 0.5)
+        else:
+            mask = mask*user_mask_mask*(user_mask >= 0.5)
+
+    this_noise = estimate_noise(
+        data=data, mask=mask, method=method, niter=niter)
+    
+    return(this_noise)
+
+def noise_spectrum(
+    infile=None,
+    mask=None,
+    method='mad',
+    ):
+    """
+    Estimate a spectrum of noise along the velocity/frequency axis of a cube.
+    """
+
+    if infile is None:
+        logger.error('No infile specified.')
+        return(None)
+    
+    if not os.path.isdir(infile) and not os.path.isfile(infile):
         logger.error('Infile specified but not found - '+infile)
         return(None)
         
-    imstat_dict = imstat(cube_file)
+    # Not implemented yet. Currently this step is done in IDL in the PHANGS pipeline.
+
+    pass
+
+def noise_map(
+    infile=None,
+    mask=None,
+    method='mad',
+    ):
+    """
+    Estimate a map of noise across a cube.
+    """
+
+    if infile is None:
+        logger.error('No infile specified.')
+        return(None)
     
-    return imstat_dict
+    if not os.path.isdir(infile) and not os.path.isfile(infile):
+        logger.error('Infile specified but not found - '+infile)
+        return(None)
+        
+    # Not implemented yet. Currently this step is done in IDL in the PHANGS pipeline.
+
+    pass
 
 #endregion
 
