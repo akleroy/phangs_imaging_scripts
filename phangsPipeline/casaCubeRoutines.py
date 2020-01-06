@@ -26,7 +26,7 @@ from pipelineVersion import version as pipeVer
 
 #endregion
 
-#region FITS file manipulation, scaling, extraction, and unit handling
+#region Copying, scaling, etc.
 
 def copy_dropdeg(
     infile=None, 
@@ -72,6 +72,240 @@ def copy_dropdeg(
     
     return(True)
 
+def export_and_cleanup(
+    infile=None,
+    outfile=None,
+    overwrite=False,    
+    remove_cards=[],
+    add_cards=[],
+    add_history=[],
+    zap_history=True,
+    round_beam=True,
+    roundbeam_tol=0.01
+    ):
+    """
+    Export from a CASA image file to a FITS file, in the process
+    cleaning up header keywords that are usually confusing or
+    useless. Optionally add new keywords to the header and check
+    whether the beam is close enough to being round that it makes
+    sense to overwrite it.
+    """
+
+    if infile is None or outfile is None:
+        logger.error("Missing required input.")
+        return(False)
+
+    if os.path.isdir(infile) == False:
+        logger.error("Input file does not exist - "+infile)
+        return(False)
+
+    if os.path.isfile(outfile):
+        if not overwrite:
+            logger.error("Output exists and overwrite set to false - "+outfile)
+            return(False)
+
+    casa.exportfits(imagename=infile, 
+                    fitsimage=outfile,
+                    velocity=True, 
+                    overwrite=True, 
+                    dropstokes=True, 
+                    dropdeg=True, 
+                    bitpix=-32)
+    
+    # Clean up headers
+
+    hdu = pyfits.open(outfile)
+
+    hdr = hdu[0].header
+    data = hdu[0].data
+    
+    # Cards to remove by default
+
+    for card in ['BLANK','DATE-OBS','OBSERVER','O_BLANK','O_BSCALE',
+                 'O_BZERO','OBSRA','OBSDEC','OBSGEO-X','OBSGEO-Y','OBSGEO-Z',
+                 'DISTANCE']:
+        if card in hdr.keys():
+            hdr.remove(card)
+            
+    # User cards to remove
+
+    for card in remove_cards:
+        if card in hdr.keys():
+            hdr.remove(card)
+            
+    # Delete history
+    
+    if zap_history:
+        while 'HISTORY' in hdr.keys():
+            hdr.remove('HISTORY')
+
+    # Add history
+
+    for history_line in add_history:
+        add_history(history_line)
+            
+    # Get the data min and max right
+
+    datamax = np.nanmax(data)
+    datamin = np.nanmin(data)
+    hdr['DATAMAX'] = datamax
+    hdr['DATAMIN'] = datamin
+
+    # Round the beam recorded in the header if it lies within the
+    # specified tolerance.
+
+    if round_beam:
+        if roundbeam_tol > 0.0:
+            bmaj = hdr['BMAJ']
+            bmin = hdr['BMIN']
+            if bmaj != bmin:
+                frac_dev = np.abs(bmaj-bmin)/bmaj
+                if frac_dev <= roundbeam_tol:
+                    logger.info("Rounding beam.")
+                    hdr['BMAJ'] = bmaj
+                    hdr['BMIN'] = bmaj
+                    hdr['BPA'] = 0.0
+                else:
+                    logger.info("Beam too asymmetric to round.")
+                    logger.info("... fractional deviation: "+str(frac_dev))
+    
+    # Overwrite
+
+    hdu.writeto(outfile, clobber=True)
+        
+    return()
+
+def trim_cube(    
+    infile=None, 
+    outfile=None, 
+    overwrite=False, 
+    inplace=False, 
+    min_pixperbeam=3,    
+    ):
+    """
+    Trim empty space from around the edge of a cube. Also rebin the
+    cube to smaller size, while ensuring a minimum number of pixels
+    across the beam. Used to reduce the volume of cubes.
+    """
+    
+    if infile is None or outfile is None:
+        logger.error("Missing required input.")
+        return(False)
+    
+    if os.path.isdir(infile) == False:
+        if not quiet:
+            print("Input file not found: "+infile)
+        return(False)
+
+    # First, rebin if needed
+    hdr = casa.imhead(infile)
+    if (hdr['axisunits'][0] != 'rad'):
+        logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
+        logger.error("Adjust code or investigate file "+infile)
+        return(False)
+
+    pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
+
+    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+        logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
+        logger.error("Adjust code or investigate file "+infile)
+        return(False)
+    bmaj = hdr['restoringbeam']['major']['value']    
+    
+    pix_per_beam = bmaj*1.0 / pixel_as*1.0
+    
+    if pix_per_beam > 6:
+        casa.imrebin(
+            imagename=infile,
+            outfile=outfile+'.temp',
+            factor=[2,2,1],
+            crop=True,
+            dropdeg=True,
+            overwrite=overwrite,
+            )
+    else:
+        os.system('cp -r '+infile+' '+outfile+'.temp')
+
+    # Figure out the extent of the image inside the cube
+    myia = au.createCasaTool(casa.iatool)
+    myia.open(outfile+'.temp')
+    mask = myia.getchunk(getmask=True)    
+    myia.close()
+
+    this_shape = mask.shape
+
+    mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    pad = 0
+    xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
+    xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
+
+    mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
+    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
+
+    mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
+    zmin = np.max([0,np.min(np.where(mask_spec_z))-pad])
+    zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[2]-1])
+    
+    box_string = ''+str(xmin)+','+str(ymin)+','+str(xmax)+','+str(ymax)
+    chan_string = ''+str(zmin)+'~'+str(zmax)
+
+    logger.info("... box selection: "+box_string)
+    logger.info("... channel selection: "+chan_string)
+
+    if overwrite:
+        os.system('rm -rf '+outfile)
+        casa.imsubimage(
+            imagename=outfile+'.temp',
+            outfile=outfile,
+            box=box_string,
+            chans=chan_string,
+            )
+    
+    os.system('rm -rf '+outfile+'.temp')
+
+    return(True)
+
+def primary_beam_correct(
+    infile=None, 
+    pbfile=None, 
+    outfile=None, 
+    cutoff=0.25, 
+    overwrite=False
+    ):
+    """
+    Construct a primary-beam corrected image.
+    """
+    
+    this_stub = 'PRIMARY_BEAM_CORRECT: '
+
+    if infile is None or pbfile is None or outfile is None:
+        logger.error("Missing required input.")
+        return(False)
+
+    if os.path.isdir(infile) == False:
+        logger.error("Input file missing - "+infile)
+        return(False)
+
+    if os.path.isdir(pbfile) == False:
+        logger.error("Primary beam file missing - "+pbfile)
+        return(False)
+
+    if os.path.isfile(outfile) or os.path.isdir(outfile):
+        if overwrite:
+            os.system('rm -rf '+outfile)
+        else:            
+            logger.error("Output exists and overwrite set to false - "+outfile)
+            return(False)
+
+    casa.impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
+
+    return(True)
+
+#endregion
+
+#region Convolution and alignment
+
 def align_to_target(
     infile=None,
     outfile=None,
@@ -114,42 +348,6 @@ def align_to_target(
         asvelocity=asvelocity,
         axes=axes,
         overwrite=True)
-
-    return(True)
-
-def primary_beam_correct(
-    infile=None, 
-    pbfile=None, 
-    outfile=None, 
-    cutoff=0.25, 
-    overwrite=False
-    ):
-    """
-    Construct a primary-beam corrected image.
-    """
-    
-    this_stub = 'PRIMARY_BEAM_CORRECT: '
-
-    if infile is None or pbfile is None or outfile is None:
-        logger.error("Missing required input.")
-        return(False)
-
-    if os.path.isdir(infile) == False:
-        logger.error("Input file missing - "+infile)
-        return(False)
-
-    if os.path.isdir(pbfile) == False:
-        logger.error("Primary beam file missing - "+pbfile)
-        return(False)
-
-    if os.path.isfile(outfile) or os.path.isdir(outfile):
-        if overwrite:
-            os.system('rm -rf '+outfile)
-        else:            
-            logger.error("Output exists and overwrite set to false - "+outfile)
-            return(False)
-
-    casa.impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
 
     return(True)
     
@@ -202,6 +400,10 @@ def convolve_to_round_beam(
                   )
 
     return(target_bmaj)
+
+#endregion
+
+#region Units stuff
 
 def calc_jytok(
     hdr=None,
@@ -352,199 +554,5 @@ def convert_ktojy(
     casa.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
     return(True)
-
-def trim_cube(    
-    infile=None, 
-    outfile=None, 
-    overwrite=False, 
-    inplace=False, 
-    min_pixperbeam=3,    
-    ):
-    """
-    Trim empty space from around the edge of a cube. Also rebin the
-    cube to smaller size, while ensuring a minimum number of pixels
-    across the beam. Used to reduce the volume of cubes.
-    """
-    
-    if infile is None or outfile is None:
-        logger.error("Missing required input.")
-        return(False)
-    
-    if os.path.isdir(infile) == False:
-        if not quiet:
-            print("Input file not found: "+infile)
-        return(False)
-
-    # First, rebin if needed
-    hdr = casa.imhead(infile)
-    if (hdr['axisunits'][0] != 'rad'):
-        logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
-        logger.error("Adjust code or investigate file "+infile)
-        return(False)
-
-    pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
-
-    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-        logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
-        logger.error("Adjust code or investigate file "+infile)
-        return(False)
-    bmaj = hdr['restoringbeam']['major']['value']    
-    
-    pix_per_beam = bmaj*1.0 / pixel_as*1.0
-    
-    if pix_per_beam > 6:
-        casa.imrebin(
-            imagename=infile,
-            outfile=outfile+'.temp',
-            factor=[2,2,1],
-            crop=True,
-            dropdeg=True,
-            overwrite=overwrite,
-            )
-    else:
-        os.system('cp -r '+infile+' '+outfile+'.temp')
-
-    # Figure out the extent of the image inside the cube
-    myia = au.createCasaTool(casa.iatool)
-    myia.open(outfile+'.temp')
-    mask = myia.getchunk(getmask=True)    
-    myia.close()
-
-    this_shape = mask.shape
-
-    mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
-    pad = 0
-    xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
-    xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
-
-    mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
-    ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
-    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
-
-    mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
-    zmin = np.max([0,np.min(np.where(mask_spec_z))-pad])
-    zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[2]-1])
-    
-    box_string = ''+str(xmin)+','+str(ymin)+','+str(xmax)+','+str(ymax)
-    chan_string = ''+str(zmin)+'~'+str(zmax)
-
-    logger.info("... box selection: "+box_string)
-    logger.info("... channel selection: "+chan_string)
-
-    if overwrite:
-        os.system('rm -rf '+outfile)
-        casa.imsubimage(
-            imagename=outfile+'.temp',
-            outfile=outfile,
-            box=box_string,
-            chans=chan_string,
-            )
-    
-    os.system('rm -rf '+outfile+'.temp')
-
-    return(True)
-
-def export_and_cleanup(
-    infile=None,
-    outfile=None,
-    overwrite=False,    
-    remove_cards=[],
-    add_cards=[],
-    add_history=[],
-    zap_history=True,
-    round_beam=True,
-    roundbeam_tol=0.01
-    ):
-    """
-    Export from a CASA image file to a FITS file, in the process
-    cleaning up header keywords that are usually confusing or
-    useless. Optionally add new keywords to the header and check
-    whether the beam is close enough to being round that it makes
-    sense to overwrite it.
-    """
-
-    if infile is None or outfile is None:
-        logger.error("Missing required input.")
-        return(False)
-
-    if os.path.isdir(infile) == False:
-        logger.error("Input file does not exist - "+infile)
-        return(False)
-
-    if os.path.isfile(outfile):
-        if not overwrite:
-            logger.error("Output exists and overwrite set to false - "+outfile)
-            return(False)
-
-    casa.exportfits(imagename=infile, 
-                    fitsimage=outfile,
-                    velocity=True, 
-                    overwrite=True, 
-                    dropstokes=True, 
-                    dropdeg=True, 
-                    bitpix=-32)
-    
-    # Clean up headers
-
-    hdu = pyfits.open(outfile)
-
-    hdr = hdu[0].header
-    data = hdu[0].data
-    
-    # Cards to remove by default
-
-    for card in ['BLANK','DATE-OBS','OBSERVER','O_BLANK','O_BSCALE',
-                 'O_BZERO','OBSRA','OBSDEC','OBSGEO-X','OBSGEO-Y','OBSGEO-Z',
-                 'DISTANCE']:
-        if card in hdr.keys():
-            hdr.remove(card)
-            
-    # User cards to remove
-
-    for card in remove_cards:
-        if card in hdr.keys():
-            hdr.remove(card)
-            
-    # Delete history
-    
-    if zap_history:
-        while 'HISTORY' in hdr.keys():
-            hdr.remove('HISTORY')
-
-    # Add history
-
-    for history_line in add_history:
-        add_history(history_line)
-            
-    # Get the data min and max right
-
-    datamax = np.nanmax(data)
-    datamin = np.nanmin(data)
-    hdr['DATAMAX'] = datamax
-    hdr['DATAMIN'] = datamin
-
-    # Round the beam recorded in the header if it lies within the
-    # specified tolerance.
-
-    if round_beam:
-        if roundbeam_tol > 0.0:
-            bmaj = hdr['BMAJ']
-            bmin = hdr['BMIN']
-            if bmaj != bmin:
-                frac_dev = np.abs(bmaj-bmin)/bmaj
-                if frac_dev <= roundbeam_tol:
-                    logger.info("Rounding beam.")
-                    hdr['BMAJ'] = bmaj
-                    hdr['BMIN'] = bmaj
-                    hdr['BPA'] = 0.0
-                else:
-                    logger.info("Beam too asymmetric to round.")
-                    logger.info("... fractional deviation: "+str(frac_dev))
-    
-    # Overwrite
-
-    hdu.writeto(outfile, clobber=True)
-        
-    return()
 
 #endregion

@@ -393,7 +393,9 @@ def common_astrometry_for_mosaic(
     overwrite=False,
     ):
     """
-    Build a common astrometry for a mosaic and align all image and weight files to that astrometry.
+    Build a common astrometry for a mosaic and align all image and
+    weight files to that astrometry. This wraps the other routines
+    here and so can be called for an end-to-end alignment.
     """
 
     # Error checking - mostly the subprograms do this.
@@ -462,22 +464,31 @@ def common_astrometry_for_mosaic(
 
 def generate_weight_file(
     image_file = None,
-    input_file = None,    
+    input_file = None,
+    input_value = None,    
     input_type = 'pb',
-    input_value = 1.0,
     outfile = None,
     scale_by_noise = False,
-    scale_by_factor = 1.0,
+    noise_value = None,
+    scale_by_factor = None,
     overwrite=False,
     ):
     """
-    Generate a weight file for use in a linear mosaic.
+    Generate a weight image for use in a linear mosaic.
     """
 
     # Check input
 
     if image_file is None and input_file is None:
         logger.error("I need either an input or an image template file.")
+        return(None)
+
+    if input_file is None and input_value is None:
+        logger.error("I need either an input value or an input file.")
+        return(None)
+
+    if input_file is not None and input_value is not None:
+        logger.error("I need ONE OF an input value or an input file. Got both.")
         return(None)
 
     if outfile is None:
@@ -494,33 +505,92 @@ def generate_weight_file(
         logger.error("Need either an input value or an input file.")
         return(None)
 
-    if scale_by_noise and image_file is None:
-        logger.error("I can only scale by the noise if I get an image file to caluclate the noise. Returning.")
-        return(None)
+    if input_file is not None:
+        if not os.path.isdir(input_file):
+            logger.error("Missing input file directory - "+input_file)
+            return(None)
 
-    # Case 1 : We just have an input value.
+    if image_file is not None:
+        if not os.path.isdir(image_file):
+            logger.error("Missing image file directory - "+image_file)
+            return(None)
 
-    # ... copy the input file and replace all values with the input value.
-
-    # Case 2 : We have an input image
-
-    # ... the type is noise. The weight image goes as 1/noise^2
-
-    # ... the type is primary beam. The weight image goes as pb^2 (because noise goes as 1/pb)
-    
-    # ... the type is weight. This is just weight image.
-
-    # Scale by a provided factor.
-
-    # Scale by the noise if requested.
+    # If scaling by noise is requested and no estimate is provided,
+    # generate an estimate
 
     if scale_by_noise:
 
-        # Figure out the noise.
+        if noise_value is None and image_file is None:
+            logger.error("I can only scale by the noise if I get an image file to caluclate the noise. Returning.")
+            return(None)
 
-        # Scale by 1/noise^2
+        if noise_value is None:
+            
+            pass
 
-        pass
+    # Define the template for the astrometry
+
+    if input_file is None:
+        template = image_file
+    else:
+        template = input_file
+
+    # Check the output file
+
+    if os.path.isdir(outfile) or os.path.isfile(outfile):
+        if not overwrite:
+            logger.error("File exists and overwrite set to false - "+outfile)
+            return(None)
+        os.system('rm -rf '+outfile)
+
+    # Copy the template and read the data into memory
+
+    os.system("cp -r "+template+" "+outfile)
+
+    myia = au.createCasaTool(iatool)
+    myia.open(outfile)
+    data = myia.getchunk()
+
+    # Case 1 : We just have an input value.
+
+    if input_file is None and input_value is not None:        
+
+        if input_type is 'noise':
+            weight_value = 1./input_value**2
+        if input_type is 'pb':
+            weight_value = input_value**2
+        if input_type is 'weight':
+            weight_value = input_value
+
+        weight_image = data*0.0 + weight_value
+    
+    # Case 2 : We have an input image
+
+    if input_file is not None:
+
+        os.system("cp -r "+template+" "+outfile)
+
+        if input_type is 'noise':
+            weight_image = 1./data**2
+        if input_type is 'pb':
+            weight_image = data**2
+        if input_type is 'weight':
+            weight_image = data
+
+    # If request, scale the data by a factor
+
+    if scale_by_factor is not None:
+        
+        weight_image = weight_image * scale_by_factor
+
+    # If request, scale the data by the inverse square of the noise estimate.
+
+    if scale_by_noise:
+
+        noise_scale_factor = 1./noise_value**2
+
+    myia.putchunk(data)
+    myia.close()
 
     return(None)
     
