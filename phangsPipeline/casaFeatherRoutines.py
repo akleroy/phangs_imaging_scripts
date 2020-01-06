@@ -70,7 +70,7 @@ def prep_sd_for_feather(
             importfits(
                 fitsimage=current_infile, 
                 imagename=current_outfile,
-                zeroblanks=True, 
+                zeroblanks=False,
                 overwrite=overwrite)
             current_infile = current_outfile
 

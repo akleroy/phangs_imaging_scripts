@@ -549,7 +549,7 @@ def generate_weight_file(
 
     os.system("cp -r "+template+" "+outfile)
 
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(outfile)
     data = myia.getchunk()
 
@@ -658,7 +658,7 @@ def mosaic_aligned_data(
                 expr=lel_exp_sum, outfile=sum_file,
                 imagemd = imlist[0])
     
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(sum_file)
     myia.set(pixelmask=1)
     myia.close()

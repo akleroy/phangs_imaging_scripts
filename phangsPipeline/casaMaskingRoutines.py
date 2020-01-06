@@ -120,7 +120,7 @@ def noise_for_cube(
             logger.error('maskfile specified but not found - '+maskfile)
             return(None)
             
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(infile)
     data = myia.getchunk()
     mask = myia.getchunk(getmask=True)
@@ -205,7 +205,7 @@ def signal_mask(
         print 'Returning. Generalize the code if you want different syntax.'
         return
 
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root+'.mask') == True:
             myia.open(cube_root+'.mask')
@@ -283,7 +283,7 @@ def apply_additional_mask(
         print "Specify a cube root file name."
         return
 
-    myia = au.createCasaTool(iatool)    
+    myia = au.createCasaTool(casa.iatool)    
     myia.open(new_mask_file)
     new_mask = myia.getchunk()
     myia.close()
@@ -337,7 +337,7 @@ def import_and_align_mask(
     hdr = imhead(template)
 
     # Pull the data out of the aligned mask and place it in the output file
-    myia = au.createCasaTool(iatool)
+    myia = au.createCasaTool(casa.iatool)
     myia.open(out_file+'.temp_aligned')
     mask = myia.getchunk(dropdeg=True)
     myia.close()

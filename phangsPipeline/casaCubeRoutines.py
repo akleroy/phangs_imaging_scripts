@@ -54,8 +54,10 @@ def copy_dropdeg(
                 return(False)
             os.system('rm -rf '+temp_outfile)
         
-        importfits(fitsimage=infile, imagename=temp_outfile,
-                   zeroblanks=True, overwrite=overwrite)
+        importfits(fitsimage=infile, 
+                   imagename=temp_outfile,
+                   zeroblanks=False, 
+                   overwrite=overwrite)
         used_temp_outfile = True
 
     if used_temp_outfile:
