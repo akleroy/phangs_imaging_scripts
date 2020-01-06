@@ -585,7 +585,7 @@ class PostProcessHandler:
                         
                         logger.info("Prepping "+prepped_sd_file+" for using cfr.prep_sd_for_feather.")
                         logger.debug("Original file "+orig_sd_file)
-                        logger.debug("Using interferometric template "+pborr_round_file)
+                        logger.debug("Using interferometric template "+pbcorr_round_file)
                         
                         if not self._dry_run:
                             cfr.prep_sd_for_feather(
@@ -741,7 +741,7 @@ class PostProcessHandler:
 
                         logger.info("Aligning primary beam image to new astrometry using ccr.align_to_target.")
                         logger.debug("Aligning original file "+pb_file)
-                        logger.debug("Aligning to produce output file "+trimmed_pb_file
+                        logger.debug("Aligning to produce output file "+trimmed_pb_file)
                         logger.debug("Aligning to template "+pbcorr_trimmed_file)
 
                         if not self._dry_run:
