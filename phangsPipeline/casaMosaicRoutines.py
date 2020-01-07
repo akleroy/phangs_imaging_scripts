@@ -57,6 +57,9 @@ def common_res_for_mosaic(
     do_convolve (default True) : do the convolution. Otherwise just
     calculates and returns the target resolution.
 
+    overwrite (default False) : Delete existing files. You probably
+    want to set this to True but it's a user decision.
+
     Unless a target resolution is supplied, the routine first
     calculates the common resolution based on the beam size of all of
     the input files. This target resolution is returned as the output
@@ -313,46 +316,108 @@ def calculate_mosaic_extent(
     return(output)
 
 def build_common_header(
-    infile_list = None, 
+    infile_list = None,
+    template_file = None,
     ra_ctr = None, 
     dec_ctr = None,
     delta_ra = None, 
     delta_dec = None,
-    template_file = None,
-    allowbigimage = False,
-    toobig=1e4
+    allow_big_image = False,
+    too_big_pix=1e4,
     ):
     """
-    Build a target header to be used as a template by imregrid. RA_CTR
-    and DEC_CTR are assumed to be in decimal degrees. DELTA_RA and
-    DELTA_DEC are assumed to be in arcseconds.
-    """
-    
-    if infile_list is None:
-        logger.error("Missing required infile_list.")
-        return(None)
+    Build a target header to be used as a template by imregrid when
+    setting up linear mosaicking operations.
 
-    for this_infile in infile_list:
-        if not os.path.isdir(this_infile):
-            logger.error("File not found "+this_infile+" . Returning.")
+    infile_list : the list of input files. Used to generate the
+    center, extent, and pick a template file if these things aren't
+    supplied by the user.
+
+    template_file : the name of a file to use as the template. The
+    coordinate axes and size are manipulated but other things like the
+    pixel size and units remain the same. If this is not supplied the
+    first file from the input file list is selected.
+
+    ra_ctr : the center of the output file in right ascension. Assumed
+    to be in decimal degrees. If None or not supplied, then this is
+    calculated from the image stack.
+
+    dec_ctr : as ra_ctr but for declination.
+
+    delta_ra : the extent of the output image in arcseconds. If this
+    is not supplied, it is calculated from the image stack.
+
+    delta_dec : as delta_ra but for declination.
+
+    allow_big_image (default False) : allow very big images? If False
+    then the program throws an error if the image appears too
+    big. This is often the sign of a bug.
+
+    too_big_pix (default 1e4) : definition of pixel scale (in one
+    dimension) that marks an image as too big.
+    """
+
+    # Check inputs
+    
+    if template_file is None:
+
+        if infile_list is None:
+            logger.error("Missing required infile_list and no template file.")
             return(None)
+    
+        template_file = infile_list[0]
+        logger.info("Using first input file as template - "+template_file)
+
+    if infile_list is not None:
+        for this_infile in infile_list:
+            if not os.path.isdir(this_infile):
+                logger.error("File not found "+this_infile+" . Returning.")
+                return(None)
 
     if template_file is not None:
         if os.path.isdir(template_file) == False:
             logger.error("The specified template file does not exist.")
             return(None)
 
-    # Base the target header on a template. If no template is supplied
-    # than the template is the first file in the list.
+    if infile_list is None:
+        
+        if template_file is None:
+            logger.error("Without an input file stack, I need a template file.")
+            return(None)
 
-    if template_file is None:
-        template_file = infile_list[0]
+        if (delta_ra is None) or (delta_dec is None) or (ra_ctr is None) or (dec_ctr is None):
+            logger.error("Without an input file stack, I need ra_ctr, dec_ctr, delta_ra, delta_dec.")
+            return(None)
+
+    # If the RA and Dec center and extent are not full specified, then
+    # calculate the extent based on the image stack.
+
+    if (delta_ra is None) or (delta_dec is None) or \
+            (ra_ctr is None) or (dec_ctr is None):
+
+        logger.info("Extent not fully specified. Calculating it from image stack.")
+        extent_dict = calculate_mosaic_extent(
+            infile_list = infile_list,
+            force_ra_ctr = ra_ctr,
+            force_dec_ctr = dec_ctr
+            )
+        
+        if ra_ctr is None:
+            ra_ctr = extent['ra_ctr'][0]
+        if dec_ctr is None:
+            dec_ctr = extent['dec_ctr'][0]
+        if delta_ra is None:
+            delta_ra = extent['delta_ra'][0]
+        if delta_dec is None:
+            delta_dec = extent['delta_dec'][0]
+        
+    # Get the header from the template file
 
     target_hdr = casa.imregrid(template_file, template='get')
     
     # Get the pixel scale. This makes some assumptions. We could put a
     # lot of general logic here, but we are usually working in a
-    # pretty specific case.
+    # case where this works.
 
     if (target_hdr['csys']['direction0']['units'][0] != 'rad') or \
             (target_hdr['csys']['direction0']['units'][1] != 'rad'):
@@ -383,8 +448,9 @@ def build_common_header(
     # Check that the axis size isn't too big. This is likely to be a
     # bug. If allowbigimage is True then bypass this, otherwise exit.
 
-    if not allowbigimage:
-        if ra_axis_size > toobig or dec_axis_size > toobig:
+    if not allow_big_image:
+        if ra_axis_size > too_big_pix or \
+                dec_axis_size > too_big_pix:
             logger.error("WARNING! This is a very big image you plan to create, "+str(ra_axis_size)+ \
                              " x "+str(dec_axis_size))
             logger.error(" To make an image this big set allowbigimage=True. Returning.")
@@ -400,57 +466,50 @@ def build_common_header(
     
     return(target_hdr)
 
-def align_for_mosaic(
-    infile_list = None,
-    outfile_list = None,
-    target_hdr=None,
-    overwrite=False
-    ):
-    """
-    Align a list of files to a target coordinate system.
-    """
-
-    if infile_list is None or \
-            outfile_list is None or \
-            target_hdr is None:
-        logger.error("Missing required input.")
-        return(None)
-
-    for ii in range(len(infile_list)):
-        this_infile = infile_list[ii]
-        this_outfile = outfile_list[ii]        
-
-        if os.path.isdir(this_infile) == False:
-            logger.error("File "+this_infile+" not found. Continuing.")
-            continue
-
-        casa.imregrid(imagename=this_infile,
-                      template=target_hdr,
-                      output=this_outfile,
-                      asvelocity=True,
-                      axes=[-1],
-                      interpolation='cubic',
-                      overwrite=overwrite)
-
-    return(None)
-
 def common_astrometry_for_mosaic(
     infile_list = None,
     outfile_list = None,
-    weightfiles_in = None,
-    weightfiles_out = None,
+    target_hdr = None,
+    template_file = None,
+    # could use **kwargs here if this gets much more complicated
     ra_ctr = None, 
     dec_ctr = None,
     delta_ra = None, 
     delta_dec = None,
-    allowbigimage = False,
-    toobig=1e4,
+    allow_big_image = False,
+    too_big_pix=1e4,   
+    asvelocity=True,
+    interpolation='cubic',
+    axes=[-1],
     overwrite=False,
     ):
     """
-    Build a common astrometry for a mosaic and align all image and
-    weight files to that astrometry. This wraps the other routines
-    here and so can be called for an end-to-end alignment.
+    Build a common astrometry for a mosaic and align all input image
+    files to that astrometry. If the common astrometry isn't supplied
+    as a header, the program calls other routines to create it based
+    on the supplied parameters and stack of input images. Returns the
+    common header.
+    
+    infile_list : list of input files.
+
+    outfile_list : a list of output files that will get the convolved
+    data. Can be a dictionary or a list. If it's a list then matching
+    is by order, so that firs infile goes to first outfile, etc. If
+    it's a dictionary, it looks for the infile name as a key.
+
+    target_hdr : the CASA-format header used to align the images,
+    needs the same format returned by a call to imregrid with
+    template='get'.
+
+    ra_ctr, dec_ctr, delta_ra, delta_dec, allow_big_image, too_big_pix
+    : keywords passed to the header creation routine. See
+    documentation for "build_common_header" to explain these.
+
+    asvelocity, interpolation, axes : keywords passed to the CASA imregrid
+    call. See documentation there.
+
+    overwrite (default False) : Delete existing files. You probably
+    want to set this to True but it's a user decision.
     """
 
     # Error checking - mostly the subprograms do this.
@@ -463,55 +522,62 @@ def common_astrometry_for_mosaic(
         logger.error("Outfile list missing.")
         return(None)
 
-    # Determine common header using only the input images
+    # Make sure that the outfile list is a dictionary
 
-    logger.info('Generating extent of target header.')
-    extent = calculate_mosaic_extent(
-        infile_list = infile_list, 
-        force_ra_ctr = ra_ctr, 
-        force_dec_ctr = dec_ctr)
-    if ra_ctr is None:
-        ra_ctr = extent['ra_ctr'][0]
-    if dec_ctr is None:
-        dec_ctr = extent['dec_ctr'][0]
-    if delta_ra is None:
-        delta_ra = extent['delta_ra'][0]
-    if delta_dec is None:
-        delta_dec = extent['delta_dec'][0]
+    if (type(outfile_list) != type([])) and (type(outfile_list) != type({})):
+        logger.error("outfile_list must be dictionary or list.")
+        return(None)
 
-    logger.info('Generating target header.')
-    target_hdr = build_common_header(
-        infile_list = infile_list, 
-        ra_ctr = ra_ctr, 
-        dec_ctr = dec_ctr,
-        delta_ra = delta_ra, 
-        delta_dec = delta_dec,
-        allowbigimage = allowbigimage,
-        toobig=toobig,
-        )
+    if type(outfile_list) == type([]):
+        if len(infile_list) != len(outfile_list):
+            logger.error("Mismatch in input and output list lengths.")
+            return(None)
+        outfile_dict = {}
+        for ii in range(len(infile_list)):
+            outfile_dict[infile_list[ii]] = outfile_list[ii]
 
-    # Align the input files to the new astrometry
+    if type(outfile_list) == type({}):
+        outfile_dict = outfile_list
 
-    logger.info('Aligning image files.')
-    align_for_mosaic(
-        infile_list = infile_list,
-        outfile_list = outfile_list,
-        target_hdr=target_hdr,
-        overwrite=overwrite
-        )
+    # Get the common header if one is not supplied
 
-    # Align the weight files to the new astrometry
-
-    if weightfiles_in is not None:
-        logger.info('Aligning weighting files.')
-        align_for_mosaic(
-            infile_list = weightfiles_in,
-            outfile_list = weightfiles_out,
-            target_hdr=target_hdr,
-            overwrite=overwrite
+    if target_hdr is None:
+        
+        logger.info('Generating target header.')
+        
+        target_hdr = build_common_header(
+            infile_list = infile_list, 
+            template_file = template_file,
+            ra_ctr = ra_ctr, 
+            dec_ctr = dec_ctr,
+            delta_ra = delta_ra, 
+            delta_dec = delta_dec,
+            allow_big_image = allow_big_image,
+            too_big_pix=too_big_pix,
             )
 
-    return(None)
+    # Align the input files to the new astrometry. This will also loop
+    # over and align any "weight" files.
+
+    logger.info('Aligning image files.')
+
+    for this_infile in infile_list:
+        
+        this_outfile = outfile_dict[this_infile]
+
+        if os.path.isdir(this_infile) == False:
+            logger.error("File "+this_infile+" not found. Continuing.")
+            continue
+
+        casa.imregrid(imagename=this_infile,
+                      template=target_hdr,
+                      output=this_outfile,
+                      asvelocity=asvelocity,
+                      axes=axes,
+                      interpolation=interpolation,
+                      overwrite=overwrite)
+
+    return(target_hdr)
 
 #endregion
 
