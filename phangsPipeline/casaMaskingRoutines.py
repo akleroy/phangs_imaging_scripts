@@ -28,6 +28,26 @@ from pipelineVersion import version as pipeVer
 
 #region Noise estimation
 
+def mad(
+    data=None,
+    as_sigma=True
+    ):
+    """
+    Helper routine to calculate median absolute deviation. Present
+    already in scipy.stats but not in the version CASA ships with.
+    """
+
+    if data is None:
+        logger.error("No data supplied.")
+
+    this_med = np.median(data)
+    this_dev = np.abs(data - this_med)
+    this_mad = np.median(this_dev)
+    if as_sigma:
+        return(this_mad / 0.6745)
+    else:
+        return(this_mad)
+
 def estimate_noise(
     data=None,
     mask=None,
@@ -35,7 +55,9 @@ def estimate_noise(
     niter=None,
     ):
     """
-    Return a noise estimate given a vector and associated mask.
+    Return a noise estimate given a vector and associated mask. Method
+    "mad" is preferred for fast calculation and "chauvmad" for
+    accurate calculation. Both should be reasonably robust.
     """
     
     if data is None:
@@ -48,9 +70,9 @@ def estimate_noise(
             return(None)
     
     if niter is None:
-        niter = 3
+        niter = 5
 
-    valid_methods = ['std','mad','chauv']
+    valid_methods = ['std','mad','chauv','chauvmad']
     if method not in valid_methods:
         logger.error("Invalid method - "+method+" valid methods are "+str(valid_methods))
         return(None)
@@ -71,16 +93,17 @@ def estimate_noise(
         return(this_noise)
 
     if method == 'mad':
-        this_med = np.median(use_data)
-        this_dev = np.abs(use_data - this_med)
-        this_mad = np.median(this_dev)
-        this_noise = this_mad / 0.6745
+        this_noise = mad(use_data, as_sigma=True)
         return(this_noise)
 
-    if method == 'chauv':
+    if method == 'chauv' or method == 'chauvmad':
         for ii in range(niter):
             this_mean = np.mean(use_data)
-            this_std = np.std(use_data)
+            if method == 'chauv':
+                this_std = np.std(use_data)
+            elif method == 'chauvmad':
+                this_std = mad(use_data, as_sigma=True)
+
             this_dev = np.abs((use_data-this_mean)/this_std)/2.0**0.5
             this_prob = erfc(this_dev)
                         
