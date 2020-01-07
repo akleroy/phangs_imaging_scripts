@@ -1,7 +1,6 @@
 """
-Standalone routines that take input and output files and manipulate
-cubes. These are called as part of the PHANGS post-processing pipeline
-but also may be of general utility.
+Standalone routines that relate to single dish-interferometer
+combination using CASA's feather.
 """
 
 #region Imports and definitions
@@ -35,10 +34,10 @@ def prep_sd_for_feather(
     sdfile_in=None,
     sdfile_out=None,
     interf_file=None,
-    doimport=True,
-    dropdeg=True,
-    doalign=True,
-    checkunits=True,
+    do_import=True,
+    do_dropdeg=True,
+    do_align=True,
+    do_checkunits=True,
     overwrite=False):
     """
     Prepare single dish data for feathering. 
@@ -56,15 +55,15 @@ def prep_sd_for_feather(
     do_import (default True) : If True and the infile is a FITS file,
     then import the data from FITS.
 
-    dropdeg (default True) : if True then pare degenerate axes from
+    do_dropdeg (default True) : if True then pare degenerate axes from
     the signle dish file. In general this is a good idea for
     postprocessing, where mixing and matching degenerate axes causes
     many CASA routines to fail.
 
-    doalign (default True) : If True then align the single dish data to the
+    do_align (default True) : If True then align the single dish data to the
     astrometric grid of the the interferometer file.
 
-    checkunits (default True) : If True then check the units to make
+    do_checkunits (default True) : If True then check the units to make
     sure that they are in Jy/beam, which is required by feather.
 
     overwrite (default False) : Delete existing files. You probably
@@ -93,7 +92,7 @@ def prep_sd_for_feather(
     
     # Import from FITS if needed. Keep blanks as not-a-numbers.
     
-    if doimport:
+    if do_import:
         if ((current_infile[-4:] == 'FITS') or \
                 (current_infile[-4:] == 'fits')) and \
                 os.path.isfile(current_infile):
@@ -108,7 +107,7 @@ def prep_sd_for_feather(
 
     # Drop degenerate axes using a call to imsubimage
             
-    if dropdeg:
+    if do_dropdeg:
         if current_infile == current_outfile:
             if os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name):
                 if overwrite:
@@ -136,7 +135,7 @@ def prep_sd_for_feather(
 
     # Align the single dish data to the astrometric grid of the interferometric data
 
-    if doalign:
+    if do_align:
         if current_infile == current_outfile:
             if os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name):
                 if overwrite:
@@ -161,7 +160,7 @@ def prep_sd_for_feather(
 
     # Check the units on the singledish file and convert from K to Jy/beam if needed.
 
-    if checkunits:
+    if do_checkunits:
         hdr = casa.imhead(current_outfile, mode='list')
         unit = hdr['bunit']
         if unit == 'K':
@@ -183,8 +182,8 @@ def feather_two_cubes(
     interf_file=None,
     sd_file=None,
     out_file=None,
-    blank=False,
-    apodize=False,
+    do_blank=False,
+    do_apodize=False,
     apod_file=None,
     apod_cutoff=-1.0,
     overwrite=False,
@@ -201,7 +200,7 @@ def feather_two_cubes(
 
     out_file : the output file name
 
-    blank (default False) : if True then blank masked and not-a-number
+    do_blank (default False) : if True then blank masked and not-a-number
     values in the cubes. The idea is to make sure missing data are
     zero for the FFT (probably not an issue) and to make sure some
     regions don't appear in one map but not the other. This is
@@ -209,10 +208,10 @@ def feather_two_cubes(
     unclear and the case of, e.g., a much more extended single dish
     map compared to the interferometer map comes up.
 
-    apodize (default False) : if True, then apodize BOTH data sets
+    do_apodize (default False) : if True, then apodize BOTH data sets
     using the provided apodization map.
 
-    apod_file : if apodize is True, this file is the map used to scale
+    apod_file : if do_apodize is True, this file is the map used to scale
     both the interferometer and single dish data.
 
     apod_cutoff : the cutoff in the apodization file below which data
@@ -232,7 +231,7 @@ def feather_two_cubes(
         logger.error("Interferometric file not found: "+interf_file)
         return(False)
 
-    if apodize:
+    if do_apodize:
         if (os.path.isdir(apod_file) == False):
             logger.error("Apodization requested, but file not found: "+apod_file)
             return(False)
@@ -250,7 +249,7 @@ def feather_two_cubes(
     # interferometer map, so that only regions in common should
     # survive.
 
-    if blank:        
+    if do_blank:        
         
         current_interf_file = interf_file+'.temp'
         current_sd_file = sd_file+'.temp'
@@ -299,7 +298,7 @@ def feather_two_cubes(
     # If apodization is requested, multiply both data sets by the same
     # taper and create a new, temporary output data set.
 
-    if apodize:
+    if do_apodize:
 
         casa.impbcor(imagename=current_sd_file,
                      pbimage=apod_file, 
@@ -333,7 +332,7 @@ def feather_two_cubes(
 
     # If we apodized, now divide out the common kernel.
 
-    if apodize:
+    if do_apodize:
         os.system('rm -rf '+out_file+'.temp')
         os.system('mv '+out_file+' '+out_file+'.temp')
         casa.impbcor(imagename=out_file+'.temp',
