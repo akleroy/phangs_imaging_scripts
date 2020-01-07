@@ -133,8 +133,8 @@ def save_copy_of_imaging(
     os.system('cp -r '+input_root+'.pb '+output_root+'.pb')
     os.system('cp -r '+input_root+'.psf '+output_root+'.psf')
     os.system('cp -r '+input_root+'.residual '+output_root+'.residual')
-    os.system('cp -r '+input_root+'.psf '+output_root+'.weight')
-    os.system('cp -r '+input_root+'.residual '+output_root+'.sumwt')
+    os.system('cp -r '+input_root+'.weight '+output_root+'.weight')
+    os.system('cp -r '+input_root+'.sumwt '+output_root+'.sumwt')
 
 def replace_imaging_with_copy(
     to_root=None,
@@ -151,8 +151,8 @@ def replace_imaging_with_copy(
     os.system('cp -r '+from_root+'.pb '+to_root+'.pb')
     os.system('cp -r '+from_root+'.psf '+to_root+'.psf')
     os.system('cp -r '+from_root+'.residual '+to_root+'.residual')
-    os.system('cp -r '+from_root+'.psf '+to_root+'.weight')
-    os.system('cp -r '+from_root+'.residual '+to_root+'.sumwt')
+    os.system('cp -r '+from_root+'.weight '+to_root+'.weight')
+    os.system('cp -r '+from_root+'.sumwt '+to_root+'.sumwt')
 
 def export_imaging_to_fits(
     image_root=None,
