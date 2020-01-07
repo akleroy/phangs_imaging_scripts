@@ -177,6 +177,10 @@ def feather_two_cubes(
     os.system('rm -rf '+interf_file+'.temp')
     os.system('rm -rf '+out_file+'.temp')
 
+    # Manipulate blanked (NaN and mask) values to make sure they are
+    # zeros. This should probably not be necessary, but some aspects
+    # of CASA's procedures are unclear.
+
     if blank:        
         current_interf_file = interf_file+'.temp'
         current_sd_file = sd_file+'.temp'
@@ -206,13 +210,13 @@ def feather_two_cubes(
         # pixel masks for some reason.
 
         if np.sum(combined_mask == False) > 0:
-            myia.open(interf_file)
+            myia.open(current_interf_file)
             interf_data = myia.getchunk()
             interf_data[combined_mask == False] = 0.0
             myia.putchunk(interf_data)
             myia.close()
 
-            myia.open(sd_file)
+            myia.open(current_sd_file)
             sd_data = myia.getchunk()
             sd_data[combined_mask == False] = 0.0
             myia.putchunk(sd_data)
