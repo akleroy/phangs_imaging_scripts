@@ -586,16 +586,59 @@ def common_astrometry_for_mosaic(
 def generate_weight_file(
     image_file = None,
     input_file = None,
-    input_value = None,    
+    input_value = None,
     input_type = 'pb',
     outfile = None,
     scale_by_noise = False,
+    mask_for_noise = None,
     noise_value = None,
     scale_by_factor = None,
     overwrite=False,
     ):
     """
-    Generate a weight image for use in a linear mosaic.
+    Generate a weight image for use in a linear mosaic. The weight
+    image will be used in the linear mosaicking as a weight,
+    multiplied by the image file and then divided out. The optimal S/N
+    choice is often 1/noise^2. The program gives some options to
+    calculate a weight image of this type from the data or using the
+    primary beam response.
+
+    image_file : the data cube or image associated with the
+    weighting. Used for noise calculation and to supply a template
+    astrometry. Not always necessary.
+
+    input_file : an input image of some type (see below) used to form
+    the basis for the weight.
+
+    input_value : an input value of some type (see below) used to form
+    the basis for the weight. This is a single value. Only one of
+    input_file or input_value can be set.
+
+    input_type : the type of input. This can be
+
+    - 'pb' for primary beam response (weight goes at pb^2)
+    - 'noise' for a noise estimate (weight goes as 1/noise^2)
+    - 'weight' for a weight value
+    
+    outfile : the name of the output weight file to write
+
+    scale_by_noise (default False) : if True, then scale the weight
+    image by 1/noise^2 . Either the noise_value is supplied or it will
+    be calculated from the image.
+    
+    mask_for_noise : if supplied, the "True" values in this mask image
+    will be passed to the noise estimation routine and excluded from
+    the noise calculation.
+
+    noise_value : the noise in the image. If not set, this will be
+    calculated from the image.
+
+    scale_by_factor : a factor that will be applied directly to the
+    weight image.
+    
+    overwrite (default False) : Delete existing files. You probably
+    want to set this to True but it's a user decision.
+
     """
 
     # Check input
@@ -642,12 +685,22 @@ def generate_weight_file(
     if scale_by_noise:
 
         if noise_value is None and image_file is None:
-            logger.error("I can only scale by the noise if I get an image file to caluclate the noise. Returning.")
+            logger.error("I can only scale by the noise if I have a noise value or an image.")
             return(None)
 
         if noise_value is None:
             
-            pass
+            logger.info("Calculating noise for "+image_file)
+
+            # Could use kwargs here to simplify parameter passing. Fine right now, too.
+
+            noise_value = cma.noise_for_cube(
+                infile = image_file,
+                maskfile = mask_for_noise,
+                exclude_mask = True,
+                method = 'chauvmad',
+                niter=5,
+                )
 
     # Define the template for the astrometry
 
@@ -685,11 +738,10 @@ def generate_weight_file(
 
         weight_image = data*0.0 + weight_value
     
-    # Case 2 : We have an input image
+    # Case 2 : We have an input image. Read in the data and manipulate
+    # it into a weight array.
 
     if input_file is not None:
-
-        os.system("cp -r "+template+" "+outfile)
 
         if input_type is 'noise':
             weight_image = 1./data**2
@@ -698,7 +750,7 @@ def generate_weight_file(
         if input_type is 'weight':
             weight_image = data
 
-    # If request, scale the data by a factor
+    # Now we have a weight image. If request, scale the data by a factor.
 
     if scale_by_factor is not None:
         
@@ -708,13 +760,14 @@ def generate_weight_file(
 
     if scale_by_noise:
 
-        noise_scale_factor = 1./noise_value**2
+        weight_image = weight_image * 1./noise_value**2
+
+    # Put the data back into the file and close it.
 
     myia.putchunk(data)
     myia.close()
 
     return(None)
-    
 
 #endregion
 
