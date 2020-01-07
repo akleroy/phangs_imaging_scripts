@@ -1,6 +1,6 @@
 """
-Routines to carry out basic noise estimation, masking, and mask
-manipulation steps in CASA.
+Stand alone routines to carry out basic noise estimation, masking, and
+mask manipulation steps in CASA.
 """
 
 #region Imports and definitions
