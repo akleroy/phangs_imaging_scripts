@@ -33,8 +33,18 @@ def mad(
     as_sigma=True
     ):
     """
-    Helper routine to calculate median absolute deviation. Present
-    already in scipy.stats but not in the version CASA ships with.
+    Helper routine to calculate median absolute deviation (MAD). This
+    is present already in scipy.stats but not in the version of scipy
+    that CASA ships with. The MAD is a use a fast, useful robust noise
+    estimator.
+
+    data : the vector of data used to calculate the MAD. The routine
+    flattens the array, so no along-axis operations.
+
+    as_sigma (default True) : scale the output so that the returned
+    value represents the RMS or 1-sigma value for a normal
+    distribution. For Gaussian noise, this implies that the result can
+    just be used as a standard noise estimate.  
     """
 
     if data is None:
@@ -55,8 +65,24 @@ def estimate_noise(
     niter=None,
     ):
     """
-    Return a noise estimate given a vector and associated mask. Method
-    "mad" is preferred for fast calculation and "chauvmad" for
+    Return a noise estimate given a vector and associated mask.
+
+    data : the data used to calculate the noise.
+
+    mask : a mask used to indicate which subset of data to
+    consider. In this routine mask values of True will be included in
+    the calculation and mask values of False will be excluded. This
+    matches the CASA syntax, but might require "inverting" a signal
+    mask when the intention is to avoid bright signal.
+
+    method (default "mad") : Method to use. Either "std" for standard
+    deviation, "mad" for median absolute deviation, "chauvstd" for
+    standard deviation with outlier rejection, or "chauvmad" for mad
+    with outlier rejection.
+
+    niter : number of iterations used in outlier rejection.
+
+    Method "mad" is preferred for fast calculation and "chauvmad" for
     accurate calculation. Both should be reasonably robust.
     """
     
@@ -72,7 +98,7 @@ def estimate_noise(
     if niter is None:
         niter = 5
 
-    valid_methods = ['std','mad','chauv','chauvmad']
+    valid_methods = ['std','mad','chauvstd','chauvmad']
     if method not in valid_methods:
         logger.error("Invalid method - "+method+" valid methods are "+str(valid_methods))
         return(None)
@@ -96,10 +122,10 @@ def estimate_noise(
         this_noise = mad(use_data, as_sigma=True)
         return(this_noise)
 
-    if method == 'chauv' or method == 'chauvmad':
+    if method == 'chauvstd' or method == 'chauvmad':
         for ii in range(niter):
             this_mean = np.mean(use_data)
-            if method == 'chauv':
+            if method == 'chauvstd':
                 this_std = np.std(use_data)
             elif method == 'chauvmad':
                 this_std = mad(use_data, as_sigma=True)
@@ -332,8 +358,9 @@ def import_and_align_mask(
     template=None,
     ):
     """
-    Align a mask to a target astrometry. Some klugy steps to make
-    things work most of the time.
+    Align a mask to a target astrometry. This includes some klugy
+    steps (especially related to axes and interpolation) to make this
+    work, e.g., for clean masks, most of the time.
     """
 
     # Import from FITS (could make optional)
