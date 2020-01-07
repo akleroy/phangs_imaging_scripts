@@ -1,7 +1,6 @@
 """
-Standalone routines that take input and output files and manipulate
-cubes. These are called as part of the PHANGS post-processing pipeline
-but also may be of general utility.
+Standalone routines related to linear mosaicking of multi-part mosaics
+in CASA.
 """
 
 #region Imports and definitions
@@ -35,25 +34,45 @@ def common_res_for_mosaic(
     infile_list = None, 
     outfile_list = None,
     target_res=None,
-    doconvolve=True,
     pixel_padding=2.0,
+    do_convolve=True,
     overwrite=False
     ):
     """
-    Convolve multi-part cubes to a common res for mosaicking. It will
-    calculate the common resolution based on the beam size of all of
-    the input files, unless it is fed a fixed target resolution. It
-    returns the target resolution. If doconvolve is True, it also
-    convolves all of the input files to output files with that
-    resolution. For this it needs a list of output files matched to
-    the input file list, either as another list or a dictionary.
+    Convolve multi-part cubes to a common res for mosaicking. 
 
-    Has a tuning keyword 'pixel_padding' to indicate how many pixels
-    worth of padding is added in quadrature to the maximum beam size
-    to get the common beam.
+    infile_list : list of input files.
+
+    outfile_list : if do_convolve is true, a list of output files that
+    will get the convolved data. Can be a dictionary or a list. If
+    it's a list then matching is by order, so that firs infile goes to
+    first outfile, etc. If it's a dictionary, it looks for the infile
+    name as a key.
+
+    target_res : force this target resolution.
+
+    pixel_padding (default 2.0) : the number of pixels to add to the
+    largest common beam (in quadrature) to ensure robust convolution.
+
+    do_convolve (default True) : do the convolution. Otherwise just
+    calculates and returns the target resolution.
+
+    Unless a target resolution is supplied, the routine first
+    calculates the common resolution based on the beam size of all of
+    the input files. This target resolution is returned as the output
+    of the routine. The supplied pixel_padding is used to ensure that
+    a convolution kernel can be built by imregrid, since CASA can't
+    currently keep the major axis fixed and convolve the minor axis.
+
+    If do_convolve is True, it also convolves all of the input files
+    to output files with that resolution. For this it needs a list of
+    output files matched to the input file list, either as another
+    list or a dictionary.
     """
     
-    # Check that the input files exist
+    # Check inputs.
+
+    # First check that input files are supplied and exist.
 
     if infile_list is None:
         logger.error("Missing required infile_list.")
@@ -64,7 +83,40 @@ def common_res_for_mosaic(
             logger.error("File not found "+this_file)
             return(None)
     
-    # Figure out target resolution if it is not supplied by the user
+    # If do_convolve is True then make sure that we have output files
+    # and that they match the input files.
+
+    if do_convolve:
+
+        if outfile_list is None:
+            logger.error("Missing outfile_list required for convolution.")
+            return(None)
+
+        if (type(outfile_list) != type([])) and (type(outfile_list) != type({})):
+            logger.error("outfile_list must be dictionary or list.")
+            return(None)
+
+        if type(outfile_list) == type([]):
+            if len(infile_list) != len(outfile_list):
+                logger.error("Mismatch in input and output list lengths.")
+                return(None)
+            outfile_dict = {}
+            for ii in range(len(infile_list)):
+                outfile_dict[infile_list[ii]] = outfile_list[ii]
+
+        if type(outfile_list) == type({}):
+            outfile_dict = outfile_list
+
+        missing_keys = 0
+        for infile in infile_list:
+            if infile not in outfile_dict.keys():
+                logger.error("Missing output file for infile: "+infile)
+                missing_keys += 1
+            if missing_keys > 0:
+                logger.error("Missing "+str(missing_keys)+" output file names.")
+                return(None)
+
+    # Figure out the target resolution if it is not supplied by the user
 
     if target_res is None:
         logger.debug("Calculating target resolution ... ")
@@ -98,38 +150,7 @@ def common_res_for_mosaic(
     else:
         target_bmaj = force_beam
 
-    if not doconvolve:
-        return(target_bmaj)
-
-    # If doconvolve is True then make sure that we have output files
-    # and that they match the input files.
-
-    if outfile_list is None:
-        logger.error("Missing outfile_list required for convolution.")
-        return(target_bmaj)
-
-    if (type(outfile_list) != type([])) and (type(outfile_list) != type({})):
-        logger.error("outfile_list must be dictionary or list.")
-        return(target_bmaj)
-
-    if type(outfile_list) == type([]):
-        if len(infile_list) != len(outfile_list):
-            logger.error("Mismatch in input and output list lengths.")
-            return(target_bmaj)
-        outfile_dict = {}
-        for ii in range(len(infile_list)):
-            outfile_dict[infile_list[ii]] = outfile_list[ii]
-
-    if type(outfile_list) == type({}):
-        outfile_dict = outfile_list
-
-    missing_keys = 0
-    for infile in infile_list:
-        if infile not in outfile_dict.keys():
-            logger.error("Missing output file for infile: "+infile)
-            missing_keys += 1
-    if missing_keys > 0:
-        logger.error("Missing "+str(missing_keys)+" output file names.")
+    if not do_convolve:
         return(target_bmaj)
 
     # With a target resolution and matched lists we can proceed.

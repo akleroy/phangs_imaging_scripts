@@ -308,7 +308,7 @@ class PostProcessHandler:
 
 #endregion
 
-#region Master loop
+#region Master loop and master file name routines
 
     def _master_loop(
         self,
@@ -592,9 +592,10 @@ class PostProcessHandler:
                                 sdfile_in=infile,
                                 sdfile_out=outfile,
                                 interf_file=template,
-                                doimport=True,
-                                checkunits=True,
-                                doalign=True,
+                                do_import=True,
+                                do_dropdeg=True,
+                                do_align=True,
+                                do_checkunits=True,                                
                                 overwrite=True)
 
                     # Prepare data for linear mosaicking
@@ -698,10 +699,10 @@ class PostProcessHandler:
                                     interf_file=interf_file,
                                     sd_file=sd_file,
                                     out_file=outfile,
-                                    apodize=True,
+                                    do_blank=True,
+                                    do_apodize=True,
                                     apod_file=apod_file,
                                     apod_cutoff=0.0,
-                                    blank=True,
                                     overwrite=True)
 
                         if self._feather_method == 'pbcorr':
@@ -711,10 +712,10 @@ class PostProcessHandler:
                                     interf_file=interf_file,
                                     sd_file=sd_file,
                                     out_file=outfile,
-                                    apodize=False,
+                                    do_blank=True,
+                                    do_apodize=False,
                                     apod_file=None,
                                     apod_cutoff=-1.0,
-                                    blank=True,
                                     overwrite=True)
 
                     # Compress, reducing cube volume.
