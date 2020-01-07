@@ -124,20 +124,20 @@ def common_res_for_mosaic(
         bmaj_list = []
         pix_list = []
 
-        for infile in infile_list:
-            logger.info("Checking "+infile)
+        for this_infile in infile_list:
+            logger.info("Checking "+this_infile)
 
-            hdr = casa.imhead(infile)
+            hdr = casa.imhead(this_infile)
 
             if (hdr['axisunits'][0] != 'rad'):
                 logger.error("ERROR: Based on CASA experience. I expected units of radians.")
-                logger.error("I did not find this. Returning. Adjust code or investigate file "+infile)
+                logger.error("I did not find this. Returning. Adjust code or investigate file "+this_infile)
                 return(None)
             this_pixel = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
             if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
                 logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam.")
-                logger.error("I did not find this. Returning. Adjust code or investigate file "+infile)
+                logger.error("I did not find this. Returning. Adjust code or investigate file "+this_infile)
                 return(None)
             this_bmaj = hdr['restoringbeam']['major']['value']
 
@@ -172,7 +172,7 @@ def common_res_for_mosaic(
 
 #endregion
 
-#region Routines to match astrometry
+#region Routines to match astrometry between parts of a mosaic
 
 def calculate_mosaic_extent(
     infile_list = None, 
@@ -181,14 +181,23 @@ def calculate_mosaic_extent(
     ):
     """
     Given a list of input files, calculate the center and extent of
-    the mosaic needed to cover them all. Optionally, force the center
-    of the mosaic to some value. In that case, the extent is
-    calculated to be the rectangle centered on the supplied (RA,
-    Dec). 
+    the mosaic needed to cover them all. Return the results as a
+    dictionary.
 
-    If the RA and Dec. center are supplied they are assumed to be in
-    decimal degrees.
+    infile_list : list of input files to loop over.
+
+    force_ra_ctr (default None) : if set then force the RA center of
+    the mosaic to be this value, and the returned extent is the
+    largest separation of any image corner from this value in RA.
+
+    force_dec_ctr (default None) : as force_ra_ctr but for
+    Declination.
+
+    If the RA and Dec. centers are supplied, then they are assumed to
+    be in decimal degrees.
     """
+
+    # Check inputs
 
     if infile_list is None:
         logger.error("Missing required infile_list.")
@@ -199,14 +208,19 @@ def calculate_mosaic_extent(
             logger.error("File not found "+this_infile+"Returning.")
             return(None)
 
-    # The list of corner RA and Dec positions.
+    # Initialize the list of corner RA and Dec positions.
+
     ra_list = []
     dec_list = []
 
     # TBD - right now we assume matched frequency/velocity axis
     freq_list = []
 
+    # Loop over input files and calculate RA and Dec coordinates of
+    # the corners.
+
     for this_infile in infile_list:
+
         this_hdr = casa.imhead(this_infile)
 
         if this_hdr['axisnames'][0] != 'Right Ascension':
@@ -250,14 +264,26 @@ def calculate_mosaic_extent(
         dec_list.append(trc['coords'][0][1])
         dec_list.append(brc['coords'][0][1])
         
+    # Get the minimum and maximum RA and Declination. 
+
+    # TBD - this breaks straddling the meridian (RA = 0) or the poles
+    # (Dec = 90). Add catch cases or at least error calls for
+    # this. Meridian seems more likely to come up, so just that is
+    # probably fine.
+
     min_ra = np.min(ra_list)
     max_ra = np.max(ra_list)
     min_dec = np.min(dec_list)
     max_dec = np.max(dec_list)
 
     # TBD - right now we assume matched frequency/velocity axis
+
     min_freq = None
     max_freq = None
+
+    # If we do not force the center of the mosaic, then take it to be
+    # the average of the min and max, so that the image will be a
+    # square.
 
     if force_ra_ctr == None:
         ra_ctr = (max_ra+min_ra)*0.5
@@ -269,10 +295,14 @@ def calculate_mosaic_extent(
     else:
         dec_ctr = force_dec_ctr*np.pi/180.
 
+    # Now calculate the total extent of the mosaic given the center.
+
     delta_ra = 2.0*np.max([np.abs(max_ra-ra_ctr),np.abs(min_ra-ra_ctr)])
     delta_ra *= np.cos(dec_ctr)
     delta_dec = 2.0*np.max([np.abs(max_dec-dec_ctr),np.abs(min_dec-dec_ctr)])
     
+    # Put the output into a dictionary.
+
     output = {
         'ra_ctr':[ra_ctr*180./np.pi,'degrees'],
         'dec_ctr':[dec_ctr*180./np.pi,'degrees'],
