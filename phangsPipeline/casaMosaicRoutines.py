@@ -45,9 +45,9 @@ def common_res_for_mosaic(
 
     outfile_list : if do_convolve is true, a list of output files that
     will get the convolved data. Can be a dictionary or a list. If
-    it's a list then matching is by order, so that firs infile goes to
-    first outfile, etc. If it's a dictionary, it looks for the infile
-    name as a key.
+    it's a list then matching is by order, so that the first infile
+    goes to first outfile, etc. If it's a dictionary, it looks for the
+    infile name as a key.
 
     target_res : force this target resolution.
 
@@ -776,48 +776,114 @@ def generate_weight_file(
 def mosaic_aligned_data(
     infile_list = None, 
     weightfile_list = None,
-    outfile = None, 
-    overwrite=False
+    outfile = None,
+    overwrite=False,
     ):
     """
-    Combine a list of aligned data with primary-beam (i.e., inverse
-    noise) weights using simple linear mosaicking.
+    Combine a list of previously aligned data into a single image
+    using linear mosaicking. Weight each file using a corresponding
+    weight file and also create sum and integrated weight files.
+
+    infile_list : list of input files. Required.
+
+    weightfile_list : a list of weight files that correspond to the
+    input files. Can be a dictionary or a list. If it's a list then
+    matching is by order, so that the first infile goes to first
+    weight file, etc. If it's a dictionary, it looks for the infile
+    name as a key.
+
+    outfile : the name of the output mosaic image. Will create
+    associated files with ".sum" and ".weight" appended to this file
+    name.
+    
+    overwrite (default False) : Delete existing files. You probably
+    want to set this to True but it's a user decision.
+
     """
 
-    if infile_list is None or \
-            weightfile_list is None or \
-            outfile is None:
-        logger.error("Missing required input.")
+    # Check inputs
+
+    if infile_list is None:
+        logger.error("Input file list required.")
         return(None)
+
+    if outfile is None:
+        logger.error("Output file is required.")
+        return(None)
+        
+    # Define some extra outputs and then check file existence
 
     sum_file = outfile+'.sum'
     weight_file = outfile+'.weight'
+    mask_file = outfile+'.mask'
+    temp_file = outfile+'.temp'
 
-    if (os.path.isdir(outfile) or \
-            os.path.isdir(sum_file) or \
-            os.path.isdir(weight_file)) and \
-            (overwrite == False):
-        logger.error("Output file present and overwrite off. Returning.")
+    for this_file in [outfile, sum_file, weight_file, temp_file, mask_file]:
+        if os.path.isdir(this_file):
+            if not overwrite:
+                logger.error("Output file present and overwrite off - "+this_file)
+                return(None)
+            os.system('rm -rf '+this_file)
+
+    # Check the weightfile dictionary/list and get it set.
+
+    if weightfile_list is None:
+        logger.error("Missing weightfile_list required for mosaicking.")
         return(None)
 
-    if overwrite:
-        os.system('rm -rf '+outfile+'.temp')
-        os.system('rm -rf '+outfile)
-        os.system('rm -rf '+sum_file)
-        os.system('rm -rf '+weight_file)
-        os.system('rm -rf '+outfile+'.mask')
+        if (type(weightfile_list) != type([])) and (type(weightfile_list) != type({})):
+            logger.error("Weightfile_list must be dictionary or list.")
+            return(None)
 
-    imlist = infile_list[:]
-    imlist.extend(weightfile_list)
-    n_image = len(infile_list)
+        if type(weightfile_list) == type([]):
+            if len(infile_list) != len(weightfile_list):
+                logger.error("Mismatch in input and output list lengths.")
+                return(None)
+            weightfile_dict = {}
+            for ii in range(len(infile_list)):
+                weightfile_dict[infile_list[ii]] = weightfile_list[ii]
+
+        if type(weightfile_list) == type({}):
+            weightfile_dict = weightfile_list
+
+    # Define LEL expressions to be fed to immath. These just sum up
+    # weight*image and weight. Those produce the .sum and .weight
+    # output file.
+
+    full_imlist = []
+
     lel_exp_sum = ''
     lel_exp_weight = ''
+
     first = True
-    for ii in range(n_image):
-        this_im = 'IM'+str(ii)
-        this_wt = 'IM'+str(ii+n_image)
-        this_lel_sum = '('+this_im+'*'+this_wt+'*'+this_wt+')'
-        this_lel_weight = '('+this_wt+'*'+this_wt+')'
+    counter = 0
+
+    for this_infile in infile_list:
+
+        # Build out to a list that goes infile1, infile2, ... infilen,
+        # weightfile1, weightfile2, ... weightfilen.
+
+        full_imlist.append(this_infile)
+        full_imlist.append(weightfile_dict[this_infile])
+
+        # Make LEL string expressions that refer to these two images
+        # and then increment the counter by 2. So IM0 is the first
+        # image, IM1 the first weight, IM2 the second image, IM3 the
+        # second weight, and so on.
+
+        this_im = 'IM'+str(counter)
+        this_wt = 'IM'+str(counter+1)
+        counter += 2
+
+        # LEL expressions that refer to the weighted sum and the
+        # weight for this image pair.
+
+        this_lel_sum = '('+this_im+'*'+this_wt')'
+        this_lel_weight = '('+this_wt+')'
+
+        # Chain these together into a full string that adds all of the
+        # images together.
+
         if first:
             lel_exp_sum += this_lel_sum
             lel_exp_weight += this_lel_weight
@@ -826,30 +892,49 @@ def mosaic_aligned_data(
             lel_exp_sum += '+'+this_lel_sum
             lel_exp_weight += '+'+this_lel_weight
 
+    # Feed our two LEL strings into immath to make the sum and weight
+    # images.
+
     casa.immath(imagename = imlist, mode='evalexpr',
                 expr=lel_exp_sum, outfile=sum_file,
                 imagemd = imlist[0])
+
+    casa.immath(imagename = imlist, mode='evalexpr',
+                expr=lel_exp_weight, outfile=weight_file,
+                imagemd = imlist[0])
+    
+    # Just to be safe, reset the masks on the two images.
     
     myia = au.createCasaTool(casa.iatool)
     myia.open(sum_file)
     myia.set(pixelmask=1)
     myia.close()
 
-    casa.immath(imagename = imlist, mode='evalexpr',
-                expr=lel_exp_weight, outfile=weight_file)
     myia.open(weight_file)
     myia.set(pixelmask=1)
     myia.close()
 
+    # Now divide the sum*weight image by the weight image.
+
     casa.immath(imagename = [sum_file, weight_file], mode='evalexpr',
-                expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=outfile+'.temp',
+                expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=temp_file,
                 imagemd = sum_file)
 
+    # The mask for the final output is where we have any weight. This
+    # may not be exactly what's desired in all cases, but it's not
+    # clear to me what else to do except for some weight threshold
+    # (does not have to be zero, though, I guess).
+
     casa.immath(imagename = weight_file, mode='evalexpr',
-                expr='iif(IM0 > 0.0, 1.0, 0.0)', outfile=outfile+'.mask')
+                expr='iif(IM0 > 0.0, 1.0, 0.0)', 
+                outfile=mask_file)
     
-    casa.imsubimage(imagename=outfile+'.temp', outfile=outfile,
-                    mask='"'+outfile+'.mask"', dropdeg=True)
+    # Strip out any degenerate axes and create the final output file.
+
+    casa.imsubimage(imagename=temp_file, 
+                    outfile=outfile,
+                    mask=mask_file,
+                    dropdeg=True)
 
     return(None)
 
