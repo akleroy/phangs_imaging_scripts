@@ -878,7 +878,7 @@ def mosaic_aligned_data(
         # LEL expressions that refer to the weighted sum and the
         # weight for this image pair.
 
-        this_lel_sum = '('+this_im+'*'+this_wt')'
+        this_lel_sum = '('+this_im+'*'+this_wt+')'
         this_lel_weight = '('+this_wt+')'
 
         # Chain these together into a full string that adds all of the
