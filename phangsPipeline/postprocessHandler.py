@@ -1,5 +1,7 @@
 """
-Parts of the PHANGS pipeline to handle post-processing cubes.
+The PHANGS pipeline to handle post-processing of cubes. Works through
+a single big class (the PostProcessHandler) that needs to be attached
+to a keyHandler. Then it calls the standalone routines.
 """
 
 import os
@@ -310,12 +312,187 @@ class PostProcessHandler:
 
 #region Master loop and master file name routines
 
+    def _fname_dict(
+        self,
+        target=None,
+        config=None,
+        product=None,
+        ):
+        """
+        Make the file name dictionary for all postprocess files given
+        some target, config, product configuration.
+        """
+
+        fname_dict = {}
+
+        # Original cube and primary beam file
+                    
+        tag = 'orig'
+        orig_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = None,
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = orig_file
+        
+        tag = 'pb'
+        pb_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = None,
+            casa = True,
+            casaext = '.pb')
+        fname_dict[tag] = pb_file
+
+        # Original single dish file
+
+        tag = 'orig_sd'
+        orig_sd_file = self._kh.get_sd_filename(
+            target = target,
+            product = product)
+        fname_dict[tag] = orig_sd_file
+
+        # Primary beam corrected file
+
+        tag = 'pbcorr'
+        pbcorr_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'pbcorr',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = pbcorr_file
+
+        # Files with round beams
+
+        tag = 'round'
+        round_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'round',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = round_file
+
+        tag = 'pbcorr_round'
+        pbcorr_round_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'pbcorr_round',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = pbcorr_round_file
+
+        # Aligned and imported single dish file
+
+        tag = 'prepped_sd'
+        prepped_sd_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'singledish',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = prepped_sd_file
+
+        # Compressed file with edges trimmed off
+
+        tag = 'trimmed'
+        trimmed_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'trimmed',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = trimmed_file
+        
+        tag = 'pbcorr_trimmed'
+        pbcorr_trimmed_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'pbcorr_trimmed',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = pbcorr_trimmed_file
+        
+        tag = 'trimmed_pb'
+        trimmed_pb_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'trimmed',
+            casa = True,
+            casaext = '.pb')
+        fname_dict[tag] = trimmed_pb_file
+
+        # Files converted to Kelvin and FITS counterparts
+
+        tag = 'trimmed_k'
+        trimmed_k_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'trimmed_k',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = trimmed_k_file
+
+        tag = 'trimmed_k_fits'
+        trimmed_k_fits = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'trimmed_k',
+            casa = False)
+        fname_dict[tag] = trimmed_k_fits
+        
+        tag = 'pbcorr_trimmed_k'
+        pbcorr_trimmed_k_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'pbcorr_trimmed_k',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = pbcorr_trimmed_k_file
+
+        tag = 'pbcorr_trimmed_k_fits'
+        pbcorr_trimmed_k_fits = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'pbcorr_trimmed_k',
+            casa = False)
+        fname_dict[tag] = pbcorr_trimmed_k_fits
+
+        tag = 'trimmed_pb_fits'
+        trimmed_pb_fits = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'trimmed_pb',
+            casa = False)
+        fname_dict[tag] = trimmed_pb_fits
+
+        # Return
+        
+        return(fname_dict)
+
     def _master_loop(
         self,
         do_stage = False,
         do_pbcorr = False,
         do_round = False,
         do_sd = False,
+        do_weight = False,
         do_conv_for_mosaic = False,
         do_align_for_mosaic = False,
         do_linmos = False,
@@ -331,8 +508,6 @@ class PostProcessHandler:
         keyHandler to build various file names. It's best accessed via
         the other programs.
         """              
-
-        this_stub = 'POSTPROCESS MASTER LOOP: '
 
         if self._targets_list is None or self._interf_configs_list is None:            
             logger.error("Need a target and interferometer configuration list.")
@@ -369,142 +544,20 @@ class PostProcessHandler:
                     this_config = full_config_list[ii]
                     config_type = config_type_list[ii]
 
-                    # Original cube and primary beam file
-                    
-                    orig_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = None,
-                        casa = True,
-                        casaext = '.image')
-
-                    pb_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = None,
-                        casa = True,
-                        casaext = '.pb')
-
-                    # Original single dish file
-
-                    orig_sd_file = self._kh.get_sd_filename(
-                        target = this_target,
-                        product = this_product)
-
-                    # Primary beam corrected file
-
-                    pbcorr_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'pbcorr',
-                        casa = True,
-                        casaext = '.image')
-
-                    # Files with round beams
-
-                    round_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'round',
-                        casa = True,
-                        casaext = '.image')
-
-                    pbcorr_round_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'pbcorr_round',
-                        casa = True,
-                        casaext = '.image')
-
-                    # Aligned and imported single dish file
-
-                    prepped_sd_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'singledish',
-                        casa = True,
-                        casaext = '.image')
-
-                    # Compressed file with edges trimmed off
-
-                    trimmed_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'trimmed',
-                        casa = True,
-                        casaext = '.image')
-
-                    pbcorr_trimmed_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'pbcorr_trimmed',
-                        casa = True,
-                        casaext = '.image')
-
-                    trimmed_pb_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'trimmed',
-                        casa = True,
-                        casaext = '.pb')
-
-                    # Files converted to Kelvin and FITS counterparts
-
-                    trimmed_k_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'trimmed_k',
-                        casa = True,
-                        casaext = '.image')
-
-                    trimmed_k_fits = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'trimmed_k',
-                        casa = False)
-
-                    pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'pbcorr_trimmed_k',
-                        casa = True,
-                        casaext = '.image')
-
-                    pbcorr_trimmed_k_fits = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'pbcorr_trimmed_k',
-                        casa = False)
-
-                    trimmed_pb_fits = self._kh.get_cube_filename(
-                        target = this_target,
-                        config = this_config,
-                        product = this_product,
-                        ext = 'trimmed_pb',
-                        casa = False)
+                    fname_dict = self._fname_dict(
+                        target=this_target,
+                        product=this_product,
+                        config=this_config)
 
                     # Put together some flags indicating whether these
                     # data have single dish, are a mosaic, are JUST a
                     # mosaic (i.e., have no MS files / original
                     # images), etc.
 
-                    has_imaging = os.path.isdir(imaging_dir + orig_file)
-                    has_sd = (orig_sd_file is not None)
+                    has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                    has_sd = (fname_dict['orig_sd'] is not None)
                     is_mosaic = self._kh.is_target_linmos(this_target)
-                    if is_mosaic:                        
+                    if is_mosaic:
                         mosaic_parts = self._kh.get_parts_for_linmos(this_target)
                     else:
                         mosaic_parts = None
@@ -524,17 +577,20 @@ class PostProcessHandler:
                     if do_stage and config_type == 'interf' and \
                             has_imaging:
 
-                        for fname in [orig_file, pb_file]:
-                            
-                            infile = imaging_dir + fname
-                            outfile = postprocess_dir + fname
+                        for this_fname in [fname_dict['orig'], fname_dict['pb']]:
 
-                            logger.info("Staging "+fname+" using ccr.copy_dropdeg")
+                            indir = imaging_dir
+                            outdir = postprocess_dir
+                            
+                            infile = this_fname
+                            outfile = this_fname
+
+                            logger.info("Staging "+outfile+" using ccr.copy_dropdeg")
 
                             if not self._dry_run:
                                 ccr.copy_dropdeg(
-                                    infile=infile,
-                                    outfile=outfile,
+                                    infile=indir+infile,
+                                    outfile=outdir+outfile,
                                     overwrite=True)
 
                     # Apply the primary beam correction to the data.
@@ -542,36 +598,42 @@ class PostProcessHandler:
                     if do_pbcorr and config_type == 'interf' and \
                             has_imaging:
 
-                        infile = postprocess_dir + orig_file
-                        outfile = postprocess_dir + pbcorr_file
-                        pbfile = postprocess_dir + pb_file
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
 
-                        logger.info("Correcting to "+pbcorr_file+" using ccr.primary_beam_correct")
-                        logger.debug("Correcting from "+orig_file)
-                        logger.debug("Correcting using "+pb_file)
+                        infile = fname_dict['orig']
+                        outfile = fname_dict['pbcorr']
+                        pbfile = fname_dict['pb']
+
+                        logger.info("Correcting to "+outfile+" using ccr.primary_beam_correct")
+                        logger.debug("Correcting from "+infile)
+                        logger.debug("Correcting using "+pbfile)
 
                         if not self._dry_run:
                             ccr.primary_beam_correct(
-                                infile=infile,
-                                outfile=outfile,
-                                pbfile=pbfile,
+                                infile=indir+infile,
+                                outfile=outdir+outfile,
+                                pbfile=indir+pbfile,
                                 overwrite=True)
 
                     # Convolve the data to have a round beam.
 
                     if do_round and config_type == 'interf' and \
                             has_imaging:
-                        
-                        infile = postprocess_dir + pbcorr_file
-                        outfile = postprocess_dir + pbcorr_round_file
 
-                        logger.info("Convolving to "+pbcorr_round_file+" using ccr.convolve_to_round_beam")
-                        logger.debug("Convolving from "+pbcorr_file)
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+                        
+                        infile = fname_dict['pbcorr']
+                        outfile = fname_dict['pbcorr_round']
+
+                        logger.info("Convolving to "+outfile+" using ccr.convolve_to_round_beam")
+                        logger.debug("Convolving from "+infile)
                         
                         if not self._dry_run:
                             ccr.convolve_to_round_beam(
-                                infile=infile,
-                                outfile=outfile,
+                                infile=indir+infile,
+                                outfile=outdir+outfile,
                                 overwrite=True)
 
                     # Stage the singledish data for feathering
@@ -579,29 +641,43 @@ class PostProcessHandler:
                     if do_sd and config_type == 'interf' and \
                             has_sd and has_imaging:
 
-                        template = postprocess_dir + pbcorr_round_file
-                        infile = orig_sd_file
-                        outfile = postprocess_dir + prepped_sd_file
+                        indir = ''
+                        outdir = postprocess_dir
+                        tempdir = postprocess_dir
+
+                        template = fname_dict['pbcorr_round']
+                        infile = fname_dict['orig_sd']
+                        outfile = fname_dict['prepped_sd']
                         
-                        logger.info("Prepping "+prepped_sd_file+" for using cfr.prep_sd_for_feather.")
-                        logger.debug("Original file "+orig_sd_file)
-                        logger.debug("Using interferometric template "+pbcorr_round_file)
+                        logger.info("Prepping "+outfile+" for using cfr.prep_sd_for_feather.")
+                        logger.debug("Original file "+infile)
+                        logger.debug("Using interferometric template "+template)
                         
                         if not self._dry_run:
                             cfr.prep_sd_for_feather(
-                                sdfile_in=infile,
-                                sdfile_out=outfile,
-                                interf_file=template,
+                                sdfile_in=indir+infile,
+                                sdfile_out=outdir+outfile,
+                                interf_file=tempdir+template,
                                 do_import=True,
                                 do_dropdeg=True,
                                 do_align=True,
                                 do_checkunits=True,                                
                                 overwrite=True)
 
+                    # Create a weight file for targets that are part of a linear mosaic
+
+                    if do_weight and config_type == 'interf' and \
+                            is_part_of_mosaic:
+                        
+                        pass
+
                     # Prepare data for linear mosaicking
 
                     if do_conv_for_mosaic and config_type == 'interf' and \
                             is_mosaic:
+
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
 
                         # Build the list of input files
 
@@ -640,6 +716,9 @@ class PostProcessHandler:
                     if do_align_for_mosaic and config_type == 'interf' and \
                             is_mosaic:
 
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+
                         # Build the list of input files
 
                         infile_list = []
@@ -663,14 +742,18 @@ class PostProcessHandler:
                     if do_feather and config_type == 'interf' and \
                             has_sd and has_imaging:
 
-                        interf_file = postprocess_dir + pbcorr_round_file
-                        sd_file = postprocess_dir + prepped_sd_file
+                        indir = postprocess_dir
+
+                        interf_file = fname_dict['pbcorr_round']
+                        sd_file = fname_dict['prepped_sd']
 
                         corresponding_feather_config = self._kh.get_feather_config_for_interf_config(
                             interf_config=this_config
                             )
+
+                        outdir = postprocess_dir
                             
-                        feather_file = self._kh.get_cube_filename(                            
+                        outfile = self._kh.get_cube_filename(                            
                             target = this_target,
                             config = corresponding_feather_config,
                             product = this_product,
@@ -679,11 +762,9 @@ class PostProcessHandler:
                             casaext = '.image'
                             )
 
-                        outfile = postprocess_dir + feather_file
-
-                        logger.info("Feathering "+feather_file+" using cfr.feather_two_cubes.")
-                        logger.debug("Feathering interferometric data "+pbcorr_round_file)
-                        logger.debug("Feathering single dish data "+prepped_sd_file)
+                        logger.info("Feathering "+outfile+" using cfr.feather_two_cubes.")
+                        logger.debug("Feathering interferometric data "+interf_file)
+                        logger.debug("Feathering single dish data "+sd_file)
                         logger.debug("Feathering method: "+self._feather_method)
 
                         # Feather has a couple of algorithmic choices
@@ -696,9 +777,9 @@ class PostProcessHandler:
 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
-                                    interf_file=interf_file,
-                                    sd_file=sd_file,
-                                    out_file=outfile,
+                                    interf_file=indir+interf_file,
+                                    sd_file=indir+sd_file,
+                                    out_file=outdir+outfile,
                                     do_blank=True,
                                     do_apodize=True,
                                     apod_file=apod_file,
@@ -709,9 +790,9 @@ class PostProcessHandler:
                                 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
-                                    interf_file=interf_file,
-                                    sd_file=sd_file,
-                                    out_file=outfile,
+                                    interf_file=indir+interf_file,
+                                    sd_file=indir+sd_file,
+                                    out_file=outdir+outfile,
                                     do_blank=True,
                                     do_apodize=False,
                                     apod_file=None,
@@ -722,34 +803,37 @@ class PostProcessHandler:
 
                     if do_compress:
 
-                        infile = postprocess_dir + pbcorr_round_file
-                        outfile = postprocess_dir + pbcorr_trimmed_file
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
 
-                        logger.info("Producing "+pbcorr_trimmed_file+" using ccr.trim_cube.")
-                        logger.debug("Trimming from original file "+pbcorr_round_file)
+                        infile = fname_dict['pbcorr_round']
+                        outfile = fname_dict['pbcorr_trimmed']
+
+                        logger.info("Producing "+outfile+" using ccr.trim_cube.")
+                        logger.debug("Trimming from original file "+infile)
 
                         if not self._dry_run:
                             ccr.trim_cube(
-                                infile=infile,
-                                outfile=outfile,
+                                infile=indir+infile,
+                                outfile=outdir+outfile,
                                 overwrite=True,
                                 inplace=False,
                                 min_pixperbeam=3)
 
-                        infile_pb = postprocess_dir + pb_file
-                        outfile_pb = postprocess_dir + trimmed_pb_file
-                        template = postprocess_dir + pbcorr_trimmed_file
+                        infile_pb = fname_dict['pb']
+                        outfile_pb = fname_dict['trimmed_pb']
+                        template = fname_dict['pbcorr_trimmed']
 
                         logger.info("Aligning primary beam image to new astrometry using ccr.align_to_target.")
-                        logger.debug("Aligning original file "+pb_file)
-                        logger.debug("Aligning to produce output file "+trimmed_pb_file)
-                        logger.debug("Aligning to template "+pbcorr_trimmed_file)
+                        logger.debug("Aligning original file "+infile_pb)
+                        logger.debug("Aligning to produce output file "+outfile_pb)
+                        logger.debug("Aligning to template "+template)
 
                         if not self._dry_run:
                             ccr.align_to_target(
-                                infile=infile_pb,
-                                outfile=outfile_pb,
-                                template=template,
+                                infile=indir+infile_pb,
+                                outfile=outdir+outfile_pb,
+                                template=indir+template,
                                 interpolation='cubic',
                                 overwrite=True,
                                 )
@@ -758,16 +842,19 @@ class PostProcessHandler:
 
                     if do_convert:
 
-                        infile = postprocess_dir + pbcorr_trimmed_file
-                        outfile = postprocess_dir + pbcorr_trimmed_k_file
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+
+                        infile = fname_dict['pbcorr_trimmed']
+                        outfile = fname_dict['pbcorr_trimmed_k']
                         
-                        logger.info("Creating "+pbcorr_trimmed_k_file+" using ccr.convert_jytok")
-                        logger.debug("Converting from original file "+pbcorr_trimmed_file)
+                        logger.info("Creating "+outfile+" using ccr.convert_jytok")
+                        logger.debug("Converting from original file "+infile)
 
                         if not self._dry_run:
                             ccr.convert_jytok(
-                                infile=infile,
-                                outfile=outfile,
+                                infile=indir+infile,
+                                outfile=outdir+outfile,
                                 overwrite=True,
                                 inplace=False,
                                 )
@@ -776,21 +863,24 @@ class PostProcessHandler:
 
                     if do_export:
 
-                        infile = postprocess_dir + pbcorr_trimmed_k_file
-                        outfile = postprocess_dir + pbcorr_trimmed_k_fits
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
 
-                        pb_infile = postprocess_dir + trimmed_pb_file
-                        pb_outfile = postprocess_dir + trimmed_pb_fits
+                        infile = fname_dict['pbcorr_trimmed_k_file']
+                        outfile = fname_dict['pbcorr_trimmed_k_fits']
 
-                        logger.info("Export to "+pbcorr_trimmed_k_fits+" using ccr.export_and_cleanup")
-                        logger.debug("Writing from input cube "+pbcorr_trimmed_k_file)
-                        logger.debug("Writing from primary beam "+trimmed_pb_file)
-                        logger.debug("Writing output primary beam "+trimmed_pb_fits)
+                        infile_pb = fname_dict['trimmed_pb_file']
+                        outfile_pb = fname_dict['trimmed_pb_fits']
+
+                        logger.info("Export to "+outfile+" using ccr.export_and_cleanup")
+                        logger.debug("Writing from input cube "+infile)
+                        logger.debug("Writing from primary beam "+infile_pb)
+                        logger.debug("Writing output primary beam "+outfile_pb)
 
                         if not self._dry_run:
                             ccr.export_and_cleanup(
-                                infile=infile,
-                                outfile=outfile,
+                                infile=indir+infile,
+                                outfile=outdir+outfile,
                                 overwrite=True,    
                                 remove_cards=[],
                                 add_cards=[],
@@ -801,8 +891,8 @@ class PostProcessHandler:
                                 )
 
                             ccr.export_and_cleanup(
-                                infile=pb_infile,
-                                outfile=pb_outfile,
+                                infile=indir+infile_pb,
+                                outfile=outdir+outfile_pb,
                                 overwrite=True,    
                                 remove_cards=[],
                                 add_cards=[],
