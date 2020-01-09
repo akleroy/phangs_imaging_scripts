@@ -785,7 +785,8 @@ class PostProcessHandler:
                         pixel_padding = 2.0
                         target_res = None
                         
-                        # TBD - check override dict.
+                        # TBD - check override dict for target
+                        # resolution and (I guess?) pixel padding.
 
                         if not self._dry_run:
                             cmr.common_res_for_mosaic(
@@ -806,7 +807,7 @@ class PostProcessHandler:
                         indir = postprocess_dir
                         outdir = postprocess_dir
 
-                        # Build the list of input files
+                        # TBD Build the list of input files
 
                         infile_list = []
                         outfile_list = []
