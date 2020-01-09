@@ -347,7 +347,8 @@ class PostProcessHandler:
             casaext = '.pb')
         fname_dict[tag] = pb_file
 
-        # Original single dish file
+        # Original single dish file (note that this comes with a
+        # directory)
 
         tag = 'orig_sd'
         orig_sd_file = self._kh.get_sd_filename(
@@ -401,6 +402,16 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = weight_file
 
+        tag = 'weight_aligned'
+        weight_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'weight_aligned',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = weight_file
+
         # Common resolution parts for mosaic
 
         tag = 'linmos_commonres'
@@ -412,6 +423,18 @@ class PostProcessHandler:
             casa = True,
             casaext = '.image')
         fname_dict[tag] = commonres_file
+
+        # Aligned parts for mosaic
+
+        tag = 'linmos_aligned'
+        aligned_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'linmos_aligned',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = aligned_file
 
         # Aligned and imported single dish file
 
@@ -437,7 +460,20 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = sd_weight_file 
 
-        # Compressed file with edges trimmed off
+        # Singledish weight for use in linear mosaicking
+
+        tag = 'sd_align'
+        sd_weight_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'singledish_weight',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = sd_weight_file 
+
+        # Compressed files with edges trimmed off and smallest
+        # reasonable pixel size.
 
         tag = 'trimmed'
         trimmed_file = self._kh.get_cube_filename(
@@ -469,7 +505,7 @@ class PostProcessHandler:
             casaext = '.pb')
         fname_dict[tag] = trimmed_pb_file
 
-        # Files converted to Kelvin and FITS counterparts
+        # Files converted to Kelvin, including FITS output files
 
         tag = 'trimmed_k'
         trimmed_k_file = self._kh.get_cube_filename(
@@ -599,6 +635,20 @@ class PostProcessHandler:
                         mosaic_parts = None
                     is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
                     
+                    # If we are looking at an interferometric
+                    # configuration, get the corresponding feather
+                    # configuration and also build a file name
+                    # dictionary for that.
+
+                    if (config_type == 'interf'):
+                        corresponding_feather_config = self._kh.get_feather_config_for_interf_config(
+                            interf_config=this_config
+                            )
+                        feather_fname_dict = self._fname_dict(
+                            target=this_target,
+                            product=this_product,
+                            config=corresponding_feather_config)
+                        
                     # Skip out of the loop if we are in a feather
                     # configuration and working with a target that
                     # does not have single dish data and is not a
@@ -701,7 +751,8 @@ class PostProcessHandler:
                                 do_checkunits=True,                                
                                 overwrite=True)
 
-                    # Create a weight file for targets that are part of a linear mosaic
+                    # Create a weight file for targets that are part
+                    # of a linear mosaic
 
                     if do_weight and config_type == 'interf' and \
                             is_part_of_mosaic and has_imaging:
@@ -726,7 +777,8 @@ class PostProcessHandler:
                                 scale_by_noise = True,
                                 overwrite=True)
 
-                    # Make a weight file for the single dish part of things
+                    # Make a weight file for single dish targets that
+                    # are part of a linear mosaic
 
                     if do_weight and config_type == 'interf' and \
                             is_part_of_mosaic and has_sd and has_imaging:
@@ -737,7 +789,7 @@ class PostProcessHandler:
                         image_file = fname_dict['prepped_sd']
                         outfile = fname_dict['sd_weight']
 
-                        logger.info("Makign weight file "+outfile+" for using cmr.generate_weight_file.")                        
+                        logger.info("Making weight file "+outfile+" for using cmr.generate_weight_file.")                        
                         logger.debug("Measuring noise from file "+image_file)
                         
                         if not self._dry_run:
@@ -749,7 +801,8 @@ class PostProcessHandler:
                                 scale_by_noise = True,
                                 overwrite=True)
 
-                    # Prepare data for linear mosaicking
+                    # Convolve data that are part of a linear mosaic
+                    # to a common resolution
 
                     if do_conv_for_mosaic and config_type == 'interf' and \
                             is_mosaic:
@@ -773,7 +826,7 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['pbcorr_round'])
                             outfile_list.append(outdir+this_part_dict['linmos_commonres'])
 
-                        logger.info("Convolving "+this_target+" for linear mosaicking using cmr.common_res_for_mosaic.")
+                        logger.info("Convolving "+this_target+" for using cmr.common_res_for_mosaic.")
                         logger.debug("Convolving original files "+str(infile_list))
                         logger.debug("Convolving to convolved output "+str(outfile_list))
 
@@ -798,8 +851,8 @@ class PostProcessHandler:
                                 overwrite=True,
                                 )
 
-                    # Generate a header and align data to this for the
-                    # linear mosaic
+                    # Generate a header and align both data and
+                    # weights to this new for use in linear mosaicking
 
                     if do_align_for_mosaic and config_type == 'interf' and \
                             is_mosaic:
@@ -807,16 +860,55 @@ class PostProcessHandler:
                         indir = postprocess_dir
                         outdir = postprocess_dir
 
-                        # TBD Build the list of input files
+                        # Build the list of input files
 
                         infile_list = []
                         outfile_list = []
 
-                        logger.info("Aligning "+this_target+" for linear mosaicking using cmr._for_mosaic.")
-                        logger.debug("Using original files "+str(infile_list))
-                        logger.debug("Ending with aligned files "+str(outfile_list))
+                        # Get the input and output files for
+                        # individual parts. Also include the weights
+                        # here.
 
-                        # TBD
+                        for this_part in mosaic_parts:
+                            
+                            this_part_dict = self._fname_dict(
+                                target=this_part,
+                                config=this_config,
+                                product=this_product,
+                                )
+
+                            infile_list.append(indir+this_part_dict['linmos_commonres'])
+                            outfile_list.append(outdir+this_part_dict['linmos_aligned'])
+
+                            infile_list.append(indir+this_part_dict['weight'])
+                            outfile_list.append(outdir+this_part_dict['weight_aligned'])
+
+                        logger.info("Aligning "+this_target+" for using cmr.common_grid_for_mosaic.")
+                        logger.debug("Convolving original files "+str(infile_list))
+                        logger.debug("Convolving to convolved output "+str(outfile_list))
+
+                        # TBD implement overrides
+
+                        ra_ctr = None 
+                        dec_ctr = None
+                        delta_ra = None 
+                        delta_dec = None
+                        
+                        if not self._dry_run:
+                            cmr.common_grid_for_mosaic(
+                                infile_list = infile_list,
+                                outfile_list = outfile_list,
+                                ra_ctr = ra_ctr, 
+                                dec_ctr = dec_ctr,
+                                delta_ra = delta_ra, 
+                                delta_dec = delta_dec,
+                                allow_big_image = False,
+                                too_big_pix=1e4,   
+                                asvelocity=True,
+                                interpolation='cubic',
+                                axes=[-1],
+                                overwrite=True,
+                                )
 
                     # Execute linear mosaicking
 
@@ -834,10 +926,6 @@ class PostProcessHandler:
 
                         interf_file = fname_dict['pbcorr_round']
                         sd_file = fname_dict['prepped_sd']
-
-                        corresponding_feather_config = self._kh.get_feather_config_for_interf_config(
-                            interf_config=this_config
-                            )
 
                         outdir = postprocess_dir
                             
@@ -1061,6 +1149,28 @@ class PostProcessHandler:
         """
 
         self._master_loop(do_conv_for_mosaic=True)
+
+        return()
+
+    def align_for_mosaic(
+        self
+        ):
+        """
+        Convolve the parts of mosaic to a common resolution.
+        """
+
+        self._master_loop(do_align_for_mosaic=True)
+
+        return()
+
+    def linmos(
+        self
+        ):
+        """
+        Convolve the parts of mosaic to a common resolution.
+        """
+
+        self._master_loop(do_linmos=True)
 
         return()
 
