@@ -436,7 +436,7 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = aligned_file
 
-        # Aligned and imported single dish file
+        # Imported single dish file aligned to the interfometer data
 
         tag = 'prepped_sd'
         prepped_sd_file = self._kh.get_cube_filename(
@@ -460,17 +460,30 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = sd_weight_file 
 
-        # Singledish weight for use in linear mosaicking
+        # Singledish data aliged to a common grid for mosaicking
 
-        tag = 'sd_align'
-        sd_weight_file = self._kh.get_cube_filename(
+        tag = 'sd_aligned'
+        sd_align_file = self._kh.get_cube_filename(
             target = target,
             config = config,
             product = product,
-            ext = 'singledish_weight',
+            ext = 'singledish_aligned',
             casa = True,
             casaext = '.image')
-        fname_dict[tag] = sd_weight_file 
+        fname_dict[tag] = sd_align_file 
+
+        # Singledish weight for use in linear mosaicking now on a
+        # common astrometric grid
+
+        tag = 'sd_weight_aligned'
+        sd_weight_aligned_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'singledish_weight_aligned',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = sd_weight_aligned_file 
 
         # Compressed files with edges trimmed off and smallest
         # reasonable pixel size.
@@ -852,7 +865,9 @@ class PostProcessHandler:
                                 )
 
                     # Generate a header and align both data and
-                    # weights to this new for use in linear mosaicking
+                    # weights to this new for use in linear
+                    # mosaicking. This step is for the interferometric
+                    # data.
 
                     if do_align_for_mosaic and config_type == 'interf' and \
                             is_mosaic:
@@ -883,7 +898,7 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['weight'])
                             outfile_list.append(outdir+this_part_dict['weight_aligned'])
 
-                        logger.info("Aligning "+this_target+" for using cmr.common_grid_for_mosaic.")
+                        logger.info("Aligning "+this_target+" using cmr.common_grid_for_mosaic.")
                         logger.debug("Convolving original files "+str(infile_list))
                         logger.debug("Convolving to convolved output "+str(outfile_list))
 
@@ -910,13 +925,118 @@ class PostProcessHandler:
                                 overwrite=True,
                                 )
 
-                    # Execute linear mosaicking
+                    # Generate a header and align both data and
+                    # weights to this new for use in linear
+                    # mosaicking. This step is for the single dish
+                    # data.
+
+                    if do_align_for_mosaic and config_type == 'interf' and \
+                            is_mosaic and has_singleidsh:
+
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+
+                        # Build the list of input files
+
+                        infile_list = []
+                        outfile_list = []
+
+                        # Get the input and output files for
+                        # individual parts. Also include the weights
+                        # here.
+
+                        for this_part in mosaic_parts:
+                            
+                            this_part_dict = self._fname_dict(
+                                target=this_part,
+                                config=this_config,
+                                product=this_product,
+                                )
+
+                            infile_list.append(indir+this_part_dict['prepped_sd'])
+                            outfile_list.append(outdir+this_part_dict['sd_aligned'])
+
+                            infile_list.append(indir+this_part_dict['sd_weight'])
+                            outfile_list.append(outdir+this_part_dict['sd_weight_aligned'])
+
+                        logger.info("Aligning "+this_target+" using cmr.common_grid_for_mosaic.")
+                        logger.debug("Convolving original files "+str(infile_list))
+                        logger.debug("Convolving to convolved output "+str(outfile_list))
+
+                        # TBD implement overrides
+
+                        ra_ctr = None 
+                        dec_ctr = None
+                        delta_ra = None 
+                        delta_dec = None
+                        
+                        if not self._dry_run:
+                            cmr.common_grid_for_mosaic(
+                                infile_list = infile_list,
+                                outfile_list = outfile_list,
+                                ra_ctr = ra_ctr, 
+                                dec_ctr = dec_ctr,
+                                delta_ra = delta_ra, 
+                                delta_dec = delta_dec,
+                                allow_big_image = False,
+                                too_big_pix=1e4,   
+                                asvelocity=True,
+                                interpolation='cubic',
+                                axes=[-1],
+                                overwrite=True,
+                                )
+
+                    # Execute linear mosaicking for the interferometer data
 
                     if do_linmos and config_type == 'interf' and \
                             is_mosaic:
 
-                        pass
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+
+                        infile_list = []
+                        weightfile_list = []
+
+                        # TBD
+
+                        logger.info("Creating "+outfile+" using cmr.mosaic_aligned_data.")
+                        logger.debug("Mosaicking original files "+str(infile_list))
+                        logger.debug("Weighting by "+str(weightfile_list))
+
+                        if not self._dry_run:
+                            cmr.mosaic_aligned_data(
+                                infile_list = infile_list,
+                                weightfile_list = weightfile_list,
+                                outfile = outfile,
+                                overwrite=True)
+
+                    # Execute linear mosaicking for the single dish data
+
+                    if do_linmos and config_type == 'interf' and \
+                            is_mosaic:
+
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+
+                        infile_list = []
+                        weightfile_list = []
+
+                        # TBD
+
+                        logger.info("Creating "+outfile+" using cmr.mosaic_aligned_data.")
+                        logger.debug("Mosaicking original files "+str(infile_list))
+                        logger.debug("Weighting by "+str(weightfile_list))
+
+                        if not self._dry_run:
+                            cmr.mosaic_aligned_data(
+                                infile_list = infile_list,
+                                weightfile_list = weightfile_list,
+                                outfile = outfile,
+                                overwrite=True)
                             
+                    # TBD execute linear mosaicking for the feathered
+                    # data (need to get the name scheme right here)
+
                     # Feather the single dish and interferometer data
 
                     if do_feather and config_type == 'interf' and \
