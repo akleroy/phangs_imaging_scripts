@@ -153,6 +153,8 @@ def common_res_for_mosaic(
     else:
         target_bmaj = force_beam
 
+    logger.info('I found a common beam size of '+str(target_bmaj))
+
     if not do_convolve:
         return(target_bmaj)
 
@@ -222,6 +224,8 @@ def calculate_mosaic_extent(
     # Loop over input files and calculate RA and Dec coordinates of
     # the corners.
 
+    myia = au.createCasaTool(casa.iatool)
+
     for this_infile in infile_list:
 
         this_hdr = casa.imhead(this_infile)
@@ -244,18 +248,18 @@ def calculate_mosaic_extent(
         xhi = this_shape[0]-1
         ylo = 0
         yhi = this_shape[1]-1
-
+        
         pixbox = str(xlo)+','+str(ylo)+','+str(xlo)+','+str(ylo)
-        blc = imval(this_infile, chans='0', box=pixbox)
+        blc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
 
         pixbox = str(xlo)+','+str(yhi)+','+str(xlo)+','+str(yhi)
-        tlc = imval(this_infile, chans='0', box=pixbox)
+        tlc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
         
         pixbox = str(xhi)+','+str(yhi)+','+str(xhi)+','+str(yhi)
-        trc = imval(this_infile, chans='0', box=pixbox)
+        trc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
 
         pixbox = str(xhi)+','+str(ylo)+','+str(xhi)+','+str(ylo)
-        brc = imval(this_infile, chans='0', box=pixbox)
+        brc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
         
         ra_list.append(blc['coords'][0][0])
         ra_list.append(tlc['coords'][0][0])
@@ -403,13 +407,13 @@ def build_common_header(
             )
         
         if ra_ctr is None:
-            ra_ctr = extent['ra_ctr'][0]
+            ra_ctr = extent_dict['ra_ctr'][0]
         if dec_ctr is None:
-            dec_ctr = extent['dec_ctr'][0]
+            dec_ctr = extent_dict['dec_ctr'][0]
         if delta_ra is None:
-            delta_ra = extent['delta_ra'][0]
+            delta_ra = extent_dict['delta_ra'][0]
         if delta_dec is None:
-            delta_dec = extent['delta_dec'][0]
+            delta_dec = extent_dict['delta_dec'][0]
         
     # Get the header from the template file
 
@@ -466,7 +470,7 @@ def build_common_header(
     
     return(target_hdr)
 
-def common_astrometry_for_mosaic(
+def common_grid_for_mosaic(
     infile_list = None,
     outfile_list = None,
     target_hdr = None,
@@ -518,6 +522,11 @@ def common_astrometry_for_mosaic(
         logger.error("Infile list missing.")
         return(None)
 
+    for this_infile in infile_list:
+        if os.path.isdir(this_infile) == False:
+            logger.error("File "+this_infile+" not found. Continuing.")
+            continue        
+
     if outfile_list is None:
         logger.error("Outfile list missing.")
         return(None)
@@ -556,6 +565,10 @@ def common_astrometry_for_mosaic(
             too_big_pix=too_big_pix,
             )
 
+    if target_hdr is None:
+        logger.error('No target header, and was not able to build one.')
+        return(None)
+
     # Align the input files to the new astrometry. This will also loop
     # over and align any "weight" files.
 
@@ -564,10 +577,6 @@ def common_astrometry_for_mosaic(
     for this_infile in infile_list:
         
         this_outfile = outfile_dict[this_infile]
-
-        if os.path.isdir(this_infile) == False:
-            logger.error("File "+this_infile+" not found. Continuing.")
-            continue
 
         casa.imregrid(imagename=this_infile,
                       template=target_hdr,
@@ -710,6 +719,8 @@ def generate_weight_file(
         template = image_file
     else:
         template = input_file
+
+    logger.debug('Template for weight file is: '+template)
 
     # Check the output file
 
