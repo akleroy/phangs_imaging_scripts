@@ -702,6 +702,8 @@ def generate_weight_file(
                 niter=5,
                 )
 
+            logger.info("Noise "+str(noise_value))
+
     # Define the template for the astrometry
 
     if input_file is None:
@@ -764,7 +766,7 @@ def generate_weight_file(
 
     # Put the data back into the file and close it.
 
-    myia.putchunk(data)
+    myia.putchunk(weight_image)
     myia.close()
 
     return(None)

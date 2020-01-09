@@ -389,6 +389,18 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = pbcorr_round_file
 
+        # Weight file for use in linear mosaicking
+
+        tag = 'weight'
+        weight_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'weight',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = weight_file
+
         # Aligned and imported single dish file
 
         tag = 'prepped_sd'
@@ -400,6 +412,18 @@ class PostProcessHandler:
             casa = True,
             casaext = '.image')
         fname_dict[tag] = prepped_sd_file
+
+        # Singledish weight for use in linear mosaicking
+
+        tag = 'sd_weight'
+        sd_weight_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'singledish_weight',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = sd_weight_file 
 
         # Compressed file with edges trimmed off
 
@@ -561,7 +585,8 @@ class PostProcessHandler:
                         mosaic_parts = self._kh.get_parts_for_linmos(this_target)
                     else:
                         mosaic_parts = None
-
+                    is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
+                    
                     # Skip out of the loop if we are in a feather
                     # configuration and working with a target that
                     # does not have single dish data and is not a
@@ -667,9 +692,50 @@ class PostProcessHandler:
                     # Create a weight file for targets that are part of a linear mosaic
 
                     if do_weight and config_type == 'interf' and \
-                            is_part_of_mosaic:
+                            is_part_of_mosaic and has_imaging:
                         
-                        pass
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+                        
+                        image_file = fname_dict['pbcorr_round']
+                        infile = fname_dict['pb']
+                        outfile = fname_dict['weight']
+
+                        logger.info("Making weight file "+outfile+" for using cmr.generate_weight_file.")
+                        logger.debug("Based off of primary beam file "+infile)
+                        logger.debug("Measuring noise from file "+image_file)
+                        
+                        if not self._dry_run:
+                            cmr.generate_weight_file(
+                                image_file = indir+image_file,
+                                input_file = indir+infile,
+                                input_type = 'pb',
+                                outfile = indir + outfile,
+                                scale_by_noise = True,
+                                overwrite=True)
+
+                    # Make a weight file for the single dish part of things
+
+                    if do_weight and config_type == 'interf' and \
+                            is_part_of_mosaic and has_sd and has_imaging:
+                        
+                        indir = postprocess_dir
+                        outdir = postprocess_dir
+                        
+                        image_file = fname_dict['prepped_sd']
+                        outfile = fname_dict['sd_weight']
+
+                        logger.info("Makign weight file "+outfile+" for using cmr.generate_weight_file.")                        
+                        logger.debug("Measuring noise from file "+image_file)
+                        
+                        if not self._dry_run:
+                            cmr.generate_weight_file(
+                                image_file = indir+image_file,
+                                input_value = 1.0,
+                                input_type = 'weight',
+                                outfile = indir + outfile,
+                                scale_by_noise = True,
+                                overwrite=True)
 
                     # Prepare data for linear mosaicking
 
@@ -866,10 +932,10 @@ class PostProcessHandler:
                         indir = postprocess_dir
                         outdir = postprocess_dir
 
-                        infile = fname_dict['pbcorr_trimmed_k_file']
+                        infile = fname_dict['pbcorr_trimmed_k']
                         outfile = fname_dict['pbcorr_trimmed_k_fits']
 
-                        infile_pb = fname_dict['trimmed_pb_file']
+                        infile_pb = fname_dict['trimmed_pb']
                         outfile_pb = fname_dict['trimmed_pb_fits']
 
                         logger.info("Export to "+outfile+" using ccr.export_and_cleanup")
@@ -950,6 +1016,18 @@ class PostProcessHandler:
         """
 
         self._master_loop(do_sd=True)
+
+        return()
+
+    def make_weight(
+        self
+        ):
+        """
+        Make weights for the interferometric and single dish images
+        that are part of a mosaic.
+        """
+
+        self._master_loop(do_weight=True)
 
         return()
 
