@@ -195,8 +195,7 @@ def trim_cube(
         return(False)
     
     if os.path.isdir(infile) == False:
-        if not quiet:
-            print("Input file not found: "+infile)
+        logger.error("Input file not found: "+infile)
         return(False)
 
     # First, rebin if needed

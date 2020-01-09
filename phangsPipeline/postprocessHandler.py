@@ -401,6 +401,18 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = weight_file
 
+        # Common resolution parts for mosaic
+
+        tag = 'linmos_commonres'
+        commonres_file = self._kh.get_cube_filename(
+            target = target,
+            config = config,
+            product = product,
+            ext = 'linmos_commonres',
+            casa = True,
+            casaext = '.image')
+        fname_dict[tag] = commonres_file
+
         # Aligned and imported single dish file
 
         tag = 'prepped_sd'
@@ -750,7 +762,16 @@ class PostProcessHandler:
                         infile_list = []
                         outfile_list = []
 
-                        # TBD - build list of files
+                        for this_part in mosaic_parts:
+                            
+                            this_part_dict = self._fname_dict(
+                                target=this_part,
+                                config=this_config,
+                                product=this_product,
+                                )
+
+                            infile_list.append(indir+this_part_dict['pbcorr_round'])
+                            outfile_list.append(outdir+this_part_dict['linmos_commonres'])
 
                         logger.info("Convolving "+this_target+" for linear mosaicking using cmr.common_res_for_mosaic.")
                         logger.debug("Convolving original files "+str(infile_list))
@@ -770,7 +791,7 @@ class PostProcessHandler:
                             cmr.common_res_for_mosaic(
                                 infile_list = infile_list,
                                 outfile_list = outfile_list,
-                                doconvolve = True,
+                                do_convolve = True,
                                 target_res = target_res,
                                 pixel_padding = pixel_padding,
                                 overwrite=True,
@@ -1028,6 +1049,17 @@ class PostProcessHandler:
         """
 
         self._master_loop(do_weight=True)
+
+        return()
+
+    def conv_for_mosaic(
+        self
+        ):
+        """
+        Convolve the parts of mosaic to a common resolution.
+        """
+
+        self._master_loop(do_conv_for_mosaic=True)
 
         return()
 
