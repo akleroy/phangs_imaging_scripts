@@ -932,7 +932,7 @@ class PostProcessHandler:
                     # data.
 
                     if do_align_for_mosaic and config_type == 'interf' and \
-                            is_mosaic and has_singledish:
+                            is_mosaic and has_sd:
 
                         indir = postprocess_dir
                         outdir = postprocess_dir
