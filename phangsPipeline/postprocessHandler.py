@@ -356,11 +356,15 @@ class PostProcessHandler:
         # Original single dish file (note that this comes with a
         # directory)
 
+        has_sd = self._kh.has_singledish(target=target, product=product)
         tag = 'orig_sd'
-        orig_sd_file = self._kh.get_sd_filename(
-            target = target,
-            product = product)
-        fname_dict[tag] = orig_sd_file
+        if has_sd:
+            orig_sd_file = self._kh.get_sd_filename(
+                target = target,
+                product = product)            
+            fname_dict[tag] = orig_sd_file
+        else:
+            fname_dict[tag] = None
 
         # Primary beam corrected file
 
@@ -646,7 +650,7 @@ class PostProcessHandler:
                     # images), etc.
 
                     has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
-                    has_sd = (fname_dict['orig_sd'] is not None)
+                    has_sd = self._kh.has_singledish(target=this_target, product=this_product)
 
                     # all parts have sd could change to some parts
                     # have sd. Not 100% sure on what we want.
@@ -662,7 +666,7 @@ class PostProcessHandler:
                                 config=this_config,
                                 product=this_product,
                                 )
-                            part_has_sd = (this_part_dict['orig_sd'] is not None)
+                            part_has_sd = self._kh.has_singledish(target=this_part, product=this_product)
                             if part_has_sd is False:
                                 all_parts_have_sd = False
                     else:
@@ -722,13 +726,20 @@ class PostProcessHandler:
                             infile = this_fname
                             outfile = this_fname
 
-                            logger.info("Staging "+outfile+" using ccr.copy_dropdeg")
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Staging data for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+                        logger.info("Using ccr.copy_dropdeg.")
+                        logger.info("Staging "+outfile)
 
-                            if not self._dry_run:
-                                ccr.copy_dropdeg(
-                                    infile=indir+infile,
-                                    outfile=outdir+outfile,
-                                    overwrite=True)
+                        if not self._dry_run:
+                            ccr.copy_dropdeg(
+                                infile=indir+infile,
+                                outfile=outdir+outfile,
+                                overwrite=True)
 
                     # Apply the primary beam correction to the data.
 
@@ -741,10 +752,18 @@ class PostProcessHandler:
                         infile = fname_dict['orig']
                         outfile = fname_dict['pbcorr']
                         pbfile = fname_dict['pb']
+                        
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Primary beam correction for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
 
-                        logger.info("Correcting to "+outfile+" using ccr.primary_beam_correct")
-                        logger.debug("Correcting from "+infile)
-                        logger.debug("Correcting using "+pbfile)
+                        logger.info("Using ccr.primary_beam_correct")
+                        logger.info("Correcting to "+outfile)
+                        logger.info("Correcting from "+infile)
+                        logger.info("Correcting using "+pbfile)
 
                         if not self._dry_run:
                             ccr.primary_beam_correct(
@@ -764,8 +783,16 @@ class PostProcessHandler:
                         infile = fname_dict['pbcorr']
                         outfile = fname_dict['pbcorr_round']
 
-                        logger.info("Convolving to "+outfile+" using ccr.convolve_to_round_beam")
-                        logger.debug("Convolving from "+infile)
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Convolving to a round beam for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using ccr.convolve_to_round_beam")
+                        logger.info("Convolving to "+outfile)
+                        logger.info("Convolving from "+infile)
                         
                         if not self._dry_run:
                             ccr.convolve_to_round_beam(
@@ -785,10 +812,19 @@ class PostProcessHandler:
                         template = fname_dict['pbcorr_round']
                         infile = fname_dict['orig_sd']
                         outfile = fname_dict['prepped_sd']
+
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Preparing single dish data for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
                         
-                        logger.info("Prepping "+outfile+" for using cfr.prep_sd_for_feather.")
-                        logger.debug("Original file "+infile)
-                        logger.debug("Using interferometric template "+template)
+                        logger.info("Using cfr.prep_sd_for_feather.")
+                        logger.info("Prepping "+outfile)
+                        logger.info("Original file "+infile)
+                        logger.info("Using interferometric template "+template)
                         
                         if not self._dry_run:
                             cfr.prep_sd_for_feather(
@@ -814,9 +850,17 @@ class PostProcessHandler:
                         infile = fname_dict['pb']
                         outfile = fname_dict['weight']
 
-                        logger.info("Making weight file "+outfile+" for using cmr.generate_weight_file.")
-                        logger.debug("Based off of primary beam file "+infile)
-                        logger.debug("Measuring noise from file "+image_file)
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&")
+                        logger.info("Making weight file for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&")
+                        logger.info("")
+
+                        logger.info("Using cmr.generate_weight_file.")
+                        logger.info("Making weight file "+outfile)
+                        logger.info("Based off of primary beam file "+infile)
+                        logger.info("Measuring noise from file "+image_file)
                         
                         if not self._dry_run:
                             cmr.generate_weight_file(
@@ -839,8 +883,16 @@ class PostProcessHandler:
                         image_file = fname_dict['prepped_sd']
                         outfile = fname_dict['sd_weight']
 
-                        logger.info("Making weight file "+outfile+" for using cmr.generate_weight_file.")                        
-                        logger.debug("Measuring noise from file "+image_file)
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                        logger.info("Making single dish weight file for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                        logger.info("")
+
+                        logger.info("Using cmr.generate_weight_file.")
+                        logger.info("Making weight file "+outfile)
+                        logger.info("Measuring noise from file "+image_file)
                         
                         if not self._dry_run:
                             cmr.generate_weight_file(
@@ -876,9 +928,17 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['pbcorr_round'])
                             outfile_list.append(outdir+this_part_dict['linmos_commonres'])
 
-                        logger.info("Convolving "+this_target+" for using cmr.common_res_for_mosaic.")
-                        logger.debug("Convolving original files "+str(infile_list))
-                        logger.debug("Convolving to convolved output "+str(outfile_list))
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Convolving for mosaic for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using cmr.common_res_for_mosaic.")
+                        logger.info("Convolving "+this_target)
+                        logger.info("Convolving original files "+str(infile_list))
+                        logger.info("Convolving to convolved output "+str(outfile_list))
 
                         # Allow overrides for the pixel padding (the
                         # number of pixels added to the greatest
@@ -935,9 +995,17 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['weight'])
                             outfile_list.append(outdir+this_part_dict['weight_aligned'])
 
-                        logger.info("Aligning "+this_target+" using cmr.common_grid_for_mosaic.")
-                        logger.debug("Convolving original files "+str(infile_list))
-                        logger.debug("Convolving to convolved output "+str(outfile_list))
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Aligning for mosaic for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using cmr.common_grid_for_mosaic.")
+                        logger.info("Aligning "+this_target)
+                        logger.info("Convolving original files "+str(infile_list))
+                        logger.info("Convolving to convolved output "+str(outfile_list))
 
                         # TBD implement overrides
 
@@ -996,9 +1064,17 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['sd_weight'])
                             outfile_list.append(outdir+this_part_dict['sd_weight_aligned'])
 
-                        logger.info("Aligning "+this_target+" using cmr.common_grid_for_mosaic.")
-                        logger.debug("Convolving original files "+str(infile_list))
-                        logger.debug("Convolving to convolved output "+str(outfile_list))
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Aligning single dish for mosaic for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using cmr.common_grid_for_mosaic.")
+                        logger.info("Aligning "+this_target)
+                        logger.info("Convolving original files "+str(infile_list))
+                        logger.info("Convolving to convolved output "+str(outfile_list))
 
                         # TBD implement overrides
 
@@ -1049,9 +1125,17 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['linmos_aligned'])
                             weightfile_list.append(indir+this_part_dict['weight_aligned'])
 
-                        logger.info("Creating "+outfile+" using cmr.mosaic_aligned_data.")
-                        logger.debug("Mosaicking original files "+str(infile_list))
-                        logger.debug("Weighting by "+str(weightfile_list))
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Executing linear mosaic for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using cmr.mosaic_aligned_data.")
+                        logger.info("Creating "+outfile)
+                        logger.info("Mosaicking original files "+str(infile_list))
+                        logger.info("Weighting by "+str(weightfile_list))
 
                         if not self._dry_run:
                             cmr.mosaic_aligned_data(
@@ -1086,9 +1170,17 @@ class PostProcessHandler:
                             infile_list.append(indir+this_part_dict['sd_aligned'])
                             weightfile_list.append(indir+this_part_dict['sd_weight_aligned'])
 
-                        logger.info("Creating "+outfile+" using cmr.mosaic_aligned_data.")
-                        logger.debug("Mosaicking original files "+str(infile_list))
-                        logger.debug("Weighting by "+str(weightfile_list))
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Executing linear mosaic for single dish for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using cmr.mosaic_aligned_data.")
+                        logger.info("Creating "+outfile)
+                        logger.info("Mosaicking original files "+str(infile_list))
+                        logger.info("Weighting by "+str(weightfile_list))
 
                         if not self._dry_run:
                             cmr.mosaic_aligned_data(
@@ -1119,10 +1211,18 @@ class PostProcessHandler:
                             casaext = '.image'
                             )
 
-                        logger.info("Feathering "+outfile+" using cfr.feather_two_cubes.")
-                        logger.debug("Feathering interferometric data "+interf_file)
-                        logger.debug("Feathering single dish data "+sd_file)
-                        logger.debug("Feathering method: "+self._feather_method)
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Feathering interferometer and single dish data for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using cfr.feather_two_cubes.")
+                        logger.info("Feathering "+outfile)
+                        logger.info("Feathering interferometric data "+interf_file)
+                        logger.info("Feathering single dish data "+sd_file)
+                        logger.info("Feathering method: "+self._feather_method)
 
                         # Feather has a couple of algorithmic choices
                         # associated with it. Run the method that the
@@ -1130,7 +1230,7 @@ class PostProcessHandler:
 
                         if self._feather_method == 'apodize':
                                 
-                            logger.debug("Apodizing using file "+apod_file)
+                            logger.info("Apodizing using file "+apod_file)
 
                             if not self._dry_run:
                                 cfr.feather_two_cubes(
@@ -1166,8 +1266,15 @@ class PostProcessHandler:
                         infile = fname_dict['pbcorr_round']
                         outfile = fname_dict['pbcorr_trimmed']
 
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Trimming cube for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
                         logger.info("Producing "+outfile+" using ccr.trim_cube.")
-                        logger.debug("Trimming from original file "+infile)
+                        logger.info("Trimming from original file "+infile)
 
                         if not self._dry_run:
                             ccr.trim_cube(
@@ -1181,10 +1288,11 @@ class PostProcessHandler:
                         outfile_pb = fname_dict['trimmed_pb']
                         template = fname_dict['pbcorr_trimmed']
 
-                        logger.info("Aligning primary beam image to new astrometry using ccr.align_to_target.")
-                        logger.debug("Aligning original file "+infile_pb)
-                        logger.debug("Aligning to produce output file "+outfile_pb)
-                        logger.debug("Aligning to template "+template)
+                        logger.info("Aligning primary beam image to new astrometry")
+                        logger.info("Using ccr.align_to_target.")
+                        logger.info("Aligning original file "+infile_pb)
+                        logger.info("Aligning to produce output file "+outfile_pb)
+                        logger.info("Aligning to template "+template)
 
                         if not self._dry_run:
                             ccr.align_to_target(
@@ -1205,8 +1313,16 @@ class PostProcessHandler:
                         infile = fname_dict['pbcorr_trimmed']
                         outfile = fname_dict['pbcorr_trimmed_k']
                         
-                        logger.info("Creating "+outfile+" using ccr.convert_jytok")
-                        logger.debug("Converting from original file "+infile)
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Converting units for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using ccr.convert_jytok")
+                        logger.info("Creating "+outfile)
+                        logger.info("Converting from original file "+infile)
 
                         if not self._dry_run:
                             ccr.convert_jytok(
@@ -1229,10 +1345,18 @@ class PostProcessHandler:
                         infile_pb = fname_dict['trimmed_pb']
                         outfile_pb = fname_dict['trimmed_pb_fits']
 
-                        logger.info("Export to "+outfile+" using ccr.export_and_cleanup")
-                        logger.debug("Writing from input cube "+infile)
-                        logger.debug("Writing from primary beam "+infile_pb)
-                        logger.debug("Writing output primary beam "+outfile_pb)
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Exporting data to FITS and cleaning up cubes for:")
+                        logger.info(str(this_target)+" , "+str(this_product)+" , "+str(this_config))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
+                        logger.info("Using ccr.export_and_cleanup.")
+                        logger.info("Export to "+outfile)
+                        logger.info("Writing from input cube "+infile)
+                        logger.info("Writing from primary beam "+infile_pb)
+                        logger.info("Writing output primary beam "+outfile_pb)
 
                         if not self._dry_run:
                             ccr.export_and_cleanup(

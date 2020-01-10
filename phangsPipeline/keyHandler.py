@@ -111,6 +111,22 @@ class KeyHandler:
         self._map_configs()
 
         logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing configurations.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_configs()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing products.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_products()
+
+        logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -120,9 +136,7 @@ class KeyHandler:
         """
         Read the master key.
         """
-        logger.info("-----------------------")
         logger.info("Reading the master key.")
-        logger.info("-----------------------")
         
         logger.info("Master key file: "+self._master_key)
         fname = self._master_key
@@ -1417,6 +1431,36 @@ class KeyHandler:
 
         return(filename)
 
+    def has_singledish(
+        self,
+        target=None, 
+        product=None,
+        ):
+        """
+        Return true or false indicating if this target and product
+        combination has associated single dish data.
+        """
+
+        if self._sd_dict is None:
+            logging.error("No single dish key defined.")
+            return(None)
+
+        if target == None:
+            logging.error("Please specify a target.")
+            return(None)
+
+        if product == None:
+            logging.error("Please specify a product.")
+            return(None)
+        
+        this_dict = self._sd_dict[target]
+        
+        if product not in this_dict.keys():
+            return(False)
+
+        return(True)
+
+        
     def get_sd_filename(
         self, 
         target=None, 
@@ -1432,6 +1476,10 @@ class KeyHandler:
 
         if target == None:
             logging.error("Please specify a target.")
+            return(None)
+
+        if product == None:
+            logging.error("Please specify a product.")
             return(None)
 
         if target not in self._sd_dict.keys():
