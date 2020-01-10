@@ -1,7 +1,8 @@
 """
 The PHANGS pipeline to handle post-processing of cubes. Works through
-a single big class (the PostProcessHandler) that needs to be attached
-to a keyHandler. Then it calls the standalone routines.
+a single big class (the PostProcessHandler). This needs to be attached
+to a keyHandler to access the target, product, and configuration
+keys. Then it calls the standalone routines.
 """
 
 import os
@@ -931,7 +932,7 @@ class PostProcessHandler:
                     # data.
 
                     if do_align_for_mosaic and config_type == 'interf' and \
-                            is_mosaic and has_singleidsh:
+                            is_mosaic and has_singledish:
 
                         indir = postprocess_dir
                         outdir = postprocess_dir
@@ -993,11 +994,24 @@ class PostProcessHandler:
 
                         indir = postprocess_dir
                         outdir = postprocess_dir
+                        outfile = fname_dict['pbcorr_round']
 
                         infile_list = []
                         weightfile_list = []
 
-                        # TBD
+                        # Get the input and weight files for
+                        # individual parts.
+
+                        for this_part in mosaic_parts:
+                            
+                            this_part_dict = self._fname_dict(
+                                target=this_part,
+                                config=this_config,
+                                product=this_product,
+                                )
+
+                            infile_list.append(indir+this_part_dict['linmos_aligned'])
+                            weightfile_list.append(indir+this_part_dict['weight_aligned'])
 
                         logger.info("Creating "+outfile+" using cmr.mosaic_aligned_data.")
                         logger.debug("Mosaicking original files "+str(infile_list))
@@ -1007,21 +1021,34 @@ class PostProcessHandler:
                             cmr.mosaic_aligned_data(
                                 infile_list = infile_list,
                                 weightfile_list = weightfile_list,
-                                outfile = outfile,
+                                outfile = outdir+outfile,
                                 overwrite=True)
 
                     # Execute linear mosaicking for the single dish data
 
                     if do_linmos and config_type == 'interf' and \
-                            is_mosaic:
+                            is_mosaic and has_sd:
 
                         indir = postprocess_dir
                         outdir = postprocess_dir
+                        outfile = fname_dict['prepped_sd']
 
                         infile_list = []
                         weightfile_list = []
 
-                        # TBD
+                        # Get the input and weight files for
+                        # individual parts.
+
+                        for this_part in mosaic_parts:
+                            
+                            this_part_dict = self._fname_dict(
+                                target=this_part,
+                                config=this_config,
+                                product=this_product,
+                                )
+
+                            infile_list.append(indir+this_part_dict['sd_aligned'])
+                            weightfile_list.append(indir+this_part_dict['sd_weight_aligned'])
 
                         logger.info("Creating "+outfile+" using cmr.mosaic_aligned_data.")
                         logger.debug("Mosaicking original files "+str(infile_list))
@@ -1033,10 +1060,8 @@ class PostProcessHandler:
                                 weightfile_list = weightfile_list,
                                 outfile = outfile,
                                 overwrite=True)
-                            
-                    # TBD execute linear mosaicking for the feathered
-                    # data (need to get the name scheme right here)
-
+                    
+                    
                     # Feather the single dish and interferometer data
 
                     if do_feather and config_type == 'interf' and \

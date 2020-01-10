@@ -844,20 +844,31 @@ def mosaic_aligned_data(
         logger.error("Missing weightfile_list required for mosaicking.")
         return(None)
 
-        if (type(weightfile_list) != type([])) and (type(weightfile_list) != type({})):
-            logger.error("Weightfile_list must be dictionary or list.")
+    if (type(weightfile_list) != type([])) and (type(weightfile_list) != type({})):
+        logger.error("Weightfile_list must be dictionary or list.")
+        return(None)
+
+    if type(weightfile_list) == type([]):
+        if len(infile_list) != len(weightfile_list):
+            logger.error("Mismatch in input and output list lengths.")
             return(None)
+        weightfile_dict = {}
+        for ii in range(len(infile_list)):
+            weightfile_dict[infile_list[ii]] = weightfile_list[ii]
 
-        if type(weightfile_list) == type([]):
-            if len(infile_list) != len(weightfile_list):
-                logger.error("Mismatch in input and output list lengths.")
-                return(None)
-            weightfile_dict = {}
-            for ii in range(len(infile_list)):
-                weightfile_dict[infile_list[ii]] = weightfile_list[ii]
+    if type(weightfile_list) == type({}):
+        weightfile_dict = weightfile_list
 
-        if type(weightfile_list) == type({}):
-            weightfile_dict = weightfile_list
+    # Check file existence
+
+    for this_infile in infile_list:
+        if not os.path.isdir(this_infile):
+            logger.error("Missing file - " + this_infile)
+            return(None)
+        this_weightfile = weightfile_dict[this_infile]
+        if not os.path.isdir(this_weightfile):
+            logger.error("Missing file - " + this_weightfile)
+            return(None)
 
     # Define LEL expressions to be fed to immath. These just sum up
     # weight*image and weight. Those produce the .sum and .weight
@@ -908,13 +919,13 @@ def mosaic_aligned_data(
     # Feed our two LEL strings into immath to make the sum and weight
     # images.
 
-    casa.immath(imagename = imlist, mode='evalexpr',
+    casa.immath(imagename = full_imlist, mode='evalexpr',
                 expr=lel_exp_sum, outfile=sum_file,
-                imagemd = imlist[0])
+                imagemd = full_imlist[0])
 
-    casa.immath(imagename = imlist, mode='evalexpr',
+    casa.immath(imagename = full_imlist, mode='evalexpr',
                 expr=lel_exp_weight, outfile=weight_file,
-                imagemd = imlist[0])
+                imagemd = full_imlist[0])
     
     # Just to be safe, reset the masks on the two images.
     
@@ -946,7 +957,7 @@ def mosaic_aligned_data(
 
     casa.imsubimage(imagename=temp_file, 
                     outfile=outfile,
-                    mask=mask_file,
+                    mask='"'+mask_file+'"',
                     dropdeg=True)
 
     return(None)
