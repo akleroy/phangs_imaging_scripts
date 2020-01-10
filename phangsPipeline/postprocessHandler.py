@@ -2,7 +2,12 @@
 The PHANGS pipeline to handle post-processing of cubes. Works through
 a single big class (the PostProcessHandler). This needs to be attached
 to a keyHandler to access the target, product, and configuration
-keys. Then it calls the standalone routines.
+keys.
+
+There should not be any direct calls to CASA in here. Eventually, this
+should be able to run without CASA enabled (though it won't be able to
+call any of the CASA-specific routines). Right now, just avoid direct
+calls to CASA from this class.
 """
 
 import os
@@ -667,18 +672,33 @@ class PostProcessHandler:
                     
                     # If we are looking at an interferometric
                     # configuration, get the corresponding feather
-                    # configuration and also build a file name
-                    # dictionary for that.
+                    # configuration (if any) and also build a file
+                    # name dictionary for that.
 
+                    has_feather_config = False
                     if (config_type == 'interf'):
                         corresponding_feather_config = self._kh.get_feather_config_for_interf_config(
                             interf_config=this_config
                             )
-                        feather_fname_dict = self._fname_dict(
-                            target=this_target,
-                            product=this_product,
-                            config=corresponding_feather_config)
-                        
+                        has_feather_config = corresponding_feather_config is not None
+                        if has_feather_config:
+                            feather_fname_dict = self._fname_dict(
+                                target=this_target,
+                                product=this_product,
+                                config=corresponding_feather_config)
+                    
+                    has_interf_config = False
+                    if (config_type == 'feather'):
+                        corresponding_interf_config = self._kh.get_interf_config_for_feather_config(
+                            feather_config=this_config
+                            )
+                        has_interf_config = corresponding_interf_config is not None
+                        if has_interf_config:
+                            interf_fname_dict = self._fname_dict(
+                                target=this_target,
+                                product=this_product,
+                                config=corresponding_interf_config)
+
                     # Skip out of the loop if we are in a feather
                     # configuration and working with a target that
                     # does not have single dish data and is not a
@@ -1243,7 +1263,51 @@ class PostProcessHandler:
 
 #endregion
 
-#region Stage and correct data
+#region Run parts of the master loop
+
+    def postprocess(
+        self,
+        ):
+        """
+        Call all steps of the master loop with the current selection.
+        """
+        self._master_loop(
+            do_stage = True,
+            do_pbcorr = True,
+            do_round = True,
+            do_sd = True,
+            do_weight = True,
+            do_conv_for_mosaic = True,
+            do_align_for_mosaic = True,
+            do_linmos = True,
+            do_feather = True,
+            do_compress = True,
+            do_convert = True,
+            do_export = True,
+            )
+
+    def postprocess_one_galaxy(
+        self,
+        galaxy=None,
+        ):
+        if galaxy is None:
+            logger.error("Set the galaxy to be postprocessed.")
+            return(None)
+        self.set_targets(only=[galaxy])
+        self._master_loop(
+            do_stage = True,
+            do_pbcorr = True,
+            do_round = True,
+            do_sd = True,
+            do_weight = True,
+            do_conv_for_mosaic = True,
+            do_align_for_mosaic = True,
+            do_linmos = True,
+            do_feather = True,
+            do_compress = True,
+            do_convert = True,
+            do_export = True,
+            )        
 
     def stage_interferometer_data(
         self

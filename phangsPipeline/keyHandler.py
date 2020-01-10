@@ -57,18 +57,24 @@ class KeyHandler:
         Construct the key handler object.
         """
 
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&&%&%&%&%&%&%&%&%&%&%")
         logger.info("Initializing the PHANGS-ALMA pipeline KeyHandler.")
-
-        logger.info("Reading the master key.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
 
         if os.path.isfile(master_key) is False:
             logger.error("Master key "+master_key+" not found. Aborting.")
-            return False
+            return(False)
         pwd = os.getcwd()
         self._master_key = pwd + '/' + master_key
         self._read_master_key()
 
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Reading individual key files.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
 
         self._read_config_keys()
         self._read_ms_keys()
@@ -77,8 +83,12 @@ class KeyHandler:
         self._read_sd_keys()
         self._read_linmos_keys() 
         self._read_override_keys()
-        
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Running checks and cross-links.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
 
         if self._dochecks:
             self.check_ms_existence()
@@ -90,7 +100,7 @@ class KeyHandler:
         self._missing_targets = []
         self._build_target_list()
         if self._dochecks:
-            self.check_target_existence()
+            self.print_missing_targets()
 
         self._expand_dir_key()
         if self._dochecks:
@@ -98,16 +108,23 @@ class KeyHandler:
 
         self._build_whole_target_list()
         self._map_targets_to_mosaics()
-        self._map_interf_and_feather_configs()
+        self._map_configs()
 
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Master key reading and checks complete.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
 
     def _read_master_key(self):
         """
         Read the master key.
         """
+        logger.info("-----------------------")
+        logger.info("Reading the master key.")
+        logger.info("-----------------------")
         
-        logger.debug("Master key file: "+self._master_key)
+        logger.info("Master key file: "+self._master_key)
         fname = self._master_key
         infile = open(fname, 'r')
         
@@ -230,11 +247,17 @@ class KeyHandler:
         if self._dochecks:
             self.check_key_existence()
 
+        return(True)
+
     def check_key_existence(self):
         """
         Check file existence for the input keys defined in the master file.
         """
 
+        logger.info("------------------------------------")
+        logger.info("Checking the existence of key files.")
+        logger.info("------------------------------------")
+        
         all_valid = True
         errors = 0
 
@@ -296,6 +319,9 @@ class KeyHandler:
         if os.path.isfile(fname) is False:
             logger.error("I tried to read key "+fname+" but it does not exist.")
             return()
+        
+        logger.info("Reading a measurement set key")
+        logger.info("Reading: "+fname)
 
         infile = open(fname, 'r')
         
@@ -367,6 +393,9 @@ class KeyHandler:
         Read one directory key. This is called by read_dir_keys.
         """
 
+        logger.info("Reading a directory key.")
+        logger.info("Reading: "+fname)
+
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
             logger.error("I tried to read key "+fname+" but it does not exist.")
@@ -430,6 +459,9 @@ class KeyHandler:
         Read one target key. Called by read_target_keys.
         """
         
+        logger.info("Reading a target key.")
+        logger.info("Reading: "+fname)
+
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
             self.update_files()
@@ -496,6 +528,9 @@ class KeyHandler:
         """
         Read one single dish key. Called by read_single_dish_keys()
         """
+
+        logger.info("Reading a singledish key.")
+        logger.info("Reading: "+fname)
                 
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
@@ -563,6 +598,9 @@ class KeyHandler:
         """
         Read one configuration key. Called by _read_config_keys().
         """
+
+        logger.info("Reading a configuration key.")
+        logger.info("Reading: "+fname)
         
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
@@ -659,6 +697,9 @@ class KeyHandler:
         Read one file containing the assignments of targets to linear
         mosaics. Called by read_linmos_keys().
         """
+
+        logger.info("Reading a linear mosaic assignment key.")
+        logger.info("Reading: "+fname)
                 
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
@@ -725,6 +766,9 @@ class KeyHandler:
         """
         Read one file of hand-set overrides. Called by read_override_keys().
         """
+
+        logger.info("Reading a keyword override key.")
+        logger.info("Reading: "+fname)
         
         # should not get to this, but check just in case
         if os.path.isfile(fname) is False:
@@ -777,6 +821,8 @@ class KeyHandler:
         After the keys have been read in, create a complete target
         list and check for inconsistencies or missing entries.
         """
+
+        logger.info("Building the target list.")
         
         if self._target_dict is None:
             logger.error("I don't have a target dictionary. Can't proceed.")
@@ -823,6 +869,13 @@ class KeyHandler:
             
         self._missing_targets = missing_targets
 
+        logger.info("Total of "+str(len(self._target_list))+" targets.")
+        n_missing = len(self._missing_targets)
+        if n_missing == 0:
+            logger.info("No cases found where I expect a target but lack a definition.")
+        else:
+            logger.error(str(n_missing)+" cases where I expected a target definition but didn't find one.")
+
         return()
         
     def _build_whole_target_list(self):
@@ -830,6 +883,8 @@ class KeyHandler:
         Create a list where the parts that will go into a linear
         mosaic are gone and only whole targets remain.
         """
+
+        logger.info("Building the list of whole targets.")
 
         if self._target_dict is None:
             logger.error("I don't have a target dictionary. Can't proceed.")
@@ -862,6 +917,8 @@ class KeyHandler:
         Create a dictionary that maps from individual targets to mosaics.
         """
 
+        logger.info("Mapping targets to linear mosaics.")
+
         if self._target_dict is None:
             logger.error("I don't have a target dictionary. Can't proceed.")
             return()
@@ -885,10 +942,12 @@ class KeyHandler:
 
         return()
 
-    def _map_interf_and_feather_configs(self):
+    def _map_configs(self):
         """
         Map interferferometric and feather configurations to one another.
         """
+
+        logger.info("Cross-matching interferometric and feather configs")
 
         if 'interf_config' not in self._config_dict.keys():
             return()
@@ -896,7 +955,7 @@ class KeyHandler:
         # Initialize
         for interf_config in self._config_dict['interf_config'].keys():
             
-            self._config_dict['interf_config']['feather_config'] = None
+            self._config_dict['interf_config'][interf_config]['feather_config'] = None
             
             if 'feather_config' not in self._config_dict.keys():
                 continue
@@ -912,13 +971,21 @@ class KeyHandler:
 
 #region Programs to run checks on the keyHandler and the data
 
-    def check_target_existence(self):
+    def print_missing_targets(self):
         """
         Print the targets missing a definition in the target list key.
         """
 
-        if self._missing_targets is None:
-            logger.error("Missing target list not constructed.")
+        if len(self._target_list) == 0:
+            self._built_target_list()
+
+        logger.info("-------------------------")
+        logger.info("Printing missing targets.")
+        logger.info("-------------------------")
+
+        if len(self._missing_targets) == 0:
+            logger.info("No missing targets.")
+            return(None)
             
         logger.error("Missing a total of "+str(len(self._missing_targets))+" target definitions.")
         for target in self._missing_targets:
@@ -931,6 +998,10 @@ class KeyHandler:
         Check that the measurement sets in the ms key all exist in the
         specified directories.
         """
+
+        logger.info("-------------------------------------------")
+        logger.info("Checking the existence of measurement sets.")
+        logger.info("-------------------------------------------")
 
         if self._ms_dict is None:
             return()
@@ -956,7 +1027,10 @@ class KeyHandler:
                     logger.error("Missing ms for "+target+" "+project_tag+" "+array_tag)
         
         logger.info("Verified the existence of "+str(found_count)+" measurement sets.")
-        logger.info("Missing "+str(missing_count)+" measurement set key entries.")
+        if missing_count == 0:
+            logger.info("No measurement sets found to be missing.")
+        else:
+            logger.error("Missing "+str(missing_count)+" measurement set key entries.")
 
         return()
 
@@ -965,6 +1039,10 @@ class KeyHandler:
         Check that the FITS files in the singledish key all exist in
         the specified directories.
         """
+
+        logger.info("-------------------------------------------")
+        logger.info("Checking the existence of single dish data.")
+        logger.info("-------------------------------------------")
 
         if self._sd_dict is None:
             return()
@@ -989,7 +1067,10 @@ class KeyHandler:
                 logger.error("Missing singledish data for "+target+" "+product)
         
         logger.info("Verified the existence of "+str(found_count)+" single dish data sets.")
-        logger.info("Missing "+str(missing_count)+" single dish key entries.")
+        if missing_count == 0:
+            logger.info("No single dish data found to be missing.")
+        else:
+            logger.error("Missing "+str(missing_count)+" single dish key entries.")
 
         return()
 
@@ -1027,6 +1108,10 @@ class KeyHandler:
         Check the existence of the directories for imaging and post-processing.
         """
         
+        logger.info("--------------------------------------")
+        logger.info("Checking the existence of directories.")
+        logger.info("--------------------------------------")
+
         dir_list = self._targets_for_dir.keys()
 
         found_dirs=0
@@ -1037,17 +1122,23 @@ class KeyHandler:
                 if os.path.isdir(self._imaging_root+this_dir):
                     found_dirs += 1
                 else:
-                    logger.error("Missing imaging directory :"+self._imaging_root+this_dir)
+                    logger.warning("Missing imaging directory :"+self._imaging_root+this_dir)
                     missing_dirs.append(self._imaging_root+this_dir)
 
             if postprocess:
                 if os.path.isdir(self._postprocess_root+this_dir):
                     found_dirs += 1
                 else:
-                    logging.error("Missing post-processing directory :"+self._postprocess_root+this_dir)
+                    logging.warning("Missing post-processing directory :"+self._postprocess_root+this_dir)
                     missing_dirs.append(self._postprocess_root+this_dir)
         
-        logging.info("Found "+str(found_dirs)+" directories. Missing "+str(len(missing_dirs))+" directories.")
+        logging.info("Found "+str(found_dirs)+" directories.")
+
+        missing_count = (len(missing_dirs))
+        if missing_count == 0:
+            logger.info("No directories appear to be missing.")
+        else:
+            logger.warning("Missing "+str(missing_count)+" directories. Returning that list.")
 
         return(missing_dirs)
         
@@ -1099,6 +1190,10 @@ class KeyHandler:
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
         List the full set of targets.
+        
+        Modified by keywords only, skip, first, last. Will only return
+        targets in only, skip targets in skip, and return targets
+        alphabetically after first and before last.
         """
         this_target_list = \
             utils.select_from_list(self._target_list, first=first, last=last \
@@ -1107,7 +1202,11 @@ class KeyHandler:
 
     def get_targets_in_ms_key(self, only=None, skip=None, first=None, last=None):
         """
-        List all targets that have uv data
+        List all targets that have uv data.
+
+        Modified by keywords only, skip, first, last. Will only return
+        targets in only, skip targets in skip, and return targets
+        alphabetically after first and before last.
         """
         targets = self._target_list
         targets_with_ms = []
@@ -1123,6 +1222,10 @@ class KeyHandler:
     def get_linmos_targets(self, only=None, skip=None, first=None, last=None):
         """
         List all linear mosaics.
+
+        Modified by keywords only, skip, first, last. Will only return
+        targets in only, skip targets in skip, and return targets
+        alphabetically after first and before last.
         """
         if self._linmos_dict is None:
             return(None)
@@ -1138,6 +1241,10 @@ class KeyHandler:
         """
         List only full galaxy names (no parts, e.g., _1 or _2). Very
         similar to the directory list.
+
+        Modified by keywords only, skip, first, last. Will only return
+        targets in only, skip targets in skip, and return targets
+        alphabetically after first and before last.
         """
         this_whole_target_list = \
             utils.select_from_list(self._whole_target_list, first=first, last=last \
@@ -1147,6 +1254,9 @@ class KeyHandler:
     def get_interf_configs(self, only=None, skip=None):
         """
         Get a list of interferometer array configurations
+
+        Modified by keywords only, skip. Will only return targets in
+        only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
             return(None)
@@ -1159,7 +1269,11 @@ class KeyHandler:
 
     def get_feather_configs(self, only=None, skip=None):
         """
-        Get a list of feathered single dish + interferometer array configruations.
+        Get a list of feathered single dish + interferometer array
+        configruations.
+
+        Modified by keywords only, skip. Will only return targets in
+        only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
             return(None)
@@ -1174,6 +1288,9 @@ class KeyHandler:
         """
         Get a list of line 'products,' i.e., line plus velocity
         resolution combinations.
+
+        Modified by keywords only, skip. Will only return targets in
+        only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
             return(None)
@@ -1187,6 +1304,9 @@ class KeyHandler:
     def get_continuum_products(self, only=None, skip=None):
         """
         Get a list of continuum 'products'.
+
+        Modified by keywords only, skip. Will only return targets in
+        only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
             return(None)
@@ -1199,7 +1319,7 @@ class KeyHandler:
 
     def is_target_linmos(self, target=None):
         """
-        Return true or false based on whether the target is a linear
+        Return True or False based on whether the target is a linear
         mosaic. True means that this target is the OUTPUT of a linear
         mosaic operation.
         """
@@ -1259,8 +1379,16 @@ class KeyHandler:
         Get the file name for a data cube using the pipeline convention.
         """
 
-        if target is None or config is None or product is None:
-            logging.error("Need a target and a configuration and a product.")
+        if target is None:
+            logging.error("Need a target.")            
+            return(None)
+
+        if config is None:
+            logging.error("Need a configuration.")            
+            return(None)
+
+        if product is None:
+            logging.error("Need a product.")            
             return(None)
         
         if type(target) is not type(''):
@@ -1299,6 +1427,7 @@ class KeyHandler:
         """
         
         if self._sd_dict is None:
+            logging.error("No single dish key defined.")
             return(None)
 
         if target == None:
@@ -1306,13 +1435,13 @@ class KeyHandler:
             return(None)
 
         if target not in self._sd_dict.keys():
-            logging.error("Not in single dish keys: "+target)
+            logging.warning("Not in single dish keys: "+target)
             return(None)
 
         this_dict = self._sd_dict[target]
         
         if product not in this_dict.keys():
-            logging.error("Product not found for "+target+" : "+product)
+            logging.warning("Product not found for "+target+" : "+product)
             return(None)            
         
         found = False
@@ -1383,6 +1512,58 @@ class KeyHandler:
             return(None)
 
         return(feather_config_dict[feather_config]['interf_config'])
+
+    def print_configs(
+        self
+        ):
+        """
+        Print out the configurations for inspection.
+        """
+
+        if self._config_dict is None:
+            return()
+
+        logger.info("Interferometric Configurations")
+        for this_config in self._config_dict['interf_config'].keys():
+            logger.info("... "+this_config)
+            this_arrays = self._config_dict['interf_config'][this_config]['arrays']
+            this_other_config = self._config_dict['interf_config'][this_config]['feather_config']
+            logger.info("... ... includes arrays "+str(this_arrays))
+            logger.info("... ... maps to feather config "+str(this_other_config))
+
+        logger.info("Feather Configurations")
+        for this_config in self._config_dict['feather_config'].keys():
+            logger.info("... "+this_config)
+            this_other_config = self._config_dict['feather_config'][this_config]['interf_config']
+            logger.info("... ... maps to interferometer config "+str(this_other_config))
+
+        return()
+
+    def print_products(
+        self
+        ):
+        """
+        Print out the products for inspection.
+        """
+
+        if self._config_dict is None:
+            return()
+
+        logger.info("Continuum data products")
+        for this_product in self._config_dict['cont_product'].keys():
+            logger.info("... "+this_product)
+            lines_to_flag = self._config_dict['cont_product'][this_product]
+            logger.info("... ... lines to flag "+str(lines_to_flag))
+
+        logger.info("Line data products")
+        for this_product in self._config_dict['line_product'].keys():
+            logger.info("... "+this_product)
+            channel_width = self._config_dict['line_product'][this_product]['channel']
+            line_name = self._config_dict['line_product'][this_product]['line']
+            logger.info("... ... channel width [km/s] "+str(channel_width))
+            logger.info("... ... line name code "+str(line_name))
+
+        return()        
 
     def get_overrides(self, key=None, param=None):
         """
