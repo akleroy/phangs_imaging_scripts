@@ -1193,7 +1193,7 @@ class PostProcessHandler:
                     # Feather the single dish and interferometer data
 
                     if do_feather and config_type == 'interf' and \
-                            has_sd and has_imaging:
+                            has_sd and has_imaging and has_feather_config:
 
                         indir = postprocess_dir
 

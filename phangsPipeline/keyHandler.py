@@ -1452,6 +1452,9 @@ class KeyHandler:
         if product == None:
             logging.error("Please specify a product.")
             return(None)
+
+        if target not in self._sd_dict.keys():
+            return(False)
         
         this_dict = self._sd_dict[target]
         
