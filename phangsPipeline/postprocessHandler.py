@@ -642,11 +642,27 @@ class PostProcessHandler:
 
                     has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
                     has_sd = (fname_dict['orig_sd'] is not None)
+
+                    # all parts have sd could change to some parts
+                    # have sd. Not 100% sure on what we want.
+
+                    all_parts_have_sd = False
                     is_mosaic = self._kh.is_target_linmos(this_target)
                     if is_mosaic:
                         mosaic_parts = self._kh.get_parts_for_linmos(this_target)
+                        all_parts_have_sd = True
+                        for this_part in mosaic_parts:
+                            this_part_dict = self._fname_dict(
+                                target=this_part,
+                                config=this_config,
+                                product=this_product,
+                                )
+                            part_has_sd = (this_part_dict['orig_sd'] is not None)
+                            if part_has_sd is False:
+                                all_parts_have_sd = False
                     else:
                         mosaic_parts = None
+
                     is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
                     
                     # If we are looking at an interferometric
@@ -932,7 +948,7 @@ class PostProcessHandler:
                     # data.
 
                     if do_align_for_mosaic and config_type == 'interf' and \
-                            is_mosaic and has_sd:
+                            is_mosaic and all_parts_have_sd:
 
                         indir = postprocess_dir
                         outdir = postprocess_dir
@@ -1027,7 +1043,7 @@ class PostProcessHandler:
                     # Execute linear mosaicking for the single dish data
 
                     if do_linmos and config_type == 'interf' and \
-                            is_mosaic and has_sd:
+                            is_mosaic and all_parts_have_sd:
 
                         indir = postprocess_dir
                         outdir = postprocess_dir
@@ -1058,7 +1074,7 @@ class PostProcessHandler:
                             cmr.mosaic_aligned_data(
                                 infile_list = infile_list,
                                 weightfile_list = weightfile_list,
-                                outfile = outfile,
+                                outfile = outdir+outfile,
                                 overwrite=True)
                     
                     
