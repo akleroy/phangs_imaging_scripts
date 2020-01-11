@@ -1460,6 +1460,11 @@ class PostProcessHandler:
             return(None)
         
         # LOOP 1: INTERFEROMETRIC DATA
+
+        # Stage, primary beam correct, and convolve the
+        # interferometric data. If present, prepare single dish data
+        # for feathering. If the target is part of a mosaic, built a
+        # weight file for use later. Feather the data.
     
         for this_target in self._targets_list:
            
@@ -1489,6 +1494,13 @@ class PostProcessHandler:
                     
         # LOOP 2: MOSAICS
                     
+        # If the data is part of a linear mosaic, convolve and align
+        # both the interferometric and single dish data. Then execute
+        # the linear mosaic. Do this for both the interferometric,
+        # single dish, and feathered data. Note that we BOTH feather
+        # before and feather after for now. Later we can make this a
+        # choice.
+
         for this_target in self._targets_list:
             
             if not is_mosaic:
@@ -1539,6 +1551,9 @@ class PostProcessHandler:
                         )
 
         # LOOP 3: BOTH TYPES OF CONFIGS
+
+        # After mosaicking and feathering are done, compress the data,
+        # convert units, and export to FITS for further processing.
     
         for this_target in self._targets_list:
             
@@ -1566,7 +1581,7 @@ class PostProcessHandler:
                 for this_config in self._feather_configs_list:
 
                     if is_mosaic:
-                        ext_list = ['_featherfirst', '_featerafter']
+                        ext_list = ['_featherfirst', '_featherafter']
                     else:
                         ext_list = ['']
                     
