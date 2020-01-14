@@ -24,7 +24,11 @@ from pipelineVersion import version as pipeVer
 
 #endregion
 
-#region Routines to analyze and extract spectral lines 
+#region Routines for basic characterization
+
+#endregion
+
+#region Routines to analyze and extract lines in measurement sets
 
 def list_lines_in_ms(
     in_file= None,
