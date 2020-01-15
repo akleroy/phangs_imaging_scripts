@@ -345,13 +345,13 @@ def feather_two_cubes(
 
     # Remove temporary files
 
-    #os.system('rm -rf '+sd_file+'.temp')
-    #os.system('rm -rf '+interf_file+'.temp')
-    #os.system('rm -rf '+out_file+'.temp')
+    os.system('rm -rf '+sd_file+'.temp')
+    os.system('rm -rf '+interf_file+'.temp')
+    os.system('rm -rf '+out_file+'.temp')
 
-    #os.system('rm -rf '+sd_file+'.temp.temp')
-    #os.system('rm -rf '+interf_file+'.temp.temp')
-    #os.system('rm -rf '+out_file+'.temp.temp')
+    os.system('rm -rf '+sd_file+'.temp.temp')
+    os.system('rm -rf '+interf_file+'.temp.temp')
+    os.system('rm -rf '+out_file+'.temp.temp')
 
     return(True)
 
