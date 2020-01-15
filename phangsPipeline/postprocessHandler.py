@@ -943,6 +943,7 @@ class PostProcessHandler:
         extra_ext_in = '',
         extra_ext_out = '',
         apodize = False,
+        apod_ext = 'pb',
         check_files = True,
         ):
         """
@@ -964,9 +965,9 @@ class PostProcessHandler:
             target=target, config=feather_config, product=product, 
             extra_ext=extra_ext_out)
                         
-        interf_file = fname_dict_in['pbcorr_round']
-        sd_file = fname_dict_in['prepped_sd']
-        outfile = fname_dict_out['pbcorr_round']
+        interf_file = fname_dict_in[interf_tag]
+        sd_file = fname_dict_in[sd_tag]
+        outfile = fname_dict_out[out_tag]
 
         # Error checking
 
@@ -992,9 +993,11 @@ class PostProcessHandler:
         # user has selected.
         
         if apodize:
-            
+
+            apod_file = fname_dict_in[apod_ext]
+
             logger.info("Apodizing using file "+apod_file)
-            
+
             if (not self._dry_run) and casa_enabled:
                 cfr.feather_two_cubes(
                     interf_file=indir+interf_file,
@@ -1002,7 +1005,7 @@ class PostProcessHandler:
                     out_file=outdir+outfile,
                     do_blank=True,
                     do_apodize=True,
-                    apod_file=apod_file,
+                    apod_file=indir+apod_file,
                     apod_cutoff=0.0,
                     overwrite=True)
                 
@@ -1712,7 +1715,9 @@ class PostProcessHandler:
         do_prep=False,
         do_feather=False,
         do_mosaic=False,
-        do_cleanup=False,        
+        do_cleanup=False,
+        feather_apod=False,
+        feather_noapod=False,
         ):
         """
         """
@@ -1724,6 +1729,9 @@ class PostProcessHandler:
         if self._all_products is None:            
             logger.error("Need a products list.")
             return(None)
+
+        # Prepare the interferometer data that has imaging. Includes
+        # staging the single dish data, making weights, etc.
         
         if do_prep:
     
@@ -1750,14 +1758,70 @@ class PostProcessHandler:
                             target = this_target, product = this_product, config = this_config,
                             check_files = True)
 
+        # Feather the interferometer configuration data that has
+        # imaging. We'll return to mosaicks in the next steps.
+                        
         if do_feather:
             
-            pass
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        fname_dict = self._fname_dict(
+                            target=this_target, product=this_product, config=this_config)
+                        
+                        imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                        has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                        has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
+                        is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
+                            
+                        if not has_imaging:
+                            logger.debug("Skipping "+this_target+" because it lacks imaging.")
+                            logger.debug(imaging_dir+fname_dict['orig'])
+                            continue
+                            
+                        if not has_singledish:
+                            logger.debug("Skipping "+this_target+" because it lacks single dish.")
+                            continue
+
+                        if feather_apod:                            
+                            self.task_feather(
+                                target = this_target, product = this_product, config = this_config,
+                                apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
+                                )
+
+                        if feather_noapod:
+                            self.task_feather(
+                                target = this_target, product = this_product, config = this_config,
+                                apodize=False, extra_ext_out='',check_files=True,
+                                )
 
         if do_mosaic:
 
-            pass
+            for this_target in self._targets_list:
+                
+                is_mosaic = self._kh.is_target_linmos(this_target)
+                if not is_mosaic:
+                    continue
 
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        pass
+
+        if do_feather:
+            
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        pass
+                        
         if do_cleanup:
             
             for this_target in self._targets_list:

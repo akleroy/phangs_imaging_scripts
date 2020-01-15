@@ -304,14 +304,14 @@ def feather_two_cubes(
                      pbimage=apod_file, 
                      outfile=current_sd_file+'.temp', 
                      mode='multiply', 
-                     cutoff=cutoff)
+                     cutoff=apod_cutoff)
         current_sd_file = current_sd_file+'.temp'
         
         casa.impbcor(imagename=current_interf_file,
                      pbimage=apod_file, 
                      outfile=current_interf_file+'.temp', 
                      mode='multiply', 
-                     cutoff=cutoff)
+                     cutoff=apod_cutoff)
         current_interf_file = current_interf_file+'.temp'
 
     # Call feather, followed by an imsubimage to deal with degenerate
@@ -339,7 +339,7 @@ def feather_two_cubes(
                      pbimage=apod_file, 
                      outfile=out_file, 
                      mode='divide', 
-                     cutoff=cutoff)
+                     cutoff=apod_cutoff)
 
     # Remove temporary files
 
