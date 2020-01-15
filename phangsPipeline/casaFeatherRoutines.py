@@ -241,6 +241,10 @@ def feather_two_cubes(
     os.system('rm -rf '+sd_file+'.temp')
     os.system('rm -rf '+interf_file+'.temp')
     os.system('rm -rf '+out_file+'.temp')
+    
+    os.system('rm -rf '+sd_file+'.temp.temp')
+    os.system('rm -rf '+interf_file+'.temp.temp')
+    os.system('rm -rf '+out_file+'.temp.temp')
 
     # If requested, manipulate blanked (NaN and mask) values to make
     # sure they are zeros. This should probably not be necessary, but
@@ -303,15 +307,13 @@ def feather_two_cubes(
         casa.impbcor(imagename=current_sd_file,
                      pbimage=apod_file, 
                      outfile=current_sd_file+'.temp', 
-                     mode='multiply', 
-                     cutoff=apod_cutoff)
+                     mode='multiply')
         current_sd_file = current_sd_file+'.temp'
         
         casa.impbcor(imagename=current_interf_file,
                      pbimage=apod_file, 
                      outfile=current_interf_file+'.temp', 
-                     mode='multiply', 
-                     cutoff=apod_cutoff)
+                     mode='multiply')
         current_interf_file = current_interf_file+'.temp'
 
     # Call feather, followed by an imsubimage to deal with degenerate
@@ -343,13 +345,13 @@ def feather_two_cubes(
 
     # Remove temporary files
 
-    os.system('rm -rf '+sd_file+'.temp')
-    os.system('rm -rf '+interf_file+'.temp')
-    os.system('rm -rf '+out_file+'.temp')
+    #os.system('rm -rf '+sd_file+'.temp')
+    #os.system('rm -rf '+interf_file+'.temp')
+    #os.system('rm -rf '+out_file+'.temp')
 
-    os.system('rm -rf '+sd_file+'.temp.temp')
-    os.system('rm -rf '+interf_file+'.temp.temp')
-    os.system('rm -rf '+out_file+'.temp.temp')
+    #os.system('rm -rf '+sd_file+'.temp.temp')
+    #os.system('rm -rf '+interf_file+'.temp.temp')
+    #os.system('rm -rf '+out_file+'.temp.temp')
 
     return(True)
 
