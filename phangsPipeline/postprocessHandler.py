@@ -986,7 +986,6 @@ class PostProcessHandler:
         logger.info("Feathering "+outfile)
         logger.info("Feathering interferometric data "+interf_file)
         logger.info("Feathering single dish data "+sd_file)
-        logger.info("Feathering method: "+self._feather_method)
 
         # Feather has a couple of algorithmic choices
         # associated with it. Run the method that the
