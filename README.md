@@ -1,4 +1,4 @@
-## README for PHANGS Data Reduction
+## README for PHANGS Pipeline Version 2.0
 
 Email leroy.42@osu.edu or otherwise get in touch with questions or
 suggestions.
