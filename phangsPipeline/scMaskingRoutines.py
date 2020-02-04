@@ -15,6 +15,55 @@ def make_mask(data, noise, hi_thresh=5, hi_nchan=2,
               lo_thresh=5, lo_nchan=2,
               min_pix=None, min_area=None,
               grow_xy=None, grow_v=None, invert=False):
+    """
+    Mask generation given data and estimate of the local noise
+
+    Parameters:
+    -----------
+
+    data : np.array
+        Original data
+
+    noise : np.array
+        Estimate of the amplitude of the noise at every position in the data
+        (or an array that will broadcast to that under division).
+
+    Keywords:
+    ---------
+
+    hi_thresh : float
+        Threshold for detection (in units of sigma).  Default: 5
+
+    hi_nchan : int
+        Number of consecutive channels needed for detection.  Default: 2
+
+    lo_thresh : float
+        Threshold for inclusion in mask if connected to a hi_thresh
+        detection. Default: 5
+
+    lo_nchan : int
+        Number of consecutive channels at lo_thresh required for a detection
+        if connected to a hi_thresh detection. Default: 2
+
+    min_pix : int
+        Number of pixels required for a detection.  Default: None
+
+    min_area : int
+        Minimum number of pixels required in area projection for a detection.
+        Default: None
+
+    grow_xy : int
+        NotImplemented
+
+    grow_v : int
+        NotImplemented
+
+    invert : bool
+        If True, invert the data before applying masking.
+        Used for assessing the number of false positives given masking
+        criteria. Default: False.
+    """
+
     signif = data / noise
     if invert:
         signif *= -1
