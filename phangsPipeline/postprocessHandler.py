@@ -77,8 +77,8 @@ class PostProcessHandler:
         only=[],
         nobuild=False):
         """
-        Set conditions on the list of targets to be considered. By
-        default, consider all targets.
+        Set conditions on the list of targets to be considered when a
+        recipe is run. By default, consider all targets.
         """
         self._targets_first = first
         self._targets_last = last
@@ -97,8 +97,8 @@ class PostProcessHandler:
         only=[],
         nobuild=False):
         """
-        Set conditions on the list of mosaics to be considered. By
-        default, consider all mosaics.
+        Set conditions on the list of mosaics to be considered when a
+        recipe is run. By default, consider all mosaics.
         """
         self._mosaics_first = first
         self._mosaics_last = last
@@ -116,8 +116,8 @@ class PostProcessHandler:
         nobuild=False,
         ):
         """
-        Set conditions on the list of line products to be
-        considered. By default, consider all products.
+        Set conditions on the list of line products to be considered
+        when a recipe is run. By default, consider all products.
         """
         self._lines_skip = skip
         self._lines_only = only
@@ -134,7 +134,8 @@ class PostProcessHandler:
         ):
         """
         Set conditions on the list of continuum products to be
-        considered. By default, consider all products.
+        considered when a recipe is run. By default, consider all
+        products.
         """
         self._cont_skip = skip
         self._cont_only = only
@@ -151,8 +152,8 @@ class PostProcessHandler:
         ):
         """
         Set conditions on the list of interferometric array
-        configurations to be considered. By default, consider all
-        configurations.
+        configurations to be considered when a recipe is run. By
+        default, consider all configurations.
         """
         self._interf_configs_skip = skip
         self._interf_configs_only = only
@@ -168,9 +169,9 @@ class PostProcessHandler:
         nobuild=False,
         ):
         """
-        Set conditions on the list of feathered array
-        configurations to be considered. By default, consider all
-        configurations.
+        Set conditions on the list of feathered array configurations
+        to be considered when a recipe is run. By default, consider
+        all configurations.
         """
         self._feather_configs_skip = skip
         self._feather_configs_only = only
@@ -183,7 +184,8 @@ class PostProcessHandler:
         self,
         no_line = False):
         """
-        Toggle the program to line products.
+        Toggle the program to skip all line products when a recipe or
+        task is run.
         """
         self._no_line = no_line
         self._build_lists()
@@ -192,7 +194,8 @@ class PostProcessHandler:
         self,
         no_cont = False):
         """
-        Toggle the program to skip continuum products.
+        Toggle the program to skip all continuum products when a
+        recipe is run.
         """
         self._no_cont = no_cont
         self._build_lists()
@@ -201,7 +204,9 @@ class PostProcessHandler:
         self,
         dry_run = False):
         """
-        Toggle the program using a 'dry run', i.e., not actually executing.
+        Toggle the program to execute a 'dry run.' In this case it
+        will not actually execute calls but will run through loops,
+        print messages, etc..
         """
         self._dry_run = dry_run
 
@@ -209,7 +214,9 @@ class PostProcessHandler:
         self,
         key_handler = None):
         """
-        Set the keyhandler being used by the pipeline.
+        Set the keyhandler object being used by the pipeline. The
+        keyhandler object interaces with configuration files, target
+        lists, etc.
         """
         self._kh = key_handler
         self._build_lists()
@@ -219,7 +226,8 @@ class PostProcessHandler:
         method='pbcorr'
         ):
         """
-        Set the approach to feathering used in the pipeline.
+        Set the approach to feathering used in the pipeline. Method
+        must be one of the valid choices defined in the code.
         """
         valid_choices = ['pbcorr','apodize']
         if method.lower() not in valid_choices:
@@ -230,15 +238,18 @@ class PostProcessHandler:
 
 #endregion
 
-#region Behind the scenes infrastructure and book keeping.
+#region Behind the scenes infrastructure
 
     def _build_lists(
         self
         ):
         """
-        Build the target lists.
+        Build the lists of targets, mosaics, products, and
+        configurations to loop over when a recipe is run.
         """
 
+        # Make sure there is an attached keyHandler object.
+        
         if self._kh is None:
             logger.error("Cannot build lists without a keyHandler.")
             return(None)
@@ -287,7 +298,8 @@ class PostProcessHandler:
         self
         ):
         """
-        Get a combined list of line and continuum products.
+        Get a combined list of line and continuum products to be
+        considered.
         """
 
         if self._cont_products_list is None:
@@ -318,7 +330,7 @@ class PostProcessHandler:
 
 #endregion
 
-#region Master loops and file name routines
+#region File name routines
 
     def _fname_dict(
         self,
@@ -328,8 +340,12 @@ class PostProcessHandler:
         extra_ext='',
         ):
         """
-        Make the file name dictionary for all postprocess files given
-        some target, config, product configuration.
+        Make the file name dictionary for all postprocess files. This
+        will give the a big dictionary of names where one can look up
+        each type of file (e.g., primary beam corrected, single dish
+        aligned, etc.) given some target, config, and product. This
+        routine has a lot of hard-coded knowledge about our
+        postprocessing conventions.
         """
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -358,7 +374,7 @@ class PostProcessHandler:
         # Original files
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-        # Original cube and primary beam file
+        # Original cube
                     
         tag = 'orig'
         orig_file = self._kh.get_cube_filename(
@@ -368,6 +384,8 @@ class PostProcessHandler:
             casaext = '.image')
         fname_dict[tag] = orig_file
         
+        # Original primary beam file
+
         tag = 'pb'
         pb_file = self._kh.get_cube_filename(
             target = target, config = config, product = product,
@@ -583,6 +601,9 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination copy the
+        interferometric cube and primary beam file to the working
+        postprocessing directory.
         """
 
         # Generate file names
@@ -636,6 +657,8 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination primary beam
+        correct the interferometer data.
         """
 
         # Generate file names
@@ -697,6 +720,8 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination, convolve the cube
+        to have a round beam.
         """
 
         # Generate file names
@@ -754,6 +779,8 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination, copy the single
+        dish data and align it to the interferometric grid.
         """
 
         # Generate file names
@@ -823,6 +850,10 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination, make a 'weight'
+        image for use in linearly mosaicking the cube with other,
+        overlapping cubes. This task targets interferometric dish
+        data.
         """
 
         # Generate file names
@@ -886,6 +917,9 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination, make a 'weight'
+        image for use in linearly mosaicking the cube with other,
+        overlapping cubes. This task targets single dish data.
         """
 
         # Generate file names
@@ -947,6 +981,12 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, product, config combination, feather together
+        a single dish and interferometric data set. Note that
+        apodization is exposed as an option. Also note that the
+        configuration of the input and output will differ (an
+        interferometric configuration comes in, a feather
+        configuration comes out).
         """
 
         # Generate file names
@@ -1035,10 +1075,12 @@ class PostProcessHandler:
         out_pb_tag = 'pb_trimmed',
         extra_ext_in = '',
         extra_ext_out = '',
-        apodize = False,
         check_files = True,
         ):
         """
+        For one target, product, config combination, compress the cube
+        to the smallest reasonable volume. Also align the primary beam
+        file out onto this grid.
         """
 
         # Generate file names
@@ -1122,10 +1164,11 @@ class PostProcessHandler:
         out_tag = 'pbcorr_trimmed_k',
         extra_ext_in = '',
         extra_ext_out = '',
-        apodize = False,
         check_files = True,
         ):
         """
+        For one target, config, product combination convert the units
+        from Jy/beam to Kelvin.
         """
 
         # Generate file names
@@ -1185,6 +1228,8 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        For one target, config, product combination export to
+        FITS. Optionally also export the primary beam files.
         """
 
         # Generate file names
@@ -1263,355 +1308,230 @@ class PostProcessHandler:
 
         return()
 
-    def _mosaic_one_target(
+    def task_convolve_parts_for_mosaic(
         self,
         target = None,
         product = None,
         config = None,
-        do_convolve = True,
-        do_align = True,
-        do_singledish = True,
-        do_mosaic = True,
-        in_extra_ext = '',
-        out_extra_ext = ''
+        in_tag = 'pbcorr_round',
+        out_tag = 'linmos_commonres',
+        extra_ext_in = '',
+        extra_ext_out = '',
+        check_files = True,
         ):
         """
-        Run the mosaicking steps: convolution, alignment, and linear
-        mosaicking. Optionally also run them for the single dish data.
+        For one target, config, product combination that is a linear
+        mosaic, convolve all of the parts of the mosaic to share a
+        common angular resolution, appropriate for gridding together
+        into a single image.
         """
 
-        if target is None:
-            logger.error("Need a target.")
-            return()
+        # Generate file names
 
-        if product is None:
-            logger.error("Need a product.")
-            return()
-
-        if config is None:
-            logger.error("Need a config.")
-            return()
-
-        # Check that the target is a mosaic
-
-        is_mosaic = self._kh.is_target_linmos(target)
-        if is_mosaic == False:
-            logger.error("Not a mosaic - "+str(target))
-            return()
-
-        # Get the relevant file names
-
-        postprocess_dir = self._kh.get_postprocess_dir_for_target(target)
-        
-        fname_dict = self._fname_dict(
-            target=target,
-            product=product,
-            config=config,
-            extra_ext=out_extra_ext)
+        indir = self._kh.get_postprocess_dir_for_target(target)
+        outdir = self._kh.get_postprocess_dir_for_target(target)
 
         mosaic_parts = self._kh.get_parts_for_linmos(target)
 
-        # Check that all parts have single dish. Could change to allow
-        # that only some parts need to have sd. Not 100% sure on what
-        # we want.
+        infile_list = []
+        outfile_list = []
         
-        all_parts_have_sd = True
         for this_part in mosaic_parts:
-            this_part_dict = self._fname_dict(
-                target=this_part,
-                config=config,
-                product=product,
-                extra_ext=in_extra_ext,
+                            
+            this_part_dict_in = self._fname_dict(
+                target=this_part, config=config, product=product,
+                extra_ext=extra_ext_in,
                 )
-            part_has_sd = self._kh.has_singledish(target=this_part, product=product)
-            if part_has_sd is False:
-                all_parts_have_sd = False
 
-        if (not all_parts_have_sd) and do_singledish:
-            logger.warning("Singledish processing requested but not all parts have single dish.")
-            logger.warning("I am setting do_singledish to False.")
-            do_singledish = False
+            this_part_dict_out = self._fname_dict(
+                target=this_part, config=config, product=product,
+                extra_ext=extra_ext_out,
+                )
 
-        # Convolve the parts to a common resolution
-
-        if do_convolve:
+            infile_list.append(indir+this_part_dict_in[in_tag])
+            outfile_list.append(outdir+this_part_dict_out[out_tag])
             
-            indir = postprocess_dir
-            outdir = postprocess_dir
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Convolving for mosaic for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
 
-            # Build the list of input files
-
-            infile_list = []
-            outfile_list = []
-
-            for this_part in mosaic_parts:
-                            
-                this_part_dict = self._fname_dict(
-                    target=this_part,
-                    config=config,
-                    product=product,
-                    extra_ext=in_extra_ext,
-                    )
-
-                infile_list.append(indir+this_part_dict['pbcorr_round'])
-                outfile_list.append(outdir+this_part_dict['linmos_commonres'])
-
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Convolving for mosaic for:")
-            logger.info(str(target)+" , "+str(product)+" , "+str(config))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-
-            logger.info("Using cmr.common_res_for_mosaic.")
-            logger.info("Convolving "+target)
-            logger.info("Convolving original files "+str(infile_list))
-            logger.info("Convolving to convolved output "+str(outfile_list))
+        logger.info("Using cmr.common_res_for_mosaic.")
+        logger.info("Convolving "+target)
+        logger.info("Convolving original files "+str(infile_list))
+        logger.info("Convolving to convolved output "+str(outfile_list))
+        
+        # Allow overrides for the pixel padding (the
+        # number of pixels added to the greatest
+        # common beam for calculating the target
+        # resolution) and the target resolution.
             
-            # Allow overrides for the pixel padding (the
-            # number of pixels added to the greatest
-            # common beam for calculating the target
-            # resolution) and the target resolution.
-            
-            pixel_padding = 2.0
-            target_res = None
+        pixel_padding = 2.0
+        target_res = None
                         
-            # TBD - check override dict for target
-            # resolution and (I guess?) pixel padding.
+        # TBD - check override dict for target
+        # resolution and (maybe?) pixel padding.
 
-            if not self._dry_run:
-                cmr.common_res_for_mosaic(
-                    infile_list = infile_list,
-                    outfile_list = outfile_list,
-                    do_convolve = True,
-                    target_res = target_res,
-                    pixel_padding = pixel_padding,
-                    overwrite=True,
-                    )
+        if (not self._dry_run) and casa_enabled:
+            cmr.common_res_for_mosaic(
+                infile_list = infile_list,
+                outfile_list = outfile_list,
+                do_convolve = True,
+                target_res = target_res,
+                pixel_padding = pixel_padding,
+                overwrite=True,
+                )
 
-        # Generate a header and align data and weights to this new
-        # astrometry for use in linear mosaicking.
+        return()
 
-        if do_align:
 
-            indir = postprocess_dir
-            outdir = postprocess_dir
+    def task_align_for_mosaic(
+        self,
+        target = None,
+        product = None,
+        config = None,
+        in_tags = ['linmos_commonres', 'weight', 'prepped_sd', 'sd_weight'],
+        out_tags = ['linmos_aligned', 'weight_aligned', 'sd_aligned', 'sd_weight_aligned'],
+        extra_ext_in = '',
+        extra_ext_out = '',
+        check_files = True,
+        ):
+        """
+        For one target, config, product combination that is a linear
+        mosaic, align all parts of the mosaic to a common astrometric
+        grid for combination into a single image.
+        """
+        
+        # Generate file names
 
-            # Build the list of input files
+        indir = self._kh.get_postprocess_dir_for_target(target)
+        outdir = self._kh.get_postprocess_dir_for_target(target)
+
+        mosaic_parts = self._kh.get_parts_for_linmos(target)
+
+        infile_list = []
+        outfile_list = []
+        
+        for this_part in mosaic_parts:
             
-            infile_list = []
-            outfile_list = []
-
-            # Get the input and output files for individual
-            # parts. Also include the weights here.
-
-            for this_part in mosaic_parts:
-                            
-                this_part_dict = self._fname_dict(
-                    target=this_part,
-                    config=config,
-                    product=product,
-                    extra_ext=in_extra_ext,
-                    )
+            this_part_dict_in = self._fname_dict(
+                target=this_part, config=config, product=product,
+                extra_ext=extra_ext_in,
+                )
+            
+            this_part_dict_out = self._fname_dict(
+                target=this_part, config=config, product=product,
+                extra_ext=extra_ext_out,
+                )
+            
+            for this_tag_in in in_tags:
                 
-                infile_list.append(indir+this_part_dict['linmos_commonres'])
-                outfile_list.append(outdir+this_part_dict['linmos_aligned'])
+                this_tag_out = out_tag_dict[this_tag_in]                
+                infile_list.append(indir+this_part_dict_in[this_tag_in])
+                outfile_list.append(outdir+this_part_dict_out[this_tag_out])
 
-                infile_list.append(indir+this_part_dict['weight'])
-                outfile_list.append(outdir+this_part_dict['weight_aligned'])
-                
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Aligning for mosaic for:")
-            logger.info(str(target)+" , "+str(product)+" , "+str(config))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Aligning for mosaic for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
             
-            logger.info("Using cmr.common_grid_for_mosaic.")
-            logger.info("Aligning "+target)
-            logger.info("Convolving original files "+str(infile_list))
-            logger.info("Convolving to convolved output "+str(outfile_list))
-
-            # TBD implement overrides
+        logger.info("Using cmr.common_grid_for_mosaic.")
+        logger.info("Aligning "+target)
+        logger.info("Convolving original files "+str(infile_list))
+        logger.info("Convolving to convolved output "+str(outfile_list))
+        
+        # TBD implement overrides
             
-            ra_ctr = None 
-            dec_ctr = None
-            delta_ra = None 
-            delta_dec = None
-                        
-            if not self._dry_run:
-                cmr.common_grid_for_mosaic(
-                    infile_list = infile_list,
-                    outfile_list = outfile_list,
-                    ra_ctr = ra_ctr, 
-                    dec_ctr = dec_ctr,
-                    delta_ra = delta_ra, 
-                    delta_dec = delta_dec,
-                    allow_big_image = False,
-                    too_big_pix=1e4,   
-                    asvelocity=True,
-                    interpolation='cubic',
-                    axes=[-1],
-                    overwrite=True,
-                    )
+        ra_ctr = None 
+        dec_ctr = None
+        delta_ra = None 
+        delta_dec = None
+        
+        if (not self._dry_run) and casa_enabled:
+            cmr.common_grid_for_mosaic(
+                infile_list = infile_list,
+                outfile_list = outfile_list,
+                ra_ctr = ra_ctr, 
+                dec_ctr = dec_ctr,
+                delta_ra = delta_ra, 
+                delta_dec = delta_dec,
+                allow_big_image = False,
+                too_big_pix=1e4,   
+                asvelocity=True,
+                interpolation='cubic',
+                axes=[-1],
+                overwrite=True,
+                )
 
-        if do_align and do_singledish:
+        return()
 
-            indir = postprocess_dir
-            outdir = postprocess_dir
+    def task_linear_mosaic(
+        self,
+        target = None,
+        product = None,
+        config = None,
+        image_tag = 'linmos_aligned', # 'sd_aligned'
+        weight_tag = 'weight_aligned', # 'sd_weight_aligned'
+        out_tag = 'pbcorr_round', # 'prepped_sd'
+        extra_ext_in = '',
+        extra_ext_out = '',
+        check_files = True,
+        ):
+        """
+        For one target, config, product combination that is a linear
+        mosaic and has already been aligned and convolved, execute the
+        linear mosaic. Needs to be run separately for single dish and
+        interferometer data.
+        """
 
-            # Build the list of input files
+        # Set input and output directories and define output file
 
-            infile_list = []
-            outfile_list = []
+        indir = postprocess_dir
+        outdir = postprocess_dir
+        outfile = fname_dict[out_tag]
 
-            # Get the input and output files for individual
-            # parts. Also include the weights here.
+        mosaic_parts = self._kh.get_parts_for_linmos(target)
 
-            for this_part in mosaic_parts:
-                            
-                this_part_dict = self._fname_dict(
-                    target=this_part,
-                    config=config,
-                    product=product,
-                    extra_ext=in_extra_ext,
-                    )
+        infile_list = []
+        weightfile_list = []
 
-                infile_list.append(indir+this_part_dict['prepped_sd'])
-                outfile_list.append(outdir+this_part_dict['sd_aligned'])
+        # Get the input and weight files for  individual parts.
+        
+        for this_part in mosaic_parts:
 
-                infile_list.append(indir+this_part_dict['sd_weight'])
-                outfile_list.append(outdir+this_part_dict['sd_weight_aligned'])
-
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Aligning single dish for mosaic for:")
-            logger.info(str(target)+" , "+str(product)+" , "+str(config))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-
-            logger.info("Using cmr.common_grid_for_mosaic.")
-            logger.info("Aligning "+target)
-            logger.info("Convolving original files "+str(infile_list))
-            logger.info("Convolving to convolved output "+str(outfile_list))
-
-            # TBD - implement use of interferometer grid as a template.
+            this_part_dict_in = self._fname_dict(
+                target=this_part, config=config, product=product,
+                extra_ext=extra_ext_in,
+                )
             
-            # TBD implement overrides
+            infile_list.append(indir+this_part_dict[image_tag])
+            weightfile_list.append(indir+this_part_dict[weight_tag])
 
-            ra_ctr = None 
-            dec_ctr = None
-            delta_ra = None 
-            delta_dec = None
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Executing linear mosaic for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
             
-            if not self._dry_run:
-                cmr.common_grid_for_mosaic(
-                    infile_list = infile_list,
-                    outfile_list = outfile_list,
-                    ra_ctr = ra_ctr, 
-                    dec_ctr = dec_ctr,
-                    delta_ra = delta_ra, 
-                    delta_dec = delta_dec,
-                    allow_big_image = False,
-                    too_big_pix=1e4,   
-                    asvelocity=True,
-                    interpolation='cubic',
-                    axes=[-1],
-                    overwrite=True,
-                    )
+        logger.info("Using cmr.mosaic_aligned_data.")
+        logger.info("Creating "+outfile)
+        logger.info("Mosaicking original files "+str(infile_list))
+        logger.info("Weighting by "+str(weightfile_list))
 
-        # Execute linear mosaicking for the interferometer data
-
-        if do_mosaic:
-
-            indir = postprocess_dir
-            outdir = postprocess_dir
-            outfile = fname_dict['pbcorr_round']
-
-            infile_list = []
-            weightfile_list = []
-
-            # Get the input and weight files for
-            # individual parts.
-
-            for this_part in mosaic_parts:
-                
-                this_part_dict = self._fname_dict(
-                    target=this_part,
-                    config=config,
-                    product=product,
-                    extra_ext=in_extra_ext,
-                    )
-                
-                infile_list.append(indir+this_part_dict['linmos_aligned'])
-                weightfile_list.append(indir+this_part_dict['weight_aligned'])
-
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Executing linear mosaic for:")
-            logger.info(str(target)+" , "+str(product)+" , "+str(config))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-
-            logger.info("Using cmr.mosaic_aligned_data.")
-            logger.info("Creating "+outfile)
-            logger.info("Mosaicking original files "+str(infile_list))
-            logger.info("Weighting by "+str(weightfile_list))
-            
-            if not self._dry_run:
-                cmr.mosaic_aligned_data(
-                    infile_list = infile_list,
-                    weightfile_list = weightfile_list,
-                    outfile = outdir+outfile,
-                    overwrite=True)
-                
-        # Execute linear mosaicking for the single dish data
-
-        if do_mosaic and do_singledish:
-
-            indir = postprocess_dir
-            outdir = postprocess_dir
-            outfile = fname_dict['prepped_sd']
-
-            infile_list = []
-            weightfile_list = []
-
-            # Get the input and weight files for
-            # individual parts.
-
-            for this_part in mosaic_parts:
-                            
-                this_part_dict = self._fname_dict(
-                    target=this_part,
-                    config=config,
-                    product=product,
-                    extra_ext=in_extra_ext,
-                    )
-
-                infile_list.append(indir+this_part_dict['sd_aligned'])
-                weightfile_list.append(indir+this_part_dict['sd_weight_aligned'])
-
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Executing linear mosaic for single dish for:")
-            logger.info(str(target)+" , "+str(product)+" , "+str(config))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-            
-            logger.info("Using cmr.mosaic_aligned_data.")
-            logger.info("Creating "+outfile)
-            logger.info("Mosaicking original files "+str(infile_list))
-            logger.info("Weighting by "+str(weightfile_list))
-
-            if not self._dry_run:
-                cmr.mosaic_aligned_data(
-                    infile_list = infile_list,
-                    weightfile_list = weightfile_list,
-                    outfile = outdir+outfile,
-                    overwrite=True)
+        if not self._dry_run:
+            cmr.mosaic_aligned_data(
+                infile_list = infile_list,
+                weightfile_list = weightfile_list,
+                outfile = outdir+outfile,
+                overwrite=True)
                 
         return()
-            
+
 #endregion
 
 #region Recipes
