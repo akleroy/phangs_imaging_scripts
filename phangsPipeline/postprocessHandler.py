@@ -78,7 +78,7 @@ class PostProcessHandler:
         nobuild=False):
         """
         Set conditions on the list of targets to be considered when a
-        recipe is run. By default, consider all targets.
+        loop is run. By default, consider all targets.
         """
         self._targets_first = first
         self._targets_last = last
@@ -98,7 +98,7 @@ class PostProcessHandler:
         nobuild=False):
         """
         Set conditions on the list of mosaics to be considered when a
-        recipe is run. By default, consider all mosaics.
+        loop is run. By default, consider all mosaics.
         """
         self._mosaics_first = first
         self._mosaics_last = last
@@ -117,7 +117,7 @@ class PostProcessHandler:
         ):
         """
         Set conditions on the list of line products to be considered
-        when a recipe is run. By default, consider all products.
+        when a loop is run. By default, consider all products.
         """
         self._lines_skip = skip
         self._lines_only = only
@@ -134,7 +134,7 @@ class PostProcessHandler:
         ):
         """
         Set conditions on the list of continuum products to be
-        considered when a recipe is run. By default, consider all
+        considered when a loop is run. By default, consider all
         products.
         """
         self._cont_skip = skip
@@ -152,7 +152,7 @@ class PostProcessHandler:
         ):
         """
         Set conditions on the list of interferometric array
-        configurations to be considered when a recipe is run. By
+        configurations to be considered when a loop is run. By
         default, consider all configurations.
         """
         self._interf_configs_skip = skip
@@ -170,7 +170,7 @@ class PostProcessHandler:
         ):
         """
         Set conditions on the list of feathered array configurations
-        to be considered when a recipe is run. By default, consider
+        to be considered when a loop is run. By default, consider
         all configurations.
         """
         self._feather_configs_skip = skip
@@ -184,7 +184,7 @@ class PostProcessHandler:
         self,
         no_line = False):
         """
-        Toggle the program to skip all line products when a recipe or
+        Toggle the program to skip all line products when a loop or
         task is run.
         """
         self._no_line = no_line
@@ -195,7 +195,7 @@ class PostProcessHandler:
         no_cont = False):
         """
         Toggle the program to skip all continuum products when a
-        recipe is run.
+        loop is run.
         """
         self._no_cont = no_cont
         self._build_lists()
@@ -245,7 +245,7 @@ class PostProcessHandler:
         ):
         """
         Build the lists of targets, mosaics, products, and
-        configurations to loop over when a recipe is run.
+        configurations to loop over when a loop is run.
         """
 
         # Make sure there is an attached keyHandler object.
@@ -721,7 +721,9 @@ class PostProcessHandler:
         ):
         """
         For one target, product, config combination, convolve the cube
-        to have a round beam.
+        to have a round beam. Note that via the force_beam_as keyword
+        this task can also be used to convolve data to a fixed (round)
+        angular resolution.
         """
 
         # Generate file names
@@ -1534,7 +1536,7 @@ class PostProcessHandler:
 
 #endregion
 
-#region Recipes
+#region Recipes execute a set of linked tasks for one data set.
     
     def recipe_prep_one_target(
         self,
@@ -1544,6 +1546,14 @@ class PostProcessHandler:
         check_files = True,
         ):
         """
+        Recipe that takes data from imaging through all steps that
+        come before feathering and/or mosaicking. This means copying
+        the data, primary beam correction, convolution to a round
+        beam, importing and aligning the single dish data, and making
+        weight files for targets that are part of linear mosaicks.
+
+        The recipe assumes a lot of file name conventions so just
+        needs the target/product/config defined.
         """
 
         # Work out file names and note whether the target is part of a
@@ -1598,6 +1608,21 @@ class PostProcessHandler:
 
         return()
 
+    def recipe_moasic_one_target(
+        self,
+        target = None,
+        product = None,
+        config = None,
+        check_files = True,
+        ext_ext = '',
+        ):
+        """
+        Linearly mosaic a single target, performing the convolution,
+        alignment, and mosaicking steps.
+        """
+        
+        pass
+
     def recipe_cleanup_one_target(
         self,
         target = None,
@@ -1607,11 +1632,20 @@ class PostProcessHandler:
         ext_ext = '',
         ):
         """
+        Recipe that cleans up the output for one target, converting to
+        Kelvin, compressing and trimming the cube and then exporting
+        as a FITS file.
         """
+
+        self.task_convert_units(
+            target=target, config=config, product=product,
+            check_files=check_files,
+            extra_ext_in=ext_ext_in, extra_ext_out=ext_ext_out,
+            )
 
         self.task_compress(
             target=target, config=config, product=product,
-            check_files=check_files, apodize=apodize, do_pb_too=True,
+            check_files=check_files, do_pb_too=True,
             extra_ext_in=ext_ext_in, extra_ext_out=ext_ext_out,
             )
 
@@ -1621,9 +1655,22 @@ class PostProcessHandler:
             extra_ext_in=ext_ext_in, extra_ext_out=ext_ext_out,
             )
 
-        return()        
+        return()
 
-    
+    def recipe_convolve_to_scale(
+        self,
+        target = None,
+        product = None,
+        config = None,
+        check_files = True,
+        ext_ext = '',
+        ):
+        """
+        Convolve a target, product, config combination to a succession
+        of angulars scale using the task that convolves to a round
+        beam.
+        """        
+        pass
 
 #endregion
 
@@ -1635,10 +1682,16 @@ class PostProcessHandler:
         do_feather=False,
         do_mosaic=False,
         do_cleanup=False,
+        do_convolve=False,
         feather_apod=False,
         feather_noapod=False,
+        feather_before_mosaic=False,
+        feather_after_mosaic=False,
         ):
         """
+        Loops over the full set of targets, products, and
+        configurations to run the postprocessing. Toggle the parts of
+        the loop using the do_XXX booleans.
         """
 
         if self._targets_list is None:            
@@ -1678,7 +1731,8 @@ class PostProcessHandler:
                             check_files = True)
 
         # Feather the interferometer configuration data that has
-        # imaging. We'll return to mosaicks in the next steps.
+        # imaging. We'll return to feather mosaicked intereferometer
+        # and single dish data in the next steps.
                         
         if do_feather:
             
@@ -1694,7 +1748,11 @@ class PostProcessHandler:
                         imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
                         has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
                         has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
+
                         is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
+                        if is_part_of_mosaic and not feather_before_mosaic:
+                            logger.debug("Skipping "+this_target+" because feather_before_mosaic is False.")
+                            continue
                             
                         if not has_imaging:
                             logger.debug("Skipping "+this_target+" because it lacks imaging.")
@@ -1717,6 +1775,8 @@ class PostProcessHandler:
                                 apodize=False, extra_ext_out='',check_files=True,
                                 )
 
+        # Mosaic the intereferometer, single dish, and feathered data.
+
         if do_mosaic:
 
             for this_target in self._targets_list:
@@ -1729,11 +1789,30 @@ class PostProcessHandler:
                     
                     for this_config in self._interf_configs_list:
 
+                        # Mosaic the interferometer data and the
+                        # single dish data (need to verify if parts
+                        # have single dish, enforce the same
+                        # astrometric grid).
+
                         pass
+                    
+                    for this_config in self._feather_configs_list:
+
+                        # Mosaic the previously feathered data.
+
+                        pass
+                        
+
+        # This round of feathering targets only mosaicked data. All
+        # other data have been feathered above already.
 
         if do_feather:
             
             for this_target in self._targets_list:
+
+                is_mosaic = self._kh.is_target_linmos(this_target)
+                if not is_mosaic:
+                    continue
 
                 for this_product in self._all_products():
                     
@@ -1756,6 +1835,24 @@ class PostProcessHandler:
                     for this_config in all_configs:
                         
                         self.recipe_cleanup_one_target(
+                            target = this_target, product = this_product, config = this_config,
+                            check_files = True)
+
+        if do_convolve:
+            
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    all_configs = []
+                    for this_config in self._interf_configs_list:
+                        all_configs.append(this_config)
+                    for this_config in self._feather_configs_list:
+                        all_configs.append(this_config)
+
+                    for this_config in all_configs:
+                        
+                        self.recipe_convolve_to_scale(
                             target = this_target, product = this_product, config = this_config,
                             check_files = True)
 
