@@ -1608,21 +1608,96 @@ class PostProcessHandler:
 
         return()
 
-    def recipe_moasic_one_target(
+    def recipe_mosaic_one_target(
         self,
         target = None,
         product = None,
         config = None,
         check_files = True,
-        ext_ext = '',
+        extra_ext = '',
         ):
         """
         Linearly mosaic a single target, performing the convolution,
         alignment, and mosaicking steps.
         """
-        
-        pass
 
+        # Check that the target is a mosaic
+
+        is_mosaic = self._kh.is_target_linmos(this_target)
+
+        if not is_mosaic:
+            logger.warning("Not a mosaic, returning.")
+            return()
+
+        mosaic_parts = self._kh.get_parts_for_linmos(target)
+
+        parts_have_singledish = False
+
+        for this_part in mosaic_parts:
+            
+            this_part_has_sd = self._kh.has_singledish(target=this_part, product=product) 
+
+            if this_part_has_sd:
+                parts_have_singledish = True
+                
+        self.task_convolve_parts_for_mosaic(
+            target = target,
+            product = produce,
+            config = config,
+            in_tag = 'pbcorr_round',
+            out_tag = 'linmos_commonres',
+            extra_ext_in = extra_ext,
+            extra_ext_out = extra_ext,
+            check_files = check_files,
+            )
+
+        in_tag_list = ['linmos_commonres', 'weight']
+        out_tag_list = ['linmos_aligned', 'weight_aligned']
+
+        if parts_have_singledish:
+            in_tag_list.append('prepped_sd')
+            in_tag_list.append('sd_weight')
+            out_tag_list.append('sd_aligned')
+            out_tag_list.append('sd_weight_aligned')
+
+        self.task_align_for_mosaic(
+            target = target,
+            product = produce,
+            config = config,
+            in_tags = in_tag_list,
+            out_tags = out_tag_list,
+            extra_ext_in = extra_ext,
+            extra_ext_out = extra_ext,
+            check_files = check_files,
+            )
+            
+        self.task_linear_mosaic(
+            target = target,
+            product = produce,
+            config = config,
+            image_tag = 'linmos_aligned',
+            weight_tag = 'weight_aligned',
+            out_tag = 'pbcorr_round',
+            extra_ext_in = extra_ext,
+            extra_ext_out = extra_ext,
+            check_files = check_files,
+            )
+
+        if parts_have_single_dish:
+            self.task_linear_mosaic(
+                target = target,
+                product = produce,
+                config = config,
+                image_tag = 'sd_aligned',
+                weight_tag = 'sd_weight_aligned',
+                out_tag = 'prepped_sd',
+                extra_ext_in = '',
+                extra_ext_out = '',
+                check_files = check_files,
+                )
+
+        return()
+ 
     def recipe_cleanup_one_target(
         self,
         target = None,
