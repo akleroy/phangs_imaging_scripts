@@ -1947,7 +1947,7 @@ class PostProcessHandler:
                                 target = this_target, product = this_product, config = this_config,
                                 check_files = True,
                                 extra_ext_in = '_apod',
-                                extra_ext_out = '_apod',
+                                extra_ext_out = '_prefeather_apod',
                                 )
 
                         if feather_noapod:
@@ -1955,7 +1955,7 @@ class PostProcessHandler:
                                 target = this_target, product = this_product, config = this_config,
                                 check_files = True,
                                 extra_ext_in = '',
-                                extra_ext_out = '',
+                                extra_ext_out = '_prefeather',
                                 )                            
                         
 
