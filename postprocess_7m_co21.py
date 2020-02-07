@@ -18,7 +18,7 @@ this_pph.set_dry_run(False)
 
 # Set which data to process
 this_pph.set_targets(only=[])
-#this_pph.set_targets(only=['ngc4321','ngc4321_1','ngc4321_2'])
+this_pph.set_targets(only=['ngc4321','ngc4321_1','ngc4321_2'])
 #this_pph.set_targets(only=['circinus_1','circinus_2'])
 this_pph.set_interf_configs(only=['7m'])
 this_pph.set_feather_configs(only=['7m+tp'])
@@ -27,6 +27,14 @@ this_pph.set_no_cont(True)
 
 # Run a recipe
 
-#this_pph.loop_postprocess(do_prep=True)
-this_pph.loop_postprocess(do_feather=True, feather_apod=True, feather_noapod=True)
+this_pph.loop_postprocess(
+    do_prep=True,
+    do_feather=True, 
+    do_mosaic=True,
+    do_cleanup=True,
+    feather_apod=True, 
+    feather_noapod=True,
+    feather_before_mosaic=True,
+    feather_after_mosaic=True,
+    )
 

@@ -1406,6 +1406,20 @@ class PostProcessHandler:
         grid for combination into a single image.
         """
         
+        # Map the input and output tags to one another in a dictionary
+
+        if (type(in_tags) != type([])) or type(out_tags) != type([]):
+            logger.error("Input and output tag lists must be lists.")
+            return(None)
+            
+        if len(in_tags) != len(out_tags):
+            logger.error("Mismatch in input and output list tag list.")
+            return(None)
+
+        out_tag_dict = {}
+        for ii in range(len(in_tags)):
+            out_tag_dict[in_tags[ii]] = out_tags[ii]
+
         # Generate file names
 
         indir = self._kh.get_postprocess_dir_for_target(target)
@@ -1430,7 +1444,7 @@ class PostProcessHandler:
             
             for this_tag_in in in_tags:
                 
-                this_tag_out = out_tag_dict[this_tag_in]                
+                this_tag_out = out_tag_dict[this_tag_in]
                 infile_list.append(indir+this_part_dict_in[this_tag_in])
                 outfile_list.append(outdir+this_part_dict_out[this_tag_out])
 
@@ -1492,9 +1506,14 @@ class PostProcessHandler:
 
         # Set input and output directories and define output file
 
-        indir = postprocess_dir
-        outdir = postprocess_dir
-        outfile = fname_dict[out_tag]
+        indir = self._kh.get_postprocess_dir_for_target(target)
+        outdir = self._kh.get_postprocess_dir_for_target(target)
+
+        fname_dict_out = self._fname_dict(
+            target=target, config=config, product=product, 
+            extra_ext=extra_ext_out)
+
+        outfile = fname_dict_out[out_tag]        
 
         mosaic_parts = self._kh.get_parts_for_linmos(target)
 
@@ -1510,8 +1529,8 @@ class PostProcessHandler:
                 extra_ext=extra_ext_in,
                 )
             
-            infile_list.append(indir+this_part_dict[image_tag])
-            weightfile_list.append(indir+this_part_dict[weight_tag])
+            infile_list.append(indir+this_part_dict_in[image_tag])
+            weightfile_list.append(indir+this_part_dict_in[weight_tag])
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -1614,7 +1633,8 @@ class PostProcessHandler:
         product = None,
         config = None,
         check_files = True,
-        extra_ext = '',
+        extra_ext_in = '',
+        extra_ext_out = '',
         ):
         """
         Linearly mosaic a single target, performing the convolution,
@@ -1623,7 +1643,7 @@ class PostProcessHandler:
 
         # Check that the target is a mosaic
 
-        is_mosaic = self._kh.is_target_linmos(this_target)
+        is_mosaic = self._kh.is_target_linmos(target)
 
         if not is_mosaic:
             logger.warning("Not a mosaic, returning.")
@@ -1642,12 +1662,12 @@ class PostProcessHandler:
                 
         self.task_convolve_parts_for_mosaic(
             target = target,
-            product = produce,
+            product = product,
             config = config,
             in_tag = 'pbcorr_round',
             out_tag = 'linmos_commonres',
-            extra_ext_in = extra_ext,
-            extra_ext_out = extra_ext,
+            extra_ext_in = extra_ext_in,
+            extra_ext_out = extra_ext_in,
             check_files = check_files,
             )
 
@@ -1662,37 +1682,37 @@ class PostProcessHandler:
 
         self.task_align_for_mosaic(
             target = target,
-            product = produce,
+            product = product,
             config = config,
             in_tags = in_tag_list,
             out_tags = out_tag_list,
-            extra_ext_in = extra_ext,
-            extra_ext_out = extra_ext,
+            extra_ext_in = extra_ext_in,
+            extra_ext_out = extra_ext_in,
             check_files = check_files,
             )
             
         self.task_linear_mosaic(
             target = target,
-            product = produce,
+            product = product,
             config = config,
             image_tag = 'linmos_aligned',
             weight_tag = 'weight_aligned',
             out_tag = 'pbcorr_round',
-            extra_ext_in = extra_ext,
-            extra_ext_out = extra_ext,
+            extra_ext_in = extra_ext_in,
+            extra_ext_out = extra_ext_out,
             check_files = check_files,
             )
 
-        if parts_have_single_dish:
+        if parts_have_singledish:
             self.task_linear_mosaic(
                 target = target,
-                product = produce,
+                product = product,
                 config = config,
                 image_tag = 'sd_aligned',
                 weight_tag = 'sd_weight_aligned',
                 out_tag = 'prepped_sd',
-                extra_ext_in = '',
-                extra_ext_out = '',
+                extra_ext_in = extra_ext_in,
+                extra_ext_out = extra_ext_out,
                 check_files = check_files,
                 )
 
@@ -1715,19 +1735,19 @@ class PostProcessHandler:
         self.task_convert_units(
             target=target, config=config, product=product,
             check_files=check_files,
-            extra_ext_in=ext_ext_in, extra_ext_out=ext_ext_out,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext_out,
             )
 
         self.task_compress(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
-            extra_ext_in=ext_ext_in, extra_ext_out=ext_ext_out,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext_out,
             )
 
         self.task_export_to_fits(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
-            extra_ext_in=ext_ext_in, extra_ext_out=ext_ext_out,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext_out,
             )
 
         return()
@@ -1766,7 +1786,8 @@ class PostProcessHandler:
         """
         Loops over the full set of targets, products, and
         configurations to run the postprocessing. Toggle the parts of
-        the loop using the do_XXX booleans.
+        the loop using the do_XXX booleans. Other choices affect the
+        algorithms used.
         """
 
         if self._targets_list is None:            
@@ -1869,13 +1890,32 @@ class PostProcessHandler:
                         # have single dish, enforce the same
                         # astrometric grid).
 
-                        pass
+                        self.recipe_mosaic_one_target(
+                            target = this_target, product = this_product, config = this_config,
+                            check_files = True,
+                            extra_ext_in = '',
+                            extra_ext_out = '',
+                            )
                     
                     for this_config in self._feather_configs_list:
 
                         # Mosaic the previously feathered data.
 
-                        pass
+                        if feather_apod:
+                            self.recipe_mosaic_one_target(
+                                target = this_target, product = this_product, config = this_config,
+                                check_files = True,
+                                extra_ext_in = 'apod',
+                                extra_ext_out = 'apod',
+                                )
+
+                        if feather_noapod:
+                            self.recipe_mosaic_one_target(
+                                target = this_target, product = this_product, config = this_config,
+                                check_files = True,
+                                extra_ext_in = '',
+                                extra_ext_out = '',
+                                )                            
                         
 
         # This round of feathering targets only mosaicked data. All
@@ -1893,7 +1933,17 @@ class PostProcessHandler:
                     
                     for this_config in self._interf_configs_list:
 
-                        pass
+                        if feather_apod:                  
+                            self.task_feather(
+                                target = this_target, product = this_product, config = this_config,
+                                apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
+                                )
+                            
+                        if feather_noapod:
+                            self.task_feather(
+                                target = this_target, product = this_product, config = this_config,
+                                apodize=False, extra_ext_out='',check_files=True,
+                                )
                         
         if do_cleanup:
             
