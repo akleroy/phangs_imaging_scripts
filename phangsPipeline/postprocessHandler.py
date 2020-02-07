@@ -980,7 +980,8 @@ class PostProcessHandler:
         extra_ext_out = '',
         apodize = False,
         apod_ext = 'pb',
-        check_files = True,
+        copy_weights = True,
+        check_files = True,       
         ):
         """
         For one target, product, config combination, feather together
@@ -988,7 +989,9 @@ class PostProcessHandler:
         apodization is exposed as an option. Also note that the
         configuration of the input and output will differ (an
         interferometric configuration comes in, a feather
-        configuration comes out).
+        configuration comes out). Optionally, propagate the weights
+        from the interferometric side to become the weights for the
+        new feathered data.
         """
 
         # Generate file names
@@ -1063,6 +1066,31 @@ class PostProcessHandler:
                     apod_cutoff=-1.0,
                     overwrite=True)
 
+        if copy_weights:
+                
+            interf_weight_exists = False
+            interf_weight_file = fname_dict_in['weight']
+            if os.path.isdir(indir+interf_weight_file):
+                interf_weight_exists = True
+            else:
+                logger.info("Interferometric weight file not found "+interf_weight_file)
+
+            if interf_weight_exists:
+                logger.info("")
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("Copying weights for:")
+                logger.info(str(target)+" , "+str(product)+" , "+str(config))
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("")
+                
+                out_weight_file=fname_dict_out['weight']
+
+                logger.info("Copying from "+interf_weight_file)
+                logger.info("Copying to "+out_weight_file)
+                if (not self._dry_run) and casa_enabled:
+                    ccr.copy_dropdeg(infile=indir+interf_weight_file, 
+                                     outfile=outdir+out_weight_file, 
+                                     overwrite=True)
         return()
 
     def task_compress(
@@ -1650,6 +1678,9 @@ class PostProcessHandler:
             return()
 
         mosaic_parts = self._kh.get_parts_for_linmos(target)
+            
+        # Check if the individual parts have single dish data. If they
+        # do, flip the single dish flag to true.
 
         parts_have_singledish = False
 
@@ -1659,7 +1690,15 @@ class PostProcessHandler:
 
             if this_part_has_sd:
                 parts_have_singledish = True
-                
+            
+        # Check if this is a feather configuration. If so, then flip
+        # the single dish flag to false. This overrides the presence
+        # of data - we don't treat the singledish for feathered data.
+
+        if config in self._feather_configs_list:
+
+            parts_have_singledish = False
+    
         self.task_convolve_parts_for_mosaic(
             target = target,
             product = product,
@@ -1863,12 +1902,14 @@ class PostProcessHandler:
                             self.task_feather(
                                 target = this_target, product = this_product, config = this_config,
                                 apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
+                                copy_weights=True,
                                 )
 
                         if feather_noapod:
                             self.task_feather(
                                 target = this_target, product = this_product, config = this_config,
-                                apodize=False, extra_ext_out='',check_files=True,
+                                apodize=False, extra_ext_out='',check_files=True, 
+                                copy_weights=True,
                                 )
 
         # Mosaic the intereferometer, single dish, and feathered data.
@@ -1905,8 +1946,8 @@ class PostProcessHandler:
                             self.recipe_mosaic_one_target(
                                 target = this_target, product = this_product, config = this_config,
                                 check_files = True,
-                                extra_ext_in = 'apod',
-                                extra_ext_out = 'apod',
+                                extra_ext_in = '_apod',
+                                extra_ext_out = '_apod',
                                 )
 
                         if feather_noapod:
