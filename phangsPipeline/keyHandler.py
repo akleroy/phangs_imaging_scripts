@@ -462,7 +462,7 @@ class KeyHandler:
         for this_key in self._target_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
             self._read_one_target_key(fname=this_fname)
 
