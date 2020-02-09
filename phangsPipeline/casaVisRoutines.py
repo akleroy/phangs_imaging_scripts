@@ -4,7 +4,7 @@ Standalone routines to analyze and manipulate visibilities.
 
 #region Imports and definitions
 
-import os
+import os, sys, re, shutil
 import numpy as np
 import pyfits # CASA has pyfits, not astropy
 import glob
@@ -17,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 
 # CASA stuff
-import casaStuff as casa
+import casaStuff
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -29,6 +29,136 @@ from pipelineVersion import version as pipeVer
 #endregion
 
 #region Routines to analyze and extract lines in measurement sets
+
+def split_science_targets(
+    in_ms, 
+    out_ms, 
+    do_split = True, 
+    do_statwt = False, 
+    use_symlink = True, 
+    overwrite = False, 
+    quiet = False, 
+    ):
+    """
+    Split science targets from the input ALMA measurement set to a new measurement set.
+    
+    Setting do_split = False will just make a copy of the original measurement set without splitting science targets data.
+    
+    Setting use_symlink = False will make a copy of the original measurement set so as to avoid any touching of the original data. 
+    
+    Setting overwrite = True will overwrite existing output data. 
+    """
+    
+    # 
+    # This funcion was part of the copy_data() function in older version phangsPipeline.py.
+    # 
+    
+    # 
+    # check input ms data dir
+    if os.path.isdir(in_ms):
+        in_file = in_ms
+    else:
+        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+    # 
+    # check output suffix
+    if not re.match(r'^(.*)\.ms$', out_ms, re.IGNORECASE):
+        out_file = out_ms + '.ms'
+    else:
+        out_file = out_ms
+    # 
+    # check existing copied data in the imaging directory
+    if os.path.isdir(out_file):
+        if not overwrite:
+            logger.warning('Found existing copied data '+out_file+', will not re-copy it.')
+            return
+        else:
+            shutil.rmtree(out_file)
+            if os.path.isdir(out_file+'.flagversions'):
+                shutil.rmtree(out_file+'.flagversions')
+    # 
+    # prepare the copied data folder name (copied_file is a data folder).
+    # If we are going to do some additional processing, make this an intermediate file ("_copied"). 
+    if do_split:
+        copied_file = re.sub(r'^(.*)\.ms$', r'\1_copied.ms', out_file, re.IGNORECASE)
+    else:
+        copied_file = out_file
+        use_symlink = False
+    # 
+    # Copy. We could place a symbolic link here using ln -s
+    # instead, but instead I think the right move is to make
+    # the intermediate files and then clean them up. This
+    # avoids "touching" the original data at all.
+    if use_symlink:
+        command = 'ln -fsT '+in_file+' '+copied_file
+        logger.info(command)
+        var = os.system(command)
+        logger.info(var)
+        
+        command = 'ln -fsT '+in_file+'.flagversions'+' '+copied_file+'.flagversions'
+        logger.info(command)
+        var = os.system(command)
+        logger.info(var)
+        
+    else:
+        command = 'cp -Lr '+in_file+' '+copied_file
+        logger.info(command)
+        var = os.system(command)  
+        logger.info(var)
+        
+        command = 'cp -Lr '+in_file+'.flagversions'+' '+copied_file+'.flagversions'
+        logger.info(command)
+        var = os.system(command)
+        logger.info(var)
+    # 
+    # check copied_file, make sure copying was done
+    if not os.path.isdir(copied_file):
+        logger.error('Failed to copy the uv data to '+os.path.abspath(out_file)+'! Please check your file system writing permission!')
+        raise Exception('Failed to copy the uv data to the imaging directory! Please check your file system writing permission!')
+    # 
+    # call CASA split
+    if do_split:
+        # 
+        if not quiet:
+            logger.info("Splitting out science target data.")
+        # 
+        # If present, we use the corrected column. If not,
+        # then we use the data column.
+        #mytb = au.createCasaTool(tbtool)
+        #mytb.open(copied_file)
+        #colnames = mytb.colnames()
+        casaStuff.tb.open(copied_file, nomodify = True)
+        colnames = casaStuff.tb.colnames()
+        if 'CORRECTED_DATA' in colnames:
+            logger.info("Data has a CORRECTED column. Will use that.")
+            use_column = 'CORRECTED'
+        else:
+            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            use_column = 'DATA'
+        casaStuff.tb.close()
+        # 
+        # 
+        casaStuff.split(vis = copied_file, 
+                        intent = 'OBSERVE_TARGET#ON_SOURCE', 
+                        datacolumn = use_column, 
+                        outputvis = out_file)
+        # 
+        # 
+        os.system('rm -rf '+copied_file)
+        os.system('rm -rf '+copied_file+'.flagversions')
+    # 
+    # call CASA statwt
+    if do_statwt:
+        # 
+        if not quiet:
+            logger.info("Using statwt to re-weight the data.")
+        # 
+        casaStuff.statwt(vis = out_file, 
+                         datacolumn = 'DATA')
+    # 
+    # end of split_science_targets()
+
+
 
 def list_lines_in_ms(
     in_file= None,
