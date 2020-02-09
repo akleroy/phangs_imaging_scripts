@@ -19,6 +19,9 @@ import analysisUtils as au
 # CASA stuff
 import casaStuff
 
+# Spectral lines
+from phangsPipeline import line_list
+
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
 
@@ -30,6 +33,11 @@ from pipelineVersion import version as pipeVer
 
 #region Routines to analyze and extract lines in measurement sets
 
+# Physical constants
+sol_kms = 2.9979246e5
+
+
+
 def split_science_targets(
     in_ms, 
     out_ms, 
@@ -39,14 +47,29 @@ def split_science_targets(
     overwrite = False, 
     quiet = False, 
     ):
-    """
-    Split science targets from the input ALMA measurement set to a new measurement set.
+    """Split science targets from the input ALMA measurement set to a new measurement set.
     
-    Setting do_split = False will just make a copy of the original measurement set without splitting science targets data.
+    Args:
+        in_ms (str): The input measurement set data with suffix ".ms".
+        
+        out_ms (star): The output measurement set data with suffix ".ms".
+        
+        do_split (bool): Set to False to only make a copy of the original measurement set without 
+        splitting science targets data. The default is True, splitting science targets data. 
+        
+        use_symlink (bool): Set to False to make a copy of the original measurement set so as to 
+        absolutely avoid any touching of the original data. The default is True, to trust 
+        CASA to not modify our original data.
+        
+        overwrite (bool): Set to True to overwrite existing output data. The default is False, not 
+        overwriting anything. 
     
-    Setting use_symlink = False will make a copy of the original measurement set so as to avoid any touching of the original data. 
+    Inputs:
+        in_ms: ALMA measurement set data folder.
     
-    Setting overwrite = True will overwrite existing output data. 
+    Outputs:
+        out_ms: ALMA measurement set data folder.
+    
     """
     
     # 
@@ -60,6 +83,7 @@ def split_science_targets(
     else:
         logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
         raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+    
     # 
     # check output suffix
     if not re.match(r'^(.*)\.ms$', out_ms, re.IGNORECASE):
@@ -161,197 +185,372 @@ def split_science_targets(
 
 
 def list_lines_in_ms(
-    in_file= None,
-    vsys=0.0,
-    gal=None,
-    quiet=False,
+    in_ms, 
+    vsys = None, 
+    gal = None, 
+    key_handler = None, 
+    quiet = False, 
+    output_spw = False, 
     ):    
+    """List spectral windows in the input measurement set that contain specific spectral lines in the line_list module. 
+    
+    Args:
+        in_ms (str): The input measurement set data with suffix ".ms".
+        vsys (float): Galaxy systematic velocity in units of km/s. 
+        gal (str): Galaxy name, optional if vsys is given.
+        key_handler (object): Our keyHandler object, optional if vsys is given, otherwise gal and key_handler should both be set. 
+        output_spw (bool): Set to True to output not only found line names but also corresponding spectral window (spw) number. 
+    
+    Returns:
+        lines_in_ms (list): A list of found line names.
+        spws_in_ms (list): A list of the spectral windows (spws) corresponding to the found lines in lines_in_ms. It is a list of lists. 
+    
     """
-    List the lines likely to be present in a measurement set. This can
-    be a general purpose utility.
-    """
-
-    # pull the parameters from the galaxy in the mosaic file
-    if gal != None:
-        mosaic_parms = read_mosaic_key()
-        if mosaic_parms.has_key(gal):
-            vsys = mosaic_parms[gal]['vsys']
-            vwidth = mosaic_parms[gal]['vwidth']
-
-    # Set up the input file
-
-    if os.path.isdir(in_file) == False:
-        if quiet == False:
-            print "Input file not found."
-        return
-
-    lines_in_ms = []
+    
+    # 
+    # This funcion is modified from the list_lines_in_ms() function in older version phangsPipeline.py.
+    # 
+    
+    # 
+    # check input ms data dir
+    if os.path.isdir(in_ms):
+        in_file = in_ms
+    else:
+        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+    
+    # 
+    # if user has input gal and key_handler, find vsys
+    gal_vsys = vsys
+    if gal is not None and key_handler is not None:
+        if gal in key_handler._target_dict:
+            gal_vsys = key_handler._target_dict[gal]['vsys']
+            #gal_vwidth = key_handler._target_dict[gal]['vwidth']
+            if vsys is None:
+                vsys = gal_vsys
+            elif not np.isclose(vsys, gal_vsys):
+                # if user has input a vsys, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vsys of '+str(vsys)+' km/s which is different from the vsys of '+gal_vsys+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+        else:
+            logger.error('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            raise Exception('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+    # 
+    # check vsys
+    if vsys is None:
+        logger.error('Error! Please input a `vsys` for the galaxy systematic velocity in units of km/s, or input a `gal` and `key_handler`.')
+        raise Exception('Error! Please input vsys, or gal and key_handler.')
+    # 
+    # find lines in the ms data
+    lines_in_ms = None
+    spws_in_ms = None
     for line in line_list.line_list.keys():
+        # 
+        # get line rest-frame frequencies
         restfreq_ghz = line_list.line_list[line]
-
+        # 
         # work out the frequency of the line and the line wings
-
         target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
-
+        # 
+        # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
         this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq_ghz*1e9)
+        # 
         if len(this_spw_list) == 0:
             continue
-        
+        # 
+        if lines_in_ms is None:
+            lines_in_ms = []
+        if spws_in_ms is None:
+            spws_in_ms = []
         lines_in_ms.append(line)
+        spws_in_ms.append(this_spw_list)
+    # 
+    if output_spw:
+        return lines_in_ms, spws_in_ms
+    else:
+        return lines_in_ms
 
-    return lines_in_ms
+
+
 
 def chanwidth_for_line(
-    in_file=None,
-    line='co21',
-    gal=None,
-    vsys=0.0,
-    vwidth=500.,
-    quiet=False):
+    in_ms, 
+    line, 
+    vsys = None, 
+    vwidth = None, 
+    gal = None, 
+    key_handler = None, 
+    quiet = False, 
+    ): 
+    """Calculates the coarsest channel width among all spectral windows in the input measurement set that contain the input line.
+    
+    Args:
+        in_ms (str): The input measurement set data with suffix ".ms".
+        line (star): Line name. 
+        gal (str): Galaxy name, optional if vsys is given.
+        key_handler (object): Our keyHandler object, optional if vsys is given, otherwise gal and key_handler should both be set. 
+        output_spw (bool): Set to True to output not only found line names but also corresponding spectral window (spw) number. 
+    
+    Returns:
+        chan_width_kms (float): 
+    
     """
-    Return the coarsest channel width among spectral windows that
-    overlap a line. This can be a general purpose utility.
-    """
-
-    # pull the parameters from the galaxy in the mosaic file
-    if gal != None:
-        mosaic_parms = read_mosaic_key()
-        if mosaic_parms.has_key(gal):
-            vsys = mosaic_parms[gal]['vsys']
-            vwidth = mosaic_parms[gal]['vwidth']
-
-    # Set up the input file
-
-    if os.path.isdir(in_file) == False:
-        if quiet == False:
-            print "Input file not found."
-        return
-
-    # Look up the line
-
-    if line_list.line_list.has_key(line) == False:
-        if quiet == False:
-            print "Line not found. Give lower case abbreviate found in line_list.py"
-        return
+    
+    # 
+    # This funcion is modified from the chanwidth_for_line() function in older version phangsPipeline.py.
+    # 
+    
+    # 
+    # check input ms data dir
+    if os.path.isdir(in_ms):
+        in_file = in_ms
+    else:
+        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+    
+    # 
+    # if user has input gal and key_handler, find vsys
+    gal_vsys = vsys
+    if gal is not None and key_handler is not None:
+        if gal in key_handler._target_dict:
+            gal_vsys = key_handler._target_dict[gal]['vsys']
+            gal_vwidth = key_handler._target_dict[gal]['vwidth']
+            if vsys is None:
+                vsys = gal_vsys
+            elif not np.isclose(vsys, gal_vsys):
+                # if user has input a vsys, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vsys of '+str(vsys)+' km/s which is different from the vsys of '+str(gal_vsys)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            if vwidth is None:
+                vwidth = gal_vwidth
+            elif not np.isclose(vwidth, gal_vwidth):
+                # if user has input a vwidth, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vwidth of '+str(vwidth)+' km/s which is different from the vwidth of '+str(gal_vwidth)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+        else:
+            logger.error('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            raise Exception('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+    # 
+    # check vsys
+    if vsys is None:
+        logger.error('Error! Please input a `vsys` for the galaxy systematic velocity in units of km/s, or input a `gal` and `key_handler`.')
+        raise Exception('Error! Please input vsys, or gal and key_handler.')
+    # 
+    # check vwidth
+    if vwidth is None:
+        vwidth = 500.0
+        logger.info('Setting line width `vwidth` to 500 km/s as the default value. Please consider setting a better value in "target_definitions.txt" and input gal and key_handler to this function.')
+    # 
+    # try to match the input line in the line_list module
+    matched_line = None
+    if matched_line is None:
+        if line in line_list.line_list:
+            matched_line = line
+    if matched_line is None:
+        if line.lower() in line_list.line_list:
+            matched_line = line.lower()
+    if matched_line is None:
+        logger.error('Error! Could not find the input line "'+line+'" in our line_list module. Candiate line names are: '+str(line_list.line_list.keys()))
+        raise Exception('Error! Could not find the input line "'+line+'" in our line_list module. Candiate line names are: '+str(line_list.line_list.keys()))
+    # 
+    # get line center rest-frame frequencies
     restfreq_ghz = line_list.line_list[line]
-
+    # 
     # Work out which spectral windows contain the line contain
-
     target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
     target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
     target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
-
-    spw_list_string = ''    
-    first = True
+    # 
     spw_list = []
-
+    # 
+    # loop over line left wing, center and right wing frequencies to match the spectral window (spw)
     for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
+        # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
         this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq*1e9)    
-        for spw in this_spw_list:
-            if spw_list.count(spw) != 0:
-                continue
-            spw_list.append(spw)
-            if not first:
-                spw_list_string += ','
-            else:
-                first = False
-            spw_list_string += str(spw)
-
+        spw_list.extend(this_spw_list)
+    # 
     if len(spw_list) == 0:
-        if quiet == False:
-            print "No spectral windows contain this line at this redshift."
-        return
-
+        logger.error('No spectral windows contain the input line "'+line+'" with vwidth '+str(vwidth)+' km/s at a vsys of '+str(vsys)+' km/s. The ms data is "'+in_file+'".')
+        return None
+    # 
+    # sort and remove duplicates
+    spw_list = sorted(list(set(spw_list)))
+    # 
+    # make spw_list_string
+    spw_list_string = ','.join(np.array(spw_list).astype(str))
+    # 
     # Figure out how much averaging is needed to reach the target resolution
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
-
+    # 
     # Convert to km/s and return
     chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
-
+    # 
+    # Return
     return chan_width_kms
 
-def extract_line(in_file=None,
-                 out_file=None,
-                 line='co21',
-                 gal=None,
-                 vsys=0.0,
-                 vwidth=500.,
-                 chan_fine=0.5,
-                 rebin_factor=5,
-                 do_statwt=False,
-                 edge_for_statwt=-1,
-                 quiet=False):
-    """
+
+
+def extract_line(
+    in_ms,  
+    out_ms,  
+    line = 'co21', 
+    vsys = None, 
+    vwidth = None, 
+    gal = None, 
+    key_handler = None, 
+    chan_fine = 0.5, 
+    rebin_factor = 5, 
+    do_statwt = False, 
+    edge_for_statwt = -1, 
+    quiet = False, 
+    overwrite = False, 
+    ):
+    """Extract a spectral line uv data from a measurement set with optimized regridding. 
+    
     Extract a spectral line from a measurement set and regrid onto a
     new velocity grid with the desired spacing. This doesn't
     necessarily need the PHANGS keys in place and may be a general
     purpose utility. There are some minor subtleties here related to
     regridding and rebinning.
+    
+    Args:
+        in_ms (str): The input measurement set data with suffix ".ms".
+        out_ms (star): The output measurement set data with suffix ".ms".
+        line (str): Line name. 
+        gal (str): Galaxy name, optional if vsys and vwidth are given. 
+        key_handler (object): Our keyHandler object, optional if vsys and vwidth are given, otherwise gal and key_handler should both be set. 
+        chan_fine (float): 
+        rebin_factor (float): 
+        do_statwt (bool): 
+        edge_for_statwt (int): 
+        quiet (bool): Ture for quiet and False for verbose. Default is False. 
+    
+    Inputs:
+        in_ms: ALMA measurement set data folder.
+    
+    Outputs:
+        out_ms: ALMA measurement set data folder.
+    
     """
-
-    if quiet == False:
-        print "--------------------------------------"
-        print "EXTRACT_LINE begins:"
-
-    # pull the parameters from the galaxy in the mosaic file. This is
-    # PHANGS-specific. Just ignore the gal keyword to use the routine
-    # for non-PHANGS applications.
-
-    if gal != None:
-        mosaic_parms = read_mosaic_key()
-        if mosaic_parms.has_key(gal):
-            vsys = mosaic_parms[gal]['vsys']
-            vwidth = mosaic_parms[gal]['vwidth']
-
-    # Set up the input file
-
-    if os.path.isdir(in_file) == False:
-        if quiet == False:
-            print "... input file not found."
-        return
-
-    # Look up the line
-
-    if line_list.line_list.has_key(line) == False:
-        if quiet == False:
-            print "... line not found. Give lower case abbreviate found in line_list.py"
-        return
+    
+    # 
+    # This funcion is modified from the chanwidth_for_line() function in older version phangsPipeline.py.
+    # 
+    
+    # 
+    # check input ms data dir
+    if os.path.isdir(in_ms):
+        in_file = in_ms
+    else:
+        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+    
+    # 
+    # check output suffix
+    if not re.match(r'^(.*)\.ms$', out_ms, re.IGNORECASE):
+        out_file = out_ms + '.ms'
+    else:
+        out_file = out_ms
+    # 
+    # check existing output data in the imaging directory
+    if os.path.isdir(out_file):
+        if not overwrite:
+            logger.warning('Found existing output data '+out_file+', will not overwrite it.')
+            return
+        else:
+            shutil.rmtree(out_file)
+            if os.path.isdir(out_file+'.flagversions'):
+                shutil.rmtree(out_file+'.flagversions')
+            if os.path.isdir(out_file+'.temp'):
+                shutil.rmtree(out_file+'.temp')
+            if os.path.isdir(out_file+'.temp.flagversions'):
+                shutil.rmtree(out_file+'.temp.flagversions')
+            if os.path.isdir(out_file+'.temp2'):
+                shutil.rmtree(out_file+'.temp2')
+            if os.path.isdir(out_file+'.temp2.flagversions'):
+                shutil.rmtree(out_file+'.temp2.flagversions')
+    # 
+    # if user has input gal and key_handler, find vsys and vwidth
+    gal_vsys = vsys
+    if gal is not None and key_handler is not None:
+        if gal in key_handler._target_dict:
+            gal_vsys = key_handler._target_dict[gal]['vsys']
+            gal_vwidth = key_handler._target_dict[gal]['vwidth']
+            if vsys is None:
+                vsys = gal_vsys
+            elif not np.isclose(vsys, gal_vsys):
+                # if user has input a vsys, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vsys of '+str(vsys)+' km/s which is different from the vsys of '+str(gal_vsys)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            if vwidth is None:
+                vwidth = gal_vwidth
+            elif not np.isclose(vwidth, gal_vwidth):
+                # if user has input a vwidth, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vwidth of '+str(vwidth)+' km/s which is different from the vwidth of '+str(gal_vwidth)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+        else:
+            logger.error('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            raise Exception('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+    # 
+    # check vsys
+    if vsys is None:
+        logger.error('Error! Please input a `vsys` for the galaxy systematic velocity in units of km/s, or input a `gal` and `key_handler`.')
+        raise Exception('Error! Please input vsys, or gal and key_handler.')
+    # 
+    # check vwidth
+    if vwidth is None:
+        vwidth = 500.0
+        logger.info('Setting line width `vwidth` to 500 km/s as the default value. Please consider setting a better value in "target_definitions.txt" and input gal and key_handler to this function.')
+    # 
+    # try to match the input line in the line_list module
+    matched_line = None
+    if matched_line is None:
+        if line in line_list.line_list:
+            matched_line = line
+    if matched_line is None:
+        if line.lower() in line_list.line_list:
+            matched_line = line.lower()
+    if matched_line is None:
+        logger.error('Error! Could not find the input line "'+line+'" in our line_list module. Candiate line names are: '+str(line_list.line_list.keys()))
+        raise Exception('Error! Could not find the input line "'+line+'" in our line_list module. Candiate line names are: '+str(line_list.line_list.keys()))
+    # 
+    # get line center rest-frame frequencies
     restfreq_ghz = line_list.line_list[line]
-
+    # 
     # Work out which spectral windows contain the line contain
-
     target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
     target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
     target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
-
-    spw_list_string = ''    
-    first = True
+    # 
+    # ... Below are the same as in the above function chanwidth_for_line() ...
+    # 
     spw_list = []
-
+    # 
+    # loop over line left wing, center and right wing frequencies to match the spectral window (spw)
     for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
+        # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
         this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq*1e9)    
-        for spw in this_spw_list:
-            if spw_list.count(spw) != 0:
-                continue
-            spw_list.append(spw)
-            if not first:
-                spw_list_string += ','
-            else:
-                first = False
-            spw_list_string += str(spw)
-
+        spw_list.extend(this_spw_list)
+    # 
     if len(spw_list) == 0:
-        if quiet == False:
-            print "... no spectral windows contain this line at this redshift."
-        return
-
-    if quiet == False:
-        print "... spectral windows to consider: "+spw_list_string
-
+        logger.error('No spectral windows contain the input line "'+line+'" with vwidth '+str(vwidth)+' km/s at a vsys of '+str(vsys)+' km/s. The ms data is "'+in_file+'".')
+        return None
+    # 
+    # sort and remove duplicates
+    spw_list = sorted(list(set(spw_list)))
+    # 
+    # make spw_list_string
+    spw_list_string = ','.join(np.array(spw_list).astype(str))
+    # 
+    # ... Above are the same as in the above function chanwidth_for_line() ...
+    # 
+    # print starting message
+    if not quiet:
+        logger.info("--------------------------------------")
+        logger.info("EXTRACT_LINE begins:")
+    # 
+    if not quiet:
+        logger.info("... spectral windows to consider: "+spw_list_string)
+    # 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 1. Shift the zero point AND change the channel width (slightly).
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
+    # 
     start_vel_kms = (vsys - vwidth/2.0)
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)        
@@ -359,55 +558,56 @@ def extract_line(in_file=None,
         nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
     else:
         nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
-
+    # 
     # Cast to text with specified precision.
     restfreq_string = "{:12.8f}".format(restfreq_ghz)+'GHz'
     start_vel_string =  "{:12.8f}".format(start_vel_kms)+'km/s'
     chanwidth_string =  "{:12.8f}".format(chan_fine)+'km/s'
-
-    if quiet == False:
-        print "... shifting the fine grid (before any regridding)"
-        print "... rest frequency: "+restfreq_string
-        print "... new starting velocity: "+start_vel_string
-        print "... original velocity width: "+str(current_chan_width_kms)
-        print "... target velocity width: "+str(chan_fine)
-        print "... number of channels at this stage: "+str(nchan_for_recenter)
-
-    os.system('rm -rf '+out_file+'.temp')
-    os.system('rm -rf '+out_file+'.temp.flagversions')
+    # 
+    if not quiet:
+        logger.info("... shifting the fine grid (before any regridding)")
+        logger.info("... rest frequency: "+restfreq_string)
+        logger.info("... new starting velocity: "+start_vel_string)
+        logger.info("... original velocity width: "+str(current_chan_width_kms))
+        logger.info("... target velocity width: "+str(chan_fine))
+        logger.info("... number of channels at this stage: "+str(nchan_for_recenter))
+    # 
+    #os.system('rm -rf '+out_file+'.temp')
+    #os.system('rm -rf '+out_file+'.temp.flagversions')
+    # 
     if chan_fine == -1:
-        mstransform(vis=in_file,
-                    outputvis=out_file+'.temp',
-                    spw=spw_list_string,
-                    datacolumn='DATA',
-                    combinespws=False,
-                    regridms=True,
-                    mode='velocity',
-                    #interpolation='linear',
-                    interpolation='cubic',
-                    start=start_vel_string,
-                    nchan=nchan_for_recenter,
-                    restfreq=restfreq_string,
-                    outframe='lsrk',
-                    veltype='radio',
-                    )
+        casaStuff.mstransform(vis=in_file,
+                              outputvis=out_file+'.temp',
+                              spw=spw_list_string,
+                              datacolumn='DATA',
+                              combinespws=False,
+                              regridms=True,
+                              mode='velocity',
+                              #interpolation='linear',
+                              interpolation='cubic',
+                              start=start_vel_string,
+                              nchan=nchan_for_recenter,
+                              restfreq=restfreq_string,
+                              outframe='lsrk',
+                              veltype='radio',
+                              )
     else:
-        mstransform(vis=in_file,
-                    outputvis=out_file+'.temp',
-                    spw=spw_list_string,
-                    datacolumn='DATA',
-                    combinespws=False,
-                    regridms=True,
-                    mode='velocity',
-                    #interpolation='linear',
-                    interpolation='cubic',
-                    start=start_vel_string,
-                    nchan=nchan_for_recenter,
-                    restfreq=restfreq_string,
-                    width=chanwidth_string,
-                    outframe='lsrk',
-                    veltype='radio',
-                    )
+        casaStuff.mstransform(vis=in_file,
+                              outputvis=out_file+'.temp',
+                              spw=spw_list_string,
+                              datacolumn='DATA',
+                              combinespws=False,
+                              regridms=True,
+                              mode='velocity',
+                              #interpolation='linear',
+                              interpolation='cubic',
+                              start=start_vel_string,
+                              nchan=nchan_for_recenter,
+                              restfreq=restfreq_string,
+                              width=chanwidth_string,
+                              outframe='lsrk',
+                              veltype='radio',
+                              )
 
     current_file = out_file+'.temp'
 
@@ -415,80 +615,88 @@ def extract_line(in_file=None,
     # STEP 2. Change the channel width by integer binning. 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    if quiet == False:
-        print "... channel averaging"
-        print "... rebinning factor: "+str(rebin_factor)
+    if not quiet:
+        logger.info("... channel averaging")
+        logger.info("... rebinning factor: "+str(rebin_factor))
 
     if rebin_factor > 1:
-        os.system('rm -rf '+out_file+'.temp2')
-        os.system('rm -rf '+out_file+'.temp2.flagversions')
-        mstransform(vis=current_file,
-                    outputvis=out_file+'.temp2',
-                    spw='',
-                    datacolumn='DATA',
-                    regridms=False,
-                    chanaverage=True,
-                    chanbin=rebin_factor,
-                    )
+        #os.system('rm -rf '+out_file+'.temp2')
+        #os.system('rm -rf '+out_file+'.temp2.flagversions')
+        casaStuff.mstransform(vis=current_file,
+                              outputvis=out_file+'.temp2',
+                              spw='',
+                              datacolumn='DATA',
+                              regridms=False,
+                              chanaverage=True,
+                              chanbin=rebin_factor,
+                              )
         current_file = out_file+'.temp2'
-
+    
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 3. Combine the SPWs
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    
+    if not quiet:
+        logger.info("... combining spectral windows")
 
-    if quiet == False:
-        print "... combining spectral windows"
-
-    os.system('rm -rf '+out_file)
-    os.system('rm -rf '+out_file+'.flagversions') 
-    mstransform(vis=current_file,
-                outputvis=out_file,
-                spw='',
-                datacolumn='DATA',
-                regridms=False,
-                chanaverage=False,
-                combinespws=True
-                )    
-
-    if quiet == False:
-        print "... deleting old files"
-        
+    #os.system('rm -rf '+out_file)
+    #os.system('rm -rf '+out_file+'.flagversions')
+    casaStuff.mstransform(vis=current_file,
+                          outputvis=out_file,
+                          spw='',
+                          datacolumn='DATA',
+                          regridms=False,
+                          chanaverage=False,
+                          combinespws=True
+                          )    
+    
+    if not quiet:
+        logger.info("... deleting old files")
+    
     # Clean up
-    os.system('rm -rf '+out_file+'.temp')
-    os.system('rm -rf '+out_file+'.temp.flagversions')
-    os.system('rm -rf '+out_file+'.temp2')
-    os.system('rm -rf '+out_file+'.temp2.flagversions')
-
+    #os.system('rm -rf '+out_file+'.temp')
+    #os.system('rm -rf '+out_file+'.temp.flagversions')
+    #os.system('rm -rf '+out_file+'.temp2')
+    #os.system('rm -rf '+out_file+'.temp2.flagversions')
+    if os.path.isdir(out_file+'.temp'):
+        shutil.rmtree(out_file+'.temp')
+    if os.path.isdir(out_file+'.temp.flagversions'):
+        shutil.rmtree(out_file+'.temp.flagversions')
+    if os.path.isdir(out_file+'.temp2'):
+        shutil.rmtree(out_file+'.temp2')
+    if os.path.isdir(out_file+'.temp2.flagversions'):
+        shutil.rmtree(out_file+'.temp2.flagversions')
+    
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 4. Re-weight the data using statwt
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
+    
     # N.B. need the sliding time bin to make statwt work.
-
+    
     if do_statwt:
-
+        
         if edge_for_statwt == -1:
             exclude_str = ''
         else:
             nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
             exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
                 str(nchan_final-(edge_for_statwt-2))
-
-        print "... running statwt with exclusion: "+exclude_str
-
+        
+        logger.info("... running statwt with exclusion: "+exclude_str)
+        
         # This needs to revert to oldstatwt, it seems not to work in the new form
 
-        test = statwt(vis=out_file,
-                      timebin='0.001s',
-                      slidetimebin=False,
-                      chanbin='spw',
-                      statalg='classic',
-                      datacolumn='data',
-                      excludechans=exclude_str,
-                      )
-
-    print "--------------------------------------"
-
+        test = casaStuff.statwt(vis=out_file,
+                                timebin='0.001s',
+                                slidetimebin=False,
+                                chanbin='spw',
+                                statalg='classic',
+                                datacolumn='data',
+                                excludechans=exclude_str,
+                                )
+    
+    logger.info("--------------------------------------")
+    
     return
 
 #endregion
