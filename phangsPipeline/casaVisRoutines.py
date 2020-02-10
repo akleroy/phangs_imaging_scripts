@@ -4,7 +4,7 @@ Standalone routines to analyze and manipulate visibilities.
 
 #region Imports and definitions
 
-import os, sys, re, shutil
+import os, sys, re, shutil, inspect, copy
 import numpy as np
 import pyfits # CASA has pyfits, not astropy
 import glob
@@ -20,7 +20,7 @@ import analysisUtils as au
 import casaStuff
 
 # Spectral lines
-from phangsPipeline import line_list
+import line_list
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -39,8 +39,8 @@ sol_kms = 2.9979246e5
 
 
 def split_science_targets(
-    in_ms, 
-    out_ms, 
+    in_file, 
+    out_file, 
     do_split = True, 
     do_statwt = False, 
     use_symlink = True, 
@@ -50,9 +50,9 @@ def split_science_targets(
     """Split science targets from the input ALMA measurement set to a new measurement set.
     
     Args:
-        in_ms (str): The input measurement set data with suffix ".ms".
+        in_file (str): The input measurement set data with suffix ".ms".
         
-        out_ms (star): The output measurement set data with suffix ".ms".
+        out_file (str): The output measurement set data with suffix ".ms".
         
         do_split (bool): Set to False to only make a copy of the original measurement set without 
         splitting science targets data. The default is True, splitting science targets data. 
@@ -65,10 +65,10 @@ def split_science_targets(
         overwriting anything. 
     
     Inputs:
-        in_ms: ALMA measurement set data folder.
+        in_file: ALMA measurement set data folder.
     
     Outputs:
-        out_ms: ALMA measurement set data folder.
+        out_file: ALMA measurement set data folder.
     
     """
     
@@ -78,18 +78,20 @@ def split_science_targets(
     
     # 
     # check input ms data dir
-    if os.path.isdir(in_ms):
-        in_file = in_ms
+    if os.path.isdir(in_file):
+        in_file = in_file
     else:
-        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
     
     # 
     # check output suffix
-    if not re.match(r'^(.*)\.ms$', out_ms, re.IGNORECASE):
-        out_file = out_ms + '.ms'
+    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+        out_file = out_name + '.ms'
     else:
-        out_file = out_ms
+        out_name = out_file
+        out_file = out_name + '.ms'
     # 
     # check existing copied data in the imaging directory
     if os.path.isdir(out_file):
@@ -185,7 +187,7 @@ def split_science_targets(
 
 
 def list_lines_in_ms(
-    in_ms, 
+    in_file, 
     vsys = None, 
     gal = None, 
     key_handler = None, 
@@ -195,7 +197,7 @@ def list_lines_in_ms(
     """List spectral windows in the input measurement set that contain specific spectral lines in the line_list module. 
     
     Args:
-        in_ms (str): The input measurement set data with suffix ".ms".
+        in_file (str): The input measurement set data with suffix ".ms".
         vsys (float): Galaxy systematic velocity in units of km/s. 
         gal (str): Galaxy name, optional if vsys is given.
         key_handler (object): Our keyHandler object, optional if vsys is given, otherwise gal and key_handler should both be set. 
@@ -213,11 +215,11 @@ def list_lines_in_ms(
     
     # 
     # check input ms data dir
-    if os.path.isdir(in_ms):
-        in_file = in_ms
+    if os.path.isdir(in_file):
+        in_file = in_file
     else:
-        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
     
     # 
     # if user has input gal and key_handler, find vsys
@@ -243,6 +245,7 @@ def list_lines_in_ms(
     # find lines in the ms data
     lines_in_ms = None
     spws_in_ms = None
+    logger.info('Finding spectral windows for '+str(len(line_list.line_list))+' lines in our line_list module')
     for line in line_list.line_list.keys():
         # 
         # get line rest-frame frequencies
@@ -264,6 +267,8 @@ def list_lines_in_ms(
         lines_in_ms.append(line)
         spws_in_ms.append(this_spw_list)
     # 
+    logger.info('Found '+str(len(lines_in_ms))+' lines from our line_list module that are within the spectral windows of "'+in_file+'"')
+    # 
     if output_spw:
         return lines_in_ms, spws_in_ms
     else:
@@ -273,7 +278,7 @@ def list_lines_in_ms(
 
 
 def chanwidth_for_line(
-    in_ms, 
+    in_file, 
     line, 
     vsys = None, 
     vwidth = None, 
@@ -284,8 +289,8 @@ def chanwidth_for_line(
     """Calculates the coarsest channel width among all spectral windows in the input measurement set that contain the input line.
     
     Args:
-        in_ms (str): The input measurement set data with suffix ".ms".
-        line (star): Line name. 
+        in_file (str): The input measurement set data with suffix ".ms".
+        line (str): Line name. 
         gal (str): Galaxy name, optional if vsys is given.
         key_handler (object): Our keyHandler object, optional if vsys is given, otherwise gal and key_handler should both be set. 
         output_spw (bool): Set to True to output not only found line names but also corresponding spectral window (spw) number. 
@@ -301,11 +306,11 @@ def chanwidth_for_line(
     
     # 
     # check input ms data dir
-    if os.path.isdir(in_ms):
-        in_file = in_ms
+    if os.path.isdir(in_file):
+        in_file = in_file
     else:
-        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
     
     # 
     # if user has input gal and key_handler, find vsys
@@ -388,8 +393,8 @@ def chanwidth_for_line(
 
 
 def extract_line(
-    in_ms,  
-    out_ms,  
+    in_file, 
+    out_file, 
     line = 'co21', 
     vsys = None, 
     vwidth = None, 
@@ -411,8 +416,8 @@ def extract_line(
     regridding and rebinning.
     
     Args:
-        in_ms (str): The input measurement set data with suffix ".ms".
-        out_ms (star): The output measurement set data with suffix ".ms".
+        in_file (str): The input measurement set data with suffix ".ms".
+        out_file (str): The output measurement set data with suffix ".ms".
         line (str): Line name. 
         gal (str): Galaxy name, optional if vsys and vwidth are given. 
         key_handler (object): Our keyHandler object, optional if vsys and vwidth are given, otherwise gal and key_handler should both be set. 
@@ -420,39 +425,41 @@ def extract_line(
         rebin_factor (float): 
         do_statwt (bool): 
         edge_for_statwt (int): 
-        quiet (bool): Ture for quiet and False for verbose. Default is False. 
+        quiet (bool): True for quiet and False for verbose. Default is False. 
     
     Inputs:
-        in_ms: ALMA measurement set data folder.
+        in_file: ALMA measurement set data folder.
     
     Outputs:
-        out_ms: ALMA measurement set data folder.
+        out_file: ALMA measurement set data folder.
     
     """
     
     # 
-    # This funcion is modified from the chanwidth_for_line() function in older version phangsPipeline.py.
+    # This funcion is modified from the extract_line() function in older version phangsPipeline.py.
     # 
     
     # 
     # check input ms data dir
-    if os.path.isdir(in_ms):
-        in_file = in_ms
+    if os.path.isdir(in_file):
+        in_file = in_file
     else:
-        logger.error('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_ms+'"does not exist!')
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
     
     # 
     # check output suffix
-    if not re.match(r'^(.*)\.ms$', out_ms, re.IGNORECASE):
-        out_file = out_ms + '.ms'
+    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+        out_file = out_name + '.ms'
     else:
-        out_file = out_ms
+        out_name = out_file
+        out_file = out_name + '.ms'
     # 
     # check existing output data in the imaging directory
     if os.path.isdir(out_file):
         if not overwrite:
-            logger.warning('Found existing output data '+out_file+', will not overwrite it.')
+            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
             return
         else:
             shutil.rmtree(out_file)
@@ -545,6 +552,7 @@ def extract_line(
         logger.info("EXTRACT_LINE begins:")
     # 
     if not quiet:
+        logger.info("... line: "+line)
         logger.info("... spectral windows to consider: "+spw_list_string)
     # 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -685,19 +693,132 @@ def extract_line(
         logger.info("... running statwt with exclusion: "+exclude_str)
         
         # This needs to revert to oldstatwt, it seems not to work in the new form
-
-        test = casaStuff.statwt(vis=out_file,
-                                timebin='0.001s',
-                                slidetimebin=False,
-                                chanbin='spw',
-                                statalg='classic',
-                                datacolumn='data',
-                                excludechans=exclude_str,
-                                )
+        
+        if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
+            # CASA version somewhat >= 5.5.0
+            test = casaStuff.statwt(vis=out_file,
+                                    timebin='0.001s',
+                                    slidetimebin=False,
+                                    chanbin='spw',
+                                    statalg='classic',
+                                    datacolumn='data',
+                                    fitspw=exclude_str,
+                                    excludechans=True,
+                                    )
+        else:
+            # CASA version <= 5.4.1
+            test = casaStuff.statwt(vis=out_file,
+                                    timebin='0.001s',
+                                    slidetimebin=False,
+                                    chanbin='spw',
+                                    statalg='classic',
+                                    datacolumn='data',
+                                    excludechans=exclude_str,
+                                    )
     
     logger.info("--------------------------------------")
     
     return
+
+
+
+def concat_ms(
+    in_file_list,  
+    out_file,  
+    do_chan0 = False, 
+    quiet = False, 
+    overwrite = False, 
+    ):
+    """Concatenate a list of measurement sets into one measurement set, and collapse channel0 if required. 
+    
+    Args:
+        in_file_list (list or str): The input list of measurement sets. 
+        out_file (str): The output measurement set data with suffix ".ms".
+        do_chan0 (bool): True to collapse channel0.
+        quiet (bool): True for quiet and False for verbose. Default is False. 
+    
+    Inputs:
+        in_file: ALMA measurement set data folder.
+    
+    Outputs:
+        out_file: ALMA measurement set data folder.
+    
+    """
+    
+    # 
+    # This funcion is paritially replacing the call of concat() in the concat_line_for_one_gal() and concat_cont_for_one_gal() functions in older version phangsPipeline.py.
+    # 
+    
+    # 
+    # make sure the input in_file_list is a list
+    if np.isscalar(in_file_list):
+        in_file_list = [in_file_list]
+    
+    # 
+    # check input ms data dir
+    for in_file in in_file_list:
+        if not os.path.isdir(in_file):
+            logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+            raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    
+    # 
+    # check output suffix
+    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+        out_file = out_name + '.ms'
+    else:
+        out_name = out_file
+        out_file = out_name + '.ms'
+    # 
+    # check existing output data in the imaging directory
+    if os.path.isdir(out_file):
+        if not overwrite:
+            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
+            return
+    # 
+    # remove existing data 
+    if os.path.isdir(out_file):
+        shutil.rmtree(out_file)
+    if os.path.isdir(out_file+'.flagversions'):
+        shutil.rmtree(out_file+'.flagversions')
+    if os.path.isdir(out_file+'_chan0'):
+        shutil.rmtree(out_file+'_chan0')
+    if os.path.isdir(out_file+'_chan0.flagversions'):
+        shutil.rmtree(out_file+'_chan0.flagversions')
+    # 
+    # 
+    # Concatenate all of the relevant files
+    casaStuff.concat(vis = in_file_list, 
+                     concatvis = out_file)
+                     #<TODO># what about freqtol?
+    # 
+    # Collapse to form a "channel 0" measurement set
+    if do_chan0:
+        # 
+        chan0_vis = out_name + '_chan0.ms'
+        if os.path.isdir(chan0_vis):
+            logger.info('Found existing output data "'+chan0_vis+'". Overwriting it.')
+            shutil.rmtree(chan0_vis)
+        if os.path.isdir(chan0_vis+'.flagversions'):
+            shutil.rmtree(chan0_vis+'.flagversions')
+        # 
+        # find out the channel number
+        casaStuff.tb.open(out_file+os.sep+'SPECTRAL_WINDOW', nomodify = True)
+        chan_width_list = casaStuff.tb.getcell('CHAN_WIDTH', 0)
+        num_chan = len(chan_width_list)
+        logger.info('Collapsing '+str(num_chan)+' channels in "'+os.path.basename(out_file)+'" to make "'+os.path.basename(chan0_vis)+'"')
+        casaStuff.tb.close()
+        # 
+        if num_chan < 1:
+            logger.error('Error! Could not get channel number from "'+out_file+os.sep+'SPECTRAL_WINDOW'+'"!')
+            raise Exception('Error! Could not get channel number from "'+out_file+os.sep+'SPECTRAL_WINDOW'+'"!')
+        # 
+        casaStuff.split(vis = out_file, 
+                        datacolumn = 'DATA', 
+                        spw = '', 
+                        outputvis = chan0_vis, 
+                        width = num_chan)
+    
 
 #endregion
 
@@ -787,58 +908,147 @@ def contsub(
 
     return
 
+
+
 def extract_continuum(
-    in_file=None,
-    out_file=None,
-    lines_to_flag=None,
-    gal=None,
-    vsys=0.0,
-    vwidth=500.,
-    do_statwt=True,
-    do_collapse=True,
-    quiet=False):
-    """
+    in_file, 
+    out_file, 
+    lines_to_flag = None, 
+    vsys = None, 
+    vwidth = None, 
+    gal = None, 
+    key_handler = None, 
+    do_statwt = False, 
+    do_collapse = True, 
+    quiet = False, 
+    overwrite = False, 
+    ):
+    """Extract continuum uv data from a measurement set and collapse into a single channel. 
+    
     Extract a continuum measurement set, flagging any specified lines,
     reweighting using statwt, and then collapsing to a single "channel
     0" measurement.
-    """
-
-    sol_kms = 2.99e5
-
-    # Set up the input file
-
-    if os.path.isdir(in_file) == False:
-        if quiet == False:
-            print("Input file not found: "+in_file)
-        return
-
-    # pull the parameters from the galaxy in the mosaic file
-
-    if gal != None:
-        mosaic_parms = read_mosaic_key()
-        if mosaic_parms.has_key(gal):
-            vsys = mosaic_parms[gal]['vsys']
-            vwidth = mosaic_parms[gal]['vwidth']
-
-    # set the list of lines to flag
-
-    if lines_to_flag == None:
-        lines_to_flag = line_list.lines_co + line_list.lines_13co + line_list.lines_c18o
-
-    # Make a continuum copy of the data
-
-    os.system('rm -rf '+out_file)
-    os.system('rm -rf '+out_file+'.flagversions')
-
-    command = 'cp -r -H '+in_file+' '+out_file
-    print command
-    var = os.system(command)
-    print var
     
+    Args:
+        in_file (str): The input measurement set data with suffix ".ms".
+        out_file (str): The output measurement set data with suffix ".ms".
+        lines_to_flag (list): A list of line names to flag. Lines names must be in our line_list module. If it is None, then we use all 12co, 13co and c18o lines.
+        gal (str): Galaxy name, optional if vsys and vwidth are given. 
+        key_handler (object): Our keyHandler object, optional if vsys and vwidth are given, otherwise gal and key_handler should both be set. 
+        do_statwt (bool): 
+        do_collapse (bool): Always True.
+        quiet (bool): True for quiet and False for verbose. Default is False. 
+    
+    Inputs:
+        in_file: ALMA measurement set data folder.
+    
+    Outputs:
+        out_file: ALMA measurement set data folder.
+    
+    """
+    
+    # 
+    # This funcion is modified from the extract_continuum() function in older version phangsPipeline.py.
+    # 
+    
+    # 
+    # check input ms data dir
+    if os.path.isdir(in_file):
+        in_file = in_file
+    else:
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    
+    # 
+    # check output suffix
+    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+        out_file = out_name + '.ms'
+    else:
+        out_name = out_file
+        out_file = out_name + '.ms'
+    # 
+    # check existing output data in the imaging directory
+    if os.path.isdir(out_file):
+        if not overwrite:
+            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
+            return
+    if os.path.isdir(out_file):
+        shutil.rmtree(out_file)
+    if os.path.isdir(out_file+'.flagversions'):
+        shutil.rmtree(out_file+'.flagversions')
+    if os.path.isdir(out_file+'.temp'):
+        shutil.rmtree(out_file+'.temp')
+    if os.path.isdir(out_file+'.temp.flagversions'):
+        shutil.rmtree(out_file+'.temp.flagversions')
+    if os.path.isdir(out_file+'.temp2'):
+        shutil.rmtree(out_file+'.temp2')
+    if os.path.isdir(out_file+'.temp2.flagversions'):
+        shutil.rmtree(out_file+'.temp2.flagversions')
+    # 
+    # if user has input gal and key_handler, find vsys and vwidth
+    gal_vsys = vsys
+    if gal is not None and key_handler is not None:
+        if gal in key_handler._target_dict:
+            gal_vsys = key_handler._target_dict[gal]['vsys']
+            gal_vwidth = key_handler._target_dict[gal]['vwidth']
+            if vsys is None:
+                vsys = gal_vsys
+            elif not np.isclose(vsys, gal_vsys):
+                # if user has input a vsys, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vsys of '+str(vsys)+' km/s which is different from the vsys of '+str(gal_vsys)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            if vwidth is None:
+                vwidth = gal_vwidth
+            elif not np.isclose(vwidth, gal_vwidth):
+                # if user has input a vwidth, use it instead of the one in the key_handler, but report warning if the values are different
+                logger.warning('Warning! User has input a vwidth of '+str(vwidth)+' km/s which is different from the vwidth of '+str(gal_vwidth)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+        else:
+            logger.error('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+            raise Exception('Error! Could not find the input galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
+    # 
+    # check vsys
+    if vsys is None:
+        logger.error('Error! Please input a `vsys` for the galaxy systematic velocity in units of km/s, or input a `gal` and `key_handler`.')
+        raise Exception('Error! Please input vsys, or gal and key_handler.')
+    # 
+    # check vwidth
+    if vwidth is None:
+        vwidth = 500.0
+        logger.info('Setting line width `vwidth` to 500 km/s as the default value. Please consider setting a better value in "target_definitions.txt" and input gal and key_handler to this function.')
+    # 
+    # set the list of lines to flag
+    if lines_to_flag is None:
+        lines_to_flag = line_list.line_families['co'] + line_list.line_families['13co'] + line_list.line_families['c18o']
+    else:
+        lines_to_flag_copied = copy.copy(lines_to_flag)
+        lines_to_flag = []
+        for line_to_flag_copied in lines_to_flag_copied:
+            if line_to_flag_copied.lower() == 'co':
+                lines_to_flag.extend(line_list.line_families['co'])
+            elif line_to_flag_copied.lower() == '12co':
+                lines_to_flag.extend(line_list.line_families['co'])
+            elif line_to_flag_copied.lower() == '13co':
+                lines_to_flag.extend(line_list.line_families['13co'])
+            elif line_to_flag_copied.lower() == 'c18o':
+                lines_to_flag.extend(line_list.line_families['c18o'])
+            elif line_to_flag_copied.lower() in line_list.line_families:
+                lines_to_flag.extend(line_list.line_families[line_to_flag_copied.lower()])
+            elif line_to_flag_copied.lower() in line_list.line_list:
+                lines_to_flag.append(line_to_flag_copied.lower())
+            else:
+                logger.error('Error! The input line "'+line_to_flag_copied+'" in the lines_to_flag array could not be found in our line_list module!')
+                raise Exception('Error! The input line "'+line_to_flag_copied+'" in the lines_to_flag array could not be found in our line_list module!')
+    logger.debug('Lines to flag for gal '+gal+' continuum: '+str(lines_to_flag))
+    # 
+    # Make a continuum copy of the data
+    command = 'cp -r -H '+in_file+' '+out_file
+    logger.info(command)
+    var = os.system(command)
+    logger.info(var)
+    # 
     # Figure out the line channels and flag them
-
     vm = au.ValueMapping(out_file)
-
+    # 
     spw_flagging_string = ''
     first = True
     for spw in vm.spwInfo.keys():
@@ -848,20 +1058,20 @@ def extract_continuum(
             first = False
         else:
             spw_flagging_string += ','+this_spw_string            
-
+    
     for line in lines_to_flag:
         rest_linefreq_ghz = line_list.line_list[line]
-
+        
         shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
         hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
         lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
-
+        
         spw_list = au.getScienceSpwsForFrequency(out_file,
                                                  shifted_linefreq_hz)
-        if spw_list == []:
+        if len(spw_list) == 0:
             continue
-
-        print "Found overlap for "+line
+        
+        logger.info("Found overlap for "+line)
         for this_spw in spw_list:
             freq_ra = vm.spwInfo[this_spw]['chanFreqs']
             chan_ra = np.arange(len(freq_ra))
@@ -875,53 +1085,55 @@ def extract_continuum(
                 first = False
             else:
                 spw_flagging_string += ','+this_spw_string
-        
-    print "... proposed flagging "+spw_flagging_string
-
+    
+    logger.info("... proposed flagging "+spw_flagging_string)
+    
     if spw_flagging_string != '':
-        flagdata(vis=out_file,
-                 spw=spw_flagging_string,
-                 )
+        casaStuff.flagdata(vis=out_file,
+                           spw=spw_flagging_string,
+                           )
         
     # Here - this comman needs to be examined and refined in CASA
     # 5.6.1 to see if it can be sped up. Right now things are
     # devastatingly slow.
     if do_statwt:
-        print "... deriving empirical weights using STATWT."
-        statwt(vis=out_file,
-               timebin='0.001s',
-               slidetimebin=False,
-               chanbin='spw',
-               statalg='classic',
-               datacolumn='data',
-               )
-
+        logger.info("... deriving empirical weights using STATWT.")
+        casaStuff.statwt(vis=out_file,
+                         timebin='0.001s',
+                         slidetimebin=False,
+                         chanbin='spw',
+                         statalg='classic',
+                         datacolumn='data',
+                         )
+    
     if do_collapse:
-        print "... Collapsing the continuum to a single channel."
-
-        os.system('rm -rf '+out_file+'.temp_copy')
-        os.system('rm -rf '+out_file+'.temp_copy.flagversions')
-
-        command = 'mv '+out_file+' '+out_file+'.temp_copy'
-        print command
-        var = os.system(command)
-        print var
-
-        command = 'mv '+out_file+'.flagversions '+out_file+'.temp_copy.flagversions'
-        print command
-        var = os.system(command)
-        print var
-
-        split(vis=out_file+'.temp_copy',
-              outputvis=out_file,
-              width=10000,
-              datacolumn='DATA',
-              keepflags=False)        
-
+        logger.info("... Collapsing the continuum to a single channel.")
+        
         os.system('rm -rf '+out_file+'.temp_copy')
         os.system('rm -rf '+out_file+'.temp_copy.flagversions')
         
-    return    
+        command = 'mv '+out_file+' '+out_file+'.temp_copy'
+        logger.info(command)
+        var = os.system(command)
+        logger.info(var)
+
+        command = 'mv '+out_file+'.flagversions '+out_file+'.temp_copy.flagversions'
+        logger.info(command)
+        var = os.system(command)
+        logger.info(var)
+        
+        #<TODO><20200210># num_chan
+        
+        casaStuff.split(vis=out_file+'.temp_copy',
+                        outputvis=out_file,
+                        width=10000,
+                        datacolumn='DATA',
+                        keepflags=False)        
+        
+        os.system('rm -rf '+out_file+'.temp_copy')
+        os.system('rm -rf '+out_file+'.temp_copy.flagversions')
+        
+    return
 
 #endregion
 
