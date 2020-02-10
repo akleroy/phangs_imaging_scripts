@@ -2003,6 +2003,8 @@ class PostProcessHandler:
                         self.recipe_cleanup_one_target(
                             target = this_target, product = this_product, config = this_config,
                             check_files = True)
+                        
+                        # TBD - different feather and mosaic ordering outputs? Maybe?                        
 
         if do_convolve:
             

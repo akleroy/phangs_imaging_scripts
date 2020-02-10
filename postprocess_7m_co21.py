@@ -28,10 +28,11 @@ this_pph.set_no_cont(True)
 # Run a recipe
 
 this_pph.loop_postprocess(
-    do_prep=True,
-    do_feather=True, 
-    do_mosaic=True,
+    do_prep=False,
+    do_feather=False, 
+    do_mosaic=False,
     do_cleanup=True,
+    do_convolve=False,
     feather_apod=True, 
     feather_noapod=True,
     feather_before_mosaic=True,
