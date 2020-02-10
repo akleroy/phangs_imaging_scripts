@@ -277,7 +277,7 @@ class KeyHandler:
 
         self._key_dir_exists = os.path.isdir(self._key_dir)
         if not self._key_dir_exists:
-            logger.error("Missing the key directory. Currently set to ", self._key_dir)
+            logger.error("Missing the key directory. Currently set to "+ self._key_dir)
             logger.error("I need the key directory to proceed. Set key_dir in your master_key file.")
             all_valid = False
             errors += 1
@@ -285,7 +285,7 @@ class KeyHandler:
 
         self._imaging_root_exists = os.path.isdir(self._imaging_root)
         if not self._imaging_root_exists:
-            logger.error("The imaging root directory does not exist. Currently set to ", self._imaging_root)
+            logger.error("The imaging root directory does not exist. Currently set to "+ self._imaging_root)
             logger.error("I need the imaging root to proceed. Set imaging_root in your master_key file.")
             all_valid = False
             errors += 1
@@ -300,7 +300,7 @@ class KeyHandler:
                 if not this_key_exists:
                     all_valid = False
                     errors += 1
-                    logger.error("key ", this_key, " is defined but does not exist in "+self._key_dir)
+                    logger.error("key "+ this_key+ " is defined but does not exist in "+self._key_dir)
 
         if all_valid:
             logger.info("Checked file existence and all files found.")
@@ -462,7 +462,7 @@ class KeyHandler:
         for this_key in self._target_keys:
             this_fname = self._key_dir + this_key
             if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+fname+" but it does not exist.")
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
                 return()
             self._read_one_target_key(fname=this_fname)
 
@@ -853,7 +853,7 @@ class KeyHandler:
             ms_targets = self._ms_dict.keys()
             for target in ms_targets:
                 if target not in self._target_list:
-                    logger.error(target, " is in the measurement set key but not the target list.")
+                    logger.error(target+ " is in the measurement set key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -861,7 +861,7 @@ class KeyHandler:
             dir_targets = self._dir_for_target.keys()
             for target in dir_targets:
                 if target not in self._target_list:
-                    logger.error(target, " is in the directory key but not the target list.")
+                    logger.error(target+ " is in the directory key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -869,7 +869,7 @@ class KeyHandler:
             sd_targets = self._sd_dict.keys()
             for target in sd_targets:
                 if target not in self._target_list:
-                    logger.error(target, " is in the single dish key but not the target list.")
+                    logger.error(target+ " is in the single dish key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -877,7 +877,7 @@ class KeyHandler:
             linmos_targets = self._linmos_dict.keys()
             for target in linmos_targets:
                 if target not in self._target_list:
-                    logger.error(target, " is in the linear mosaic key but not the target list.")
+                    logger.error(target+ " is in the linear mosaic key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
             
@@ -991,7 +991,7 @@ class KeyHandler:
         """
 
         if len(self._target_list) == 0:
-            self._built_target_list()
+            self._build_target_list()
 
         logger.info("-------------------------")
         logger.info("Printing missing targets.")
