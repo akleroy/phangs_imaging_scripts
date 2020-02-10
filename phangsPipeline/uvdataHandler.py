@@ -187,33 +187,35 @@ class uvDataHandler:
                 # Concatenate the extracted lines into the measurement sets that
                 # we will use for imaging. This step also makes a "channel 0"
                 # measurement for each line.
-                raise NotImplementedError()
-                self.concat_phangs_lines(
-                    gal=gal,
-                    just_array=just_array,
-                    quiet=quiet,
-                    lines=just_line)
+                self.concat_lines(
+                    gal = gal, 
+                    just_array = just_array, 
+                    just_line = just_line, 
+                    quiet = quiet, 
+                    overwrite = overwrite, 
+                    )
             # 
             # 
             if do_extract_cont:
                 # Extract the continuum, avoiding lines and averaging all
                 # frequencies in each SPW together. This step also uses statwt to
                 # empirically weight the data.
-                raise NotImplementedError()
-                self.extract_phangs_continuum(
-                    gal=gal,
-                    just_array=just_array,
-                    quiet=quiet,
-                    do_statwt=True,
-                    append_ext=cont_ext)
+                self.extract_continuum(
+                    gal = gal, 
+                    just_array = just_array, 
+                    do_statwt = True,
+                    quiet = quiet, 
+                    overwrite = overwrite, 
+                    )
             # 
             # 
             if do_concat_cont:
-                raise NotImplementedError()
-                self.concat_phangs_continuum(
-                    gal=gal,
-                    just_array=just_array,
-                    quiet=quiet)
+                self.concat_continuum(
+                    gal = gal, 
+                    just_array = just_array, 
+                    quiet = quiet, 
+                    overwrite = overwrite, 
+                    )
             # 
             # 
             if do_cleanup:
@@ -222,9 +224,11 @@ class uvDataHandler:
                 # are smaller by a large factor (~10). For reference, re-copying
                 # all of the PHANGS-ALMA LP takes less than a day on the OSU
                 # system. Full line and continuum exraction takes longer. 
-                self.cleanup_phangs_staging(
-                    gal=gal,
-                    just_array=just_array)
+                self.cleanup_staging(
+                    gal = gal, 
+                    just_array = just_array, 
+                    quiet = quiet, 
+                    )
                 
         # end of stage_imaging()
     
@@ -347,6 +351,7 @@ class uvDataHandler:
                     # 
                     # start copying data
                     if not quiet:
+                        logger.info("")
                         logger.info("--------------------------------------------------------")
                         logger.info("START: Copying the original data.")
                         logger.info("--------------------------------------------------------")
@@ -357,8 +362,8 @@ class uvDataHandler:
                         logger.info("Outputting to " + this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'.ms')
                     # 
                     # copy data and split science targets
-                    cvr.split_science_targets(in_ms = this_ms_data_abspath, 
-                                              out_ms = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'.ms', 
+                    cvr.split_science_targets(in_file = this_ms_data_abspath, 
+                                              out_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'.ms', 
                                               do_split = do_split, 
                                               do_statwt = do_statwt, 
                                               use_symlink = use_symlink, 
@@ -477,6 +482,7 @@ class uvDataHandler:
         # 
         # print starting message
         if not quiet:
+            logger.info("")
             logger.info("--------------------------------------------------------")
             logger.info("START: Extracting spectral lines from data set.")
             logger.info("--------------------------------------------------------")
@@ -500,178 +506,42 @@ class uvDataHandler:
             # 
             # calculate phangs chanwidth
             interp_to, rebin_fac = \
-            self.calculate_phangs_chanwidth(
+            self.calculate_chanwidth(
                 gal = gal,
                 line = line,
                 just_array = just_array,
                 ext = ext,
                 target_width = target_width[line],
-                quiet = quiet,
-                )
-            # 
-            if interp_to is None or rebin_fac is None:
-                logger.warning('Warning! Failed to extract the line "'+line+'" for galaxy "'+gal+'"!')
-                raise Exception('Error! Failed to extract the line "'+line+'" for galaxy "'+gal+'"!')
-                #continue
-            # 
-            # extract line data
-            self.extract_line_for_galaxy(
-                gal = gal, 
-                line = line, 
-                just_array = just_array, 
-                ext = ext, 
-                append_ext = append_ext, 
-                chan_fine = interp_to, 
-                rebin_factor = rebin_fac, 
-                edge_for_statwt = edge_for_statwt[line],
                 quiet = quiet, 
                 overwrite = overwrite, 
                 )
+            # 
+            if interp_to is None or rebin_fac is None:
+                logger.warning('Warning! Failed to calculate chanwidth for the line "'+line+'" for galaxy "'+gal+'"!')
+                #raise Exception('Error! Failed to calculate chanwidth the line "'+line+'" for galaxy "'+gal+'"!')
+            else:
+                # 
+                #<TODO><20200210># we can move the call of calculate_chanwidth() inside extract_line_for_galaxy(), so that it does not have to be re-run everytime when not overwriting. 
+                # 
+                # extract line data
+                self.extract_line_for_galaxy(
+                    gal = gal, 
+                    line = line, 
+                    just_array = just_array, 
+                    ext = ext, 
+                    append_ext = append_ext, 
+                    chan_fine = interp_to, 
+                    rebin_factor = rebin_fac, 
+                    edge_for_statwt = edge_for_statwt[line],
+                    quiet = quiet, 
+                    overwrite = overwrite, 
+                    )
         # 
         # print ending message
         if not quiet:
             logger.info("--------------------------------------------------------")
             logger.info("END: Extracting spectral lines from data set.")
             logger.info("--------------------------------------------------------")
-    
-    
-    ################# ##############################
-    # extract_lines # # calculate_phangs_chanwidth #
-    ################# ##############################
-    
-    def calculate_phangs_chanwidth(
-        self, 
-        gal, 
-        line, 
-        just_proj = None, 
-        just_ms = None, 
-        just_array = None, 
-        ext = '', 
-        append_ext = '', 
-        target_width = 2.5, 
-        quiet = False, 
-        ):
-        """Determine the channel width to use when splitting line data from a measurment set.
-        """
-        
-        # 
-        # This code is updated from the function with the same name in phangsPipeline.py / imagingPipeline.py.
-        # 
-        
-        # 
-        # set constants
-        one_plus_eps = 1.0+1e-3
-        
-        # 
-        # Initialize an empty list
-        chanwidth_list = []
-        vis_list = []
-        
-        # 
-        # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
-        if this_target_multipart_names is None:
-            this_target_multipart_names = [gal]
-        
-        # 
-        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
-        for this_target_ms_name in this_target_multipart_names:
-            # 
-            # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
-            if len(this_ms_dict) == 0:
-                logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
-                raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
-            # 
-            # loop proj_tag and array_tag, and split line data
-            for this_proj_tag in this_ms_dict.keys():
-                for this_array_tag in this_ms_dict[this_proj_tag].keys():
-                    # 
-                    # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
-                    # 
-                    # do some variable renaming
-                    this_proj = this_proj_tag
-                    this_array = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_array_tag)
-                    this_ms = this_array_tag # to be compatible with original phangsPipeline.py
-                    # 
-                    # check user input just_proj, just_array and just_ms
-                    if just_proj is not None:
-                        if not (this_proj_tag in just_proj):
-                            continue
-                    if just_array is not None:
-                        if not (this_array in just_array):
-                            continue
-                    if just_ms is not None:
-                        if not (this_ms in just_ms):
-                            continue
-                    # 
-                    # get copied ms data
-                    this_vis = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext
-                    # 
-                    # change directory
-                    current_dir = os.getcwd()
-                    os.chdir(this_imaging_dir)
-                    # 
-                    # get chanwidth for each ms data
-                    this_chanwidth = cvr.chanwidth_for_line(in_ms = this_vis,
-                                                            line = line,
-                                                            gal = gal, 
-                                                            key_handler = self.key_handler, 
-                                                            quiet = quiet)
-                    # 
-                    if this_chanwidth is None:
-                        continue
-                    # 
-                    # record all chanwidths
-                    for chanwidth in this_chanwidth:
-                        chanwidth_list.append(chanwidth)
-                    vis_list.append(this_vis)
-                    # 
-                    # change dir back
-                    os.chdir(current_dir)
-        # 
-        # No line found in any ms data? <TODO>
-        if len(chanwidth_list) == 0:
-            return None, None
-        # 
-        # Calculate the least common channel
-        chanwidths = np.array(chanwidth_list)
-        max_cw = np.max(chanwidths)
-        min_cw = np.min(chanwidths)
-        interpolate_cw = max_cw*one_plus_eps
-        # 
-        # Get the mosaic parameters for comparison
-        #mosaic_parms = read_mosaic_key() 
-        #if mosaic_parms.has_key(gal):
-        #    vsys = mosaic_parms[gal]['vsys']
-        #    vwidth = mosaic_parms[gal]['vwidth']
-        # 
-        # Get galaxy vsys and vwidth from self.key_handler
-        gal_vsys = self.key_handler._target_dict[gal]['vsys']
-        gal_vwidth = self.key_handler._target_dict[gal]['vwidth']
-        # 
-        # Rebinning factor
-        rat = target_width / interpolate_cw
-        rebin_fac = int(round(rat))
-        if rebin_fac < 1:
-            rebin_fac = 1
-        # 
-        if not quiet:
-            logger.info("")
-            logger.info("For galaxy: "+gal+" and line "+line)
-            logger.info("... channel widths:")
-            for ii in range(len(vis_list)):
-                logger.info(str(chanwidth_list[ii]) + ' ... ' + str(vis_list[ii]))
-            logger.info("... max is " + str(max_cw))
-            logger.info("... min is " + str(min_cw))
-            logger.info("... interpolate_to " + str(interpolate_cw))
-            logger.info("... then rebin by " + str(rebin_fac))
-            logger.info("... to final " + str(rebin_fac*interpolate_cw))
-        # 
-        # Return
-        return interpolate_cw, rebin_fac
     
     
     ################# ###########################
@@ -694,7 +564,7 @@ class uvDataHandler:
         edge_for_statwt = -1,
         do_statwt = True, 
         quiet = False, 
-        overwrite = overwrite, 
+        overwrite = False, 
         ):
         """Extract the uv data for a given line for all data sets for a galaxy. 
         """
@@ -763,118 +633,960 @@ class uvDataHandler:
                     # get copied ms data as in_file
                     in_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext
                     out_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_'+line+'.ms'
+                    line_list_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'_list_lines_in_ms.txt'+append_ext
                     # 
                     # change directory
                     current_dir = os.getcwd()
                     os.chdir(this_imaging_dir)
                     # 
-                    # get chanwidth for each ms data
-                    lines_in_ms = cvr.list_lines_in_ms(in_ms = this_vis,
-                                                       gal = gal, 
-                                                       key_handler = self.key_handler, 
-                                                       quiet = quiet)
+                    # get lines_in_ms for each ms data. Use line_list_file as a cache.
+                    if os.path.isfile(line_list_file) and overwrite:
+                        os.remove(line_list_file)
+                    if not os.path.isfile(line_list_file):
+                        lines_in_ms = cvr.list_lines_in_ms(in_file = in_file,
+                                                           gal = gal, 
+                                                           key_handler = self.key_handler, 
+                                                           quiet = quiet)
+                        if lines_in_ms is None:
+                            lines_in_ms = []
+                        np.savetxt(line_list_file, lines_in_ms, fmt='%s', delimiter=',')
+                    else:
+                        lines_in_ms = np.genfromtxt(line_list_file, dtype=np.str,  delimiter=',')
+                        if lines_in_ms is not None:
+                            lines_in_ms = lines_in_ms.tolist()
                     # 
-                    if lines_in_ms is None:
+                    if len(lines_in_ms) == 0:
                         logger.warning('No lines found in the measurement set "'+in_file+'".')
-                        continue
+                        lines_in_ms = []
                     # 
                     if not (line in lines_in_ms):
                         logger.warning('Line "'+line+'" not found in the measurement set "'+in_file+'".')
+                    else:
+                        cvr.extract_line(in_file = in_file, 
+                                         out_file = out_file, 
+                                         line = line, 
+                                         vsys = vsys, 
+                                         vwidth = vwidth, 
+                                         gal = gal, 
+                                         key_handler = self.key_handler, 
+                                         chan_fine = chan_fine, 
+                                         rebin_factor = rebin_factor, 
+                                         do_statwt = do_statwt, 
+                                         edge_for_statwt = edge_for_statwt, 
+                                         quiet = quiet, 
+                                         overwrite = overwrite, 
+                                        )
+                    # 
+                    # change dir back
+                    os.chdir(current_dir)
+    
+    
+    ################
+    # concat_lines #
+    ################
+    
+    def concat_lines(   
+        self, 
+        gal, 
+        just_array = None, 
+        just_line = None, 
+        ext = '', 
+        quiet = False, 
+        overwrite = False, 
+        ):
+        """Concatenate the extracted lines into a few aggregated measurement sets.
+        """
+        
+        # 
+        # This code is updated from the function concat_phangs_lines() in phangsPipeline.py / imagingPipeline.py.
+        # 
+        # dzliu: I renamed the argument 'lines' to 'just_line'
+        # dzliu: I updated the just_array behavior. It can be a str, a list, or None. It can be '7m', ['12m','7m'], or '12m+7m'. 
+        # dzliu: I renamed concat_line_for_gal() to concat_line_for_galaxy()
+        # dzliu: I added overwrite option, when calling concat_line_for_galaxy().
+        # 
+        
+        # 
+        # make sure just_array is a list. If it is None, we will process both '7m' and '12m'.
+        if just_array is not None:
+            if np.isscalar(just_array):
+                just_array = [just_array]
+        
+        # 
+        # make sure just_line is a list
+        if just_line is not None:
+            if np.isscalar(just_line):
+                just_line = [just_line]
+        
+        # 
+        # get lines
+        lines = self.key_handler.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
+        if len(lines) == 0:
+            if just_line is not None:
+                logger.error('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
+                raise Exception('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
+            else:
+                logger.error('Error! Could not find lines! Please check "config_definitions.txt"!')
+                raise Exception('Error! Could not find lines! Please check "config_definitions.txt"!')
+        # 
+        # print starting message
+        if not quiet:
+            logger.info("")
+            logger.info("--------------------------------------------------------")
+            logger.info("START: Concatenating spectral line measurements.")
+            logger.info("--------------------------------------------------------")
+            logger.info("Galaxy: "+gal)
+        # 
+        # Loop and extract lines for each data set
+        for line in lines: 
+            
+            ## Unless we just do the 12m, we build a 7m dataset
+            #if just_array != '12m':
+            # Build 7m dataset
+            if (just_array is None) or (np.any([re.match(r'(\b|_)7m(\b|_)', t, re.IGNORECASE) for t in just_array])):
+                self.concat_line_for_galaxy(
+                    gal = gal,
+                    just_array = '7m',
+                    tag = '7m',
+                    line = line,
+                    do_chan0 = True, 
+                    overwrite = overwrite, 
+                    )
+            
+            ## Unless we just do the 7m, we build a 12m dataset
+            #if just_array != '7m':
+            # Build 12m dataset
+            if (just_array is None) or (np.any([re.match(r'(\b|_)12m(\b|_)', t, re.IGNORECASE) for t in just_array])):
+                self.concat_line_for_galaxy(
+                    gal = gal,
+                    just_array = '12m',
+                    tag = '12m',
+                    line = line,
+                    do_chan0 = True, 
+                    overwrite = overwrite, 
+                    )
+            
+            # This can probably be improved, but works for now. Check if
+            # we lack either 12m or 7m data, in which case there is no
+            # combined data set to make.
+            
+            has_7m = (len(glob.glob(gal+'*7m*'+line+'*')) > 0)
+            has_12m = (len(glob.glob(gal+'*12m*'+line+'*')) > 0)
+            if (not has_12m) or (not has_7m):
+                logger.warning('Missing 12m or 7m for gal "'+gal+'" and line "'+line+'" ... no combined set made.')
+                continue
+            
+            # Build combined 12m+7m data
+            if (just_array is None) or (np.any([re.match(r'(\b|_)7m(\b|_)', t, re.IGNORECASE) for t in just_array]) and \
+                                        np.any([re.match(r'(\b|_)12m(\b|_)', t, re.IGNORECASE) for t in just_array])):
+                self.concat_line_for_galaxy(
+                    gal = gal,
+                    just_array = None,
+                    tag = '12m+7m',
+                    line = line,
+                    do_chan0 = True, 
+                    overwrite = overwrite, 
+                    )
+        
+        if not quiet:
+            logger.info("--------------------------------------------------------")
+            logger.info("END: Concatenating spectral line measurements.")
+            logger.info("--------------------------------------------------------")
+    
+    
+    
+    ################ ##########################
+    # concat_lines # # concat_line_for_galaxy #
+    ################ ##########################
+    
+    def concat_line_for_galaxy(
+        self, 
+        gal, 
+        line, 
+        just_proj = None,
+        just_ms = None,
+        just_array = None, 
+        tag = '',
+        do_chan0 = True,
+        quiet = False, 
+        overwrite = False, 
+        ):
+        """Concatenate the uv data for a given line for all data sets for a galaxy. 
+        """
+        
+        # 
+        # This code is updated from the function concat_line_for_gal() in phangsPipeline.py / imagingPipeline.py.
+        # 
+        
+        
+        # 
+        # get imaging dir
+        this_gal_imaging_dir = self.key_handler.get_imaging_dir_for_target(gal)
+        logger.info('Imaging dir: '+this_gal_imaging_dir)
+        # 
+        # prepare the output file name
+        if tag != '':
+            out_file =  os.path.join(this_gal_imaging_dir, gal+'_'+tag+'_'+line+'.ms')
+            chan0_vis = os.path.join(this_gal_imaging_dir, gal+'_'+tag+'_'+line+'_chan0.ms')
+        else:
+            out_file =  os.path.join(this_gal_imaging_dir, gal+'_'+line+'.ms')
+            chan0_vis = os.path.join(this_gal_imaging_dir, gal+'_'+line+'_chan0.ms')
+        # 
+        # check existing output data
+        if do_chan0:
+            if os.path.isdir(out_file) and os.path.isdir(chan0_vis) and not overwrite:
+                logger.info('Found existing output data "'+os.path.basename(out_file)+'" and "'+os.path.basename(chan0_vis)+'", will not overwrite them.')
+                return
+        else:
+            if os.path.isdir(out_file) and not overwrite:
+                logger.info('Found existing output data "'+os.path.basename(out_file)+'", will not overwrite it.')
+                return
+        # 
+        # prepare the concatenating file list
+        files_to_concat = []
+        # 
+        # check multipart names for the input galaxy
+        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        if this_target_multipart_names is None:
+            this_target_multipart_names = [gal]
+        # 
+        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
+        for this_target_ms_name in this_target_multipart_names:
+            # 
+            # get ms dict
+            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
+            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            if len(this_ms_dict) == 0:
+                logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+                raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+            # 
+            # loop proj_tag and array_tag, and split line data
+            for this_proj_tag in this_ms_dict.keys():
+                for this_array_tag in this_ms_dict[this_proj_tag].keys():
+                    # 
+                    # get imaging dir
+                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    # 
+                    # do some variable renaming
+                    this_proj = this_proj_tag
+                    this_array = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_array_tag)
+                    this_ms = this_array_tag # to be compatible with original phangsPipeline.py
+                    # 
+                    # check user input just_proj, just_array and just_ms
+                    if just_proj is not None:
+                        if not (this_proj_tag in just_proj):
+                            continue
+                    if just_array is not None:
+                        if not (this_array in just_array):
+                            continue
+                    if just_ms is not None:
+                        if not (this_ms in just_ms):
+                            continue
+                    # 
+                    # get extracted line data as this_in_file
+                    this_in_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_'+line+'.ms'
+                    this_in_file = os.path.join(this_imaging_dir, this_in_file)
+                    # 
+                    # check this_in_file
+                    if not os.path.isdir(this_in_file):
+                        logger.warning('Warning! The line uv data measurement set "'+this_in_file+'" was not found! It should be extracted in previous steps.')
+                    else:
+                        # record this_in_file
+                        files_to_concat.append(this_in_file)
+        # 
+        # end of for each this_target_multipart_names
+        if len(files_to_concat) == 0:
+            logger.info('No files to concatenate for gal "'+gal+'" and line "'+line+'". Returning.')
+            return
+        else:
+            logger.info('Concatenating '+str(len(files_to_concat))+' measurement sets for gal "'+gal+'" and line "'+line+'"')
+            logger.debug('files_to_concat: '+str(files_to_concat))
+        # 
+        # change directory to imaging dir
+        current_dir = os.getcwd()
+        os.chdir(this_gal_imaging_dir)
+        # 
+        # Concatenate all of the relevant files
+        cvr.concat_ms(in_file_list = files_to_concat, 
+                      out_file = out_file, 
+                      do_chan0 = do_chan0, 
+                      quiet = quiet, 
+                      overwrite = overwrite, 
+                      )
+        # 
+        # change dir back
+        os.chdir(current_dir)
+        # 
+
+        
+    
+    
+    ################# #######################
+    # extract_lines # # calculate_chanwidth #
+    ################# #######################
+    
+    def calculate_chanwidth(
+        self, 
+        gal, 
+        line, 
+        just_proj = None, 
+        just_ms = None, 
+        just_array = None, 
+        ext = '', 
+        append_ext = '', 
+        target_width = 2.5, 
+        quiet = False, 
+        overwrite = False, 
+        ):
+        """Determine the channel width to use when splitting line data from a measurment set.
+        """
+        
+        # 
+        # This code is updated from the function with the same name in phangsPipeline.py / imagingPipeline.py.
+        # 
+        
+        # 
+        # set constants
+        one_plus_eps = 1.0+1e-3
+        
+        # 
+        # Initialize an empty list
+        chanwidth_list = []
+        vis_list = []
+        
+        # 
+        # check multipart names for the input galaxy
+        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        if this_target_multipart_names is None:
+            this_target_multipart_names = [gal]
+        
+        # 
+        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
+        for this_target_ms_name in this_target_multipart_names:
+            # 
+            # get ms dict
+            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
+            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            if len(this_ms_dict) == 0:
+                logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+                raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+            # 
+            # loop proj_tag and array_tag, and split line data
+            for this_proj_tag in this_ms_dict.keys():
+                for this_array_tag in this_ms_dict[this_proj_tag].keys():
+                    # 
+                    # get imaging dir
+                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    # 
+                    # do some variable renaming
+                    this_proj = this_proj_tag
+                    this_array = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_array_tag)
+                    this_ms = this_array_tag # to be compatible with original phangsPipeline.py
+                    # 
+                    # check user input just_proj, just_array and just_ms
+                    if just_proj is not None:
+                        if not (this_proj_tag in just_proj):
+                            continue
+                    if just_array is not None:
+                        if not (this_array in just_array):
+                            continue
+                    if just_ms is not None:
+                        if not (this_ms in just_ms):
+                            continue
+                    # 
+                    # get copied ms data
+                    this_vis = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext
+                    this_chanwidth_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'_chanwidth_for_line_'+line+'.txt'
+                    # 
+                    # change directory
+                    current_dir = os.getcwd()
+                    os.chdir(this_imaging_dir)
+                    # 
+                    # get chanwidth for each ms data. Use this_chanwidth_file as a cache.
+                    #overwrite = True #<TODO><DEBUG># 
+                    if os.path.isfile(this_chanwidth_file) and overwrite:
+                        os.remove(this_chanwidth_file)
+                    if not os.path.isfile(this_chanwidth_file):
+                        this_chanwidth = cvr.chanwidth_for_line(in_file = this_vis,
+                                                                line = line,
+                                                                gal = gal, 
+                                                                key_handler = self.key_handler, 
+                                                                quiet = quiet)
+                        if this_chanwidth is None:
+                            this_chanwidth = []
+                        np.savetxt(this_chanwidth_file, this_chanwidth, delimiter=',')
+                    else:
+                        this_chanwidth = np.loadtxt(this_chanwidth_file, delimiter=',', ndmin=1)
+                        if this_chanwidth is not None:
+                            this_chanwidth = this_chanwidth.tolist()
+                    # 
+                    # change dir back
+                    os.chdir(current_dir)
+                    # 
+                    if this_chanwidth is None:
                         continue
                     # 
-                    cvr.extract_line(in_file = in_file, 
-                                     out_file = out_file, 
-                                     line = line, 
-                                     vsys = vsys, 
-                                     vwidth = vwidth, 
-                                     gal = gal, 
-                                     key_handler = self.key_handler, 
-                                     chan_fine = chan_fine, 
-                                     rebin_factor = rebin_factor, 
-                                     do_statwt = do_statwt, 
-                                     edge_for_statwt = edge_for_statwt, 
-                                     quiet = quiet, 
-                                     overwrite = overwrite, 
-                                    )
+                    #logger.debug('type(this_chanwidth) = '+str(type(this_chanwidth))+', this_chanwidth = '+str(this_chanwidth)) #<DEBUG>#
+                    if len(this_chanwidth) == 0:
+                        continue
+                    # 
+                    # record all chanwidths
+                    for chanwidth in this_chanwidth:
+                        chanwidth_list.append(chanwidth)
+                    vis_list.append(this_vis)
+        # 
+        # No line found in any ms data? <TODO>
+        if len(chanwidth_list) == 0:
+            return None, None
+        # 
+        # Calculate the least common channel
+        chanwidths = np.array(chanwidth_list)
+        max_cw = np.max(chanwidths)
+        min_cw = np.min(chanwidths)
+        interpolate_cw = max_cw*one_plus_eps
+        # 
+        # Get the mosaic parameters for comparison
+        #mosaic_parms = read_mosaic_key() 
+        #if mosaic_parms.has_key(gal):
+        #    vsys = mosaic_parms[gal]['vsys']
+        #    vwidth = mosaic_parms[gal]['vwidth']
+        # 
+        # Get galaxy vsys and vwidth from self.key_handler
+        gal_vsys = self.key_handler._target_dict[gal]['vsys']
+        gal_vwidth = self.key_handler._target_dict[gal]['vwidth']
+        # 
+        # Rebinning factor
+        rat = target_width / interpolate_cw
+        rebin_fac = int(round(rat))
+        if rebin_fac < 1:
+            rebin_fac = 1
+        # 
+        if not quiet:
+            logger.info("")
+            logger.info("For galaxy: "+gal+" and line "+line)
+            logger.info("... channel widths:")
+            for ii in range(len(vis_list)):
+                logger.info('... ' + str(chanwidth_list[ii]) + ' ... ' + str(vis_list[ii]))
+            logger.info("... max is " + str(max_cw))
+            logger.info("... min is " + str(min_cw))
+            logger.info("... interpolate_to " + str(interpolate_cw))
+            logger.info("... then rebin by " + str(rebin_fac))
+            logger.info("... to final " + str(rebin_fac*interpolate_cw))
+        # 
+        # Return
+        return interpolate_cw, rebin_fac
+    
+    
+    
+    #####################
+    # extract_continuum #
+    #####################
+    
+    def extract_continuum(
+        self, 
+        gal, 
+        vsys = None, 
+        vwidth = None, 
+        just_array = None, 
+        ext = '', 
+        append_ext = '', 
+        do_statwt = True, 
+        quiet = False, 
+        overwrite = False, 
+        ):
+        """
+        Split continuum uv data from the input uv data measurement set. 
+        
+        Line channels will be identified automatically.
+        """
+        
+        # 
+        # This code is updated from the function extract_phangs_continuum() in phangsPipeline.py / imagingPipeline.py.
+        # 
+        # 
+        
+        # Best practice here regarding statwt isn't obvious - it's the
+        # continuum, so there are no signal free channels. I think we just
+        # have to hope that the signal does not swamp the noise during the
+        # statwt or consider turning off the statwt in high S/N continuum
+        # cases.
+        
+        # 
+        # get lines to flag
+        #lines_to_flag = line_list.lines_co+line_list.lines_13co+line_list.lines_c18o
+        lines_to_flag = ['co', '13co','c18o'] # dzliu: the line_list module is not imported here, but inside casaVisRoutines.py. So here we provide a str list here, then deal with it inside casaVisRoutines.py.
+        # 
+        # print starting message
+        if not quiet:
+            logger.info("")
+            logger.info("--------------------------------------------------------")
+            logger.info("START: Extracting continuum from data set.")
+            logger.info("--------------------------------------------------------")
+        # 
+        # extract continuum data
+        self.extract_continuum_for_galaxy(
+            gal = gal, 
+            lines_to_flag = lines_to_flag, 
+            vsys = vsys, 
+            vwidth = vwidth, 
+            just_array = just_array, 
+            ext = ext, 
+            append_ext = append_ext, 
+            do_statwt = do_statwt, 
+            do_collapse = True, 
+            quiet = quiet, 
+            overwrite = overwrite, 
+            )
+        # 
+        # print ending message
+        if not quiet:
+            logger.info("--------------------------------------------------------")
+            logger.info("END: Extracting continuum from data set.")
+            logger.info("--------------------------------------------------------")
+    
+    
+    
+    ##################### ################################
+    # extract_continuum # # extract_continuum_for_galaxy #
+    ##################### ################################
+    
+    def extract_continuum_for_galaxy(
+        self, 
+        gal, 
+        lines_to_flag, 
+        vsys = None, 
+        vwidth = None, 
+        just_proj = None,
+        just_ms = None,
+        just_array = None, 
+        ext = None, 
+        append_ext = None, 
+        do_statwt = True, 
+        do_collapse = True, 
+        quiet = False, 
+        overwrite = False, 
+        ):
+        """Extract the continuum uv data for all data sets for a galaxy. 
+        """
+        
+        # 
+        # This code is updated from the function with the same name in phangsPipeline.py / imagingPipeline.py.
+        # 
+        
+        # 
+        # get vsys and vwidth from key_handler as defined in "target_definitions.txt"
+        gal_vsys = self.key_handler._target_dict[gal]['vsys']
+        gal_vwidth = self.key_handler._target_dict[gal]['vwidth']
+        # 
+        # if user has not input a vsys, then we use what is defined in the key_handler
+        if vsys is None:
+            vsys = gal_vsys
+        # 
+        # if user has not input a vwidth, then we use what is defined in the key_handler
+        if vwidth is None:
+            vwidth = gal_vwidth
+        # 
+        # check multipart names for the input galaxy
+        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        if this_target_multipart_names is None:
+            this_target_multipart_names = [gal]
+        # 
+        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
+        for this_target_ms_name in this_target_multipart_names:
+            # 
+            # get ms dict
+            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
+            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            if len(this_ms_dict) == 0:
+                logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+                raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+            # 
+            # loop proj_tag and array_tag, and split line data
+            for this_proj_tag in this_ms_dict.keys():
+                for this_array_tag in this_ms_dict[this_proj_tag].keys():
+                    # 
+                    # get imaging dir
+                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    # 
+                    # do some variable renaming
+                    this_proj = this_proj_tag
+                    this_array = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_array_tag)
+                    this_ms = this_array_tag # to be compatible with original phangsPipeline.py
+                    # 
+                    # check user input just_proj, just_array and just_ms
+                    if just_proj is not None:
+                        if not (this_proj_tag in just_proj):
+                            continue
+                    if just_array is not None:
+                        if not (this_array in just_array):
+                            continue
+                    if just_ms is not None:
+                        if not (this_ms in just_ms):
+                            continue
+                    # 
+                    # get copied ms data as in_file
+                    in_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext
+                    out_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_cont.ms'
+                    # 
+                    # change directory
+                    current_dir = os.getcwd()
+                    os.chdir(this_imaging_dir)
+                    # 
+                    # get candidate lines for each ms data
+                    #lines_in_ms = cvr.list_lines_in_ms(in_file = in_file,
+                    #                                   gal = gal, 
+                    #                                   key_handler = self.key_handler, 
+                    #                                   quiet = quiet)
+                    # 
+                    # extract_continuum
+                    cvr.extract_continuum(in_file = in_file, 
+                                          out_file = out_file, 
+                                          lines_to_flag = lines_to_flag, 
+                                          vsys = vsys, 
+                                          vwidth = vwidth, 
+                                          gal = gal, 
+                                          key_handler = self.key_handler, 
+                                          do_statwt = do_statwt, 
+                                          do_collapse = do_collapse, 
+                                          quiet = quiet, 
+                                          overwrite = overwrite, 
+                                         )
                     # 
                     # change dir back
                     os.chdir(current_dir)
     
     
     
+    ####################
+    # concat_continuum #
+    ####################
     
-    
-    # 
-    # 
-    # 
-    def concat_phangs_lines(   
-        gal=None,
-        just_array='',
-        ext='',
-        quiet=False,
-        lines=['co21', 'c18o21'],
+    def concat_continuum(   
+        self, 
+        gal, 
+        just_array = None, 
+        quiet = False, 
+        overwrite = False, 
         ):
+        """Concatenate continuum data sets into a single file for one galaxy or part of galaxy.
         """
-        Concatenate the extracted lines into a few aggregated measurement
-        sets.
-        """
-
-        if quiet == False:
-            print "--------------------------------------------------------"
-            print "START: Concatenating spectral line measurements."
-            print "--------------------------------------------------------"
-            print ""
-            print "Galaxy: "+gal
-
-        for line in lines:    
-
-            # Unless we just do the 12m, we build a 7m dataset
-            if just_array != '12m':
-                concat_line_for_gal(
-                    gal=gal,
-                    just_array = '7m',
-                    tag='7m',
-                    line=line,
-                    do_chan0=True)
-
-            # Unless we just do the 7m, we build a 12m dataset
-            if just_array != '7m':
-                concat_line_for_gal(
-                    gal=gal,
-                    just_array = '12m',
-                    tag='12m',
-                    line=line,
-                    do_chan0=True)
-
-            # This can probably be improved, but works for now. Check if
-            # we lack either 12m or 7m data, in which case there is no
-            # combined data set to make.
-
-            has_7m = len(glob.glob(gal+'*7m*'+line+'*')) > 0
-            has_12m = len(glob.glob(gal+'*12m*'+line+'*')) > 0
-            if has_12m == False or has_7m == False:
-                print "Missing 12m or 7m ... no combined set made."
-                continue
-
-            if just_array == '' or just_array == None:
-                concat_line_for_gal(
-                    gal=gal,
+        
+        # 
+        # This code is updated from the function concat_phangs_continuum() in phangsPipeline.py / imagingPipeline.py.
+        # 
+        # dzliu: I updated the just_array behavior. It can be a str, a list, or None. It can be '7m', ['12m','7m'], or '12m+7m'. 
+        # dzliu: I renamed concat_continuum_for_gal() to concat_continuum_for_galaxy()
+        # dzliu: I added overwrite option, when calling concat_continuum_for_galaxy().
+        # 
+        
+        # 
+        # make sure just_array is a list. If it is None, we will process both '7m' and '12m'.
+        if just_array is not None:
+            if np.isscalar(just_array):
+                just_array = [just_array]
+        
+        # 
+        # print starting message
+        if not quiet:
+            logger.info("")
+            logger.info("--------------------------------------------------------")
+            logger.info("START: Concatenating continuum from data set.")
+            logger.info("--------------------------------------------------------")
+            logger.info("Galaxy: "+gal)
+        #
+        
+        ## Unless we just do the 12m, we build a 7m dataset
+        #if just_array != '12m':
+        # Build 7m dataset
+        if (just_array is None) or (np.any([re.match(r'(\b|_)7m(\b|_)', t, re.IGNORECASE) for t in just_array])):
+            self.concat_continuum_for_galaxy(
+                gal = gal,
+                just_array = '7m',
+                tag = '7m',
+                overwrite = overwrite, 
+                )
+        
+        ## Unless we just do the 7m, we build a 12m dataset
+        #if just_array != '7m':
+        # Build 12m dataset
+        if (just_array is None) or (np.any([re.match(r'(\b|_)12m(\b|_)', t, re.IGNORECASE) for t in just_array])):
+            self.concat_continuum_for_galaxy(
+                gal = gal,
+                just_array = '12m',
+                tag = '12m',
+                overwrite = overwrite, 
+                )
+        
+        # This can probably be improved, but works for now. Check if
+        # we lack either 12m or 7m data, in which case there is no
+        # combined data set to make.
+        
+        has_7m = (len(glob.glob(gal+'*7m*'+'_cont'+'*')) > 0)
+        has_12m = (len(glob.glob(gal+'*12m*'+'_cont'+'*')) > 0)
+        if (not has_12m) or (not has_7m):
+            logger.warning("Missing 12m or 7m for gal "+gal+" continuum ... no combined set made.")
+        else:
+            # Build combined 12m+7m data
+            if (just_array is None) or (np.any([re.match(r'(\b|_)7m(\b|_)', t, re.IGNORECASE) for t in just_array]) and \
+                                        np.any([re.match(r'(\b|_)12m(\b|_)', t, re.IGNORECASE) for t in just_array])):
+                self.concat_continuum_for_galaxy(
+                    gal = gal,
                     just_array = None,
-                    tag='12m+7m',
-                    line=line,
-                    do_chan0=True)
-
-        if quiet == False:
-            print "--------------------------------------------------------"
-            print "END: Concatenating spectral line measurements."
-            print "--------------------------------------------------------"
+                    tag = '12m+7m',
+                    overwrite = overwrite, 
+                    )
+        
+        if not quiet:
+            logger.info("--------------------------------------------------------")
+            logger.info("END: Concatenating continuum from data set.")
+            logger.info("--------------------------------------------------------")
     
-    #
-    #<TODO><20200209># def extract_phangs_lines
-    #<TODO><20200209># def concat_phangs_lines
-    #<TODO><20200209># def extract_phangs_continuum
-    #<TODO><20200209># def concat_phangs_continuum
-    #<TODO><20200209># def cleanup_phangs_staging
+    
+    
+    #################### ###############################
+    # concat_continuum # # concat_continuum_for_galaxy #
+    #################### ###############################
+    
+    def concat_continuum_for_galaxy(
+        self, 
+        gal, 
+        just_proj = None,
+        just_ms = None,
+        just_array = None, 
+        tag = '',
+        quiet = False, 
+        overwrite = False, 
+        ):
+        """Concatenate the uv data for a given line for all data sets for a galaxy. 
+        """
+        
+        # 
+        # This code is updated from the function concat_cont_for_gal() in phangsPipeline.py / imagingPipeline.py.
+        # 
+        
+        # 
+        # get imaging dir
+        this_gal_imaging_dir = self.key_handler.get_imaging_dir_for_target(gal)
+        logger.info('Imaging dir: '+this_gal_imaging_dir)
+        # 
+        # prepare the output file name
+        if tag != '':
+            out_file =  os.path.join(this_gal_imaging_dir, gal+'_'+tag+'_cont'+'.ms')
+        else:
+            out_file =  os.path.join(this_gal_imaging_dir, gal+'_cont'+'.ms')
+        # 
+        # check existing output data
+        if os.path.isdir(out_file) and not overwrite:
+            logger.info('Found existing output data "'+os.path.basename(out_file)+'", will not overwrite it.')
+            return
+        # 
+        # prepare the concatenating file list
+        files_to_concat = []
+        # 
+        # check multipart names for the input galaxy
+        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        if this_target_multipart_names is None:
+            this_target_multipart_names = [gal]
+        # 
+        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
+        for this_target_ms_name in this_target_multipart_names:
+            # 
+            # get ms dict
+            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
+            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            if len(this_ms_dict) == 0:
+                logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+                raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+            # 
+            # loop proj_tag and array_tag, and split line data
+            for this_proj_tag in this_ms_dict.keys():
+                for this_array_tag in this_ms_dict[this_proj_tag].keys():
+                    # 
+                    # get imaging dir
+                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    # 
+                    # do some variable renaming
+                    this_proj = this_proj_tag
+                    this_array = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_array_tag)
+                    this_ms = this_array_tag # to be compatible with original phangsPipeline.py
+                    # 
+                    # check user input just_proj, just_array and just_ms
+                    if just_proj is not None:
+                        if not (this_proj_tag in just_proj):
+                            continue
+                    if just_array is not None:
+                        if not (this_array in just_array):
+                            continue
+                    if just_ms is not None:
+                        if not (this_ms in just_ms):
+                            continue
+                    # 
+                    # get extracted line data as this_in_file
+                    this_in_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_cont'+'.ms'
+                    this_in_file = os.path.join(this_imaging_dir, this_in_file)
+                    # 
+                    # check this_in_file
+                    if not os.path.isdir(this_in_file):
+                        logger.warning('Warning! The previously extracted continuum uv data measurement set "'+this_in_file+'" was not found!')
+                    else:
+                        # record this_in_file
+                        files_to_concat.append(this_in_file)
+        # 
+        # end of for each this_target_multipart_names
+        if len(files_to_concat) == 0:
+            logger.info('No files to concatenate for gal "'+gal+'" continuum. Returning.')
+            return
+        # 
+        # change directory to imaging dir
+        current_dir = os.getcwd()
+        os.chdir(this_gal_imaging_dir)
+        # 
+        # Concatenate all of the relevant files
+        cvr.concat_ms(in_file_list = files_to_concat, 
+                      out_file = out_file, 
+                      do_chan0 = False, 
+                      quiet = quiet, 
+                      overwrite = overwrite, 
+                      )
+        # 
+        # change dir back
+        os.chdir(current_dir)
+        # 
+    
+    
+    
+    
+    ###################
+    # cleanup_staging #
+    ###################
+    
+    def cleanup_staging(
+        self, 
+        gal, 
+        just_proj = None, 
+        just_ms = None, 
+        just_array = None, 
+        just_line = None, 
+        ext = '', 
+        append_ext = '', 
+        including_cache = False, 
+        quiet = False,  
+        ):
+        
+        
+        # 
+        # get lines
+        lines = self.key_handler.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
+        if len(lines) == 0:
+            if just_line is not None:
+                logger.error('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
+                raise Exception('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
+            else:
+                logger.error('Error! Could not find lines! Please check "config_definitions.txt"!')
+                raise Exception('Error! Could not find lines! Please check "config_definitions.txt"!')
+        # 
+        # print starting message
+        if not quiet:
+            logger.info("")
+            logger.info("--------------------------------------------------------")
+            logger.info("START: Clean up staging.")
+            logger.info("--------------------------------------------------------")
+        # 
+        # check multipart names for the input galaxy
+        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        if this_target_multipart_names is None:
+            this_target_multipart_names = [gal]
+        # 
+        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
+        for this_target_ms_name in this_target_multipart_names:
+            # 
+            # get ms dict
+            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
+            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            if len(this_ms_dict) == 0:
+                logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+                raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
+            # 
+            # loop proj_tag and array_tag, and split line data
+            for this_proj_tag in this_ms_dict.keys():
+                for this_array_tag in this_ms_dict[this_proj_tag].keys():
+                    # 
+                    # get imaging dir
+                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    # 
+                    # do some variable renaming
+                    this_proj = this_proj_tag
+                    this_array = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_array_tag)
+                    this_ms = this_array_tag # to be compatible with original phangsPipeline.py
+                    # 
+                    # check user input just_proj, just_array and just_ms
+                    if just_proj is not None:
+                        if not (this_proj_tag in just_proj):
+                            continue
+                    if just_array is not None:
+                        if not (this_array in just_array):
+                            continue
+                    if just_ms is not None:
+                        if not (this_ms in just_ms):
+                            continue
+                    # 
+                    # change directory
+                    current_dir = os.getcwd()
+                    os.chdir(this_imaging_dir)
+                    # 
+                    # check ms
+                    temp_ext_list = ['.temp', '.temp.flagversions', '.temp2', '.temp2.flagversions']
+                    check_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext
+                    if os.path.isdir(check_file):
+                        logger.info('Keeping "'+check_file+'"')
+                    else:
+                        pass #<TODO># what if data not found?
+                    for temp_ext in temp_ext_list:
+                        check_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext+temp_ext
+                        if os.path.isdir(check_file):
+                            logger.info('Cleaning "'+check_file+'"')
+                            shutil.rmtree(check_file)
+                    # 
+                    # Loop lines for each data set and check line ms
+                    for line in lines: 
+                        check_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_'+line+'.ms'
+                        if os.path.isdir(check_file):
+                            logger.info('Keeping "'+check_file+'"')
+                        else:
+                            pass #<TODO># what if data not found?
+                        for temp_ext in temp_ext_list:
+                            check_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_'+line+'.ms'+temp_ext
+                            if os.path.isdir(check_file):
+                                logger.info('Cleaning "'+check_file+'"')
+                                shutil.rmtree(check_file)
+                    # 
+                    # check continuum ms
+                    check_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+'_cont'+'.ms'
+                    if os.path.isdir(check_file):
+                        logger.info('Keeping "'+check_file+'"')
+                    else:
+                        pass #<TODO># what if data not found?
+                    for temp_ext in temp_ext_list:
+                        check_file = this_target_ms_name+'_'+this_proj_tag+'_'+this_array_tag+ext+'.ms'+append_ext+temp_ext
+                        if os.path.isdir(check_file):
+                            logger.info('Cleaning "'+check_file+'"')
+                            shutil.rmtree(check_file)
+                    # 
+                    # check chanwidth_for_line cache <TODO>
+                    # 
+                    # check list_lines_in_ms cache <TODO>
+                    # 
+                    # change dir back
+                    os.chdir(current_dir)
+        # 
+        # print ending message
+        if not quiet:
+            logger.info("--------------------------------------------------------")
+            logger.info("END: Clean up staging.")
+            logger.info("--------------------------------------------------------")
+    
+    
+    
 
 
 
