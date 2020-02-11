@@ -1,37 +1,52 @@
-"""uvdataHandler
+"""
+UVDataHandler
+    
+The PHANGS pipeline to handle staging and pre-processing of uv data
+before imaging. Works through a single big class (the
+UVDataHandler). This needs to be attached to a keyHandler to access
+the target, product, and configuration keys and locations of the uv
+data.
 
-This module copies uv data from ms_dir to imaging dir and prepare things for imaging. 
+There should not be any direct calls to CASA in this
+code.. Eventually, this should be able to run without CASA enabled
+(though it won't be able to call any of the CASA-specific
+routines). Right now, just avoid direct calls to CASA from this class.
 
-This code needs to be run inside CASA. 
+To run the individual routines, this code needs to be run inside
+CASA. See an example application inside stage_7m_co21.py .
 
 Example:
+
     $ casa
     from phangsPipeline import keyHandler as kh
     from phangsPipeline import uvdataHandler as uvh
     this_kh = kh.KeyHandler(master_key = 'config_keys/master_key.txt')
-    this_uvh = uvh.uvDataHandler(key_handler=this_kh)
+    this_uvh = uvh.UVDataHandler(key_handler=this_kh)
     this_uvh.copy_data(target = 'ngc3627')
-    
+
 """
 
 import os, sys, re, shutil
 import glob
 import numpy as np
-import casaCubeRoutines as ccr
-import casaMosaicRoutines as cmr
-import casaFeatherRoutines as cfr
-import casaVisRoutines as cvr
-reload(cvr) #<TODO><DEBUG># 
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Replace this with a check on load in the future
 casa_enabled = True
 
-class uvDataHandler:
+if casa_enabled:
+    import casaVisRoutines as cvr
+    #<TODO><DEBUG># 
+    reload(cvr)
+
+class UVDataHandler:
     """
-    Class to manage ALMA calibrated uv data, aka. Measurement Sets. 
+    Class to manipulate calibrated ALMA visibility data (measurement
+    sets), extracting lines, combining multiple data sets, and
+    carrying out other steps in prepration for imaging.
     """
     
     ############
@@ -40,10 +55,16 @@ class uvDataHandler:
     
     def __init__(
         self, 
-        key_handler, 
+        key_handler = None,
+        dry_run = False,
         ):
         
-        # check key_handler input
+        # check that we have a valid key_handler
+
+        if key_handler is None:
+            logger.error('key_handler not supplied.')
+            raise Exception('Please input a valid key handler!')
+
         try:
             key_handler._key_dir
             key_handler._imaging_root
@@ -51,187 +72,232 @@ class uvDataHandler:
             key_handler._dir_keys
             key_handler._target_keys
         except:
-            logger.error('The input key_handler is invalid! Please check your master_key.txt and ms_file_key.txt!')
+            logger.error('The input key_handler appears invalid. Please check your configruation files.')
             raise Exception('Please input a valid key handler!')
-        
-        # prepare imaging root directory
-        if not os.path.isdir(key_handler._imaging_root):
-            logger.debug('Imaging root directory does not exist, creating '+key_handler._imaging_root)
-            os.makedirs(key_handler._imaging_root)
-            if not os.path.isdir(key_handler._imaging_root):
-                logger.error('Failed to create the imaging root directory '+key_handler._imaging_root+'! Please check your file system writing permission!')
-                raise Exception('Failed to create the imaging root directory! Please check your file system writing permission!')
-        
-        # check key_handler validity
-        if not key_handler.check_key_existence():
-            raise Exception('Incomplete key handler! Please check the error message above!')
-        
-        # store key_handler
-        self.key_handler = key_handler
-        
-        # stage uv data for imaging
-        #self.stage_imaging()
-    
-    
-    #################
-    # stage_imaging #
-    #################
-    
-    def stage_imaging(
-        self, 
-        targets = None, 
-        do_copy = True, 
-        do_split = True, 
-        do_statwt = False, 
-        use_symlink = True, 
-        do_custom_scripts = True,
-        do_extract_lines = True, 
-        do_concat_lines = True, 
-        do_extract_cont = True, 
-        do_concat_cont = True, 
-        do_cleanup = True, 
-        just_proj = None, 
-        just_array = None, 
-        just_ms = None, 
-        just_line = None, 
-        overwrite = False, 
-        quiet = False, 
-        ): 
-        """
-        This function stages the data before imaging process. 
-        This includes: copying uv data, splitting science uv data, splitting line uv data.
-        """
-        
-        # debug checks
-        logger.debug('self.key_handler.get_targets() = '+str(self.key_handler.get_targets()))
-        logger.debug('self.key_handler.get_targets_in_ms_key() = '+str(self.key_handler.get_targets_in_ms_key()))
-        
-        # check input targets, if none then process all targets, otherwise make sure it is a list
-        if targets is not None:
-            if np.isscalar(targets):
-                targets = [targets]
-        gals = self.key_handler.get_targets(only = targets) # if input targets is None, it will return all targets.
-        
-        # check targets
-        if len(gals) == 0:
-            logger.error('No galaxy found with the input targets '+str(targets)+'!')
-            raise Exception('No galaxy found with the input targets '+str(targets)+'!')
-        
-        # 
-        # make sure just_proj is a list or None
-        if just_proj is not None:
-            if np.isscalar(just_proj):
-                just_proj = [just_proj]
-        
-        # 
-        # make sure just_array is a list or None
-        if just_array is not None:
-            if np.isscalar(just_array):
-                just_array = [just_array]
-        
-        # 
-        # make sure just_ms is a list or None
-        if just_ms is not None:
-            if np.isscalar(just_ms):
-                just_ms = [just_ms]
-        # 
-        # make sure just_line is a list or None
-        if just_line is not None:
-            if np.isscalar(just_line):
-                just_line = [just_line]
-        
-        # 
-        # loop targets
-        for gal in gals:
-            # 
-            # copy uv data for each galaxy
-            if do_copy:
-                self.copy_data(
-                    gal = gal, 
-                    just_proj = just_proj, 
-                    just_array = just_array, 
-                    just_ms = just_ms, 
-                    do_split = do_split, 
-                    do_statwt = do_statwt, 
-                    use_symlink = use_symlink, 
-                    overwrite = overwrite, 
-                    quiet = quiet, 
-                    )
-            # 
-            # 
-            if do_custom_scripts:
-                # Optionally, run custom scripts at this stage. This could, for
-                # example, flag data or carry out uv continuum subtraction. The
-                # line and continuum extensions defined here point the subsequent
-                # programs at the processed data.
-                self.custom_scripts(
-                    gal = gal, 
-                    )
-            # 
-            # 
-            if do_extract_lines:
-                # Extract lines, includes regridding and rebinning to the velocity
-                # grid specified in the text file keys. Runs statwt afterwards,
-                # the result is a bunch of line-only data sets but still
-                # execution-by-execution.
-                self.extract_lines(
-                    gal = gal, 
-                    just_array = just_array, 
-                    just_line = just_line, 
-                    quiet = quiet, 
-                    overwrite = overwrite, 
-                    )
-            # 
-            # 
-            if do_concat_lines:
-                # Concatenate the extracted lines into the measurement sets that
-                # we will use for imaging. This step also makes a "channel 0"
-                # measurement for each line.
-                self.concat_lines(
-                    gal = gal, 
-                    just_array = just_array, 
-                    just_line = just_line, 
-                    quiet = quiet, 
-                    overwrite = overwrite, 
-                    )
-            # 
-            # 
-            if do_extract_cont:
-                # Extract the continuum, avoiding lines and averaging all
-                # frequencies in each SPW together. This step also uses statwt to
-                # empirically weight the data.
-                self.extract_continuum(
-                    gal = gal, 
-                    just_array = just_array, 
-                    do_statwt = True,
-                    quiet = quiet, 
-                    overwrite = overwrite, 
-                    )
-            # 
-            # 
-            if do_concat_cont:
-                self.concat_continuum(
-                    gal = gal, 
-                    just_array = just_array, 
-                    quiet = quiet, 
-                    overwrite = overwrite, 
-                    )
-            # 
-            # 
-            if do_cleanup:
-                # Remove intermediate files. The big space-savers here are the
-                # initial copies of the data. The data after frequency averaging
-                # are smaller by a large factor (~10). For reference, re-copying
-                # all of the PHANGS-ALMA LP takes less than a day on the OSU
-                # system. Full line and continuum exraction takes longer. 
-                self.cleanup_staging(
-                    gal = gal, 
-                    just_array = just_array, 
-                    quiet = quiet, 
-                    )
                 
-        # end of stage_imaging()
+        # store key_handler
+
+        self._kh = key_handler
+        
+        # Initialize loop-related variables.
+
+        self._no_cont = False
+        self._no_line = False
+
+        self._targets_list = None
+        self._line_products_list = None
+        self._cont_products_list = None
+        self._interf_configs_list = None
+
+        self.set_targets(nobuild=True)
+        self.set_line_products(nobuild=True)
+        self.set_cont_products(nobuild=True)
+        self.set_interf_configs(nobuild=True)
+
+        self._build_lists()
+
+        self.set_dry_run(dry_run)
+
+        return()
     
+#region Control what data gets processed
+
+    ########################################
+    # Set up loop and processing variables #
+    ########################################
+
+    def set_targets(
+        self, 
+        first=None, 
+        last=None, 
+        skip=[], 
+        only=[],
+        nobuild=False):
+        """
+        Set conditions on the list of targets to be considered when a
+        loop is run. By default, consider all targets.
+        """
+        self._targets_first = first
+        self._targets_last = last
+        self._targets_skip = skip
+        self._targets_only = only
+
+        if not nobuild:
+            self._build_lists()
+        return(None)
+
+    def set_line_products(
+        self, 
+        skip=[], 
+        only=[], 
+        nobuild=False,
+        ):
+        """
+        Set conditions on the list of line products to be considered
+        when a loop is run. By default, consider all products.
+        """
+        self._lines_skip = skip
+        self._lines_only = only
+
+        if not nobuild:
+            self._build_lists()
+        return(None)
+
+    def set_cont_products(
+        self, 
+        skip=[], 
+        only=[], 
+        nobuild=False,
+        ):
+        """
+        Set conditions on the list of continuum products to be
+        considered when a loop is run. By default, consider all
+        products.
+        """
+        self._cont_skip = skip
+        self._cont_only = only
+
+        if not nobuild:
+            self._build_lists()
+        return(None)
+
+    def set_interf_configs(
+        self, 
+        skip=[], 
+        only=[], 
+        nobuild=False,
+        ):
+        """
+        Set conditions on the list of interferometric array
+        configurations to be considered when a loop is run. By
+        default, consider all configurations.
+        """
+        self._interf_configs_skip = skip
+        self._interf_configs_only = only
+
+        if not nobuild:
+            self._build_lists()
+        return(None)
+
+    def set_no_line(
+        self,
+        no_line = False):
+        """
+        Toggle the program to skip all line products when a loop or
+        task is run.
+        """
+        self._no_line = no_line
+        self._build_lists()
+
+    def set_no_cont(
+        self,
+        no_cont = False):
+        """
+        Toggle the program to skip all continuum products when a
+        loop is run.
+        """
+        self._no_cont = no_cont
+        self._build_lists()
+
+    def set_dry_run(
+        self,
+        dry_run = False):
+        """
+        Toggle the program to execute a 'dry run.' In this case it
+        will not actually execute calls but will run through loops,
+        print messages, etc..
+        """
+        self._dry_run = dry_run
+
+    def set_key_handler(
+        self,
+        key_handler = None):
+        """
+        Set the keyhandler object being used by the pipeline. The
+        keyhandler object interaces with configuration files, target
+        lists, etc.
+        """
+        self._kh = key_handler
+        self._build_lists()
+
+    def _build_lists(
+        self
+        ):
+        """
+        Build the lists of targets, products, and configurations to
+        loop over when a loop is run.
+        """
+
+        if self._kh is None:
+            logger.error("Cannot build lists without a keyHandler.")
+            return(None)
+
+        self._targets_list = self._kh.get_targets(
+            only = self._targets_only,
+            skip = self._targets_skip,
+            first = self._targets_first,
+            last = self._targets_last,
+            )
+
+        if self._no_line:
+            self._line_products_list = []
+        else:
+            self._line_products_list = self._kh.get_line_products(
+                only = self._lines_only,
+                skip = self._lines_skip,
+                )
+
+        if self._no_cont:
+            self._cont_products_list = []
+        else:
+            self._cont_products_list = self._kh.get_continuum_products(
+                only = self._cont_only,
+                skip = self._cont_skip,
+                )
+
+        self._interf_configs_list = self._kh.get_interf_configs(
+            only = self._interf_configs_only,
+            skip = self._interf_configs_skip,
+            )
+
+        return()
+
+    def _all_products(
+        self
+        ):
+        """
+        Get a combined list of line and continuum products to be
+        considered.
+        """
+
+        if self._cont_products_list is None:
+            if self._line_products_list is None:
+                return([])
+            else:
+                return(self._line_products_list)
+
+        if self._line_products_list is None:
+            if self._cont_products_list is None:
+                return([])
+            else:
+                return(self._cont_products_list)
+
+        if len(self._cont_products_list) is 0:
+            if self._line_products_list is None:
+                return ([])
+            else:
+                return(self._line_products_list)
+
+        if len(self._line_products_list) is 0:
+            if self._cont_products_list is None:
+                return([])
+            else:
+                return(self._cont_products_list)
+        
+        return(self._line_products_list + self._cont_products_list)
+
+#endregion
+
     
     #############
     # copy_data #
@@ -284,7 +350,7 @@ class uvDataHandler:
         
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         
@@ -293,8 +359,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -307,7 +373,7 @@ class uvDataHandler:
                     this_ms_data = this_ms_dict[this_proj_tag][this_array_tag]
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # print debug info
                     logger.debug('Target '+this_target_ms_name+', proj '+this_proj_tag+', array '+this_array_tag+', ms data '+this_ms_data+', imaging dir '+this_imaging_dir)
@@ -330,11 +396,11 @@ class uvDataHandler:
                     # 
                     # find ms data absolute path
                     this_ms_data_abspath = ''
-                    for ms_root in self.key_handler._ms_roots:
+                    for ms_root in self._kh._ms_roots:
                         if os.path.isdir(os.path.join(ms_root, this_ms_data)):
                             this_ms_data_abspath = os.path.abspath(os.path.join(ms_root, this_ms_data))
                     if this_ms_data_abspath == '':
-                        logger.error('Could not find the measurement set "'+this_ms_data+'" under keyHandler._ms_roots "'+str(self.key_handler._ms_roots)+'"!')
+                        logger.error('Could not find the measurement set "'+this_ms_data+'" under keyHandler._ms_roots "'+str(self._kh._ms_roots)+'"!')
                         raise Exception('Could not find the measurement set! Please check your ms_root in master_key.txt and the ms_file_key.txt!')
                     # 
                     # check imaging directory
@@ -406,7 +472,7 @@ class uvDataHandler:
         
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         # 
@@ -414,10 +480,10 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get imaging dir
-            this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+            this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
             # 
             # find custom staging scripts under config key directory
-            scripts_for_this_gal = glob.glob(os.path.join(self.key_handler._key_dir, 'custom_staging_scripts', this_target_ms_name+'_staging_script.py'))
+            scripts_for_this_gal = glob.glob(os.path.join(self._kh._key_dir, 'custom_staging_scripts', this_target_ms_name+'_staging_script.py'))
             # 
             # print starting message
             if not quiet:
@@ -471,7 +537,7 @@ class uvDataHandler:
         
         # 
         # get lines
-        lines = self.key_handler.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
+        lines = self._kh.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
         if len(lines) == 0:
             if just_line is not None:
                 logger.error('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
@@ -495,7 +561,7 @@ class uvDataHandler:
             target_width['co21'] = 2.5
             target_width['13co21'] = 2.5
             target_width['c18o21'] = 6.0
-            target_width[line] = self.key_handler._config_dict['line_product'][line]['channel']
+            target_width[line] = self._kh._config_dict['line_product'][line]['channel']
             # 
             # set edge_for_statwt <TODO>
             edge_for_statwt = {}
@@ -575,8 +641,8 @@ class uvDataHandler:
         
         # 
         # get vsys and vwidth from key_handler as defined in "target_definitions.txt"
-        gal_vsys = self.key_handler._target_dict[gal]['vsys']
-        gal_vwidth = self.key_handler._target_dict[gal]['vwidth']
+        gal_vsys = self._kh._target_dict[gal]['vsys']
+        gal_vwidth = self._kh._target_dict[gal]['vwidth']
         # 
         # if user has not input a vsys, then we use what is defined in the key_handler
         if vsys is None:
@@ -593,7 +659,7 @@ class uvDataHandler:
             logger.warning('Warning! User has input a vwidth of '+str(vwidth)+' km/s which is different from the vwidth of '+str(gal_vwidth)+' km/s for the galaxy "'+gal+'" in the key_handler as defined in "target_definitions.txt"!')
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         # 
@@ -601,8 +667,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -612,7 +678,7 @@ class uvDataHandler:
                 for this_array_tag in this_ms_dict[this_proj_tag].keys():
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # do some variable renaming
                     this_proj = this_proj_tag
@@ -645,7 +711,7 @@ class uvDataHandler:
                     if not os.path.isfile(line_list_file):
                         lines_in_ms = cvr.list_lines_in_ms(in_file = in_file,
                                                            gal = gal, 
-                                                           key_handler = self.key_handler, 
+                                                           key_handler = self._kh, 
                                                            quiet = quiet)
                         if lines_in_ms is None:
                             lines_in_ms = []
@@ -668,7 +734,7 @@ class uvDataHandler:
                                          vsys = vsys, 
                                          vwidth = vwidth, 
                                          gal = gal, 
-                                         key_handler = self.key_handler, 
+                                         key_handler = self._kh, 
                                          chan_fine = chan_fine, 
                                          rebin_factor = rebin_factor, 
                                          do_statwt = do_statwt, 
@@ -720,7 +786,7 @@ class uvDataHandler:
         
         # 
         # get lines
-        lines = self.key_handler.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
+        lines = self._kh.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
         if len(lines) == 0:
             if just_line is not None:
                 logger.error('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
@@ -821,7 +887,7 @@ class uvDataHandler:
         
         # 
         # get imaging dir
-        this_gal_imaging_dir = self.key_handler.get_imaging_dir_for_target(gal)
+        this_gal_imaging_dir = self._kh.get_imaging_dir_for_target(gal)
         logger.info('Imaging dir: '+this_gal_imaging_dir)
         # 
         # prepare the output file name
@@ -846,7 +912,7 @@ class uvDataHandler:
         files_to_concat = []
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         # 
@@ -854,8 +920,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -865,7 +931,7 @@ class uvDataHandler:
                 for this_array_tag in this_ms_dict[this_proj_tag].keys():
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # do some variable renaming
                     this_proj = this_proj_tag
@@ -956,7 +1022,7 @@ class uvDataHandler:
         
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         
@@ -965,8 +1031,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -976,7 +1042,7 @@ class uvDataHandler:
                 for this_array_tag in this_ms_dict[this_proj_tag].keys():
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # do some variable renaming
                     this_proj = this_proj_tag
@@ -1010,7 +1076,7 @@ class uvDataHandler:
                         this_chanwidth = cvr.chanwidth_for_line(in_file = this_vis,
                                                                 line = line,
                                                                 gal = gal, 
-                                                                key_handler = self.key_handler, 
+                                                                key_handler = self._kh, 
                                                                 quiet = quiet)
                         if this_chanwidth is None:
                             this_chanwidth = []
@@ -1051,9 +1117,9 @@ class uvDataHandler:
         #    vsys = mosaic_parms[gal]['vsys']
         #    vwidth = mosaic_parms[gal]['vwidth']
         # 
-        # Get galaxy vsys and vwidth from self.key_handler
-        gal_vsys = self.key_handler._target_dict[gal]['vsys']
-        gal_vwidth = self.key_handler._target_dict[gal]['vwidth']
+        # Get galaxy vsys and vwidth from self._kh
+        gal_vsys = self._kh._target_dict[gal]['vsys']
+        gal_vwidth = self._kh._target_dict[gal]['vwidth']
         # 
         # Rebinning factor
         rat = target_width / interpolate_cw
@@ -1175,8 +1241,8 @@ class uvDataHandler:
         
         # 
         # get vsys and vwidth from key_handler as defined in "target_definitions.txt"
-        gal_vsys = self.key_handler._target_dict[gal]['vsys']
-        gal_vwidth = self.key_handler._target_dict[gal]['vwidth']
+        gal_vsys = self._kh._target_dict[gal]['vsys']
+        gal_vwidth = self._kh._target_dict[gal]['vwidth']
         # 
         # if user has not input a vsys, then we use what is defined in the key_handler
         if vsys is None:
@@ -1187,7 +1253,7 @@ class uvDataHandler:
             vwidth = gal_vwidth
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         # 
@@ -1195,8 +1261,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -1206,7 +1272,7 @@ class uvDataHandler:
                 for this_array_tag in this_ms_dict[this_proj_tag].keys():
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # do some variable renaming
                     this_proj = this_proj_tag
@@ -1235,7 +1301,7 @@ class uvDataHandler:
                     # get candidate lines for each ms data
                     #lines_in_ms = cvr.list_lines_in_ms(in_file = in_file,
                     #                                   gal = gal, 
-                    #                                   key_handler = self.key_handler, 
+                    #                                   key_handler = self._kh, 
                     #                                   quiet = quiet)
                     # 
                     # extract_continuum
@@ -1245,7 +1311,7 @@ class uvDataHandler:
                                           vsys = vsys, 
                                           vwidth = vwidth, 
                                           gal = gal, 
-                                          key_handler = self.key_handler, 
+                                          key_handler = self._kh, 
                                           do_statwt = do_statwt, 
                                           do_collapse = do_collapse, 
                                           quiet = quiet, 
@@ -1366,7 +1432,7 @@ class uvDataHandler:
         
         # 
         # get imaging dir
-        this_gal_imaging_dir = self.key_handler.get_imaging_dir_for_target(gal)
+        this_gal_imaging_dir = self._kh.get_imaging_dir_for_target(gal)
         logger.info('Imaging dir: '+this_gal_imaging_dir)
         # 
         # prepare the output file name
@@ -1384,7 +1450,7 @@ class uvDataHandler:
         files_to_concat = []
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         # 
@@ -1392,8 +1458,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -1403,7 +1469,7 @@ class uvDataHandler:
                 for this_array_tag in this_ms_dict[this_proj_tag].keys():
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # do some variable renaming
                     this_proj = this_proj_tag
@@ -1476,7 +1542,7 @@ class uvDataHandler:
         
         # 
         # get lines
-        lines = self.key_handler.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
+        lines = self._kh.get_line_products(only = just_line) # if just_line is None, then it will return all lines.
         if len(lines) == 0:
             if just_line is not None:
                 logger.error('Error! Could not find the input line "'+str(just_line)+'" in the line names as defined in "config_definitions.txt"!')
@@ -1493,7 +1559,7 @@ class uvDataHandler:
             logger.info("--------------------------------------------------------")
         # 
         # check multipart names for the input galaxy
-        this_target_multipart_names = self.key_handler.get_parts_for_linmos(gal)
+        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
         if this_target_multipart_names is None:
             this_target_multipart_names = [gal]
         # 
@@ -1501,8 +1567,8 @@ class uvDataHandler:
         for this_target_ms_name in this_target_multipart_names:
             # 
             # get ms dict
-            #logger.debug('self.key_handler._ms_dict = '+str(self.key_handler._ms_dict))
-            this_ms_dict = self.key_handler._ms_dict[this_target_ms_name]
+            #logger.debug('self._kh._ms_dict = '+str(self._kh._ms_dict))
+            this_ms_dict = self._kh._ms_dict[this_target_ms_name]
             if len(this_ms_dict) == 0:
                 logger.error('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
                 raise Exception('The target '+this_target_ms_name+' does not have a valid ms key? Please check your ms_file_key.txt!')
@@ -1512,7 +1578,7 @@ class uvDataHandler:
                 for this_array_tag in this_ms_dict[this_proj_tag].keys():
                     # 
                     # get imaging dir
-                    this_imaging_dir = self.key_handler.get_imaging_dir_for_target(this_target_ms_name)
+                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
                     # 
                     # do some variable renaming
                     this_proj = this_proj_tag
@@ -1584,7 +1650,205 @@ class uvDataHandler:
             logger.info("--------------------------------------------------------")
             logger.info("END: Clean up staging.")
             logger.info("--------------------------------------------------------")
+
+# region Loops
+
+    ########################
+    # loop to stage uvdata #
+    ########################
     
+    # was stage_imaging
+    def loop_stage_uvdata(
+        self, 
+        do_copy = True, 
+        do_split = True, 
+        do_statwt = False, 
+        do_custom_scripts = True,
+        do_extract_lines = True, 
+        do_extract_cont = True, 
+        do_concat_lines = True, 
+        do_concat_cont = True, 
+        do_cleanup = True, 
+        use_symlink = True, 
+        make_directories=True,
+        ): 
+        """
+        Loops over the full set of targets, products, and
+        configurations to run the uv data staging. Toggle the parts of
+        the loop using the do_XXX booleans. Other choices affect the
+        algorithms used.
+        """
+        
+        if self._targets_list is None:            
+            logger.error("Need a target list.")
+            return(None)
+ 
+        if self._all_products is None:            
+            logger.error("Need a products list.")
+            return(None)
+
+        if make_directories:
+            self._kh.make_missing_directories(imaging=True)
+
+        # Loop within each operation. This ensures that any
+        # cross-linking between different targets, configurations,
+        # etc. is handled.
+        
+        if do_copy:
+            
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+                        self.copy_data(
+                            gal = gal, 
+                            just_proj = just_proj, 
+                            just_array = just_array, 
+                            just_ms = just_ms, 
+                            do_split = do_split, 
+                            do_statwt = do_statwt, 
+                            use_symlink = use_symlink, 
+                            overwrite = overwrite, 
+                            quiet = quiet, 
+                            )
+
+        if do_custom_scripts:
+
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+                        # Optionally, run custom scripts at this stage. This could, for
+                        # example, flag data or carry out uv continuum subtraction. The
+                        # line and continuum extensions defined here point the subsequent
+                        # programs at the processed data.
+                        self.custom_scripts(
+                            gal = gal, 
+                            )
+
+        if do_extract_lines:
+
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+
+                        # Extract lines, includes regridding and rebinning to the velocity
+                        # grid specified in the text file keys. Runs statwt afterwards,
+                        # the result is a bunch of line-only data sets but still
+                        # execution-by-execution.
+                        self.extract_lines(
+                            gal = gal, 
+                            just_array = just_array, 
+                            just_line = just_line, 
+                            quiet = quiet, 
+                            overwrite = overwrite, 
+                            )
+
+        if do_extract_cont:
+
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+                        # Extract the continuum, avoiding lines and averaging all
+                        # frequencies in each SPW together. This step also uses statwt to
+                        # empirically weight the data.
+                        self.extract_continuum(
+                            gal = gal, 
+                            just_array = just_array, 
+                            do_statwt = True,
+                            quiet = quiet, 
+                            overwrite = overwrite, 
+                            )
+
+        if do_concat_lines:
+
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+                        
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+                        # Concatenate the extracted lines into the measurement sets that
+                        # we will use for imaging. This step also makes a "channel 0"
+                        # measurement for each line.
+                        self.concat_lines(
+                            gal = gal, 
+                            just_array = just_array, 
+                            just_line = just_line, 
+                            quiet = quiet, 
+                            overwrite = overwrite, 
+                            )
+
+        if do_concat_cont:
+
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+                        
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+                        self.concat_continuum(
+                            gal = gal, 
+                            just_array = just_array, 
+                            quiet = quiet, 
+                            overwrite = overwrite, 
+                            )
+                        
+        if do_cleanup:
+
+            for this_target in self._targets_list:
+
+                for this_product in self._all_products():
+                    
+                    for this_config in self._interf_configs_list:
+                        
+                        # This needs to be refactored to a recipe,
+                        # passing the target, config, product.
+
+                        # Remove intermediate files. The big space-savers here are the
+                        # initial copies of the data. The data after frequency averaging
+                        # are smaller by a large factor (~10). For reference, re-copying
+                        # all of the PHANGS-ALMA LP takes less than a day on the OSU
+                        # system. Full line and continuum exraction takes longer. 
+
+                        self.cleanup_staging(
+                            gal = gal, 
+                            just_array = just_array, 
+                            quiet = quiet, 
+                            )
+                        
+        return()
+
+        # end of loop_stage
+
     
     
 

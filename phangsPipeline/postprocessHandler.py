@@ -1,4 +1,6 @@
 """
+PostProcessHandler
+
 The PHANGS pipeline to handle post-processing of cubes. Works through
 a single big class (the PostProcessHandler). This needs to be attached
 to a keyHandler to access the target, product, and configuration
@@ -12,15 +14,18 @@ calls to CASA from this class.
 
 import os
 import glob
-import casaCubeRoutines as ccr
-import casaMosaicRoutines as cmr
-import casaFeatherRoutines as cfr
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Replace this with a check on load in the future
 casa_enabled = True
+
+if casa_enabled:
+    import casaCubeRoutines as ccr
+    import casaMosaicRoutines as cmr
+    import casaFeatherRoutines as cfr
 
 class PostProcessHandler:
     """
@@ -33,11 +38,8 @@ class PostProcessHandler:
         self,
         key_handler = None,
         dry_run = False,
-        dochecks = True
         ):
 
-        self._dochecks = dochecks
-        
         self._targets_list = None
         self._mosaics_list = None
         self._line_products_list = None
@@ -1821,6 +1823,7 @@ class PostProcessHandler:
         feather_noapod=False,
         feather_before_mosaic=False,
         feather_after_mosaic=False,
+        make_directories=True,
         ):
         """
         Loops over the full set of targets, products, and
@@ -1836,6 +1839,9 @@ class PostProcessHandler:
         if self._all_products is None:            
             logger.error("Need a products list.")
             return(None)
+
+        if make_directories:
+            self._kh.make_missing_directories(postprocess=True)
 
         # Prepare the interferometer data that has imaging. Includes
         # staging the single dish data, making weights, etc.
