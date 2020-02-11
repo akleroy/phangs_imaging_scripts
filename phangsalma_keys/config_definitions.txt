@@ -12,12 +12,12 @@ line_product	13co21		13co21,2.5kms
 line_product	c18o21		c18o21,6.0kms
 cont_product	cont		co,13co,c18o,hcn,hcop
 
-interf_config	12m		12m
-interf_config	12m+7m		12m,7m
-interf_config	7m		7m
+interf_config	12m		12m;0.5,7.5,1.1
+interf_config	12m+7m		12m,7m;0.5,7.5,1.1
+interf_config	7m		7m;5.0,15.0,1.1
 
-feather_config	12m+7m+tp	12m+7m
-feather_config	7m+tp		7m
+feather_config	12m+7m+tp	12m+7m;0.5,7.5,1.1
+feather_config	7m+tp		7m;5.0,15.0,1.1
 
 # -----------------------------------
 # interf_config
@@ -25,10 +25,20 @@ feather_config	7m+tp		7m
 
 # An "interferometric configuration" to be imaged. This is an
 # aggregation of all uv from the arrays listed in "parameters." The
-# parameters are the individual arrays in a comma-delimited
-# list. uv-data are assigned to arrays in the measurement set key. So,
-# e.g., inteferometric configuration 12m+7m will combine 12m uv data
-# and 7m uv data and these will be imaged together.
+# parameters are: 
+
+# (1) the individual arrays in a comma-delimited list. uv-data are
+# assigned to arrays in the measurement set key. So, e.g.,
+# inteferometric configuration 12m+7m will combine 12m uv data and 7m
+# uv data and these will be imaged together.
+
+# (2) then, after a semicolon the minimum scale [in arcsec], maximimum
+# scale [in arcsec], and multiplicative factor step to be used in
+# product creation.
+
+# So:
+
+# interf_config config_name array1,array2;min_scale,max_scale,step
 
 # -----------------------------------
 # feather_config
