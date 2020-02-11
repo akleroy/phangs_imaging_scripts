@@ -12,12 +12,12 @@ line_product	13co21		13co21,2.5kms
 line_product	c18o21		c18o21,6.0kms
 cont_product	cont		co,13co,c18o,hcn,hcop
 
-interf_config	12m		12m;0.5,7.5,1.1
-interf_config	12m+7m		12m,7m;0.5,7.5,1.1
-interf_config	7m		7m;5.0,15.0,1.1
+interf_config	12m		12m;0.5arcsec,7.5arcsec,1.1
+interf_config	12m+7m		12m,7m;0.5arcsec,7.5arcsec,1.1
+interf_config	7m		7m;5.0arcsec,15.0arcsec,1.1
 
-feather_config	12m+7m+tp	12m+7m;0.5,7.5,1.1
-feather_config	7m+tp		7m;5.0,15.0,1.1
+feather_config	12m+7m+tp	12m+7m;0.5arcsec,7.5arcsec,1.1
+feather_config	7m+tp		7m;5.0arcsec,15.0arcsec,1.1
 
 # -----------------------------------
 # interf_config
