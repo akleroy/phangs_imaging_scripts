@@ -7,6 +7,8 @@ structure, etc. This part is pure python.
 import os
 import glob
 import ast
+import numpy as np
+from math import floor
 
 try:
     import line_list as ll
@@ -1594,6 +1596,49 @@ class KeyHandler:
             return(None)
 
         return(feather_config_dict[feather_config]['interf_config'])
+
+    def get_res_for_config(
+        self,
+        config=None,
+        ):
+        """
+        Return the resolutions used for convolution and product
+        creation for an interferometric or feather configuration.
+        """
+        
+        if config is None:
+            return(None)
+
+        if config in self._config_dict['interf_config'].keys():
+            this_dict = self._config_dict['interf_config'][config]
+        elif config in self._config_dict['feather_config'].keys():
+            this_dict = self._config_dict['feather_config'][config]
+        else:
+            return(None)
+        
+        min_res = this_dict['res_min_arcsec']
+        max_res = this_dict['res_max_arcsec']
+        step = this_dict['res_step_factor']
+
+        max_steps = np.log10(max_res/min_res)/np.log10(step)+1
+        res_array = min_res*step**(np.arange(0.,max_steps,1))
+        res_array = res_array[res_array <= max_res]
+
+        return(res_array)
+
+    def get_tag_for_res(
+        self,
+        res=None,
+        ):
+        """
+        Return a string in the format we use for filenames given a float resolution in arcseconds.
+        """
+
+        sigfigs = 2
+
+        res_str = str(int(floor(res)))+'p'+str(int(round((res-floor(res))*10**sigfigs))).zfill(sigfigs)
+        
+        return(res_str)
 
     def print_configs(
         self
