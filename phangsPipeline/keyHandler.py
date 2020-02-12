@@ -6,6 +6,7 @@ structure, etc. This part is pure python.
 
 import os
 import glob
+import ast
 
 try:
     import line_list as ll
@@ -634,7 +635,7 @@ class KeyHandler:
             words = line.split()
             if len(words) != 3:
                 logger.warning("Skipping line because it does not match configuration definition format.")
-                logger.warning("Format is space delimited: vis_file param new_value .")
+                logger.warning("Format is space delimited: config_type config_name params_as_dict .")
                 logger.warning("Line is: ")
                 logger.warning(line)
                 continue
@@ -651,41 +652,71 @@ class KeyHandler:
             if (this_type in self._config_dict.keys()) == False:
                 self._config_dict[this_type] = {}
 
-            # Check if the particular entry already exists
+            # Initialize a configuration on the first entry - configs can have several lines
             if (this_value not in self._config_dict[this_type].keys()):
                 self._config_dict[this_type][this_value] = {}
-            else:
-                logger.warning("Got a repeat configuration definition of "+this_type+" "+this_value)
-                logger.warning("... using the latest one, but this may be a problem.")
 
-            # Now do logic on particular types of setups.
+            # Parse the parameters as a literal
+            try:
+                this_params_dict = ast.literal_eval(this_params)
+            except:
+                logger.error("Could not parse parameters as a dictionary.")
+                logger.error("Line is: ")
+                logger.error(line)
+                continue
+
+            # Now read in parameters. To do this, define templates for
+            # expected fields and data types for each type of
+            # configuration. Check to match these.
 
             if this_type == "interf_config":
-                arrays_to_include = this_params.split(',')
-                self._config_dict[this_type][this_value]['arrays'] = \
-                    arrays_to_include
+                expected_params = {
+                    'array_tags':[],
+                    'res_min_arcsec':0.0,
+                    'res_max_arcsec':0.0,
+                    'res_step_factor':1.0,
+                    'clean_scales_arcsec':[]}
 
             if this_type == "feather_config":
-                arrays_to_include = this_params
-                self._config_dict[this_type][this_value]['interf_config'] = \
-                    arrays_to_include
+                expected_params = {
+                    'interf_config':'',
+                    'res_min_arcsec':0.0,
+                    'res_max_arcsec':0.0,
+                    'res_step_factor':1.0}
 
             if this_type == "line_product":
-                defn = this_params.split(',')
-                self._config_dict[this_type][this_value]['line'] = \
-                    defn[0]
-                channel = float((defn[1].split('kms'))[0])
-                self._config_dict[this_type][this_value]['channel'] = \
-                    channel
+                expected_params = {
+                    'line_tag':'',
+                    'channel_kms':0.0}
                 
             if this_type == "cont_product":
-                lines_to_flag = this_params.split(',')
-                self._config_dict[this_type][this_value]['lines_to_flag'] = \
-                    lines_to_flag
+                expected_params = {
+                    'lines_to_flag':[]}                
+
+            # Check configs for expected name and data type
+                
+            for this_key in this_params_dict.keys():
+                if this_key not in expected_params.keys():
+                    logger.error('Got an unexpected parameter key.')
+                    logger.error('Line is:')
+                    logger.error(line)
+                    continue
+                if type(this_params_dict[this_key]) != type(expected_params[this_key]):
+                    logger.error('Got an unexpected parameter type for parameter '+str(this_key))
+                    logger.error('Line is:')
+                    logger.error(line)
+                    continue
+                if this_key in self._config_dict[this_type][this_value].keys():
+                    logger.debug("Got a repeat parameter definition for "+this_type+" "+this_value)
+                    logger.debug("Parameter "+this_key+" repeats. Using the latest value.")
+                    
+                self._config_dict[this_type][this_value][this_key] = this_params_dict[this_key]
 
             lines_read += 1
 
         infile.close()
+
+        # Can add more error checking here.
 
         logger.info("Read "+str(lines_read)+" lines into the configuration definition dictionary.")
 
@@ -1577,16 +1608,28 @@ class KeyHandler:
         logger.info("Interferometric Configurations")
         for this_config in self._config_dict['interf_config'].keys():
             logger.info("... "+this_config)
-            this_arrays = self._config_dict['interf_config'][this_config]['arrays']
+            this_arrays = self._config_dict['interf_config'][this_config]['array_tags']
             this_other_config = self._config_dict['interf_config'][this_config]['feather_config']
+            this_min_res = self._config_dict['interf_config'][this_config]['res_min_arcsec']
+            this_max_res = self._config_dict['interf_config'][this_config]['res_max_arcsec']
+            res_step_factor = self._config_dict['interf_config'][this_config]['res_step_factor']
+            scales_for_clean = self._config_dict['interf_config'][this_config]['clean_scales_arcsec']
             logger.info("... ... includes arrays "+str(this_arrays))
             logger.info("... ... maps to feather config "+str(this_other_config))
+            logger.info("... ... minimum, maximum resolution for products "+str(this_min_res)+' '+str(this_max_res))
+            logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
+            logger.info("... ... clean these scales in arcsec "+str(scales_for_clean))
 
         logger.info("Feather Configurations")
         for this_config in self._config_dict['feather_config'].keys():
             logger.info("... "+this_config)
             this_other_config = self._config_dict['feather_config'][this_config]['interf_config']
+            this_min_res = self._config_dict['feather_config'][this_config]['res_min_arcsec']
+            this_max_res = self._config_dict['feather_config'][this_config]['res_max_arcsec']
+            res_step_factor = self._config_dict['feather_config'][this_config]['res_step_factor']
             logger.info("... ... maps to interferometer config "+str(this_other_config))
+            logger.info("... ... minimum, maximum resolution for products "+str(this_min_res)+' '+str(this_max_res))
+            logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
 
         return()
 
@@ -1603,14 +1646,14 @@ class KeyHandler:
         logger.info("Continuum data products")
         for this_product in self._config_dict['cont_product'].keys():
             logger.info("... "+this_product)
-            lines_to_flag = self._config_dict['cont_product'][this_product]
+            lines_to_flag = self._config_dict['cont_product'][this_product]['lines_to_flag']
             logger.info("... ... lines to flag "+str(lines_to_flag))
 
         logger.info("Line data products")
         for this_product in self._config_dict['line_product'].keys():
             logger.info("... "+this_product)
-            channel_width = self._config_dict['line_product'][this_product]['channel']
-            line_name = self._config_dict['line_product'][this_product]['line']
+            channel_width = self._config_dict['line_product'][this_product]['channel_kms']
+            line_name = self._config_dict['line_product'][this_product]['line_tag']
             logger.info("... ... channel width [km/s] "+str(channel_width))
             logger.info("... ... line name code "+str(line_name))
 
