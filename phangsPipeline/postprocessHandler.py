@@ -760,7 +760,7 @@ class PostProcessHandler:
         logger.info("Convolving from "+infile)
         logger.info("Convolving to "+outfile)
         if force_beam_as is not None:
-            logger.info("Forcing beam to "+force_beam_as)
+            logger.info("Forcing beam to "+str(force_beam_as))
         
         if (not self._dry_run) and casa_enabled:
             ccr.convolve_to_round_beam(
@@ -1136,9 +1136,6 @@ class PostProcessHandler:
             if not (os.path.isdir(indir+infile)):
                 logger.warning("Missing "+infile)
                 return()
-            if not (os.path.isdir(indir+infile_pb)):
-                logger.warning("Missing "+infile_pb)
-                return()
 
         # Compress, reducing cube volume.
 
@@ -1162,6 +1159,11 @@ class PostProcessHandler:
 
         if do_pb_too is False:
             return()
+
+        if check_files:
+            if not (os.path.isdir(indir+infile_pb)):
+                logger.warning("Missing "+infile_pb)
+                return()
             
         template = fname_dict_out['pbcorr_trimmed']
 
@@ -1250,8 +1252,8 @@ class PostProcessHandler:
         target = None,
         product = None,
         config = None,
-        in_tag = 'pbcorr_trimmed',
-        out_tag = 'pbcorr_trimmed_k',
+        in_tag = 'pbcorr_trimmed_k',
+        out_tag = 'pbcorr_trimmed_k_fits',
         do_pb_too = True,
         in_pb_tag = 'trimmed_pb',
         out_pb_tag = 'trimmed_pb_fits',
@@ -1314,13 +1316,13 @@ class PostProcessHandler:
 
         # Check input file existence        
 
+        infile_pb = fname_dict_in[in_pb_tag]
+        outfile_pb = fname_dict_out[out_pb_tag]
+
         if check_files:
             if not (os.path.isdir(indir+infile_pb)):
                 logger.warning("Missing "+infile_pb)
                 return()
-
-        infile_pb = fname_dict_in[in_pb_tag]
-        outfile_pb = fname_dict_out[out_pb_tag]
 
         logger.info("Writing from primary beam "+infile_pb)
         logger.info("Writing output primary beam "+outfile_pb)
@@ -1773,22 +1775,22 @@ class PostProcessHandler:
         as a FITS file.
         """
 
-        self.task_convert_units(
-            target=target, config=config, product=product,
-            check_files=check_files,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext_out,
-            )
-
         self.task_compress(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext_out,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
+            )
+
+        self.task_convert_units(
+            target=target, config=config, product=product,
+            check_files=check_files,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
             )
 
         self.task_export_to_fits(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext_out,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
             )
 
         return()
@@ -1798,15 +1800,38 @@ class PostProcessHandler:
         target = None,
         product = None,
         config = None,
-        check_files = True,
         ext_ext = '',
+        export_to_fits = True,
+        check_files = True,
         ):
         """
         Convolve a target, product, config combination to a succession
         of angulars scale using the task that convolves to a round
         beam.
         """        
-        pass
+
+        res_list = self._kh.get_res_for_config(config)
+
+        for this_res in res_list:
+            
+            res_tag = self._kh.get_tag_for_res(this_res)
+            
+            # Check if the requested beam is smaller than the current one
+
+            self.task_round_beam(
+                target=target, config=config, product=product,
+                in_tag = 'pbcorr_trimmed_k', out_tag = 'pbcorr_trimmed_k',
+                extra_ext_in=ext_ext, extra_ext_out=ext_ext+'_res'+res_tag,
+                force_beam_as=this_res,
+                check_files=check_files
+                )
+
+            if export_to_fits:
+                self.task_export_to_fits(
+                    target=target, config=config, product=product,
+                    check_files=check_files, do_pb_too=True,
+                    extra_ext_in=ext_ext+'_res'+res_tag, extra_ext_out=ext_ext+'_res'+res_tag,
+                    )
 
 #endregion
 
@@ -2028,6 +2053,6 @@ class PostProcessHandler:
                         
                         self.recipe_convolve_to_scale(
                             target = this_target, product = this_product, config = this_config,
-                            check_files = True)
+                            check_files = True, export_to_fits = True)
 
 #endregion
