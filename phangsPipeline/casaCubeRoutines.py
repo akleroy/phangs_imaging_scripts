@@ -278,8 +278,6 @@ def primary_beam_correct(
     Construct a primary-beam corrected image.
     """
     
-    this_stub = 'PRIMARY_BEAM_CORRECT: '
-
     if infile is None or pbfile is None or outfile is None:
         logger.error("Missing required input.")
         return(False)
@@ -363,8 +361,6 @@ def convolve_to_round_beam(
     that beam to some size, else it figures out the beam.
     """
     
-    this_stub = 'CONVOLVE_TO_ROUND_BEAM: '
-
     if infile is None or outfile is None:
         logger.error("Missing required input.")
         return(None)
@@ -373,22 +369,27 @@ def convolve_to_round_beam(
         logger.error("Input file missing - "+infile)
         return(None)
 
+    hdr = casa.imhead(infile)
+    
+    if (hdr['axisunits'][0] != 'rad'):
+        logger.error("Based on CASA experience. I expected units of radians. I did not find this.")
+        logger.error("Adjust code or investigate file "+infile)
+        return(None)
+    pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
+
+    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+        logger.error("Based on CASA experience. I expected units of arcseconds for the beam. I did not find this.")
+        logger.error("Adjust code or investigate file "+infile)
+        return(None)
+    bmaj = hdr['restoringbeam']['major']['value']    
+
     if force_beam is None:
-        hdr = casa.imhead(infile)
-
-        if (hdr['axisunits'][0] != 'rad'):
-            logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
-            logger.error("Adjust code or investigate file "+infile)
-            return(None)
-        pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
-
-        if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-            logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
-            logger.error("Adjust code or investigate file "+infile)
-            return(None)
-        bmaj = hdr['restoringbeam']['major']['value']    
         target_bmaj = np.sqrt((bmaj)**2+(2.0*pixel_as)**2)
     else:
+        min_bmaj = np.sqrt((bmaj)**2+(2.0*pixel_as)**2)
+        if force_beam < min_bmaj:
+            logger.warning("Requested beam is too small for convolution.")
+            return(None)            
         target_bmaj = force_beam
 
     casa.imsmooth(imagename=infile,
@@ -414,8 +415,6 @@ def calc_jytok(
     Calculate the Jy/beam -> Kelvin conversion. Accepts a header
     already read using imhead or a file name that it will parse.
     """
-
-    this_stub = 'CALC_JYTOK: '
 
     c = 2.99792458e10
     h = 6.6260755e-27
@@ -461,8 +460,6 @@ def convert_jytok(
     """
     Convert a cube from Jy/beam to K.
     """
-
-    this_stub = 'CONVERT_JYTOK: '
 
     if infile is None or (outfile is None and inplace==False):
         logger.error("Missing required input.")
