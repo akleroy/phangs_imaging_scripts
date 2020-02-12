@@ -5,19 +5,34 @@
 
 # Column 1: type of field
 # Column 2: name (this can be anything, it appears in file names)
-# Column 3: parameters (this has specific syntax known by the pipeline)
+# Column 3: parameters (write as literal dictionaries with no spaces)
 
-line_product	co21		co21,2.5kms
-line_product	13co21		13co21,2.5kms
-line_product	c18o21		c18o21,6.0kms
-cont_product	cont		co,13co,c18o,hcn,hcop
+# Configurations can span multiple lines, in which case the parameters
+# are accumulated across all lines.
 
-interf_config	12m		12m;0.5arcsec,7.5arcsec,1.1
-interf_config	12m+7m		12m,7m;0.5arcsec,7.5arcsec,1.1
-interf_config	7m		7m;5.0arcsec,15.0arcsec,1.1
+line_product	co21		{'line_tag':'co21','channel_kms':2.5}
+line_product	13co21		{'line_tag':'13co21','channel_kms':2.5}
+line_product	c18o21		{'line_tag':'c18o21','channel_kms':6.0}
 
-feather_config	12m+7m+tp	12m+7m;0.5arcsec,7.5arcsec,1.1
-feather_config	7m+tp		7m;5.0arcsec,15.0arcsec,1.1
+cont_product	cont		{'lines_to_flag':['co','13co','c18o','hcn','hcop']}
+
+interf_config	12m		{'array_tags':['12m']}
+interf_config	12m		{'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+interf_config	12m		{'clean_scales_arcsec':[0,1,2.5,5.0]}
+
+interf_config	12m+7m		{'array_tags':['12m','7m']}
+interf_config	12m+7m		{'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+interf_config	12m+7m		{'clean_scales_arcsec':[0,1,2.5,5.0,10.0]}
+
+interf_config	7m		{'array_tags':['7m']}
+interf_config	7m		{'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
+interf_config	7m		{'clean_scales_arcsec':[0,5.0,10.0]}
+
+feather_config	12m+7m+tp	{'interf_config':'12m+7m'}
+feather_config	12m+7m+tp	{'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+
+feather_config	7m+tp		{'interf_config':'7m'}
+feather_config	7m+tp		{'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
 
 # -----------------------------------
 # interf_config
