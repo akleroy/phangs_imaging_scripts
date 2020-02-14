@@ -400,13 +400,13 @@ class HandlerTemplate:
 
     def looper(
         self,
-        targets=True,
-        products=True,
-        just_line=True,
-        just_cont=True,
-        configs=True,
-        just_interf=True,
-        just_feather=True
+        do_targets=True,
+        do_products=True,
+        just_line=False,
+        just_cont=False,
+        do_configs=True,
+        just_interf=False,
+        just_feather=False,
         ):
         """
         Return (target, product, config) tuples for all selected
@@ -424,7 +424,7 @@ class HandlerTemplate:
         if just_cont and not just_line:
             product_list = self.get_cont_products()
             
-        config_list = get_all_configs()
+        config_list = self.get_all_configs()
         if just_interf and just_feather:
             logger.error("Both just_interf and just_feather set. Defaulting to all configs.")
         if just_interf and not just_feather:
@@ -434,7 +434,7 @@ class HandlerTemplate:
 
         # All three quantities
 
-        if targets and products and configs:
+        if do_targets and do_products and do_configs:
             logger.info("Looping over target, product, and config.")
             for this_target in target_list:
                 for this_product in product_list:
@@ -443,19 +443,19 @@ class HandlerTemplate:
                 
         # Two quantity loop
 
-        if targets and products and not configs:
+        if do_targets and do_products and not do_configs:
             logger.info("Looping over target and product.")
             for this_target in target_list:
                 for this_product in product_list:
                     yield this_target, this_product
 
-        if targets and configs and not products:
+        if do_targets and do_configs and not do_products:
             logger.info("Looping over target and config.")
             for this_target in target_list:
                 for this_config in config_list:
                     yield this_target, this_config
 
-        if product and configs and not targets:
+        if do_products and do_configs and not do_targets:
             logger.info("Looping over product and config.")
             for this_product in product_list:
                 for this_config in config_list:
@@ -463,17 +463,17 @@ class HandlerTemplate:
 
         # Single quantity loop
 
-        if targets and not configs and not products:
+        if do_targets and not do_configs and not do_products:
             logger.info("Looping over target.")
             for this_target in target_list:
                 yield this_target
 
-        if configs and not targets and not products:
+        if do_configs and not do_targets and not do_products:
             logger.info("Looping over config.")
             for this_config in config_list:
                 yield this_config
 
-        if products and not targets and not configs:
+        if do_products and not do_targets and not do_configs:
             logger.info("Looping over product.")
             for this_product in product_list:
                 yield this_product
