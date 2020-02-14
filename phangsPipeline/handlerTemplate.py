@@ -24,6 +24,20 @@ class HandlerTemplate:
         ):
 
         # Initialize lists
+
+        self._targets_first = None
+        self._targets_last = None
+        self._targets_skip = None
+        self._targets_only = None
+        self._cont_skip = None
+        self._cont_only = None
+        self._lines_skip = None
+        self._lines_only = None
+        self._interf_configs_skip = None
+        self._interf_configs_only = None
+        self._feather_configs_skip = None
+        self._feather_configs_only = None
+
         self._targets_list = []
         self._line_products_list = []
         self._cont_products_list = []
