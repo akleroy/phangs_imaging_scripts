@@ -1704,18 +1704,55 @@ class KeyHandler:
 
         return()        
 
-    def get_overrides(self, key=None, param=None):
+    def has_overrides_for_key(self, key=None):
+        """Check whether the override dictionary contains the input key or not.
+        
+        The key is usually a file name or a galaxy name.
+        """
+        
+        if self._override_dict is None:
+            return False
+
+        # check key
+        if key is None:
+            return False
+        
+        # check key
+        if key in self._override_dict:
+            return True
+        else:
+            return False
+    
+    def get_overrides(self, key=None, param=None, default=None):
         """
         Check the override dictionary for entries given some key,
         parameter pair.
         """
         
         if self._override_dict is None:
-            return(None)
+            return default
 
-        # TBD
-
-        pass
+        # check key and param
+        if key is None and param is None:
+            logger.error('Please input key and param to get overrides!')
+            raise Exception('Please input key and param to get overrides!')
+            return default
+        
+        # check key in override dict or not
+        if not (key in self._override_dict):
+            logger.warning('Warning! The input key "'+str(key)+'" is not in the overrides file!')
+            return default
+        
+        # if user has input key only, return the dict
+        if param is None:
+            logger.warning('Warning! Only has key input when getting overrides! Will return the override dictionary for this key "'+str(key)+'".')
+            return self._override_dict[key] #<TODO># dzliu: what if user has just input a key?
+        
+        if not (param in self._override_dict[key]):
+            logger.warning('Warning! The input key "'+str(key)+'" is not in the overrides file!')
+            return default
+        
+        return self._override_dict[key][param]
 
 #endregion
     

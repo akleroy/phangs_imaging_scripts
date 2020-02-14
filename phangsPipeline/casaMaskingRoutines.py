@@ -3,11 +3,18 @@ Stand alone routines to carry out basic noise estimation, masking, and
 mask manipulation steps in CASA.
 """
 
+# 
+# 20200210 dzliu: moved "stat_clean_cube()" to here, as it is required by "signal_mask()"
+# 20200210 dzliu: changed "casa." to "casaStuff.", as "casa" is a dict used by CASA itself.
+# 20200210 dzliu: changed "print +(.*)$" to "logger.info(\1)"
+# 
+
 #region Imports and definitions
 
 import os
 import numpy as np
 from scipy.special import erfc
+import scipy.ndimage as ndimage
 import pyfits # CASA has pyfits, not astropy
 import glob
 
@@ -19,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 
 # CASA stuff
-import casaStuff as casa
+import casaStuff
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -169,7 +176,7 @@ def noise_for_cube(
             logger.error('maskfile specified but not found - '+maskfile)
             return(None)
             
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(infile)
     data = myia.getchunk()
     mask = myia.getchunk(getmask=True)
@@ -234,7 +241,31 @@ def noise_map(
 
 #endregion
 
+
+
+
+
+
+
+
+
 #region Mask creation and manipulation
+
+def stat_clean_cube(
+    cube_file=None, 
+    ):
+    """
+    Calculate statistics for an image cube.
+    """
+    if cube_file == None:
+        logger.info("No cube file specified. Returning")
+        return
+    
+    imstat_dict = casaStuff.imstat(cube_file)
+    
+    return imstat_dict
+
+
 
 def signal_mask(
     cube_root=None,
@@ -250,19 +281,20 @@ def signal_mask(
     """
     
     if os.path.isdir(cube_root+'.image') == False:
-        print 'Need CUBE_ROOT.image to be an image file.'
-        print 'Returning. Generalize the code if you want different syntax.'
+        logger.error('Data file not found: "'+cube_root+'.image'+'"')
+        logger.info('Need CUBE_ROOT.image to be an image file.')
+        logger.info('Returning. Generalize the code if you want different syntax.')
         return
 
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root+'.mask') == True:
             myia.open(cube_root+'.mask')
             old_mask = myia.getchunk()
             myia.close()
         else:
-            print "Operation AND/OR requested but no previous mask found."
-            print "... will set operation=NEW."
+            logger.info("Operation AND/OR requested but no previous mask found.")
+            logger.info("... will set operation=NEW.")
             operation = 'NEW'    
 
     if os.path.isdir(cube_root+'.residual') == True:
@@ -273,7 +305,7 @@ def signal_mask(
     hi_thresh = high_snr*rms
     low_thresh = low_snr*rms
 
-    header = imhead(cube_root+'.image')
+    header = casaStuff.imhead(cube_root+'.image')
     if header['axisnames'][2] == 'Frequency':
         spec_axis = 2
     else:
@@ -329,10 +361,10 @@ def apply_additional_mask(
     pb_limit as new_thresh.
     """
     if root_mask == None:
-        print "Specify a cube root file name."
+        logger.info("Specify a cube root file name.")
         return
 
-    myia = au.createCasaTool(casa.iatool)    
+    myia = au.createCasaTool(casaStuff.iatool)    
     myia.open(new_mask_file)
     new_mask = myia.getchunk()
     myia.close()
@@ -365,13 +397,13 @@ def import_and_align_mask(
 
     # Import from FITS (could make optional)
     os.system('rm -rf '+out_file+'.temp_copy')
-    importfits(fitsimage=in_file, 
+    casaStuff.importfits(fitsimage=in_file, 
                imagename=out_file+'.temp_copy'
                , overwrite=True)
 
     # Align to the template grid
     os.system('rm -rf '+out_file+'.temp_aligned')
-    imregrid(imagename=out_file+'.temp_copy', 
+    casaStuff.imregrid(imagename=out_file+'.temp_copy', 
              template=template, 
              output=out_file+'.temp_aligned', 
              asvelocity=True,
@@ -381,13 +413,13 @@ def import_and_align_mask(
 
     # Make an EXACT copy of the template, avoids various annoying edge cases
     os.system('rm -rf '+out_file)
-    myim = au.createCasaTool(imtool)
+    myim = au.createCasaTool(casaStuff.imtool)
     myim.mask(image=template, mask=out_file)
 
-    hdr = imhead(template)
+    hdr = casaStuff.imhead(template)
 
     # Pull the data out of the aligned mask and place it in the output file
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(out_file+'.temp_aligned')
     mask = myia.getchunk(dropdeg=True)
     myia.close()
@@ -408,7 +440,7 @@ def import_and_align_mask(
         myia.putchunk(data)
         myia.close()
     else:
-        print "ALERT! Did not find a case."
+        logger.info("ALERT! Did not find a case.")
 
     os.system('rm -rf '+out_file+'.temp_copy')
     os.system('rm -rf '+out_file+'.temp_aligned')
