@@ -56,8 +56,6 @@ class HandlerTemplate:
         # Toggle whether tasks are executed
         self.set_dry_run(dry_run)
 
-        return(None)
-
 #region Parameter toggles
 
     ##########################################
@@ -297,7 +295,7 @@ class HandlerTemplate:
         """
         Return the list of targets to consider.
         """
-        if self._targets_list in None:
+        if self._targets_list is None:
             return([])
         else:
             return(self._targets_list)
@@ -308,7 +306,7 @@ class HandlerTemplate:
         """
         Return the list of line products to consider.
         """
-        if self._line_products_list in None:
+        if self._line_products_list is None:
             return([])
         else:
             return(self._line_products_list)
@@ -319,7 +317,7 @@ class HandlerTemplate:
         """
         Return the list of continuum products to consider.
         """
-        if self._cont_products_list in None:
+        if self._cont_products_list is None:
             return([])
         else:
             return(self._cont_products_list)
@@ -346,7 +344,7 @@ class HandlerTemplate:
         """
         Return the list of interferometric configs to consider.
         """
-        if self._interf_configs_list in None:
+        if self._interf_configs_list is None:
             return([])
         else:
             return(self._interf_configs_list)
@@ -357,7 +355,7 @@ class HandlerTemplate:
         """
         Return the list of feather configs to consider.
         """
-        if self._feather_configs_list in None:
+        if self._feather_configs_list is None:
             return([])
         else:
             return(self._feather_configs_list)
@@ -376,6 +374,6 @@ class HandlerTemplate:
         if len(self._feather_configs_list) is 0:
             return(self._interf_configs_list)
         
-        return(self._line_products_list + self._cont_products_list)
+        return(self._interf_configs_list + self._feather_configs_list)
 
 #endregion
