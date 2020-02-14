@@ -14,7 +14,7 @@ pl.setup_logger(level='DEBUG', logfile=None)
 this_kh = kh.KeyHandler()
 this_kh.make_missing_directories(postprocess=True)
 this_pph = pph.PostProcessHandler(key_handler=this_kh, dry_run=True)
-this_pph.set_dry_run(False)
+this_pph.set_dry_run(True)
 
 # Set which data to process
 this_pph.set_targets(only=[])
@@ -23,15 +23,15 @@ this_pph.set_targets(only=['ngc4321','ngc4321_1','ngc4321_2'])
 this_pph.set_interf_configs(only=['7m'])
 this_pph.set_feather_configs(only=['7m+tp'])
 this_pph.set_line_products(only=['co21'])
-this_pph.set_no_cont(True)
+this_pph.set_no_cont_products(True)
 
 # Run a recipe
 
 this_pph.loop_postprocess(
-    do_prep=False,
-    do_feather=False, 
-    do_mosaic=False,
-    do_cleanup=False,
+    do_prep=True,
+    do_feather=True, 
+    do_mosaic=True,
+    do_cleanup=True,
     do_convolve=True,
     feather_apod=True, 
     feather_noapod=True,

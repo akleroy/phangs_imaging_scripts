@@ -14,6 +14,7 @@ calls to CASA from this class.
 
 import os
 import glob
+import handlerTemplate
 
 import logging
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ if casa_enabled:
     import casaMosaicRoutines as cmr
     import casaFeatherRoutines as cfr
 
-class PostProcessHandler:
+class PostProcessHandler(handlerTemplate.HandlerTemplate):
     """
     Class to handle post-processing of ALMA data. Post-processing here
     begins with the results of imaging and proceeds through reduced,
@@ -39,300 +40,14 @@ class PostProcessHandler:
         key_handler = None,
         dry_run = False,
         ):
-
-        self._targets_list = None
-        self._mosaics_list = None
-        self._line_products_list = None
-        self._cont_products_list = None
-        self._interf_configs_list = None
-        self._feather_configs_list = None
-
-        self._no_cont = False
-        self._no_line = False
-
-        self._feather_method = 'pbcorr'
-
-        if key_handler is not None:
-            self._kh = key_handler
-
-        # Initialize the list variables
-        self.set_targets(nobuild=True)
-        self.set_mosaic_targets(nobuild=True)
-        self.set_line_products(nobuild=True)
-        self.set_cont_products(nobuild=True)
-        self.set_interf_configs(nobuild=True)
-        self.set_feather_configs(nobuild=True)
-
-        self._build_lists()
-
-        self.set_dry_run(dry_run)
-
-        return(None)
-
-#region Control what data gets processed
-
-    def set_targets(
-        self, 
-        first=None, 
-        last=None, 
-        skip=[], 
-        only=[],
-        nobuild=False):
-        """
-        Set conditions on the list of targets to be considered when a
-        loop is run. By default, consider all targets.
-        """
-        self._targets_first = first
-        self._targets_last = last
-        self._targets_skip = skip
-        self._targets_only = only
-
-        if not nobuild:
-            self._build_lists()
-        return(None)
-
-    def set_mosaic_targets(
-        self, 
-        first=None, 
-        last=None, 
-        skip=[], 
-        only=[],
-        nobuild=False):
-        """
-        Set conditions on the list of mosaics to be considered when a
-        loop is run. By default, consider all mosaics.
-        """
-        self._mosaics_first = first
-        self._mosaics_last = last
-        self._mosaics_skip = skip
-        self._mosaics_only = only
-
-        if not nobuild:
-            self._build_lists()
-        return(None)
-
-    def set_line_products(
-        self, 
-        skip=[], 
-        only=[], 
-        nobuild=False,
-        ):
-        """
-        Set conditions on the list of line products to be considered
-        when a loop is run. By default, consider all products.
-        """
-        self._lines_skip = skip
-        self._lines_only = only
-
-        if not nobuild:
-            self._build_lists()
-        return(None)
-
-    def set_cont_products(
-        self, 
-        skip=[], 
-        only=[], 
-        nobuild=False,
-        ):
-        """
-        Set conditions on the list of continuum products to be
-        considered when a loop is run. By default, consider all
-        products.
-        """
-        self._cont_skip = skip
-        self._cont_only = only
-
-        if not nobuild:
-            self._build_lists()
-        return(None)
-
-    def set_interf_configs(
-        self, 
-        skip=[], 
-        only=[], 
-        nobuild=False,
-        ):
-        """
-        Set conditions on the list of interferometric array
-        configurations to be considered when a loop is run. By
-        default, consider all configurations.
-        """
-        self._interf_configs_skip = skip
-        self._interf_configs_only = only
-
-        if not nobuild:
-            self._build_lists()
-        return(None)
-
-    def set_feather_configs(
-        self, 
-        skip=[], 
-        only=[],
-        nobuild=False,
-        ):
-        """
-        Set conditions on the list of feathered array configurations
-        to be considered when a loop is run. By default, consider
-        all configurations.
-        """
-        self._feather_configs_skip = skip
-        self._feather_configs_only = only
-
-        if not nobuild:
-            self._build_lists()
-        return(None)
-
-    def set_no_line(
-        self,
-        no_line = False):
-        """
-        Toggle the program to skip all line products when a loop or
-        task is run.
-        """
-        self._no_line = no_line
-        self._build_lists()
-
-    def set_no_cont(
-        self,
-        no_cont = False):
-        """
-        Toggle the program to skip all continuum products when a
-        loop is run.
-        """
-        self._no_cont = no_cont
-        self._build_lists()
-
-    def set_dry_run(
-        self,
-        dry_run = False):
-        """
-        Toggle the program to execute a 'dry run.' In this case it
-        will not actually execute calls but will run through loops,
-        print messages, etc..
-        """
-        self._dry_run = dry_run
-
-    def set_key_handler(
-        self,
-        key_handler = None):
-        """
-        Set the keyhandler object being used by the pipeline. The
-        keyhandler object interaces with configuration files, target
-        lists, etc.
-        """
-        self._kh = key_handler
-        self._build_lists()
-
-    def set_feather_method(
-        self,
-        method='pbcorr'
-        ):
-        """
-        Set the approach to feathering used in the pipeline. Method
-        must be one of the valid choices defined in the code.
-        """
-        valid_choices = ['pbcorr','apodize']
-        if method.lower() not in valid_choices:
-            logger.error("Not a valid feather method: "+method)
-            return(False)
-        self._feather_method = method
-        return(True)
-
-#endregion
-
-#region Behind the scenes infrastructure
-
-    def _build_lists(
-        self
-        ):
-        """
-        Build the lists of targets, mosaics, products, and
-        configurations to loop over when a loop is run.
-        """
-
-        # Make sure there is an attached keyHandler object.
-        
-        if self._kh is None:
-            logger.error("Cannot build lists without a keyHandler.")
-            return(None)
-
-        self._targets_list = self._kh.get_targets(            
-            only = self._targets_only,
-            skip = self._targets_skip,
-            first = self._targets_first,
-            last = self._targets_last,
-            )
-
-        self._mosaics_list = self._kh.get_linmos_targets(            
-            only = self._mosaics_only,
-            skip = self._mosaics_skip,
-            first = self._mosaics_first,
-            last = self._mosaics_last,
-            )
-
-        if self._no_line:
-            self._line_products_list = []
-        else:
-            self._line_products_list = self._kh.get_line_products(
-                only = self._lines_only,
-                skip = self._lines_skip,
-                )
-
-        if self._no_cont:
-            self._cont_products_list = []
-        else:
-            self._cont_products_list = self._kh.get_continuum_products(
-                only = self._cont_only,
-                skip = self._cont_skip,
-                )
-
-        self._interf_configs_list = self._kh.get_interf_configs(
-            only = self._interf_configs_only,
-            skip = self._interf_configs_skip,
-            )
-
-        self._feather_configs_list = self._kh.get_feather_configs(
-            only = self._feather_configs_only,
-            skip = self._feather_configs_skip,
-            )
-
-    def _all_products(
-        self
-        ):
-        """
-        Get a combined list of line and continuum products to be
-        considered.
-        """
-
-        if self._cont_products_list is None:
-            if self._line_products_list is None:
-                return([])
-            else:
-                return(self._line_products_list)
-
-        if self._line_products_list is None:
-            if self._cont_products_list is None:
-                return([])
-            else:
-                return(self._cont_products_list)
-
-        if len(self._cont_products_list) is 0:
-            if self._line_products_list is None:
-                return ([])
-            else:
-                return(self._line_products_list)
-
-        if len(self._line_products_list) is 0:
-            if self._cont_products_list is None:
-                return([])
-            else:
-                return(self._cont_products_list)
-        
-        return(self._line_products_list + self._cont_products_list)
-
-#endregion
+        # Can't use super and keep python2/3 agnostic
+        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
 
 #region File name routines
+
+    ###########################################
+    # Defined file names for various products #
+    ###########################################
 
     def _fname_dict(
         self,
@@ -1699,7 +1414,7 @@ class PostProcessHandler:
         # the single dish flag to false. This overrides the presence
         # of data - we don't treat the singledish for feathered data.
 
-        if config in self._feather_configs_list:
+        if config in self.get_feather_configs():
 
             parts_have_singledish = False
     
@@ -1811,6 +1526,9 @@ class PostProcessHandler:
         """        
 
         res_list = self._kh.get_res_for_config(config)
+        if res_list is None:
+            logger.error("No target resolutions found for config "+config)
+            return()
 
         for this_res in res_list:
             
@@ -1857,11 +1575,11 @@ class PostProcessHandler:
         algorithms used.
         """
 
-        if self._targets_list is None:            
+        if len(self.get_targets()) == 0:            
             logger.error("Need a target list.")
             return(None)
  
-        if self._all_products is None:            
+        if len(self.get_all_products()) == 0:            
             logger.error("Need a products list.")
             return(None)
 
@@ -1873,11 +1591,11 @@ class PostProcessHandler:
         
         if do_prep:
     
-            for this_target in self._targets_list:
+            for this_target in self.get_targets():
 
-                for this_product in self._all_products():
+                for this_product in self.get_all_products():
                     
-                    for this_config in self._interf_configs_list:
+                    for this_config in self.get_interf_configs():
                        
                         fname_dict = self._fname_dict(
                             target=this_target, product=this_product, config=this_config)
@@ -1901,12 +1619,12 @@ class PostProcessHandler:
         # and single dish data in the next steps.
                         
         if do_feather:
-            
-            for this_target in self._targets_list:
 
-                for this_product in self._all_products():
+            for this_target in self.get_targets():
+
+                for this_product in self.get_all_products():
                     
-                    for this_config in self._interf_configs_list:
+                    for this_config in self.get_interf_configs():
 
                         fname_dict = self._fname_dict(
                             target=this_target, product=this_product, config=this_config)
@@ -1947,15 +1665,15 @@ class PostProcessHandler:
 
         if do_mosaic:
 
-            for this_target in self._targets_list:
-                
+            for this_target in self.get_targets():
+
                 is_mosaic = self._kh.is_target_linmos(this_target)
                 if not is_mosaic:
                     continue
 
-                for this_product in self._all_products():
+                for this_product in self.get_all_products():
                     
-                    for this_config in self._interf_configs_list:
+                    for this_config in self.get_interf_configs():
 
                         # Mosaic the interferometer data and the
                         # single dish data (need to verify if parts
@@ -1969,7 +1687,7 @@ class PostProcessHandler:
                             extra_ext_out = '',
                             )
                     
-                    for this_config in self._feather_configs_list:
+                    for this_config in self.get_feather_configs():
 
                         # Mosaic the previously feathered data.
 
@@ -1995,15 +1713,15 @@ class PostProcessHandler:
 
         if do_feather:
             
-            for this_target in self._targets_list:
+            for this_target in self.get_targets():
 
                 is_mosaic = self._kh.is_target_linmos(this_target)
                 if not is_mosaic:
                     continue
 
-                for this_product in self._all_products():
+                for this_product in self.get_all_products():
                     
-                    for this_config in self._interf_configs_list:
+                    for this_config in self.get_interf_configs():
 
                         if feather_apod:                  
                             self.task_feather(
@@ -2019,17 +1737,11 @@ class PostProcessHandler:
                         
         if do_cleanup:
             
-            for this_target in self._targets_list:
+            for this_target in self.get_targets():
 
-                for this_product in self._all_products():
+                for this_product in self.get_all_products():
                     
-                    all_configs = []
-                    for this_config in self._interf_configs_list:
-                        all_configs.append(this_config)
-                    for this_config in self._feather_configs_list:
-                        all_configs.append(this_config)
-
-                    for this_config in all_configs:
+                    for this_config in self.get_all_configs():
                         
                         self.recipe_cleanup_one_target(
                             target = this_target, product = this_product, config = this_config,
@@ -2041,15 +1753,9 @@ class PostProcessHandler:
             
             for this_target in self._targets_list:
 
-                for this_product in self._all_products():
+                for this_product in self.get_all_products():
                     
-                    all_configs = []
-                    for this_config in self._interf_configs_list:
-                        all_configs.append(this_config)
-                    for this_config in self._feather_configs_list:
-                        all_configs.append(this_config)
-
-                    for this_config in all_configs:
+                    for this_config in self.get_all_configs():
                         
                         self.recipe_convolve_to_scale(
                             target = this_target, product = this_product, config = this_config,
