@@ -63,7 +63,6 @@ def write_moment0(cube,
 
         mom0err = np.empty(mom0.shape)
         mom0err.fill(np.nan)
-        mom0err[:] = np.nan
   
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -106,7 +105,7 @@ def write_moment1(cube,
     ---------
     
     cube : SpectralCube
-        (Masked) spectral cube to write a moment0 map
+        (Masked) spectral cube to write a moment1 map
     
     outfile : str
         File name of output file
@@ -149,7 +148,6 @@ def write_moment1(cube,
 
         mom1err = np.empty(mom1.shape)
         mom1err.fill(np.nan)
-        mom1err[:] = np.nan
 
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -198,7 +196,8 @@ def write_moment2(cube,
     ---------
     
     cube : SpectralCube
-        (Masked) spectral cube to write a moment0 map
+        (Masked) spectral cube to write a Moment 2 (velocity 
+        dispersion) map
     
     outfile : str
         File name of output file
@@ -241,7 +240,6 @@ def write_moment2(cube,
 
         mom2err = np.empty(mom2.shape)
         mom2err.fill(np.nan)
-        mom2err[:] = np.nan
 
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -257,6 +255,8 @@ def write_moment2(cube,
 
             vval = spaxis[index]
             sum_T = np.sum(spec)
+            sum_vT = np.sum(spec * vval)
+            vbar = sum_vT / sum_T
             vdisp = (vval - vbar)**2
             wtvdisp = np.sum(spec * vdisp)
             # Dear future self: There is no crossterm (error term from 
@@ -279,21 +279,233 @@ def write_moment2(cube,
     #     return(mom2, None)
 
 
+def write_ew(cube,
+             outfile=None,
+             errorfile=None,
+             rms=None,
+             channel_correlation=None,
+             overwrite=True,
+             unit=None):
+    """
+    Write out linewidth (equivalent-width-based) map for a SpectralCube
+    
+    Keywords:
+    ---------
+    
+    cube : SpectralCube
+        (Masked) spectral cube to write a EW-based velocity dispersion map
+    
+    outfile : str
+        File name of output file
+        
+    errorfile : str
+        File name of map for the uncertainty
+        
+    rms : SpectralCube
+        Root-mean-square estimate of the error.  This must have an estimate
+        the noise level at all positions where there is signal, and only at 
+        those positions.
+        
+    channel_correlation : np.array
+        One-dimensional array containing the channel-to-channel 
+        normalize correlation coefficients
+        
+    overwrite : bool
+        Set to True (the default) to overwrite existing maps if present. 
+        
+    unit : astropy.Unit
+        Preferred unit for moment masks
+    
+    """
+
+    maxmap = cube.max(axis=0)
+    mom0 = cube.moment0()
+    sqrt2pi = np.sqrt(2 * np.pi)
+    sigma_ew = mom0 / maxmap / sqrt2pi
+
+    if unit is not None:
+        sigma_ew = sigma_ew.to(unit)
+        spaxis = cube.spectral_axis.to(unit).value
+    else:
+        spaxis = cube.spectral_axis.value
+    sigma_ew.write(outfile, overwrite=True)
+
+    if errorfile is not None and rms is None:
+        logger.error("Equivalent width error requested but no RMS provided")
+
+    if rms is not None and errorfile is not None:
+        argmaxmap = cube.argmax(axis=0)
+        rms_at_max = np.take_along_axis(
+            rms.filled_data[:], 
+            argmaxmap[np.newaxis, :, :], 0).value
+        
+        if channel_correlation is None:
+            channel_correlation = np.array([1])
+
+        sigma_ew_err = np.empty(sigma_ew.shape)
+        sigma_ew_err.fill(np.nan)
+
+
+        for x, y, slc in cube._iter_rays(0):
+            mask = np.squeeze(cube._mask.include(view=slc))
+            if not mask.any():
+                continue
+            index = np.where(mask)[0]
+            rms_spec = rms.flattened(slc).value
+            spec = cube.flattened(slc).value
+            covar = build_covariance(spectrum=spec,
+                                     rms=rms_spec,
+                                     channel_correlation=channel_correlation,
+                                     index=index)
+            sigma_ew_err[x, y] = (np.sum(covar**2) 
+                                  + (sigma_ew[x, y].value**2 
+                                     * rms_at_max[0, x, y]**2 
+                                     / maxmap[x, y].value**2))**0.5
+
+        sigma_ew_err = u.Quantity(sigma_ew_err, sigma_ew.unit, copy=False)
+        if unit is not None:
+            sigma_ew_err = sigma_ew_err.to(unit)
+        sigma_ewerr_projection = Projection(sigma_ew_err,
+                                         wcs=sigma_ew.wcs,
+                                         header=sigma_ew.header)
+
+        sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
+
+
 def write_tmax(cube,
                outfile=None,
+               errorfile=None,
                rms=None,
-               channel_correlation=None):
-    tmax = cube.max(axis=0)
-    tmax.write(outfile, overwrite=True)
+               channel_correlation=None,
+               overwrite=True,
+               unit=None):
+    """
+    Write out Tmax map for a SpectralCube
+    
+    Keywords:
+    ---------
+    
+    cube : SpectralCube
+        (Masked) spectral cube to write a Tmax map
+    
+    outfile : str
+        File name of output file
+        
+    errorfile : str
+        File name of map for the uncertainty
+        
+    rms : SpectralCube
+        Root-mean-square estimate of the error.  This must have an estimate
+        the noise level at all positions where there is signal, and only at 
+        those positions.
+        
+    channel_correlation : np.array
+        One-dimensional array containing the channel-to-channel 
+        normalize correlation coefficients
+        
+    overwrite : bool
+        Set to True (the default) to overwrite existing maps if present. 
+        
+    unit : astropy.Unit
+        Preferred unit for moment masks
+    
+    """
+
+    maxmap = cube.max(axis=0)
+
+    if unit is not None:
+        maxmap = maxmap.to(unit)
+        
+    maxmap.write(outfile, overwrite=True)
+
+    if errorfile is not None and rms is None:
+        logger.error("Tmax error requested but no RMS provided")
+
+    if rms is not None and errorfile is not None:
+        argmaxmap = cube.argmax(axis=0)
+        rms_at_max = np.take_along_axis(
+            rms.filled_data[:],
+            argmaxmap[np.newaxis, :, :], 0).value
+        rms_at_max = np.squeeze(rms_at_max)
+        rms_at_max = u.Quantity(rms_at_max, maxmap.unit, copy=False)
+        if unit is not None:
+            rms_at_max = rms_at_max.to(unit)
+        rms_map_projection = Projection(rms_at_max,
+                                        wcs=maxmap.wcs,
+                                        header=maxmap.header)
+
+        rms_map_projection.write(errorfile, overwrite=overwrite)
 
 
 def write_vmax(cube,
                outfile=None,
+               errorfile=None,
                rms=None,
-               channel_correlation=None):
-    anymask = cube
-    tmax = cube.max(axis=0)
-    tmax.write(outfile, overwrite=True)
+               channel_correlation=None,
+               overwrite=True,
+               unit=None):
+    """
+    Write out velocity map at max brightness temp for a SpectralCube
+    
+    Keywords:
+    ---------
+    
+    cube : SpectralCube
+        (Masked) spectral cube to write a Vmax map
+    
+    outfile : str
+        File name of output file
+        
+    errorfile : str
+        File name of map for the uncertainty
+        
+    rms : SpectralCube
+        Root-mean-square estimate of the error.  This must have an estimate
+        the noise level at all positions where there is signal, and only at 
+        those positions.
+        
+    channel_correlation : np.array
+        One-dimensional array containing the channel-to-channel 
+        normalize correlation coefficients
+        
+    overwrite : bool
+        Set to True (the default) to overwrite existing maps if present. 
+        
+    unit : astropy.Unit
+        Preferred unit for moment masks
+    
+    """
+
+    maxmap = cube.max(axis=0)
+    argmaxmap = cube.argmax(axis=0)
+    vmaxmap = np.take_along_axis(cube.spectral_axis[:, np.newaxis, np.newaxis],
+                                 argmaxmap[np.newaxis, :, :], 0)
+    vmaxmap = np.squeeze(vmaxmap)
+    if unit is not None:
+        vmaxmap = vmaxmap.to(unit)
+    vmaxmap[~np.isfinite(maxmap)] = np.nan
+    vmaxmap_projection = Projection(vmaxmap,
+                                    wcs=maxmap.wcs,
+                                    header=maxmap.header)
+    vmaxmap_projection.write(outfile, overwrite=True)
+
+    if errorfile is not None and rms is None:
+        logger.error("Moment 2 error requested but no RMS provided")
+
+    if rms is not None and errorfile is not None:
+        channel_width = np.abs(cube.spectral_axis[0] 
+                               - cube.spectral_axis[1])
+        vmaxerror = np.empty(maxmap.shape)
+        vmaxerror.fill(np.nan)
+        vmaxerror[np.isfinite(maxmap)] = channel_width.value
+        vmaxerror = u.Quantity(vmaxerror, channel_width.unit, copy=False)
+        if unit is not None:
+            vmaxerror = vmaxerror.to(unit)
+        vmaxerror_projection = Projection(vmaxerror,
+                                          wcs=maxmap.wcs,
+                                          header=maxmap.header)
+
+        vmaxerror_projection.write(errorfile, overwrite=overwrite)
 
 
 def build_covariance(spectrum=None,
