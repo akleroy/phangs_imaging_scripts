@@ -84,6 +84,7 @@ class KeyHandler:
         self._read_dir_keys()
         self._read_target_keys()    
         self._read_sd_keys()
+        self._read_cleanmask_keys()
         self._read_linmos_keys() 
         self._read_override_keys()
 
@@ -148,12 +149,13 @@ class KeyHandler:
         # Initialize
 
         self._key_dir = None
-        self._imaging_root = os.getcwd()+'/../'
-        self._postprocess_root = None
-        self._release_root = None
+        self._imaging_root = os.getcwd()+'/../imaging/'
+        self._postprocess_root = os.getcwd()+'/../postprocess/'
+        self._release_root = os.getcwd()+'/../release/'
 
         self._ms_roots = []
         self._sd_roots = []
+        self._cleanmask_roots = []
         self._ms_keys = []
         self._sd_keys = []
         self._cleanmask_keys = []
@@ -164,8 +166,8 @@ class KeyHandler:
         self._dir_keys = []
         self._override_keys = []
 
-        first_imaging_root = True
         first_key_dir = True
+        first_imaging_root = True
         first_postprocess_root = True
         first_release_root = True
 
@@ -223,6 +225,10 @@ class KeyHandler:
 
             if this_key == 'singledish_root':
                 self._sd_roots.append(this_value)
+                lines_read += 1
+
+            if this_key == 'cleanmask_root':
+                self._cleanmask_roots.append(this_value)
                 lines_read += 1
             
             if this_key == 'ms_key':
@@ -858,6 +864,77 @@ class KeyHandler:
         logger.info("Read "+str(lines_read)+" lines into the override dictionary.")
     
         return()
+
+    def _read_cleanmask_keys(self):
+        """
+        Read all of the clean mask keys.
+        """
+
+        self._cleanmask_dict = {}
+        for this_key in self._cleanmask_keys:
+            this_fname = self._key_dir + this_key
+            if os.path.isfile(this_fname) is False:
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
+                return()
+            self._read_one_cleanmask_key(fname=this_fname)
+
+        return()
+
+    def _read_one_cleanmask_key(self,fname=None):
+        """
+        Read one cleanmask key. Called by read_cleanmask_keys()
+        """
+
+        logger.info("Reading a cleanmask key.")
+        logger.info("Reading: "+fname)
+                
+        # should not get to this, but check just in case
+        if os.path.isfile(fname) is False:
+            self.update_files()
+            return()
+
+        infile = open(fname, 'r')
+
+        lines_read = 0
+        while True:
+
+            line = infile.readline()    
+
+            if len(line) == 0:
+                break
+
+            if line[0] == '#' or line == '\n':
+                continue
+
+            words = line.split()
+
+            if len(words) != 3:
+                logger.warning("Skipping line because it does not match cleanmask format.")
+                logger.warning("Format is space delimited: target product/line filename.")
+                logger.warning("Line is: ")
+                logger.warning(line)
+                continue
+
+            this_target = words[0]
+            this_product = words[1]
+            this_file = words[2]
+
+            # Initialize the dictionary the first time we get a result.
+            if self._cleanmask_dict is None:
+                self._cleanmask_dict = {}
+        
+            if this_target not in self._cleanmask_dict.keys():
+                self._cleanmask_dict[this_target] = {}
+
+            self._cleanmask_dict[this_target][this_product] = this_file
+            lines_read += 1
+
+        infile.close()
+
+        logger.info("Read "+str(lines_read)+" lines into the clean mask dictionary.")
+    
+        return()
+
 
 #endregion
 
@@ -1548,6 +1625,61 @@ class KeyHandler:
             return(None)
         
         return(last_found_file)
+
+    def get_cleanmask_filename(
+        self,
+        target=None, 
+        product=None,
+        ):
+        """
+        Get the file name of the clean mask associated with a target and product.
+        """
+        
+        if self._cleanmask_dict is None:
+            logging.error("No cleanmask dictionary defined.")
+            return(None)
+
+        if target == None:
+            logging.error("Please specify a target.")
+            return(None)
+
+        if target not in self._cleanmask_dict.keys():
+            logging.warning("Not in cleanmask keys: "+target)
+            return(None)
+
+        this_dict = self._cleanmask_dict[target]
+
+        if 'all' in this_dict.keys():
+            this_product = 'all'
+        else:
+            this_product = product
+        
+        if this_product not in this_dict.keys():
+            logging.warning("Cleanmask not found for "+target+" and product "+str(this_product))
+            return(None)            
+        
+        found = False
+        found_count = 0
+        last_found_file = None
+        for this_root in self._cleanmask_roots:
+            this_fname = this_root + this_dict[this_product]
+            if os.path.isfile(this_fname) or os.path.isdir(this_file):
+                found = True
+                found_count += 1
+                last_found_file = this_fname
+        
+        if found_count > 1:
+            logging.error("Found multiple copies of cleanmask for "+target+" "+str(this_product))
+            logging.error("Returning last one, but this is likely an error.")
+            return(last_found_file)
+        
+        if found_count == 0:
+            logging.error("Did not find a cleanmask for "+target+" "+str(this_product))
+            return(None)
+        
+        return(last_found_file)
+
+        return ()
 
     def get_feather_config_for_interf_config(
         self,
