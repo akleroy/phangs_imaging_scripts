@@ -391,3 +391,91 @@ class HandlerTemplate:
         return(self._interf_configs_list + self._feather_configs_list)
 
 #endregion
+
+#region Loop execution
+
+    ###################################################
+    # Loop over targets, products, and configurations #
+    ###################################################
+
+    def looper(
+        self,
+        targets=True,
+        products=True,
+        just_line=True,
+        just_cont=True,
+        configs=True,
+        just_interf=True,
+        just_feather=True
+        ):
+        """
+        Return (target, product, config) tuples for all selected
+        combinations. Boolean switches toggle what gets included in
+        the loop.
+        """
+
+        target_list = self.get_targets()
+
+        product_list = self.get_all_products()
+        if just_line and just_cont:
+            logger.error("Both just_line and just_cont set. Defaulting to all products.")
+        if just_line and not just_cont:
+            product_list = self.get_line_products()
+        if just_cont and not just_line:
+            product_list = self.get_cont_products()
+            
+        config_list = get_all_configs()
+        if just_interf and just_feather:
+            logger.error("Both just_interf and just_feather set. Defaulting to all configs.")
+        if just_interf and not just_feather:
+            config_list = self.get_interf_configs()
+        if just_feather and not just_interf:
+            config_list = self.get_feather_configs()        
+
+        # All three quantities
+
+        if targets and products and configs:
+            logger.info("Looping over target, product, and config.")
+            for this_target in target_list:
+                for this_product in product_list:
+                    for this_config in config_list:
+                        yield this_target, this_product, this_config
+                
+        # Two quantity loop
+
+        if targets and products and not configs:
+            logger.info("Looping over target and product.")
+            for this_target in target_list:
+                for this_product in product_list:
+                    yield this_target, this_product
+
+        if targets and configs and not products:
+            logger.info("Looping over target and config.")
+            for this_target in target_list:
+                for this_config in config_list:
+                    yield this_target, this_config
+
+        if product and configs and not targets:
+            logger.info("Looping over product and config.")
+            for this_product in product_list:
+                for this_config in config_list:
+                    yield this_product, this_config
+
+        # Single quantity loop
+
+        if targets and not configs and not products:
+            logger.info("Looping over target.")
+            for this_target in target_list:
+                yield this_target
+
+        if configs and not targets and not products:
+            logger.info("Looping over config.")
+            for this_config in config_list:
+                yield this_config
+
+        if products and not targets and not configs:
+            logger.info("Looping over product.")
+            for this_product in product_list:
+                yield this_product
+
+#endregion
