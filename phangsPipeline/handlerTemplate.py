@@ -24,13 +24,15 @@ class HandlerTemplate:
         ):
 
         # Initialize lists
-        self._targets_list = None
-        self._line_products_list = None
-        self._cont_products_list = None
-        self._interf_configs_list = None
-        self._feather_configs_list = None
+        self._targets_list = []
+        self._line_products_list = []
+        self._cont_products_list = []
+        self._interf_configs_list = []
+        self._feather_configs_list = []
 
         # Initialize switches on config types
+        self._no_interf = False
+        self._no_feather = False
 
         # Initialize switches on product types
         self._no_cont = False
@@ -186,7 +188,7 @@ class HandlerTemplate:
             self._build_lists()
         return(None)
 
-    def set_no_line(
+    def set_no_line_products(
         self,
         no_line = False):
         """
@@ -196,7 +198,7 @@ class HandlerTemplate:
         self._no_line = no_line
         self._build_lists()
 
-    def set_no_cont(
+    def set_no_cont_products(
         self,
         no_cont = False):
         """
@@ -204,6 +206,26 @@ class HandlerTemplate:
         loop is run.
         """
         self._no_cont = no_cont
+        self._build_lists()
+
+    def set_no_interf_configs(
+        self,
+        no_interf = False):
+        """
+        Toggle the program to skip all interferometric configurations
+        when a loop is run.
+        """
+        self._no_interf = no_interf
+        self._build_lists()
+
+    def set_no_feather_configs(
+        self,
+        no_interf = False):
+        """
+        Toggle the program to skip all feathered configurations when a
+        loop is run.
+        """
+        self._no_feather = no_feather
         self._build_lists()
 
     def _build_lists(
@@ -243,16 +265,23 @@ class HandlerTemplate:
                 skip = self._cont_skip,
                 )
 
-        self._interf_configs_list = self._kh.get_interf_configs(
-            only = self._interf_configs_only,
-            skip = self._interf_configs_skip,
-            )
+        if self._no_interf:
+            self._interf_configs_list = []
+        else:
+            self._interf_configs_list = self._kh.get_interf_configs(
+                only = self._interf_configs_only,
+                skip = self._interf_configs_skip,
+                )
+        
+        if self._no_feather:
+            self._feather_configs_list = []
+        else:
+            self._feather_configs_list = self._kh.get_feather_configs(
+                only = self._feather_configs_only,
+                skip = self._feather_configs_skip,
+                )
 
-        self._feather_configs_list = self._kh.get_feather_configs(
-            only = self._feather_configs_only,
-            skip = self._feather_configs_skip,
-            )
-
+        return()
 
 #endregion
 
@@ -262,7 +291,40 @@ class HandlerTemplate:
     # Internal access to products and configurations for lists #
     ############################################################
 
-    def _all_products(
+    def get_targets(
+        self
+        ):
+        """
+        Return the list of targets to consider.
+        """
+        if self._targets_list in None:
+            return([])
+        else:
+            return(self._targets_list)
+        
+    def get_line_products(
+        self
+        ):
+        """
+        Return the list of line products to consider.
+        """
+        if self._line_products_list in None:
+            return([])
+        else:
+            return(self._line_products_list)
+
+    def get_cont_products(
+        self
+        ):
+        """
+        Return the list of continuum products to consider.
+        """
+        if self._cont_products_list in None:
+            return([])
+        else:
+            return(self._cont_products_list)
+
+    def get_all_products(
         self
         ):
         """
@@ -270,40 +332,50 @@ class HandlerTemplate:
         considered.
         """
 
-        if self._cont_products_list is None:
-            if self._line_products_list is None:
-                return([])
-            else:
-                return(self._line_products_list)
-
-        if self._line_products_list is None:
-            if self._cont_products_list is None:
-                return([])
-            else:
-                return(self._cont_products_list)
-
         if len(self._cont_products_list) is 0:
-            if self._line_products_list is None:
-                return ([])
-            else:
-                return(self._line_products_list)
+            return(self._line_products_list)
 
         if len(self._line_products_list) is 0:
-            if self._cont_products_list is None:
-                return([])
-            else:
-                return(self._cont_products_list)
+            return(self._cont_products_list)
         
         return(self._line_products_list + self._cont_products_list)
 
+    def get_interf_configs(
+        self
+        ):
+        """
+        Return the list of interferometric configs to consider.
+        """
+        if self._interf_configs_list in None:
+            return([])
+        else:
+            return(self._interf_configs_list)
 
-    def _all_configs(
+    def get_feather_configs(
+        self
+        ):
+        """
+        Return the list of feather configs to consider.
+        """
+        if self._feather_configs_list in None:
+            return([])
+        else:
+            return(self._feather_configs_list)
+
+    def get_all_configs(
         self
         ):    
         """
-        Get a combined list of line and continuum products to be
-        considered.
+        Get a combined list of feather and interferometric configs to
+        consider.
         """
-        pass
+
+        if len(self._interf_configs_list) is 0:
+            return(self._feather_configs_list)
+
+        if len(self._feather_configs_list) is 0:
+            return(self._interf_configs_list)
+        
+        return(self._line_products_list + self._cont_products_list)
 
 #endregion
