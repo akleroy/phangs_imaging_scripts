@@ -1,63 +1,64 @@
-from scipy.stats import norm
-from spectral_cube import SpectralCube
-import numpy as np
-from astropy.io import fits
-from astropy.stats import mad_std
-from scipy.special import erfcinv
-from astropy.convolution import convolve, Gaussian2DKernel
-import matplotlib.pyplot as plt  # for debug only
 import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
 from scipy.signal import savgol_filter
+import numpy as np
+from astropy.stats import mad_std
+from astropy.convolution import convolve, Gaussian2DKernel
+import scipy.stats as ss
+# from pipelineVersion import version as pipeVer
+
+mad_to_std_fac = 1.482602218505602
+
+def mad_zero_centered(data, mask=None):
+    if mask is None:
+        sig_false = ss.norm.isf(0.5 / data.size)
+        mad1 = mad_to_std_fac * np.abs(np.median(data[data < 0]))
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data <
+                                                        (sig_false * mad1)])))
+    else:
+        nData = mask.sum()
+        sig_false = ss.norm.isf(0.5 / nData)
+        mad1 = mad_to_std_fac * np.abs(np.median(data[(data < 0) * mask]))
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[(data <
+                                                        (sig_false * mad1)) 
+                                                        * mask])))
+    return(mad2)
 
 
-def make_mask(data, noise, hi_thresh=5, hi_nchan=2,
-              lo_thresh=5, lo_nchan=2,
-              min_pix=None, min_area=None,
-              grow_xy=None, grow_v=None, invert=False):
+def simple_mask(data, noise, hi_thresh=5, hi_nchan=2,
+                lo_thresh=5, lo_nchan=2,
+                min_pix=None, min_area=None,
+                grow_xy=None, grow_v=None, invert=False):
     """
     Mask generation given data and estimate of the local noise
-
     Parameters:
     -----------
-
     data : np.array
         Original data
-
     noise : np.array
         Estimate of the amplitude of the noise at every position in the data
         (or an array that will broadcast to that under division).
-
     Keywords:
     ---------
-
     hi_thresh : float
         Threshold for detection (in units of sigma).  Default: 5
-
     hi_nchan : int
         Number of consecutive channels needed for detection.  Default: 2
-
     lo_thresh : float
         Threshold for inclusion in mask if connected to a hi_thresh
         detection. Default: 5
-
     lo_nchan : int
         Number of consecutive channels at lo_thresh required for a detection
         if connected to a hi_thresh detection. Default: 2
-
     min_pix : int
         Number of pixels required for a detection.  Default: None
-
     min_area : int
         Minimum number of pixels required in area projection for a detection.
         Default: None
-
     grow_xy : int
         NotImplemented
-
     grow_v : int
         NotImplemented
-
     invert : bool
         If True, invert the data before applying masking.
         Used for assessing the number of false positives given masking
@@ -106,7 +107,9 @@ def make_mask(data, noise, hi_thresh=5, hi_nchan=2,
 
 
 def noise_cube(data, mask=None, box=None, spec_box=None,
-               nThresh=30, iterations=1):
+               nThresh=30, iterations=1,
+               bandpass_smooth_window=None,
+               bandpass_smooth_order=3):
     """
     Makes an empirical estimate of the noise in a cube assuming that it 
     is normally distributed.
@@ -121,8 +124,8 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
     ---------
     
     mask : np.bool
-        Boolean array with True indicating where data can be 
-        used in the noise estimate.
+        Boolean array with False indicating where data can be 
+        used in the noise estimate. (i.e., True is Signal)
     
     box : int
         Spatial size of the box over which noise is calculated (correlation 
@@ -139,9 +142,18 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
         Number of times to iterate the noise solution to force Gaussian 
         statistics.  Default: no iterations.
     
+    bandpass_smooth_window : int
+        Number of channels used in bandpass smoothing kernel.  Defaults to 
+        nChan / 4 where nChan number of channels.  Set to zero to suppress 
+        smoothing. Uses Savitzky-Golay smoothing
+        
+    bandpass_smooth_order : int
+        Polynomial order used in smoothing kernel.  Defaults to 3.
+    
     """
-    if mask is None:
-        mask = np.isfinite(data)
+    noisemask = np.isfinite(data)
+    if mask is not None:
+        noisemask[mask] = False
     step = 1
     boxr = step // 2
     if box is not None:
@@ -152,12 +164,15 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
         boxv = spec_step // 2
     else:
         boxv = 0
+
     noise_cube_out = np.ones_like(data)
+
+    if bandpass_smooth_window is None:
+        bandpass_smooth_window = 2 * (data.shape[0] // 8) + 1
+        
     for i in np.arange(iterations):
         noise_map = np.zeros(data.shape[1:]) + np.nan
         noise_spec = np.zeros(data.shape[0]) + np.nan
-        sig_false = erfcinv(0.5/data.shape[0])
-        sigma = 1.4826 * np.abs(np.median(data[data < 0]))
         xx = np.arange(data.shape[2])
         yy = np.arange(data.shape[1])
         zz = np.arange(data.shape[0])
@@ -165,20 +180,16 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
             for y in yy[boxr::step]:
                 spec = data[:, (y-boxr):(y+boxr+1),
                             (x-boxr):(x+boxr+1)]
-                spec_mask = mask[:, (y-boxr):(y+boxr+1),
-                                 (x-boxr):(x+boxr+1)]
-                if np.sum(np.isfinite(spec)) > nThresh:
-                    sigma1 = 1.4826 * np.abs(np.median(spec[(spec < 0)
-                                                            * (spec_mask)]))
-                    noise_map[y, x] = mad_std(spec[(spec < (sigma1 * sig_false))
-                                                   * (spec_mask)])
+                spec_mask = noisemask[:, (y-boxr):(y+boxr+1),
+                                      (x-boxr):(x+boxr+1)]
+                if np.sum(spec_mask) > nThresh:
+                    noise_map[y, x] = mad_zero_centered(spec, mask=spec_mask)
+
         if boxr > 0:
             data_footprint = np.any(np.isfinite(data), axis=0)
             kernel = Gaussian2DKernel(box / np.sqrt(8 * np.log(2)))
             wt_map = np.isfinite(noise_map).astype(np.float)
-            # wt_map[~data_footprint] = np.nan
             noise_map[np.isnan(noise_map)] = 0.0
-            # noise_map[~data_footprint] = np.nan
             noise_map = convolve(noise_map, kernel)
             wt_map = convolve(wt_map, kernel)
             noise_map /= wt_map
@@ -188,15 +199,13 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
             lowz = np.clip(z - boxv, 0, data.shape[0])
             hiz = np.clip(z + boxv + 1, 0, data.shape[0])
             plane = data[lowz:hiz, :, :] / noise_map[np.newaxis, :, :]
-            plane_mask = mask[lowz:hiz, :, :]
-            sig_false = erfcinv(0.5 / np.sum(np.isfinite(plane)))
-            sigma1 = 1.4826 * np.abs(np.median(plane[(plane < 0)
-                                                     * plane_mask]))
-            noise_spec[z] = mad_std(plane[(plane < (sig_false * sigma1))
-                                          * plane_mask])
+            plane_mask = noisemask[lowz:hiz, :, :]
+            noise_spec[z] = mad_zero_centered(plane, mask=plane_mask)
         # Smooth spectral shape
-        if boxv > 0:
-            noise_spec = savgol_filter(noise_spec, 4 * boxv + 1, 3)
+        if bandpass_smooth_window > 0:
+            noise_spec = savgol_filter(noise_spec,
+                                       bandpass_smooth_window,
+                                       bandpass_smooth_order)
         noise_spec /= np.nanmedian(noise_spec)
         noise_cube = np.ones_like(data)
         noise_cube *= (noise_map[np.newaxis, :]
@@ -206,5 +215,4 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
         else:
             data = data / noise_cube
             noise_cube_out *= noise_cube
-            print('Iteration {0} complete'.format(i))
     return(noise_cube_out)
