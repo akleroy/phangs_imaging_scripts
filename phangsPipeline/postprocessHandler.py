@@ -1590,29 +1590,26 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # staging the single dish data, making weights, etc.
         
         if do_prep:
-    
-            for this_target in self.get_targets():
 
-                for this_product in self.get_all_products():
-                    
-                    for this_config in self.get_interf_configs():
-                       
-                        fname_dict = self._fname_dict(
-                            target=this_target, product=this_product, config=this_config)
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+                           
+                fname_dict = self._fname_dict(
+                    target=this_target, product=this_product, config=this_config)
                         
-                        imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-                        has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
-                        has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
-                        is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
+                imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
+                is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
 
-                        if not has_imaging:
-                            logger.debug("Skipping "+this_target+" because it lacks imaging.")
-                            logger.debug(imaging_dir+fname_dict['orig'])
-                            continue
+                if not has_imaging:
+                    logger.debug("Skipping "+this_target+" because it lacks imaging.")
+                    logger.debug(imaging_dir+fname_dict['orig'])
+                    continue
 
-                        self.recipe_prep_one_target(
-                            target = this_target, product = this_product, config = this_config,
-                            check_files = True)
+                self.recipe_prep_one_target(
+                    target = this_target, product = this_product, config = this_config,
+                    check_files = True)
 
         # Feather the interferometer configuration data that has
         # imaging. We'll return to feather mosaicked intereferometer
@@ -1620,145 +1617,136 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         
         if do_feather:
 
-            for this_target in self.get_targets():
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
 
-                for this_product in self.get_all_products():
-                    
-                    for this_config in self.get_interf_configs():
-
-                        fname_dict = self._fname_dict(
-                            target=this_target, product=this_product, config=this_config)
+                fname_dict = self._fname_dict(
+                    target=this_target, product=this_product, config=this_config)
                         
-                        imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-                        has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
-                        has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
-
-                        is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
-                        if is_part_of_mosaic and not feather_before_mosaic:
-                            logger.debug("Skipping "+this_target+" because feather_before_mosaic is False.")
-                            continue
+                imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
+                
+                is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
+                if is_part_of_mosaic and not feather_before_mosaic:
+                    logger.debug("Skipping "+this_target+" because feather_before_mosaic is False.")
+                    continue
                             
-                        if not has_imaging:
-                            logger.debug("Skipping "+this_target+" because it lacks imaging.")
-                            logger.debug(imaging_dir+fname_dict['orig'])
-                            continue
+                if not has_imaging:
+                    logger.debug("Skipping "+this_target+" because it lacks imaging.")
+                    logger.debug(imaging_dir+fname_dict['orig'])
+                    continue
                             
-                        if not has_singledish:
-                            logger.debug("Skipping "+this_target+" because it lacks single dish.")
-                            continue
+                if not has_singledish:
+                    logger.debug("Skipping "+this_target+" because it lacks single dish.")
+                    continue
 
-                        if feather_apod:                            
-                            self.task_feather(
-                                target = this_target, product = this_product, config = this_config,
-                                apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
-                                copy_weights=True,
-                                )
+                if feather_apod:                            
+                    self.task_feather(
+                        target = this_target, product = this_product, config = this_config,
+                        apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
+                        copy_weights=True,
+                        )
 
-                        if feather_noapod:
-                            self.task_feather(
-                                target = this_target, product = this_product, config = this_config,
-                                apodize=False, extra_ext_out='',check_files=True, 
-                                copy_weights=True,
-                                )
+                if feather_noapod:
+                    self.task_feather(
+                        target = this_target, product = this_product, config = this_config,
+                        apodize=False, extra_ext_out='',check_files=True, 
+                        copy_weights=True,
+                        )
+                    
 
         # Mosaic the intereferometer, single dish, and feathered data.
 
         if do_mosaic:
-
-            for this_target in self.get_targets():
+            
+            # Loop over interferometer configurations
+            
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
 
                 is_mosaic = self._kh.is_target_linmos(this_target)
                 if not is_mosaic:
                     continue
 
-                for this_product in self.get_all_products():
+                # Mosaic the interferometer data and the
+                # single dish data (need to verify if parts
+                # have single dish, enforce the same
+                # astrometric grid).
+                
+                self.recipe_mosaic_one_target(
+                    target = this_target, product = this_product, config = this_config,
+                    check_files = True,
+                    extra_ext_in = '',
+                    extra_ext_out = '',
+                    )
+
+            # Loop over feather configurations
+            
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True,just_feather=True):
                     
-                    for this_config in self.get_interf_configs():
+                # Mosaic the previously feathered data.
 
-                        # Mosaic the interferometer data and the
-                        # single dish data (need to verify if parts
-                        # have single dish, enforce the same
-                        # astrometric grid).
+                if feather_apod:
+                    self.recipe_mosaic_one_target(
+                        target = this_target, product = this_product, config = this_config,
+                        check_files = True,
+                        extra_ext_in = '_apod',
+                        extra_ext_out = '_prefeather_apod',
+                        )
 
-                        self.recipe_mosaic_one_target(
-                            target = this_target, product = this_product, config = this_config,
-                            check_files = True,
-                            extra_ext_in = '',
-                            extra_ext_out = '',
-                            )
-                    
-                    for this_config in self.get_feather_configs():
-
-                        # Mosaic the previously feathered data.
-
-                        if feather_apod:
-                            self.recipe_mosaic_one_target(
-                                target = this_target, product = this_product, config = this_config,
-                                check_files = True,
-                                extra_ext_in = '_apod',
-                                extra_ext_out = '_prefeather_apod',
-                                )
-
-                        if feather_noapod:
-                            self.recipe_mosaic_one_target(
-                                target = this_target, product = this_product, config = this_config,
-                                check_files = True,
-                                extra_ext_in = '',
-                                extra_ext_out = '_prefeather',
-                                )                            
+                if feather_noapod:
+                    self.recipe_mosaic_one_target(
+                        target = this_target, product = this_product, config = this_config,
+                        check_files = True,
+                        extra_ext_in = '',
+                        extra_ext_out = '_prefeather',
+                        )                            
                         
-
         # This round of feathering targets only mosaicked data. All
         # other data have been feathered above already.
 
         if do_feather:
-            
-            for this_target in self.get_targets():
 
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
+            
                 is_mosaic = self._kh.is_target_linmos(this_target)
                 if not is_mosaic:
                     continue
 
-                for this_product in self.get_all_products():
-                    
-                    for this_config in self.get_interf_configs():
-
-                        if feather_apod:                  
-                            self.task_feather(
-                                target = this_target, product = this_product, config = this_config,
-                                apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
-                                )
+                if feather_apod:                  
+                    self.task_feather(
+                        target = this_target, product = this_product, config = this_config,
+                        apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
+                        )
                             
-                        if feather_noapod:
-                            self.task_feather(
-                                target = this_target, product = this_product, config = this_config,
-                                apodize=False, extra_ext_out='',check_files=True,
-                                )
+                if feather_noapod:
+                    self.task_feather(
+                        target = this_target, product = this_product, config = this_config,
+                        apodize=False, extra_ext_out='',check_files=True,
+                        )
                         
         if do_cleanup:
-            
-            for this_target in self.get_targets():
 
-                for this_product in self.get_all_products():
-                    
-                    for this_config in self.get_all_configs():
-                        
-                        self.recipe_cleanup_one_target(
-                            target = this_target, product = this_product, config = this_config,
-                            check_files = True)
-                        
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+                                        
+                self.recipe_cleanup_one_target(
+                    target = this_target, product = this_product, config = this_config,
+                    check_files = True)
+                
                         # TBD - different feather and mosaic ordering outputs? Maybe?                        
 
         if do_convolve:
-            
-            for this_target in self._targets_list:
 
-                for this_product in self.get_all_products():
-                    
-                    for this_config in self.get_all_configs():
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
                         
-                        self.recipe_convolve_to_scale(
-                            target = this_target, product = this_product, config = this_config,
-                            check_files = True, export_to_fits = True)
+                self.recipe_convolve_to_scale(
+                    target = this_target, product = this_product, config = this_config,
+                    check_files = True, export_to_fits = True)
 
+                
 #endregion
