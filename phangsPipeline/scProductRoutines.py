@@ -372,13 +372,14 @@ def write_ew(cube,
         sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
 
 
-def write_tmax(cube,
+def write_tmax(cubein,
                outfile=None,
                errorfile=None,
                rms=None,
                channel_correlation=None,
                overwrite=True,
-               unit=None):
+               unit=None,
+               window=None):
     """
     Write out Tmax map for a SpectralCube
     
@@ -408,9 +409,21 @@ def write_tmax(cube,
         
     unit : astropy.Unit
         Preferred unit for moment masks
-    
+        
+    window : astropy.Quantity
+        Spectral window over which the data should be smoothed
     """
-
+    if type(window) is u.Quantity:
+        from astropy.convolution import Box1DKernel
+        channel_width = np.abs(cubein.spectral_axis[0]
+                               - cubein.spectral_axis[1])
+        nChan = (window / channel_width).to(u.dimensionless_unscaled).value
+        if nChan > 1:
+            cube = cubein.spectral_smooth(Box1DKernel(nChan))
+        else:
+            cube = cubein
+    else:
+        cube = cubein
     maxmap = cube.max(axis=0)
 
     if unit is not None:
@@ -437,13 +450,14 @@ def write_tmax(cube,
         rms_map_projection.write(errorfile, overwrite=overwrite)
 
 
-def write_vmax(cube,
+def write_vmax(cubein,
                outfile=None,
                errorfile=None,
                rms=None,
                channel_correlation=None,
                overwrite=True,
-               unit=None):
+               unit=None,
+               window=None):
     """
     Write out velocity map at max brightness temp for a SpectralCube
     
@@ -474,8 +488,20 @@ def write_vmax(cube,
     unit : astropy.Unit
         Preferred unit for moment masks
     
+    window : astropy.Quantity
+        Spectral window over which the data should be smoothed
     """
-
+    if type(window) is u.Quantity:
+        from astropy.convolution import Box1DKernel
+        channel_width = np.abs(cubein.spectral_axis[0]
+                               - cubein.spectral_axis[1])
+        nChan = (window / channel_width).to(u.dimensionless_unscaled).value
+        if nChan > 1:
+            cube = cubein.spectral_smooth(Box1DKernel(nChan))
+        else:
+            cube = cubein
+    else:
+        cube = cubein
     maxmap = cube.max(axis=0)
     argmaxmap = cube.argmax(axis=0)
     vmaxmap = np.take_along_axis(cube.spectral_axis[:, np.newaxis, np.newaxis],
