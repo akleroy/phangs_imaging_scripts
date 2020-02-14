@@ -87,9 +87,9 @@ def write_moment0(cube,
                                     header=mom0.header)
         
         mom0projection.write(errorfile, overwrite=overwrite)
-        return(mom0, mom0err)
-    else:
-        return(mom0, None)
+    #     return(mom0, mom0err)
+    # else:
+    #     return(mom0, None)
 
 
 def write_moment1(cube,
@@ -179,16 +179,104 @@ def write_moment1(cube,
                                     header=mom1.header)
 
         mom1projection.write(errorfile, overwrite=overwrite)
-        return(mom1, mom1err)
-    else:
-        return(mom1, None)
+    #     return(mom1, mom1err)
+    # else:
+    #     return(mom1, None)
+
 
 def write_moment2(cube,
                   outfile=None,
+                  errorfile=None,
                   rms=None,
-                  channel_correlation=None):
-    mom2 = cube.moment2()
+                  channel_correlation=None,
+                  overwrite=True,
+                  unit=None):
+    """
+    Write out linewidth (moment2-based) map for a SpectralCube
+    
+    Keywords:
+    ---------
+    
+    cube : SpectralCube
+        (Masked) spectral cube to write a moment0 map
+    
+    outfile : str
+        File name of output file
+        
+    errorfile : str
+        File name of map for the uncertainty
+        
+    rms : SpectralCube
+        Root-mean-square estimate of the error.  This must have an estimate
+        the noise level at all positions where there is signal, and only at 
+        those positions.
+        
+    channel_correlation : np.array
+        One-dimensional array containing the channel-to-channel 
+        normalize correlation coefficients
+        
+    overwrite : bool
+        Set to True (the default) to overwrite existing maps if present. 
+        
+    unit : astropy.Unit
+        Preferred unit for moment masks
+    
+    """
+
+    mom2 = cube.linewidth_sigma()
+    if unit is not None:
+        mom2 = mom2.to(unit)
+        spaxis = cube.spectral_axis.to(unit).value
+    else:
+        spaxis = cube.spectral_axis.value
     mom2.write(outfile, overwrite=True)
+
+    if errorfile is not None and rms is None:
+        logger.error("Moment 2 error requested but no RMS provided")
+
+    if rms is not None and errorfile is not None:
+
+        if channel_correlation is None:
+            channel_correlation = np.array([1])
+
+        mom2err = np.empty(mom2.shape)
+        mom2err.fill(np.nan)
+        mom2err[:] = np.nan
+
+        for x, y, slc in cube._iter_rays(0):
+            mask = np.squeeze(cube._mask.include(view=slc))
+            if not mask.any():
+                continue
+            index = np.where(mask)[0]
+            rms_spec = rms.flattened(slc).value
+            spec = cube.flattened(slc).value
+            covar = build_covariance(spectrum=spec,
+                                     rms=rms_spec,
+                                     channel_correlation=channel_correlation,
+                                     index=index)
+
+            vval = spaxis[index]
+            sum_T = np.sum(spec)
+            vdisp = (vval - vbar)**2
+            wtvdisp = np.sum(spec * vdisp)
+            # Dear future self: There is no crossterm (error term from 
+            # vbar) since dispersion is at a minimum around vbar
+            jacobian = (vdisp / sum_T
+                        - wtvdisp / sum_T**2)
+            mom2err[x, y] = np.dot(
+                np.dot(jacobian[np.newaxis, :], covar),
+                jacobian[:, np.newaxis])**0.5
+        mom2err = u.Quantity(mom2err, mom2.unit, copy=False)
+        if unit is not None:
+            mom2err = mom2err.to(unit)
+        mom2projection = Projection(mom2err,
+                                    wcs=mom2.wcs,
+                                    header=mom2.header)
+
+        mom2projection.write(errorfile, overwrite=overwrite)
+    #     return(mom2, mom2err)
+    # else:
+    #     return(mom2, None)
 
 
 def write_tmax(cube,
