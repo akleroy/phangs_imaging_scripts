@@ -426,9 +426,7 @@ def write_tmax(cubein,
         cube = cubein
     maxmap = cube.max(axis=0)
 
-    if unit is not None:
-        maxmap = maxmap.to(unit)
-        
+
     maxmap.write(outfile, overwrite=True)
 
     if errorfile is not None and rms is None:
@@ -534,6 +532,159 @@ def write_vmax(cubein,
         vmaxerror_projection.write(errorfile, overwrite=overwrite)
 
 
+def write_vquad(cubein,
+                outfile=None,
+                errorfile=None,
+                rms=None,
+                channel_correlation=None,
+                overwrite=True,
+                unit=None,
+                window=None,
+                maxshift=0.5):
+    """
+    Write out velocity map at max brightness temp for a 
+    SpectralCube using the quadratic peak interpolation
+    
+    Keywords:
+    ---------
+    
+    cube : SpectralCube
+        (Masked) spectral cube to write a Vmax map
+    
+    outfile : str
+        File name of output file
+        
+    errorfile : str
+        File name of map for the uncertainty
+        
+    rms : SpectralCube
+        Root-mean-square estimate of the error.  This must have an estimate
+        the noise level at all positions where there is signal, and only at 
+        those positions.
+        
+    channel_correlation : np.array
+        One-dimensional array containing the channel-to-channel 
+        normalize correlation coefficients
+        
+    overwrite : bool
+        Set to True (the default) to overwrite existing maps if present. 
+        
+    unit : astropy.Unit
+        Preferred unit for moment masks
+    
+    window : astropy.Quantity
+        Spectral window over which the data should be smoothed
+    
+    maxshift : np.float
+        Maximum number of channels that the algorithm can shift the 
+        peak estimator (default = 0.5).  Set to None to suppress clipping.
+    """
+    
+    from scipy.interpolate import interp1d
+    
+    if type(window) is u.Quantity:
+        from astropy.convolution import Box1DKernel
+        channel_width = np.abs(cubein.spectral_axis[0]
+                               - cubein.spectral_axis[1])
+        nChan = (window / channel_width).to(u.dimensionless_unscaled).value
+        if nChan > 1:
+            cube = cubein.spectral_smooth(Box1DKernel(nChan))
+        else:
+            cube = cubein
+    else:
+        cube = cubein
+        
+    if unit is not None:
+        spaxis = cube.spectral_axis.to(unit).value
+    else:
+        spaxis = cube.spectral_axis.value
+        unit = cube.spectral_axis.unit
+    pixinterp = interp1d(np.arange(spaxis.size),
+                         spaxis)
+    maxmap = cube.max(axis=0)
+    argmaxmap = cube.argmax(axis=0)
+    Tup = np.take_along_axis(cube.filled_data[:],
+                             argmaxmap[np.newaxis, :, :]+1, 0).value
+    Tdown = np.take_along_axis(cube.filled_data[:],
+                               argmaxmap[np.newaxis, :, :]-1, 0).value
+    Tup = np.squeeze(np.nan_to_num(Tup))
+    Tup[Tup < 0] = 0
+    Tdown = np.squeeze(np.nan_to_num(Tdown))
+    Tdown[Tdown < 0] = 0
+
+    delta = -1 * ((Tup - Tdown) / (Tup + Tdown - 2 * maxmap.value))
+    if maxshift is not None:
+        delta = np.clip(delta, -maxshift, maxshift)
+    peakchan = argmaxmap + delta
+
+    vmaxmap = np.empty(maxmap.shape)
+    vmaxmap.fill(np.nan)
+    good = np.isfinite(maxmap)
+    vmaxmap[good] = u.Quantity(pixinterp(peakchan[good]),
+                               unit)
+
+    vmaxmap[~np.isfinite(maxmap)] = np.nan
+    vmaxmap_projection = Projection(vmaxmap,
+                                    wcs=maxmap.wcs,
+                                    header=maxmap.header)
+    vmaxmap_projection.write(outfile, overwrite=overwrite)
+
+    if errorfile is not None and rms is None:
+        logger.error("Vquad error requested but no RMS provided")
+
+    if rms is not None and errorfile is not None:
+        channel_width = np.abs(np.median(cube.spectral_axis[1:] 
+                                         - cube.spectral_axis[:-1])).to(unit)
+        RMSup = np.take_along_axis(rms.filled_data[:],
+                                   argmaxmap[np.newaxis, :, :]+1,
+                                   0).value
+        RMSdown = np.take_along_axis(rms.filled_data[:],
+                                     argmaxmap[np.newaxis, :, :]-1,
+                                     0).value
+        RMSmax = np.take_along_axis(rms.filled_data[:],
+                                    argmaxmap[np.newaxis, :, :],
+                                    0).value
+        denom = (Tup + Tdown - 2 * maxmap.value)
+        j1 = (1/denom - (Tup - Tdown) / denom**2)
+        j2 = (2 * (Tup - Tdown) / denom**2)
+        j3 = (-1/denom - (Tup - Tdown) / denom**2)
+        jacobian = np.r_[j1[np.newaxis, :, :],
+                         j2[np.newaxis, :, :],
+                         j3[np.newaxis, :, :]]
+        if ((channel_correlation is None) 
+            or len(channel_correlation) == 1):
+            covar = np.r_[RMSup,
+                          RMSmax,
+                          RMSdown]
+            covar = covar**2
+            error = np.einsum('i...,i...', jacobian**2, covar)
+        else:
+            if len(channel_correlation) == 2:
+                ccor = np.r_[channel_correlation,
+                             np.array([0])]
+            else:
+                ccor = channel_correlation[0:3]
+            corrmat = ccor[np.array([[0, 1, 2],
+                                     [1, 0, 1],
+                                     [2, 1, 0]])]
+            rmsvec = np.r_[RMSup,
+                           RMSmax,
+                           RMSdown]
+            # They never should have taught me how to do this.
+            covar  = np.einsum('ij,ilm,jlm->ijlm', corrmat,
+                               rmsvec, rmsvec)
+            error = np.einsum('ilm,jlm,ijlm->lm',
+                              jacobian, jacobian, covar)
+        if maxshift is not None:
+            error = np.clip(error, -maxshift, maxshift)
+        
+        vquaderror = error * channel_width
+        vquaderror_projection = Projection(vquaderror,
+                                           wcs=maxmap.wcs,
+                                           header=maxmap.header)
+        vquaderror_projection.write(errorfile, overwrite=overwrite)
+
+
 def build_covariance(spectrum=None,
                      rms=None,
                      channel_correlation=None,
@@ -566,7 +717,9 @@ def build_covariance(spectrum=None,
     if index is None:
         index = np.arange(len(spectrum))
     if channel_correlation is None:
-        channel_correlation = np.array([1])
+        return((rms[:, np.newaxis])**2)
+    if len(channel_correlation) == 1:
+        return((rms[:, np.newaxis])**2)
     distance = np.abs(index[:, np.newaxis] - index[np.newaxis, :])
     covar = rms[:, np.newaxis] * rms[np.newaxis, :]
     maxdist = len(channel_correlation)
@@ -576,4 +729,4 @@ def build_covariance(spectrum=None,
     return(covar)    
 
 def calculate_channel_correlation(cube, length=1):
-    pass
+    raise NotImplementedError
