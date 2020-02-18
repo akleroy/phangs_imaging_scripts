@@ -12,17 +12,43 @@ Example:
     this_imh = uvh.ImagingHandler(key_handler = this_kh)
     this_imh.set_targets(only = ['ngc3627'])
     this_imh.loop_imaging()
-    
+
+Args:
+    make_dirty_image (boolean): If `True` then make dirty image cube from ms data. Default is `True`.
+    revert_to_dirty (boolean): If `True` then reset current image cube by the dirty image cube (mainly for debugging). Default is `False`.
+    read_in_clean_mask (boolean): If `True` then read in clean mask as defined in "cleanmask_keys.txt". Default is `True`.
+    run_multiscale_clean (boolean): If `True` then run multiscale clean. Default is `True`.
+    revert_to_multiscale (boolean): If `True` then reset current image cube by the multiscale cleaned image cube (mainly for debugging). Default is `False`.
+    make_singlescale_mask (boolean): If `True` then make singlescale clean mask based on current image cube. Default is `True`.
+    run_singlescale_clean (boolean): If `True` then run singlescale clean. Default is `True`.
+    do_export_to_fits (boolean): If `True` then export ms data folders into fits-format image cube files. Default is `True`.
+
+Notes:
+    This code calls following functions:
+        import casaImagingRoutines as imr
+        import casaMaskingRoutines as msr
+        if make_dirty_image: imr.make_dirty_map             
+        if revert_to_dirty: imr.replace_cube_with_copy      
+        if read_in_clean_mask: msr.import_and_align_mask    
+        if run_multiscale_clean: imr.multiscale_loop        
+        if revert_to_multiscale: imr.replace_cube_with_copy 
+        if make_singlescale_mask: msr.signal_mask           
+        if run_singlescale_clean: imr.singlescale_loop      
+        if do_export_to_fits: imr.export_to_fits            
+
 """
 
-#<TODO># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "keyHandler.py"!
+#<DONE># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "keyHandler.py"!
 #<TODO># 20200214 dzliu: will users want to do imaging for individual project instead of concatenated ms?
 #<TODO># 20200214 dzliu: needing KeyHandler API: 
-#<TODO># 20200214 dzliu:     self._kh._cleanmask_dict   --> self._kh.get_cleanmask() # input target name, output clean mask file
+#<DONE># 20200214 dzliu:     self._kh._cleanmask_dict   --> self._kh.get_cleanmask() # input target name, output clean mask file
 #<TODO># 20200214 dzliu:     self._kh._target_dict      --> self._kh.get_target_dict() # for rastring, decstring
 #<TODO># 20200214 dzliu:     self._kh._override_dict    --> self._kh.get_overrides()
 #<TODO># 20200214 dzliu:     self._kh._dir_keys         --> self._kh.get_target_name_for_multipart_name()
 #<TODO># 20200214 dzliu:     self._kh._config_dict['interf_config']['clean_scales_arcsec'] # angular scales
+#<TODO># 20200218 dzliu: CASA 5.4.0 works, but CASA 5.6.0 does not work!!
+#<TODO># 20200218 dzliu: revert does not work!
+#<TODO># 20200218 dzliu: need to test 'cont'
 
 import os, sys, re, shutil
 import glob
@@ -32,23 +58,22 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-casa_enabled = (sys.argv[0].endswith('start_casa.py'))
+casa_enabled = (sys.argv[0].endswith('start_casa.py')) #<TODO># check whether we are inside CASA environment
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    import casaCubeRoutines as ccr
-    import casaMosaicRoutines as cmr
-    import casaFeatherRoutines as cfr
+    #import casaCubeRoutines as ccr
+    #import casaMosaicRoutines as cmr
+    #import casaFeatherRoutines as cfr
     import casaImagingRoutines as imr
     import casaMaskingRoutines as msr
     reload(imr) #<TODO><DEBUG># 
     reload(msr) #<TODO><DEBUG># #<TODO># we still need imr.cleanCall for dry_run?
-    reload(imr) #<TODO><DEBUG># 
-    from imr import CleanCall
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from clean_call import CleanCall
+
+from clean_call import CleanCall
 
 import utils
 import line_list
@@ -125,87 +150,81 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             self._kh.make_missing_directories(imaging=True)
         
         # loop
-        for this_target in self.get_targets():
-            for this_product in self.get_all_products():
-                for this_config in self.get_interf_configs():
-                    # 
-                    # get imaging dir
-                    this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-                    # 
-                    # set project to empty <TODO>
-                    this_project = ''
-                    # 
-                    # print starting message
-                    logger.info("")
-                    logger.info("--------------------------------------------------------")
-                    logger.info("START: Imaging the data set.")
-                    logger.info("--------------------------------------------------------")
-                    logger.info('Target: '+this_target)
-                    logger.info('Config: '+this_config)
-                    logger.info('Product: '+this_product)
-                    logger.info('Imaging dir: '+this_imaging_dir)
-                    # 
-                    # check config suffix if processing individual project ms data
-                    if process_individual_project:
-                        this_config_suffix = re.sub(r'^(.*?)_([0-9]+)$', r'\2', this_config)
-                        this_config = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_config)
-                    # 
-                    # 
-                    # change directory to imaging dir
-                    current_dir = os.getcwd()
-                    os.chdir(this_imaging_dir)
-                    # 
-                    # 
-                    # build clean call
-                    logger.info('Running recipe_build_clean_call')
-                    clean_call = \
-                    self.recipe_build_clean_call(
-                        target = this_target, 
-                        project = this_project, 
-                        config = this_config, 
-                        product = this_product, 
-                        tag = '', 
-                        forceSquare = forceSquare, 
-                        overwrite = overwrite, 
-                        )
-                    # 
-                    # 
-                    # make imaging recipe
-                    if clean_call is not None:
-                        logger.info('Running recipe_imaging_one_target')
-                        self.recipe_imaging_one_target(
-                            clean_call = clean_call, 
-                            make_dirty_image = make_dirty_image, 
-                            revert_to_dirty = revert_to_dirty, 
-                            read_in_clean_mask = read_in_clean_mask, 
-                            run_multiscale_clean = run_multiscale_clean, 
-                            revert_to_multiscale = revert_to_multiscale, 
-                            make_singlescale_mask = make_singlescale_mask, 
-                            run_singlescale_clean = run_singlescale_clean, 
-                            do_export_to_fits = do_export_to_fits, 
-                            overwrite = overwrite, 
-                            )
-                    # 
-                    # image chan0 <TODO>
-                    #if do_chan0:
-                    #    this_product+'_chan0'
-                    #    raise NotImplementedError()
-                    # 
-                    # 
-                    # change dir back
-                    os.chdir(current_dir)
-                    # 
-                    # 
-                    # print ending message
-                    logger.info("--------------------------------------------------------")
-                    logger.info("END: Imaging the data set.")
-                    logger.info("--------------------------------------------------------")
-                # 
-                # end of for configs
+        for this_target, this_product, this_config in self.looper(do_targets=True, do_products=True, do_configs=True, just_interf=True):
             # 
-            # end of for line or cont products
+            # get imaging dir
+            this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+            # 
+            # set project to empty <TODO>
+            this_project = ''
+            # 
+            # print starting message
+            logger.info("")
+            logger.info("--------------------------------------------------------")
+            logger.info("START: Imaging the data set.")
+            logger.info("--------------------------------------------------------")
+            logger.info('Target: '+this_target)
+            logger.info('Config: '+this_config)
+            logger.info('Product: '+this_product)
+            logger.info('Imaging dir: '+this_imaging_dir)
+            # 
+            # check config suffix if processing individual project ms data <TODO> 
+            if process_individual_project:
+                this_config_suffix = re.sub(r'^(.*?)_([0-9]+)$', r'\2', this_config)
+                this_config = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_config)
+            # 
+            # 
+            # change directory to imaging dir
+            current_dir = os.getcwd()
+            os.chdir(this_imaging_dir)
+            # 
+            # 
+            # build clean call
+            logger.info('Running recipe_build_clean_call')
+            clean_call = \
+            self.recipe_build_clean_call(
+                target = this_target, 
+                project = this_project, 
+                config = this_config, 
+                product = this_product, 
+                tag = '', 
+                forceSquare = forceSquare, 
+                overwrite = overwrite, 
+                )
+            # 
+            # 
+            # make imaging recipe
+            if clean_call is not None:
+                logger.info('Running recipe_imaging_one_target')
+                self.recipe_imaging_one_target(
+                    clean_call = clean_call, 
+                    make_dirty_image = make_dirty_image, 
+                    revert_to_dirty = revert_to_dirty, 
+                    read_in_clean_mask = read_in_clean_mask, 
+                    run_multiscale_clean = run_multiscale_clean, 
+                    revert_to_multiscale = revert_to_multiscale, 
+                    make_singlescale_mask = make_singlescale_mask, 
+                    run_singlescale_clean = run_singlescale_clean, 
+                    do_export_to_fits = do_export_to_fits, 
+                    overwrite = overwrite, 
+                    )
+            # 
+            # image chan0 <TODO>
+            #if do_chan0:
+            #    this_product+'_chan0'
+            #    raise NotImplementedError()
+            # 
+            # 
+            # change dir back
+            os.chdir(current_dir)
+            # 
+            # 
+            # print ending message
+            logger.info("--------------------------------------------------------")
+            logger.info("END: Imaging the data set.")
+            logger.info("--------------------------------------------------------")
         # 
-        # end of for targets
+        # end of for looper
     # 
     # end of loop_imaging()
     
@@ -239,11 +258,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 
         # Check for overrides
         #<TODO> should we remove the '.ms' suffix?
-        logger.debug('Checking overrides for "'+in_file+'"')
-        if self._kh.has_overrides_for_key(in_file):
-            cell_size_string = self._kh.get_overrides(key = in_file, param = 'cell_size', default = cell_size_string)
-            x_size_string = self._kh.get_overrides(key = in_file, param = 'x_size', default = x_size_string)
-            y_size_string = self._kh.get_overrides(key = in_file, param = 'y_size', default = y_size_string)
+        in_file_name = in_file.replace('.ms','')
+        logger.debug('Checking overrides for "'+in_file_name+'"')
+        if self._kh.has_overrides_for_key(in_file_name):
+            cell_size_string = self._kh.get_overrides(key = in_file_name, param = 'cell_size', default = cell_size_string)
+            x_size_string = self._kh.get_overrides(key = in_file_name, param = 'x_size', default = x_size_string)
+            y_size_string = self._kh.get_overrides(key = in_file_name, param = 'y_size', default = y_size_string)
         return cell_size_string, x_size_string, y_size_string
     
     
@@ -303,7 +323,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             #clean_call.antenna = select_7m
         # 
         # Look up the center and shape of the mosaic
-        mosaic_key = self._kh._target_dict # read_mosaic_key()
+        mosaic_key = self._kh._target_dict # read_mosaic_key() #<TODO>#
         this_ra = mosaic_key[target]['rastring']
         this_dec = mosaic_key[target]['decstring']
         clean_call.phase_center = 'J2000 '+this_ra+' '+this_dec
@@ -317,7 +337,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         cell_size, x_size, y_size = \
             self.task_pick_cell_and_imsize(\
                 clean_call.vis, 
-                forceSquare=forceSquare) #<TODO># dzliu: this can be improved
+                forceSquare=forceSquare) #<TODO># dzliu: this can be improved, and this already included checking overrides by ms file name.
         image_size = [int(x_size), int(y_size)]
         
         clean_call.cell_size = cell_size
@@ -360,54 +380,35 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             clean_call.scales_as_angle = [0, 1, 2.5, 5, 10]
         
         # Look up overrides in the imaging parameters
-        override_dict = self._kh._override_dict # read_override_imaging_params()
-
-        if clean_call.image_root in override_dict:
-            this_override_dict = override_dict[clean_call.image_root]
-
-            if 'smallscalebias' in this_override_dict:
-                clean_call.smallscalebias = float(this_override_dict['smallscalebias'])
-            if 'x_size' in this_override_dict:
-                clean_call.image_size[0] = int(this_override_dict['x_size'])
-            if 'y_size' in this_override_dict:
-                clean_call.image_size[1] = int(this_override_dict['y_size'])
-            if 'pblimit' in this_override_dict:
-                clean_call.pblimit = float(this_override_dict['pblimit'])
-            if 'scales_as_angle' in this_override_dict:
-                scales_as_angle_string = this_override_dict['scales_as_angle']
-                tokens = scales_as_angle_string.split(',')
-                scales_as_angle = []
-                for token in tokens:
-                    if token == '':
-                        continue
-                    scales_as_angle.append(float(token))
-                clean_call.scales_as_angle = scales_as_angle
+        #logger.debug(str(clean_call))
+        #logger.debug('Checking overrides for "'+clean_call.image_root+'"')
+        if self._kh.has_overrides_for_key(clean_call.image_root):
+            clean_call.smallscalebias = float(self._kh.get_overrides(key = clean_call.image_root, param = 'smallscalebias', default = clean_call.smallscalebias))
+            clean_call.image_size[0] = int(self._kh.get_overrides(key = clean_call.image_root, param = 'x_size', default = clean_call.image_size[0]))
+            clean_call.image_size[1] = int(self._kh.get_overrides(key = clean_call.image_root, param = 'y_size', default = clean_call.image_size[1]))
+            clean_call.pblimit = float(self._kh.get_overrides(key = clean_call.image_root, param = 'pblimit', default = clean_call.pblimit))
+            clean_call.scales_as_angle = self._kh.get_overrides(key = clean_call.image_root, param = 'scales_as_angle', default = clean_call.scales_as_angle)
+            if type(clean_call.scales_as_angle) is str:
+                clean_call.scales_as_angle = np.array(list(filter(None, clean_call.scales_as_angle.split(',')))).astype(float).tolist()
+        #logger.debug(str(clean_call))
         
-        # Define the clean mask (note one mask per galaxy)
-        
+        # Define the clean mask (note one mask per galaxy, so we need to convert target multipart name to target name)
         dir_key = self._kh._dir_keys # read_dir_key() #<TODO># Need KeyHandler function get_target_name_by_multipart_name()
         if target in dir_key:
-            this_gal = dir_key[target]
+            target_name = dir_key[target]
         else:
-            this_gal = target
+            target_name = target
         
-        cleanmask_dict = self._kh._cleanmask_dict
-        if cleanmask_dict is None:
-            cleanmask_dict = {}
-        if this_gal in cleanmask_dict:
-            this_cleanmask = cleanmask_dict[this_gal]
-        else:
-            logger.error('Error! Clean mask is not defined for target "'+this_gal+'" in "cleanmask_key.txt"! cleanmask_dict: '+str(cleanmask_dict.keys()))
-            #raise Exception('Error! Clean mask is not defined for target "'+this_gal+'" in "cleanmask_key.txt"!')
-            #this_cleanmask = '../clean_masks/'+this_gal+'_co21_clean_mask.fits' #<TODO># this needs discussion and improvement
+        this_cleanmask = self._kh.get_cleanmask_filename(target = target_name, product = product)
+        if this_cleanmask is None:
+            #logger.warning('Warning! Clean mask is not defined for target "'+target+'" in "cleanmask_key.txt"! cleanmask_dict: '+str(cleanmask_dict.keys()))
             this_cleanmask = ''
-            #<TODO># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "keyHandler.py"!
         
         if os.path.isfile(this_cleanmask):
             clean_call.clean_mask_file = this_cleanmask
         else:
             clean_call.clean_mask_file = None
-            logger.warning('Warning! Clean mask for target "'+this_gal+'" was not found: "'+this_cleanmask+'"')
+            #logger.warning('Warning! Clean mask file for target "'+target_name+'" and product "'+product+'" was not found: "'+this_cleanmask+'"')
         
         # 
         # Return

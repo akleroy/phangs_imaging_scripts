@@ -1677,6 +1677,8 @@ class KeyHandler:
             logging.error("Did not find a cleanmask for "+target+" "+str(this_product))
             return(None)
         
+        logger.debug('Using clean mask file "'+os.path.basename(last_found_file)+'" for target "'+target+'" and product "'+product+'"')
+        
         return(last_found_file)
 
         return ()
@@ -1872,18 +1874,19 @@ class KeyHandler:
         
         # check key in override dict or not
         if not (key in self._override_dict):
-            logger.warning('Warning! The input key "'+str(key)+'" is not in the overrides file!')
+            #logger.debug('Warning! The input key "'+str(key)+'" is not in the overrides file!')
             return default
         
         # if user has input key only, return the dict
         if param is None:
-            logger.warning('Warning! Only has key input when getting overrides! Will return the override dictionary for this key "'+str(key)+'".')
+            #logger.debug('Warning! Only has key input when getting overrides! Will return the override dictionary for this key "'+str(key)+'".')
             return self._override_dict[key] #<TODO># dzliu: what if user has just input a key?
         
         if not (param in self._override_dict[key]):
-            logger.warning('Warning! The input key "'+str(key)+'" is not in the overrides file!')
+            #logger.debug('Warning! The input key "'+str(key)+'" does not have a param "'+str(param)+'" in the overrides file! Return default value '+str(default))
             return default
         
+        logger.debug('Overriding key "'+str(key)+'" param "'+str(param)+'" value '+str(self._override_dict[key][param])+', default ' +str(default) )
         return self._override_dict[key][param]
 
 #endregion
