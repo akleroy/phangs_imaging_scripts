@@ -24,6 +24,20 @@ class HandlerTemplate:
         ):
 
         # Initialize lists
+
+        self._targets_first = None
+        self._targets_last = None
+        self._targets_skip = None
+        self._targets_only = None
+        self._cont_skip = None
+        self._cont_only = None
+        self._lines_skip = None
+        self._lines_only = None
+        self._interf_configs_skip = None
+        self._interf_configs_only = None
+        self._feather_configs_skip = None
+        self._feather_configs_only = None
+
         self._targets_list = []
         self._line_products_list = []
         self._cont_products_list = []
@@ -375,5 +389,93 @@ class HandlerTemplate:
             return(self._interf_configs_list)
         
         return(self._interf_configs_list + self._feather_configs_list)
+
+#endregion
+
+#region Loop execution
+
+    ###################################################
+    # Loop over targets, products, and configurations #
+    ###################################################
+
+    def looper(
+        self,
+        do_targets=True,
+        do_products=True,
+        just_line=False,
+        just_cont=False,
+        do_configs=True,
+        just_interf=False,
+        just_feather=False,
+        ):
+        """
+        Return (target, product, config) tuples for all selected
+        combinations. Boolean switches toggle what gets included in
+        the loop.
+        """
+
+        target_list = self.get_targets()
+
+        product_list = self.get_all_products()
+        if just_line and just_cont:
+            logger.error("Both just_line and just_cont set. Defaulting to all products.")
+        if just_line and not just_cont:
+            product_list = self.get_line_products()
+        if just_cont and not just_line:
+            product_list = self.get_cont_products()
+            
+        config_list = self.get_all_configs()
+        if just_interf and just_feather:
+            logger.error("Both just_interf and just_feather set. Defaulting to all configs.")
+        if just_interf and not just_feather:
+            config_list = self.get_interf_configs()
+        if just_feather and not just_interf:
+            config_list = self.get_feather_configs()        
+
+        # All three quantities
+
+        if do_targets and do_products and do_configs:
+            logger.info("Looping over target, product, and config.")
+            for this_target in target_list:
+                for this_product in product_list:
+                    for this_config in config_list:
+                        yield this_target, this_product, this_config
+                
+        # Two quantity loop
+
+        if do_targets and do_products and not do_configs:
+            logger.info("Looping over target and product.")
+            for this_target in target_list:
+                for this_product in product_list:
+                    yield this_target, this_product
+
+        if do_targets and do_configs and not do_products:
+            logger.info("Looping over target and config.")
+            for this_target in target_list:
+                for this_config in config_list:
+                    yield this_target, this_config
+
+        if do_products and do_configs and not do_targets:
+            logger.info("Looping over product and config.")
+            for this_product in product_list:
+                for this_config in config_list:
+                    yield this_product, this_config
+
+        # Single quantity loop
+
+        if do_targets and not do_configs and not do_products:
+            logger.info("Looping over target.")
+            for this_target in target_list:
+                yield this_target
+
+        if do_configs and not do_targets and not do_products:
+            logger.info("Looping over config.")
+            for this_config in config_list:
+                yield this_config
+
+        if do_products and not do_targets and not do_configs:
+            logger.info("Looping over product.")
+            for this_product in product_list:
+                yield this_product
 
 #endregion
