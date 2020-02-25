@@ -1933,8 +1933,8 @@ class KeyHandler:
         Make any missing imaging or postprocessing directories.
         """
         
-        if not imaging and not postprocess:
-            logging.error("Set either imaging or postprocess to True. Returning.")
+        if not imaging and not postprocess and not product:
+            logging.error("Set either imaging or postprocess or product to True. Returning.")
             return(False)
 
         if imaging:
