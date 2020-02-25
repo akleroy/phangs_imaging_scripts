@@ -10,11 +10,6 @@ import scipy.stats as ss
 mad_to_std_fac = 1.482602218505602
 
 
-def hybrid_mask(mask1, mask2):
-    hybrid = np.logical_or(mask1, mask2)
-    return(hybrid)
-
-
 def mad_zero_centered(data, mask=None):
     if mask is None:
         sig_false = ss.norm.isf(0.5 / data.size)
