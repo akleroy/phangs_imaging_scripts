@@ -15,7 +15,7 @@ calls to CASA from this class.
     $ casa
     from phangsPipeline import keyHandler as kh
     from phangsPipeline import productHandler as prh
-    this_kh = kh.KeyHandler(master_key = 'config_keys/master_key.txt')
+    this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)
     this_prh.set_targets(only = ['ngc3627'])
     this_prh.loop_product()
@@ -58,7 +58,7 @@ import scProductRoutines as scproduct
 
 class ProductHandler(handlerTemplate.HandlerTemplate):
     """
-    Class to creates signal masks based on image cubes, and then applies
+    Class to create signal masks based on image cubes, and then applies
     the masks to make moment maps. This is done for each galaxy at multiple
     spatial scales.
     """
@@ -137,7 +137,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             ### IDL step; collapse into a simple set of moment maps
             scproduct.write_moment0(
                 cube = spectralcube_data,
-                outfile = , # <TODO>
+                outfile = "test", # <TODO>
                 rms = spectralcube_noise,
                 )
 
