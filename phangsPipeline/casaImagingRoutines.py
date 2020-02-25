@@ -22,6 +22,8 @@ import casaStuff
 from casaMaskingRoutines import signal_mask
 from casaMaskingRoutines import stat_clean_cube
 
+from clean_call import CleanCall
+
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
 
@@ -116,6 +118,17 @@ def wipe_imaging(
     """
     if image_root == None:
         return
+    
+    logger.debug('wipe_imaging')
+    logger.debug('rm -rf '+image_root+'.image')
+    logger.debug('rm -rf '+image_root+'.model')
+    logger.debug('rm -rf '+image_root+'.mask')
+    logger.debug('rm -rf '+image_root+'.pb')
+    logger.debug('rm -rf '+image_root+'.psf')
+    logger.debug('rm -rf '+image_root+'.residual')
+    logger.debug('rm -rf '+image_root+'.weight')
+    logger.debug('rm -rf '+image_root+'.sumwt')
+    
     os.system('rm -rf '+image_root+'.image')
     os.system('rm -rf '+image_root+'.model')
     os.system('rm -rf '+image_root+'.mask')
@@ -132,8 +145,18 @@ def save_copy_of_imaging(
     Copy a cube to a new name. Used to make a backup copy. Overwrites
     the previous cube of that name.
     """
-
+    
     wipe_cube(output_root)
+    
+    logger.debug('save_copy_of_imaging')
+    logger.debug('cp -r '+input_root+'.image '+output_root+'.image')
+    logger.debug('cp -r '+input_root+'.model '+output_root+'.model')
+    logger.debug('cp -r '+input_root+'.mask '+output_root+'.mask')
+    logger.debug('cp -r '+input_root+'.pb '+output_root+'.pb')
+    logger.debug('cp -r '+input_root+'.psf '+output_root+'.psf')
+    logger.debug('cp -r '+input_root+'.residual '+output_root+'.residual')
+    logger.debug('cp -r '+input_root+'.weight '+output_root+'.weight')
+    logger.debug('cp -r '+input_root+'.sumwt '+output_root+'.sumwt')
     
     os.system('cp -r '+input_root+'.image '+output_root+'.image')
     os.system('cp -r '+input_root+'.model '+output_root+'.model')
@@ -150,8 +173,18 @@ def replace_imaging_with_copy(
     """
     Replace a cube with a copy.
     """
-
+    
     wipe_cube(to_root)
+    
+    logger.debug('replace_imaging_with_copy')
+    logger.debug('cp -r '+from_root+'.image '+to_root+'.image')
+    logger.debug('cp -r '+from_root+'.model '+to_root+'.model')
+    logger.debug('cp -r '+from_root+'.mask '+to_root+'.mask')
+    logger.debug('cp -r '+from_root+'.pb '+to_root+'.pb')
+    logger.debug('cp -r '+from_root+'.psf '+to_root+'.psf')
+    logger.debug('cp -r '+from_root+'.residual '+to_root+'.residual')
+    logger.debug('cp -r '+from_root+'.weight '+to_root+'.weight')
+    logger.debug('cp -r '+from_root+'.sumwt '+to_root+'.sumwt')
 
     os.system('cp -r '+from_root+'.image '+to_root+'.image')
     os.system('cp -r '+from_root+'.model '+to_root+'.model')
@@ -168,27 +201,33 @@ def export_imaging_to_fits(
     """
     Export the various products associated with a CASA cube to FITS.
     """
-
+    
+    logger.debug('export_imaging_to_fits')
+    logger.debug('exportfits '+image_root+'.image '+image_root+'.fits')
     exportfits(imagename=image_root+'.image',
                fitsimage=image_root+'.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
-
+    
+    logger.debug('exportfits '+image_root+'.model '+image_root+'_model.fits')
     exportfits(imagename=image_root+'.model',
                fitsimage=image_root+'_model.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
-
+    
+    logger.debug('exportfits '+image_root+'.residual '+image_root+'_residual.fits')
     exportfits(imagename=image_root+'.residual',
                fitsimage=image_root+'_residual.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
-
+    
+    logger.debug('exportfits '+image_root+'.mask '+image_root+'_mask.fits')
     exportfits(imagename=image_root+'.mask',
                fitsimage=image_root+'_mask.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
     
+    logger.debug('exportfits '+image_root+'.pb '+image_root+'_pb.fits')
     exportfits(imagename=image_root+'.pb',
                fitsimage=image_root+'_pb.fits',
                velocity=True, overwrite=True, dropstokes=True, 
@@ -234,6 +273,16 @@ def save_copy_of_cube(
 
     wipe_cube(output_root)
     
+    logger.debug('save_copy_of_cube')
+    logger.debug('cp -r '+input_root+'.image '+output_root+'.image')
+    logger.debug('cp -r '+input_root+'.model '+output_root+'.model')
+    logger.debug('cp -r '+input_root+'.mask '+output_root+'.mask')
+    logger.debug('cp -r '+input_root+'.pb '+output_root+'.pb')
+    logger.debug('cp -r '+input_root+'.psf '+output_root+'.psf')
+    logger.debug('cp -r '+input_root+'.residual '+output_root+'.residual')
+    logger.debug('cp -r '+input_root+'.psf '+output_root+'.weight')
+    logger.debug('cp -r '+input_root+'.residual '+output_root+'.sumwt')
+    
     os.system('cp -r '+input_root+'.image '+output_root+'.image')
     os.system('cp -r '+input_root+'.model '+output_root+'.model')
     os.system('cp -r '+input_root+'.mask '+output_root+'.mask')
@@ -251,6 +300,17 @@ def wipe_cube(
     """
     if cube_root == None:
         return
+    
+    logger.debug('wipe_cube')
+    logger.debug('rm -rf '+cube_root+'.image')
+    logger.debug('rm -rf '+cube_root+'.model')
+    logger.debug('rm -rf '+cube_root+'.mask')
+    logger.debug('rm -rf '+cube_root+'.pb')
+    logger.debug('rm -rf '+cube_root+'.psf')
+    logger.debug('rm -rf '+cube_root+'.residual')
+    logger.debug('rm -rf '+cube_root+'.weight')
+    logger.debug('rm -rf '+cube_root+'.sumwt')
+    
     os.system('rm -rf '+cube_root+'.image')
     os.system('rm -rf '+cube_root+'.model')
     os.system('rm -rf '+cube_root+'.mask')
@@ -270,6 +330,16 @@ def replace_cube_with_copy(
     
     wipe_cube(to_root)
     
+    logger.debug('replace_cube_with_copy')
+    logger.debug('cp -r '+from_root+'.image '+to_root+'.image')
+    logger.debug('cp -r '+from_root+'.model '+to_root+'.model')
+    logger.debug('cp -r '+from_root+'.mask '+to_root+'.mask')
+    logger.debug('cp -r '+from_root+'.pb '+to_root+'.pb')
+    logger.debug('cp -r '+from_root+'.psf '+to_root+'.psf')
+    logger.debug('cp -r '+from_root+'.residual '+to_root+'.residual')
+    logger.debug('cp -r '+from_root+'.psf '+to_root+'.weight')
+    logger.debug('cp -r '+from_root+'.residual '+to_root+'.sumwt')
+    
     os.system('cp -r '+from_root+'.image '+to_root+'.image')
     os.system('cp -r '+from_root+'.model '+to_root+'.model')
     os.system('cp -r '+from_root+'.mask '+to_root+'.mask')
@@ -287,30 +357,36 @@ def export_to_fits(
     Export the various products associated with a CASA cube to FITS.
     """
     
+    logger.debug('export_to_fits')
+    logger.debug('exportfits '+cube_root+'.image '+cube_root+'.fits')
     casaStuff.exportfits(\
                imagename=cube_root+'.image',
                fitsimage=cube_root+'.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
-
+    
+    logger.debug('exportfits '+cube_root+'.model '+cube_root+'_model.fits')
     casaStuff.exportfits(\
                imagename=cube_root+'.model',
                fitsimage=cube_root+'_model.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
-
+    
+    logger.debug('exportfits '+cube_root+'.residual '+cube_root+'_residual.fits')
     casaStuff.exportfits(\
                imagename=cube_root+'.residual',
                fitsimage=cube_root+'_residual.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
-
+    
+    logger.debug('exportfits '+cube_root+'.mask '+cube_root+'_mask.fits')
     casaStuff.exportfits(\
                imagename=cube_root+'.mask',
                fitsimage=cube_root+'_mask.fits',
                velocity=True, overwrite=True, dropstokes=True, 
                dropdeg=True, bitpix=bitpix)
     
+    logger.debug('exportfits '+cube_root+'.pb '+cube_root+'_pb.fits')
     casaStuff.exportfits(\
                imagename=cube_root+'.pb',
                fitsimage=cube_root+'_pb.fits',
@@ -328,125 +404,48 @@ def export_to_fits(
 
 
 
-#region class CleanCall
-
-class CleanCall:
+def execute_clean_call(
+    clean_call = None
+    ):
+    """
+    Execute the clean call.
+    """
     
-    def __init__(self):
-        self.vis = None
-        self.antenna = ""
-        self.image_root = None
-        self.phase_center = ""
-        self.image_size = None
-        self.cell_size = None
-        self.restfreq_ghz = -1.0
-        self.calcres = True
-        self.calcpsf = True
-        self.specmode = 'cube'
-        self.deconvolver = 'hogbom'
-        self.threshold = '0.0mJy/beam'
-        self.scales_as_pix = [0]
-        self.scales_as_angle = None
-        self.smallscalebias = 0.9
-        self.briggs_weight = 0.5
-        self.niter = 0
-        self.cycle_niter = 200
-        self.minpsffraction = 0.5
-        self.pblimit = 0.25
-        self.uvtaper = None
-        self.restoringbeam = 'common'
-        self.usemask = 'user'
-        self.mask = ''
-        self.interactive = False
-        self.rest = False
-        self.logfile = None
-        self.clean_mask_file = None
-
-    def execute(self):
-        """
-        Execute the clean call.
-        """
+    logger.debug('execute_clean_call')
     
-        if self.vis == None:
-            logger.info("No visibility. Returning.")
-            return    
+    if not isinstance(clean_call, CleanCall):
+        logger.error("Please input a valid clean call!")
+        raise Exception("Please input a valid clean call!")
+      
+    if clean_call.vis == None:
+        logger.info("No visibility. Returning.")
+        return
 
-        if os.path.isdir(self.vis) == False:
-            logger.info("Visibility file not found. Returning.")
-            return
-        
-        if self.cell_size == None or self.image_size == None:
-            logger.info("Estimating cell and image size.")
-            cell_size, x_size, y_size = \
-                estimate_cell_and_imsize(self.vis, oversamp=5)
-            self.cell_size = cell_size
-            self.image_size = [x_size, y_size]
+    if os.path.isdir(clean_call.vis) == False:
+        logger.info("Visibility file not found. Returning.")
+        return
+    
+    if clean_call.cell_size == None or clean_call.image_size == None:
+        logger.info("Estimating cell and image size.")
+        cell_size, x_size, y_size = \
+            estimate_cell_and_imsize(clean_call.vis, oversamp=5)
+        clean_call.cell_size = cell_size
+        clean_call.image_size = [x_size, y_size]
 
-        if self.restfreq_ghz < 0:
-            restfreq_str = ''
-        else:
-            restfreq_str = str(self.restfreq_ghz)+'GHz'
+    if clean_call.logfile != None:
+        oldlogfile = casaStuff.casalog.logfile()
+        casaStuff.casalog.setlogfile(clean_call.logfile)
 
-        if self.logfile != None:
-            oldlogfile = casaStuff.casalog.logfile()
-            casaStuff.casalog.setlogfile(self.logfile)
+    if clean_call.reset:
+        logger.info("Wiping previous versions of the cube.")
+        wipe_cube(clean_call.image_root)
+    
+    logger.debug('Clean call: '+str(clean_call.kwargs()))
+    casaStuff.tclean(**clean_call.kwargs())
 
-        if self.uvtaper == None:
-            uv_taper_string = ''
-        else:
-            uv_taper_string = [str(self.uvtaper)+'arcsec',str(self.uvtaper)+'arcsec','0deg']
+    if clean_call.logfile != None:
+        casaStuff.casalog.setlogfile(oldlogfile)
 
-        if self.reset:
-            logger.info("Wiping previous versions of the cube.")
-            wipe_cube(self.image_root)
-
-        casaStuff.tclean(\
-               vis=self.vis,
-               imagename=self.image_root,
-               phasecenter=self.phase_center,
-               cell=self.cell_size,
-               imsize=self.image_size,
-               gridder='mosaic',
-               # Selection
-               #antenna=self.antenna,
-               # Spectral axis
-               specmode=self.specmode,
-               restfreq=restfreq_str,
-               outframe='lsrk',
-               veltype='radio',
-               # Workflow
-               calcres=self.calcres,
-               calcpsf=self.calcpsf,
-               # Deconvolver
-               deconvolver=self.deconvolver,
-               scales=self.scales_as_pix,
-               smallscalebias=self.smallscalebias,
-               pblimit=self.pblimit,
-               normtype='flatnoise',
-               # Restoring beam
-               restoringbeam=self.restoringbeam,
-               # U-V plane gridding
-               weighting='briggs',
-               robust=self.briggs_weight,
-               uvtaper=uv_taper_string,
-               # Stopping criterion
-               niter=self.niter,
-               threshold=self.threshold,
-               cycleniter=self.cycle_niter,
-               cyclefactor=3.0,
-               minpsffraction=self.minpsffraction,
-               # Mask
-               usemask=self.usemask,
-               mask=self.mask,
-               pbmask=self.pblimit,
-               # UI
-               interactive=self.interactive,
-               )
-
-        if self.logfile != None:
-            casaStuff.casalog.setlogfile(oldlogfile)
-
-#endregion
 
 
 
@@ -461,7 +460,7 @@ def make_dirty_map(
     Create a dirty map from a measurement set.
     """
     
-    if type(clean_call) != type(CleanCall()):
+    if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
     
@@ -472,7 +471,8 @@ def make_dirty_map(
     
     clean_call.calcres = True
     clean_call.calcpsf = True
-    clean_call.execute()
+    #clean_call.execute()
+    execute_clean_call(clean_call)
     
     clean_call.reset = False
     clean_call.usemask = 'pb'
@@ -506,9 +506,13 @@ def clean_loop(
     """
     Carry out an iterative clean until a convergence criteria is met.
     """
+    
+    if not isinstance(clean_call, CleanCall):
+        logger.error("Please input a valid clean call!")
+        raise Exception("Please input a valid clean call!")
 
-   # Note the number of channels, which is used in setting the number
-   # of iterations that we give to an individual clean call.
+    # Note the number of channels, which is used in setting the number
+    # of iterations that we give to an individual clean call.
 
     vm = au.ValueMapping(clean_call.vis)
     nchan = vm.spwInfo[0]['numChannels']
@@ -578,14 +582,17 @@ def clean_loop(
                 absolute=False)
             clean_call.usemask='user'
 
+        logger.debug('clean_loop '+clean_call.image_root+' loop '+str(loop))
+        
         # Set the log file
 
         if log_ext != None:
-            clean_call.logfile = cube_root+"_loop_"+str(loop)+"_"+log_ext+".log"
+            clean_call.logfile = clean_call.image_root+"_loop_"+str(loop)+"_"+log_ext+".log"
         else:
             clean_call.logfile = None
 
         # Save the previous version of the file
+        
         save_copy_of_cube(
             input_root=clean_call.image_root,
             output_root=clean_call.image_root+'_prev')
@@ -593,7 +600,8 @@ def clean_loop(
         # Execute the clean call.
 
         clean_call.reset = False
-        clean_call.execute()
+        #clean_call.execute()
+        execute_clean_call(clean_call)
 
         clean_call.niter = 0
         clean_call.cycle_niter = 200
@@ -668,7 +676,7 @@ def singlescale_loop(
     
     # Check that we have a vile clean call
 
-    if type(clean_call) != type(CleanCall()):
+    if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
         
@@ -687,7 +695,8 @@ def singlescale_loop(
         snr_threshold=snr_threshold,
         stop_at_negative=stop_at_negative,
         remask=remask,
-        max_loop = max_loop      
+        max_loop = max_loop, 
+        log_ext = 'singlescale', #<TODO># set log_ext to output log files
         )
 
     # Save a copy
@@ -714,7 +723,7 @@ def multiscale_loop(
     
     # Check that we have a vile clean call
 
-    if type(clean_call) != type(CleanCall()):
+    if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
     
@@ -744,7 +753,8 @@ def multiscale_loop(
         absolute_threshold=absolute_threshold,
         snr_threshold=snr_threshold,
         stop_at_negative=stop_at_negative,
-        max_loop = max_loop      
+        max_loop = max_loop, 
+        log_ext = 'multiscale', #<TODO># set log_ext to output log files
         )
 
     # Save a copy
