@@ -1,4 +1,8 @@
 # Imports
+# Daizhong sys.argv[0] when running a script (but not shell)
+# or __file or os.getcwd or similar ... figure this out and document
+sys.path.append("/data/tycho/0/leroy.42/reduction/alma/PHANGS/scripts/")
+
 from phangsPipeline import phangsLogger as pl
 from phangsPipeline import keyHandler as kh
 from phangsPipeline import postprocessHandler as pph

@@ -18,7 +18,7 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 
 # CASA stuff
-import casaStuff as casa
+import casaStuff
 
 # Other pipeline stuff
 import casaMaskingRoutines as cma
@@ -130,7 +130,7 @@ def common_res_for_mosaic(
         for this_infile in infile_list:
             logger.info("Checking "+this_infile)
 
-            hdr = casa.imhead(this_infile)
+            hdr = casaStuff.imhead(this_infile)
 
             if (hdr['axisunits'][0] != 'rad'):
                 logger.error("ERROR: Based on CASA experience. I expected units of radians.")
@@ -164,7 +164,7 @@ def common_res_for_mosaic(
         this_outfile = outfile_dict[this_infile]
         logger.debug("Convolving "+this_infile+' to '+this_outfile)
         
-        casa.imsmooth(imagename=this_infile,
+        casaStuff.imsmooth(imagename=this_infile,
                       outfile=this_outfile,
                       targetres=True,
                       major=str(target_bmaj)+'arcsec',
@@ -224,11 +224,11 @@ def calculate_mosaic_extent(
     # Loop over input files and calculate RA and Dec coordinates of
     # the corners.
 
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
 
     for this_infile in infile_list:
 
-        this_hdr = casa.imhead(this_infile)
+        this_hdr = casaStuff.imhead(this_infile)
 
         if this_hdr['axisnames'][0] != 'Right Ascension':
             logger.error("Expected axis 0 to be Right Ascension. Returning.")
@@ -250,16 +250,16 @@ def calculate_mosaic_extent(
         yhi = this_shape[1]-1
         
         pixbox = str(xlo)+','+str(ylo)+','+str(xlo)+','+str(ylo)
-        blc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        blc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
 
         pixbox = str(xlo)+','+str(yhi)+','+str(xlo)+','+str(yhi)
-        tlc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        tlc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
         
         pixbox = str(xhi)+','+str(yhi)+','+str(xhi)+','+str(yhi)
-        trc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        trc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
 
         pixbox = str(xhi)+','+str(ylo)+','+str(xhi)+','+str(ylo)
-        brc = casa.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        brc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
         
         ra_list.append(blc['coords'][0][0])
         ra_list.append(tlc['coords'][0][0])
@@ -417,7 +417,7 @@ def build_common_header(
         
     # Get the header from the template file
 
-    target_hdr = casa.imregrid(template_file, template='get')
+    target_hdr = casaStuff.imregrid(template_file, template='get')
     
     # Get the pixel scale. This makes some assumptions. We could put a
     # lot of general logic here, but we are usually working in a
@@ -578,7 +578,7 @@ def common_grid_for_mosaic(
         
         this_outfile = outfile_dict[this_infile]
 
-        casa.imregrid(imagename=this_infile,
+        casaStuff.imregrid(imagename=this_infile,
                       template=target_hdr,
                       output=this_outfile,
                       asvelocity=asvelocity,
@@ -734,7 +734,7 @@ def generate_weight_file(
 
     os.system("cp -r "+template+" "+outfile)
 
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(outfile)
     data = myia.getchunk()
 
@@ -919,17 +919,17 @@ def mosaic_aligned_data(
     # Feed our two LEL strings into immath to make the sum and weight
     # images.
 
-    casa.immath(imagename = full_imlist, mode='evalexpr',
+    casaStuff.immath(imagename = full_imlist, mode='evalexpr',
                 expr=lel_exp_sum, outfile=sum_file,
                 imagemd = full_imlist[0])
 
-    casa.immath(imagename = full_imlist, mode='evalexpr',
+    casaStuff.immath(imagename = full_imlist, mode='evalexpr',
                 expr=lel_exp_weight, outfile=weight_file,
                 imagemd = full_imlist[0])
     
     # Just to be safe, reset the masks on the two images.
     
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(sum_file)
     myia.set(pixelmask=1)
     myia.close()
@@ -940,7 +940,7 @@ def mosaic_aligned_data(
 
     # Now divide the sum*weight image by the weight image.
 
-    casa.immath(imagename = [sum_file, weight_file], mode='evalexpr',
+    casaStuff.immath(imagename = [sum_file, weight_file], mode='evalexpr',
                 expr='iif(IM1 > 0.0, IM0/IM1, 0.0)', outfile=temp_file,
                 imagemd = sum_file)
 
@@ -949,13 +949,13 @@ def mosaic_aligned_data(
     # clear to me what else to do except for some weight threshold
     # (does not have to be zero, though, I guess).
 
-    casa.immath(imagename = weight_file, mode='evalexpr',
+    casaStuff.immath(imagename = weight_file, mode='evalexpr',
                 expr='iif(IM0 > 0.0, 1.0, 0.0)', 
                 outfile=mask_file)
     
     # Strip out any degenerate axes and create the final output file.
 
-    casa.imsubimage(imagename=temp_file, 
+    casaStuff.imsubimage(imagename=temp_file, 
                     outfile=outfile,
                     mask='"'+mask_file+'"',
                     dropdeg=True)
