@@ -17,7 +17,10 @@ calls to CASA from this class.
     from phangsPipeline import productHandler as prh
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)
-    this_prh.set_targets(only = ['ngc3627'])
+    this_prh.set_targets(only = ['ngc4321'])
+    this_prh.set_interf_configs(only = ['7m+tp'])
+    this_prh.set_line_products(only = ['co21'])
+    this_prh.set_no_cont_products(no_cont = True)
     this_prh.loop_product()
 
  """
@@ -97,6 +100,48 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         for this_target, this_product, this_config in \
             self.looper(do_targets=True,do_products=True,do_configs=True):
 
+            res_list = self._kh.get_res_for_config(this_config)
+            if res_list is None:
+                logger.error("No target resolutions found for config"+this_config)
+                return()
+
+            #lowest_res = self._kh.get_tag_for_res(res_list.max())
+            #print(lowest_res)
+
+            for this_res in res_list:
+                res_tag = self._kh.get_tag_for_res(this_res)
+
+                tag = 'pbcorr_trimmed_k'
+                pbcorr_trimmed_k_file = self._kh.get_cube_filename(
+                    target = this_target, config = this_config, product = this_product,
+                    ext = tag+"_res"+res_tag,
+                    casa = True,
+                    casaext = '.fits')
+
+                indir = self._kh.get_postprocess_dir_for_target(
+                    target=this_target, changeto=False)
+                outdir = self._kh.get_product_dir_for_target(
+                    target=this_target, changeto=False)
+
+                there = glob.glob(indir+pbcorr_trimmed_k_file)
+                if there:
+                    cube_data, cube_noise, cube_mask = \
+                        self.recipe_make_mask_one_beam(indir+pbcorr_trimmed_k_file)
+
+                    cube_data_hybridmasked = cube_data * cube_mask #* lowres_cube_mask
+                    cube_noise_hybridmasked = cube_noise * cube_mask #* lowres_cube_mask
+
+                    spectralcube_data = SpectralCube(data=cube_data_hybridmasked) #, wcs=cube_wcs)
+                    spectralcube_noise = SpectralCube(data=cube_noise_hybridmasked) #, wcs=cube_wcs)
+
+                    scproduct.write_moment0(
+                        cube = spectralcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_test.fits"),
+                        rms = spectralcube_noise,
+                        )
+
+
+            """
             this_dir = self._kh.get_postprocess_dir_for_target(
                 target=this_target, changeto=True)
 
@@ -143,7 +188,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
 
             ### IDL step; make maps using more sophisticated masking techniques
             # <TODO>; which module should I use?
-
+            """
 
     #############################
     # recipe_make_mask_one_beam #
@@ -151,14 +196,14 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
 
     def recipe_make_mask_one_beam(
         self,
-        imagename = None,
+        fitsimage = None,
         ):
         """build masks holding bright signal at each resolution
         """
-        hdulist = pyfits.open(imagename)
-        cube_data = hdulist[1].data # <TODO> check extension, but usually [1] is fine.
-        cube_wcs = WCS(hdulist[1].header, naxis=3)
+        hdulist = pyfits.open(fitsimage)
+        cube_data = hdulist[0].data
+        cube_wcs = WCS(hdulist[0].header) #, naxis=3)
         cube_noise = scmasking.noise_cube(cube_data)
         cube_mask = scmasking.simple_mask(cube_data, cube_noise)
 
-        return cube_data, cube_wcs, cube_noise, cube_mask
+        return cube_data, cube_noise, cube_mask
