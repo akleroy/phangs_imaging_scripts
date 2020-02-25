@@ -100,9 +100,16 @@ def simple_mask(data, noise, hi_thresh=5, hi_nchan=2,
     regions, regct = nd.label(lo_mask)
     good_regions = np.unique(regions[hi_mask])
     mask = np.zeros_like(hi_mask, dtype=np.bool)
-    # revserve_indices like functinoality here
+    # revserve_indices like functionality here
     for hit in good_regions:
         mask[regions == hit] = True
+    if grow_xy is not None:
+        struct = morph.iterate_structure(morph.generate_binary_structure(2, 1),
+                                         grow_xy)
+        mask = morph.binary_dilation(mask, struct[np.newaxis, :, :])
+    if grow_v is not None:
+        struct = np.ones(grow_v, dtype=np.bool)
+        mask = morph.binary_dilation(mask, struct[:, np.newaxis, np.newaxis])
     return(mask)
 
 
