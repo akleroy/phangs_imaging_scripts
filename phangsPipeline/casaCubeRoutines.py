@@ -19,7 +19,7 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 
 # CASA stuff
-import casaStuff as casa
+import casaStuff
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -61,13 +61,13 @@ def copy_dropdeg(
         used_temp_outfile = True
 
     if used_temp_outfile:
-        casa.imsubimage(
+        casaStuff.imsubimage(
             imagename=temp_outfile, 
             outfile=outfile,
             dropdeg=True)
         os.system('rm -rf '+temp_outfile)
     else:
-        casa.imsubimage(
+        casaStuff.imsubimage(
             imagename=infile, 
             outfile=outfile,
             dropdeg=True)
@@ -106,7 +106,7 @@ def export_and_cleanup(
             logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
 
-    casa.exportfits(imagename=infile, 
+    casaStuff.exportfits(imagename=infile, 
                     fitsimage=outfile,
                     velocity=True, 
                     overwrite=True, 
@@ -199,7 +199,7 @@ def trim_cube(
         return(False)
 
     # First, rebin if needed
-    hdr = casa.imhead(infile)
+    hdr = casaStuff.imhead(infile)
     if (hdr['axisunits'][0] != 'rad'):
         logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
         logger.error("Adjust code or investigate file "+infile)
@@ -216,7 +216,7 @@ def trim_cube(
     pix_per_beam = bmaj*1.0 / pixel_as*1.0
     
     if pix_per_beam > 6:
-        casa.imrebin(
+        casaStuff.imrebin(
             imagename=infile,
             outfile=outfile+'.temp',
             factor=[2,2,1],
@@ -228,7 +228,7 @@ def trim_cube(
         os.system('cp -r '+infile+' '+outfile+'.temp')
 
     # Figure out the extent of the image inside the cube
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(outfile+'.temp')
     mask = myia.getchunk(getmask=True)    
     myia.close()
@@ -256,7 +256,7 @@ def trim_cube(
 
     if overwrite:
         os.system('rm -rf '+outfile)
-        casa.imsubimage(
+        casaStuff.imsubimage(
             imagename=outfile+'.temp',
             outfile=outfile,
             box=box_string,
@@ -297,7 +297,7 @@ def primary_beam_correct(
             logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
 
-    casa.impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
+    casaStuff.impbcor(imagename=infile, pbimage=pbfile, outfile=outfile, cutoff=cutoff)
 
     return(True)
 
@@ -339,7 +339,7 @@ def align_to_target(
             logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
     
-    casa.imregrid(
+    casaStuff.imregrid(
         imagename=infile,
         template=template,
         output=outfile,       
@@ -369,7 +369,7 @@ def convolve_to_round_beam(
         logger.error("Input file missing - "+infile)
         return(None)
 
-    hdr = casa.imhead(infile)
+    hdr = casaStuff.imhead(infile)
     
     if (hdr['axisunits'][0] != 'rad'):
         logger.error("Based on CASA experience. I expected units of radians. I did not find this.")
@@ -392,7 +392,7 @@ def convolve_to_round_beam(
             return(None)            
         target_bmaj = force_beam
 
-    casa.imsmooth(imagename=infile,
+    casaStuff.imsmooth(imagename=infile,
                   outfile=outfile,
                   targetres=True,
                   major=str(target_bmaj)+'arcsec',
@@ -424,7 +424,7 @@ def calc_jytok(
         if infile is None:
             logger.error("No header and no infile. Returning.")
             return(None)
-        hdr = casa.imhead(target_file, mode='list')
+        hdr = casaStuff.imhead(target_file, mode='list')
 
     if hdr['cunit3'] != 'Hz':
         logger.error("I expected frequency as the third axis but did not find it. Returning.")
@@ -482,7 +482,7 @@ def convert_jytok(
     else:
         target_file = infile
 
-    hdr = casa.imhead(target_file, mode='list')
+    hdr = casaStuff.imhead(target_file, mode='list')
     unit = hdr['bunit']
     if unit != 'Jy/beam':
         logger.error("Input unit is not Jy/beam for file "+target_file+" . Instead found "+unit)
@@ -490,7 +490,7 @@ def convert_jytok(
     
     jytok = calc_jytok(hdr=hdr)
 
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(target_file)
     vals = myia.getchunk()
     vals *= jytok
@@ -498,7 +498,7 @@ def convert_jytok(
     myia.setbrightnessunit("K")
     myia.close()
 
-    casa.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
+    casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
     return(True)
 
@@ -533,7 +533,7 @@ def convert_ktojy(
     else:
         target_file = infile
 
-    hdr = casa.imhead(target_file, mode='list')
+    hdr = casaStuff.imhead(target_file, mode='list')
     unit = hdr['bunit']
     if unit != 'K':
         logger.error("Input unit is not K for file "+target_file+" . Instead found "+unit)
@@ -541,7 +541,7 @@ def convert_ktojy(
     
     jytok = calc_jytok(hdr=hdr)
 
-    myia = au.createCasaTool(casa.iatool)
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(target_file)
     vals = myia.getchunk()
     vals *= 1.0/jytok
@@ -549,7 +549,7 @@ def convert_ktojy(
     myia.setbrightnessunit("Jy/beam")
     myia.close()
 
-    casa.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
+    casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
     return(True)
 

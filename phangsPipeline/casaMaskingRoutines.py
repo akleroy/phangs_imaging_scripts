@@ -214,7 +214,8 @@ def noise_spectrum(
         logger.error('Infile specified but not found - '+infile)
         return(None)
         
-    # Not implemented yet. Currently this step is done in IDL in the PHANGS pipeline.
+    # Not implemented. May deprecate this. This step is handled after
+    # exporting to FITS by the scRoutines.
 
     pass
 
@@ -234,8 +235,9 @@ def noise_map(
     if not os.path.isdir(infile) and not os.path.isfile(infile):
         logger.error('Infile specified but not found - '+infile)
         return(None)
-        
-    # Not implemented yet. Currently this step is done in IDL in the PHANGS pipeline.
+
+    # Not implemented. May deprecate this. This step is handled after
+    # exporting to FITS by the scRoutines.
 
     pass
 

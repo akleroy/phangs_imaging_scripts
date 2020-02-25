@@ -18,7 +18,7 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 
 # CASA stuff
-import casaStuff as casa
+import casaStuff
 
 # Other pipeline stuff
 import casaCubeRoutines as ccr
@@ -98,7 +98,7 @@ def prep_sd_for_feather(
                 os.path.isfile(current_infile):
             logger.info("Importing from FITS.")
                     
-            casa.importfits(
+            casaStuff.importfits(
                 fitsimage=current_infile, 
                 imagename=current_outfile,
                 zeroblanks=False,
@@ -126,7 +126,7 @@ def prep_sd_for_feather(
                 logger.error("Output file needed exists and overwrite=False - "+current_outfile)
                 return(None)
 
-        casa.imsubimage(
+        casaStuff.imsubimage(
             imagename=current_infile, 
             outfile=current_outfile,
             dropdeg=True)
@@ -147,7 +147,7 @@ def prep_sd_for_feather(
             current_infile = tempfile_name            
             os.system('rm -rf '+current_outfile)
 
-        casa.imregrid(
+        casaStuff.imregrid(
             imagename=current_infile,
             template=interf_file,
             output=current_outfile,
@@ -161,7 +161,7 @@ def prep_sd_for_feather(
     # Check the units on the singledish file and convert from K to Jy/beam if needed.
 
     if do_checkunits:
-        hdr = casa.imhead(current_outfile, mode='list')
+        hdr = casaStuff.imhead(current_outfile, mode='list')
         unit = hdr['bunit']
         if unit == 'K':
             logger.info("Unit is Kelvin. Converting.")
@@ -261,7 +261,7 @@ def feather_two_cubes(
         os.system('cp -rf '+interf_file+' '+current_interf_file)
         os.system('cp -rf '+sd_file+' '+current_sd_file)
 
-        myia = au.createCasaTool(casa.iatool)
+        myia = au.createCasaTool(casaStuff.iatool)
 
         myia.open(interf_file)
         interf_mask = myia.getchunk(getmask=True)
@@ -304,13 +304,13 @@ def feather_two_cubes(
 
     if do_apodize:
 
-        casa.impbcor(imagename=current_sd_file,
+        casaStuff.impbcor(imagename=current_sd_file,
                      pbimage=apod_file, 
                      outfile=current_sd_file+'.temp', 
                      mode='multiply')
         current_sd_file = current_sd_file+'.temp'
         
-        casa.impbcor(imagename=current_interf_file,
+        casaStuff.impbcor(imagename=current_interf_file,
                      pbimage=apod_file, 
                      outfile=current_interf_file+'.temp', 
                      mode='multiply')
@@ -322,12 +322,12 @@ def feather_two_cubes(
     if overwrite:        
         os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.temp')
-    casa.feather(imagename=out_file+'.temp',
+    casaStuff.feather(imagename=out_file+'.temp',
                  highres=current_interf_file,
                  lowres=current_sd_file,
                  sdfactor=1.0,
                  lowpassfiltersd=False)
-    casa.imsubimage(imagename=out_file+'.temp', 
+    casaStuff.imsubimage(imagename=out_file+'.temp', 
                     outfile=out_file,
                     dropdeg=True)
     os.system('rm -rf '+out_file+'.temp')
@@ -337,7 +337,7 @@ def feather_two_cubes(
     if do_apodize:
         os.system('rm -rf '+out_file+'.temp')
         os.system('mv '+out_file+' '+out_file+'.temp')
-        casa.impbcor(imagename=out_file+'.temp',
+        casaStuff.impbcor(imagename=out_file+'.temp',
                      pbimage=apod_file, 
                      outfile=out_file, 
                      mode='divide', 

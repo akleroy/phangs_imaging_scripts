@@ -204,35 +204,35 @@ def export_imaging_to_fits(
     
     logger.debug('export_imaging_to_fits')
     logger.debug('exportfits '+image_root+'.image '+image_root+'.fits')
-    exportfits(imagename=image_root+'.image',
-               fitsimage=image_root+'.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
+    casaStuff.exportfits(imagename=image_root+'.image',
+                         fitsimage=image_root+'.fits',
+                         velocity=True, overwrite=True, dropstokes=True, 
+                         dropdeg=True, bitpix=bitpix)
     
     logger.debug('exportfits '+image_root+'.model '+image_root+'_model.fits')
-    exportfits(imagename=image_root+'.model',
-               fitsimage=image_root+'_model.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
+    casaStuff.exportfits(imagename=image_root+'.model',
+                         fitsimage=image_root+'_model.fits',
+                         velocity=True, overwrite=True, dropstokes=True, 
+                         dropdeg=True, bitpix=bitpix)
     
     logger.debug('exportfits '+image_root+'.residual '+image_root+'_residual.fits')
-    exportfits(imagename=image_root+'.residual',
-               fitsimage=image_root+'_residual.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
+    casaStuff.exportfits(imagename=image_root+'.residual',
+                         fitsimage=image_root+'_residual.fits',
+                         velocity=True, overwrite=True, dropstokes=True, 
+                         dropdeg=True, bitpix=bitpix)
     
     logger.debug('exportfits '+image_root+'.mask '+image_root+'_mask.fits')
-    exportfits(imagename=image_root+'.mask',
-               fitsimage=image_root+'_mask.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
+    casaStuff.exportfits(imagename=image_root+'.mask',
+                         fitsimage=image_root+'_mask.fits',
+                         velocity=True, overwrite=True, dropstokes=True, 
+                         dropdeg=True, bitpix=bitpix)
     
     logger.debug('exportfits '+image_root+'.pb '+image_root+'_pb.fits')
-    exportfits(imagename=image_root+'.pb',
-               fitsimage=image_root+'_pb.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-
+    casaStuff.exportfits(imagename=image_root+'.pb',
+                         fitsimage=image_root+'_pb.fits',
+                         velocity=True, overwrite=True, dropstokes=True, 
+                         dropdeg=True, bitpix=bitpix)
+    
     return
 
 
