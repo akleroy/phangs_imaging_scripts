@@ -18,7 +18,9 @@ calls to CASA from this class.
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)
     this_prh.set_targets(only = ['ngc4321'])
-    this_prh.set_interf_configs(only = ['7m+tp'])
+    this_prh.set_no_interf_configs(no_interf = True)
+    this_prh.set_interf_configs(only = ['7m']) # this doesn't work because difefrent #channel of 7m+tp and 7m
+    this_prh.set_feather_configs(only = ['7m+tp'])
     this_prh.set_line_products(only = ['co21'])
     this_prh.set_no_cont_products(no_cont = True)
     this_prh.loop_product()
@@ -28,7 +30,8 @@ calls to CASA from this class.
 import os, sys, re, shutil
 import glob
 import numpy as np
-import pyfits
+#import pyfits
+from astropy.io import fits
 from astropy.wcs import WCS
 from spectral_cube import SpectralCube, Projection
 
@@ -86,6 +89,9 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
 
     def loop_product(
         self,
+        config_lowresmask = "7m+tp",
+        res_lowresmask = "10p72",
+        make_directories=True,
         ):
         """
         """
@@ -97,6 +103,9 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             logger.error("Need a products list.")
             return(None)
 
+        if make_directories:
+            self._kh.make_missing_directories(product = True)
+
         for this_target, this_product, this_config in \
             self.looper(do_targets=True,do_products=True,do_configs=True):
 
@@ -105,9 +114,43 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                 logger.error("No target resolutions found for config"+this_config)
                 return()
 
-            #lowest_res = self._kh.get_tag_for_res(res_list.max())
-            #print(lowest_res)
+            indir = self._kh.get_postprocess_dir_for_target(
+                target=this_target, changeto=False)
+            outdir = self._kh.get_product_dir_for_target(
+                target=this_target, changeto=False)
 
+            ### step from build_products_12m.pro; if requested, wipe previous versions of the convolution
+            ### step from build_products_12m.pro; convolve to specific resolution
+            # done by postprocessHandler.py
+
+            ### step from build_products_12m.pro; generate a low resolution mask from the flat cube
+            tag = 'pbcorr_trimmed_k'
+            lowres_pbcorr_trimmed_k_file = self._kh.get_cube_filename(
+                target = this_target, config = config_lowresmask, product = this_product,
+                ext = tag+"_res"+res_lowresmask,
+                casa = True,
+                casaext = '.fits')
+
+            there = glob.glob(indir+lowres_pbcorr_trimmed_k_file)
+            if there:
+                lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
+                    self.recipe_make_mask_one_beam(indir+lowres_pbcorr_trimmed_k_file)
+            else:
+                for this_res in np.sort(res_list)[::-1]:
+                    res_tag = self._kh.get_tag_for_res(this_res)
+                    lowres_pbcorr_trimmed_k_file = self._kh.get_cube_filename(
+                        target = this_target, config = config_lowresmask, product = this_product,
+                        ext = tag+"_res"+res_tag,
+                        casa = True,
+                        casaext = '.fits')
+                    there = glob.glob(indir+lowres_pbcorr_trimmed_k_file)
+                    if there:
+                        lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
+                            self.recipe_make_mask_one_beam(indir+lowres_pbcorr_trimmed_k_file)
+                        break
+
+            ### step from build_products_12m.pro; estimate the noise for each cube
+            ### step from build_products_12m.pro; build masks holding bright signal at each resolution
             for this_res in res_list:
                 res_tag = self._kh.get_tag_for_res(this_res)
 
@@ -118,77 +161,131 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     casa = True,
                     casaext = '.fits')
 
-                indir = self._kh.get_postprocess_dir_for_target(
-                    target=this_target, changeto=False)
-                outdir = self._kh.get_product_dir_for_target(
-                    target=this_target, changeto=False)
-
                 there = glob.glob(indir+pbcorr_trimmed_k_file)
                 if there:
-                    cube_data, cube_noise, cube_mask = \
+                    cube_data, cube_wcs, cube_noise, cube_mask = \
                         self.recipe_make_mask_one_beam(indir+pbcorr_trimmed_k_file)
 
-                    cube_data_hybridmasked = cube_data * cube_mask #* lowres_cube_mask
-                    cube_noise_hybridmasked = cube_noise * cube_mask #* lowres_cube_mask
+            ### step from build_products_12m.pro; hybridize the masks
+            # hybridmasked cubes
+                    combined_mask = cube_mask + lowres_cube_mask
+                    hybrid_mask = np.where(combined_mask>=1, 1, 0)
+                    cube_data_hybridmasked = cube_data * hybrid_mask
+                    cube_noise_hybridmasked = cube_noise * hybrid_mask
 
-                    spectralcube_data = SpectralCube(data=cube_data_hybridmasked) #, wcs=cube_wcs)
-                    spectralcube_noise = SpectralCube(data=cube_noise_hybridmasked) #, wcs=cube_wcs)
+                    broadcube_data = SpectralCube(data=cube_data_hybridmasked, wcs=cube_wcs)
+                    broadcube_noise = SpectralCube(data=cube_noise_hybridmasked, wcs=cube_wcs)
 
+                    os.system("rm -rf " + outdir + pbcorr_trimmed_k_file.replace(".fits","_hybridmask.fits").replace("_pbcorr_trimmed_k",""))
+                    hybrid_mask_spectralcube = SpectralCube(data=hybrid_mask, wcs=cube_wcs)
+                    hybrid_mask_spectralcube.write(outdir + pbcorr_trimmed_k_file.replace(".fits","_hybridmask.fits").replace("_pbcorr_trimmed_k",""), format="fits")
+
+            # signal masked cubes
+                    cube_data_signalmasked = cube_data * cube_mask
+                    cube_noise_signalmasked = cube_noise * cube_mask
+
+                    strictcube_data = SpectralCube(data=cube_data_signalmasked, wcs=cube_wcs)
+                    strictcube_noise = SpectralCube(data=cube_noise_signalmasked, wcs=cube_wcs)
+
+                    os.system("rm -rf " + outdir + pbcorr_trimmed_k_file.replace(".fits","_signalmask.fits").replace("_pbcorr_trimmed_k",""))
+                    cube_mask_spectralcube = SpectralCube(data=cube_mask.astype(int), wcs=cube_wcs)
+                    cube_mask_spectralcube.write(outdir + pbcorr_trimmed_k_file.replace(".fits","_signalmask.fits").replace("_pbcorr_trimmed_k",""), format="fits")
+
+            ### step from build_products_12m.pro; collapse into a simple set of moment maps
+            # broad map creation
                     scproduct.write_moment0(
-                        cube = spectralcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_test.fits"),
-                        rms = spectralcube_noise,
+                        cube = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_mom0.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = broadcube_noise,
                         )
 
+                    scproduct.write_moment1(
+                        cube = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_mom1.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = broadcube_noise,
+                        )
 
-            """
-            this_dir = self._kh.get_postprocess_dir_for_target(
-                target=this_target, changeto=True)
+                    scproduct.write_moment2(
+                        cube = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_mom2.fits").replace("_pbcorr_trimmed_k",""),
+		        rms = broadcube_noise,
+                        )
 
-            ### IDL step; if requested, wipe previous versions of the convolution
-            #listfiles = glob.glob(this_dir + "/" + this_target + "_" + this_config + "_*pc.fits") # <TODO>; need to check sub-directory
-            #for i in (len(listfiles)):
-            #    os.system("rm -rf " + listfiles[i])
+                    scproduct.write_ew(
+                        cube = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_ew.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = broadcube_noise,
+                        )
 
-            ### IDL step; convolve to specific resolution
-            # postprocessHandler does this
+                    scproduct.write_tmax(
+                        cubein = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_tmax.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = broadcube_noise,
+                        )
 
-            ### IDL step; generate a low resolution mask from the flat cube
-            # <TODO> choose convolved cube here (33 arcsec => clean mask), 10-15 arcsec
-            tag = 'pbcorr_trimmed_k'
-            pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                target = this_target, config = this_config, product = this_product,
-                ext = 'pbcorr_trimmed_k'+extra_ext,
-                casa = True,
-                casaext = '.image')
+                    """ValueError: All-NaN slice encountered
+                    scproduct.write_vmax(
+                        cubein = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_vmax.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = broadcube_noise,
+                        )
+                    """
+                    """ValueError: All-NaN slice encountered
+                    scproduct.write_vquad(
+                        cubein = broadcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_vquad.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = broadcube_noise,
+                        )
+                    """ 
 
-            _, _, _, lowres_cube_mask = \
-                self.recipe_make_mask_one_beam(pbcorr_trimmed_k_file)
+            # strict map creation
+                    scproduct.write_moment0(
+                        cube = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_mom0.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
 
-            # <TODO> loop against spatial scale hereafter
-            ### IDL step; estimate the noise for each cube
-            ### IDL step; build masks holding bright signal at each resolution
-            cube_data, cube_wcs, cube_noise, cube_mask = \
-                self.recipe_make_mask_one_beam('some_file.fits')
+                    scproduct.write_moment1(
+                        cube = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_mom1.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
 
-            ### IDL step; hybridize the masks
-            cube_data_hybridmasked = cube_data * cube_mask * lowres_cube_mask
-            cube_noise_hybridmasked = cube_noise * cube_mask * lowres_cube_mask
+                    scproduct.write_moment2(
+                        cube = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_mom2.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
 
-            # convert to SpectralCube format
-            spectralcube_data = SpectralCube(data=cube_data_hybridmasked, wcs=cube_wcs)
-            spectralcube_noise = SpectralCube(data=cube_noise_hybridmasked, wcs=cube_wcs)
+                    scproduct.write_ew(
+                        cube = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_ew.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
 
-            ### IDL step; collapse into a simple set of moment maps
-            scproduct.write_moment0(
-                cube = spectralcube_data,
-                outfile = "test", # <TODO>
-                rms = spectralcube_noise,
-                )
+                    scproduct.write_tmax(
+                        cubein = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_tmax.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
+
+                    """ValueError: All-NaN slice encountered
+                    scproduct.write_vmax(
+                        cubein = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_vmax.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
+                    """
+                    """ValueError: All-NaN slice encountered
+                    scproduct.write_vquad(
+                        cubein = strictcube_data,
+                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_vquad.fits").replace("_pbcorr_trimmed_k",""),
+                        rms = strictcube_noise,
+                        )
+                    """ 
 
             ### IDL step; make maps using more sophisticated masking techniques
-            # <TODO>; which module should I use?
-            """
+
 
     #############################
     # recipe_make_mask_one_beam #
@@ -200,10 +297,11 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         ):
         """build masks holding bright signal at each resolution
         """
-        hdulist = pyfits.open(fitsimage)
+        hdulist = fits.open(fitsimage)
         cube_data = hdulist[0].data
         cube_wcs = WCS(hdulist[0].header) #, naxis=3)
         cube_noise = scmasking.noise_cube(cube_data)
         cube_mask = scmasking.simple_mask(cube_data, cube_noise)
 
-        return cube_data, cube_noise, cube_mask
+        return cube_data, cube_wcs, cube_noise, cube_mask
+
