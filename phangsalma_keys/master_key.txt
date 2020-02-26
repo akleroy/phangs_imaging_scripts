@@ -10,7 +10,8 @@ key_dir        	     	/data/tycho/0/leroy.42/reduction/alma/PHANGS/scripts/phang
 cleanmask_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/cleanmasks/
 imaging_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/imaging/
 postprocess_root	/data/tycho/0/leroy.42/reduction/alma/PHANGS/postprocess/
-product_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/product/
+#product_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/product/
+product_root            /home/saito.50/phangs/product/
 release_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/release/
 ms_root			/data/tycho/0/leroy.42/reduction/alma/PHANGS/uvdata/
 ms_root			/data/young/leroy.42/alma_data/PHANGS/
