@@ -292,48 +292,91 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         do_tmax = True,
         do_vmax = True,
         do_vquad = True,
+        do_errormaps = False,
         ):
         """
         """
         if do_moment0==True:
+            if do_errormaps==True:
+                errorfile_moment0 = commonoutfitsfile.replace(".fits","_emom0.fits")
+            else:
+                errorfile_moment0 = None
+
             scproduct.write_moment0(
                 cube = cube,
                 outfile = commonoutfitsfile.replace(".fits","_mom0.fits"),
+                errorfile = errorfile_moment0,
                 rms = rms)
 
         if do_moment1==True:
+            if do_errormaps==True:
+                errorfile_moment1 = commonoutfitsfile.replace(".fits","_emom1.fits")
+            else:
+                errorfile_moment1 = None
+ 
             scproduct.write_moment1(
                 cube = cube,
                 outfile = commonoutfitsfile.replace(".fits","_mom1.fits"),
+                errorfile = errorfile_moment1,
                 rms = rms)
 
         if do_moment2==True:
+            if do_errormaps==True:
+                errorfile_moment2 = commonoutfitsfile.replace(".fits","_emom2.fits")
+            else:
+                errorfile_moment2 = None
+ 
             scproduct.write_moment2(
                 cube = cube,
                 outfile = commonoutfitsfile.replace(".fits","_mom2.fits"),
+                errorfile = errorfile_moment2,
 		rms = rms)
 
         if do_ew==True:
+            if do_errormaps==True:
+                errorfile_ew = commonoutfitsfile.replace(".fits","_eew.fits")
+            else:
+                errorfile_ew = None
+ 
             scproduct.write_ew(
                 cube = cube,
                 outfile = commonoutfitsfile.replace(".fits","_ew.fits"),
+                errorfile = errorfile_ew,
                 rms = rms)
 
         if do_tmax==True:
+            if do_errormaps==True:
+                errorfile_tmax = commonoutfitsfile.replace(".fits","_etmax.fits")
+            else:
+                errorfile_tmax = None
+ 
             scproduct.write_tmax(
                 cubein = cube,
                 outfile = commonoutfitsfile.replace(".fits","_tmax.fits"),
+                errorfile = errorfile_tmax,
                 rms = rms)
 
         if do_vmax==True: # <TODO> ValueError: All-NaN slice encountered
+            if do_errormaps==True:
+                errorfile_vmax = commonoutfitsfile.replace(".fits","_evmax.fits")
+            else:
+                errorfile_vmax = None
+ 
             scproduct.write_vmax(
                 cubein = cube,
                 outfile = commonoutfitsfile.replace(".fits","_vmax.fits"),
+                errorfile = errorfile_vmax,
                 rms = rms)
 
         if do_vquad==True: # <TODO> ValueError: All-NaN slice encountered
+            if do_errormaps==True:
+                errorfile_vquad = commonoutfitsfile.replace(".fits","_evquad.fits")
+            else:
+                errorfile_vquad = None
+ 
             scproduct.write_vquad(
                 cubein = cube,
                 outfile = commonoutfitsfile.replace(".fits","_vquad.fits"),
+                errorfile = errorfile_vquad,
                 rms = rms)
 
