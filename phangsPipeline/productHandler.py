@@ -19,7 +19,7 @@ calls to CASA from this class.
     this_prh = prh.ProductHandler(key_handler = this_kh)
     this_prh.set_targets(only = ['ngc4321'])
     this_prh.set_no_interf_configs(no_interf = True)
-    this_prh.set_interf_configs(only = ['7m']) # this doesn't work because difefrent #channel of 7m+tp and 7m
+    this_prh.set_interf_configs(only = ['7m']) # this doesn't work because difefrent nchan of 7m+tp and 7m
     this_prh.set_feather_configs(only = ['7m+tp'])
     this_prh.set_line_products(only = ['co21'])
     this_prh.set_no_cont_products(no_cont = True)
