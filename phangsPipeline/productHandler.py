@@ -4,20 +4,13 @@ This module creates signal masks based on image cubes, and then applies
 the masks to make moment maps. This is done for each galaxy at multiple
 spatial scales.
 
-This code needs to be run inside CASA.
-
-There should not be any direct calls to CASA in here. Eventually, this
-should be able to run without CASA enabled (though it won't be able to
-call any of the CASA-specific routines). Right now, just avoid direct
-calls to CASA from this class.
-    
  Example:
-    $ casa
+    $ ipython
     from phangsPipeline import keyHandler as kh
     from phangsPipeline import productHandler as prh
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)
-    this_prh.set_targets(only = ['ngc4321'])
+    this_prh.set_targets(only = ['ngc0628', 'ngc2997', 'ngc4321'])
     this_prh.set_no_interf_configs(no_interf = False)
     this_prh.set_interf_configs(only = ['7m'])
     this_prh.set_feather_configs(only = ['7m+tp'])
@@ -30,7 +23,6 @@ calls to CASA from this class.
 import os, sys, re, shutil
 import glob
 import numpy as np
-#import pyfits
 from astropy.io import fits
 from astropy.wcs import WCS
 from spectral_cube import SpectralCube, Projection
@@ -68,7 +60,8 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
     the masks to make moment maps. This is done for each galaxy at multiple
     spatial scales.
     """
-    
+
+   
     ############
     # __init__ #
     ############
@@ -183,7 +176,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     self.recipe_products(
                         cube = broadcube_data,
                         rms = broadcube_noise,
-                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad.fits").replace("_pbcorr_trimmed_k",""),
+                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad.fits").replace("_"+tag,""),
                         do_vmax = False,
                         do_vquad = False)
 
@@ -191,11 +184,9 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     self.recipe_products(
                         cube = strictcube_data,
                         rms = strictcube_noise,
-                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict.fits").replace("_pbcorr_trimmed_k",""),
+                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict.fits").replace("_"+tag,""),
                         do_vmax = False,
                         do_vquad = False)
-
-                    # <TODO> error map crearion
 
             ### IDL step; make maps using more sophisticated masking techniques
 
@@ -208,11 +199,11 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         self,
         fitsimage = None,
         ):
-        """build masks holding bright signal at each resolution
+        """build mask based on the local noise
         """
         hdulist = fits.open(fitsimage)
         cube_data = hdulist[0].data
-        cube_wcs = WCS(hdulist[0].header) #, naxis=3)
+        cube_wcs = WCS(hdulist[0].header)
         cube_noise = scmasking.noise_cube(cube_data)
         cube_mask = scmasking.simple_mask(cube_data, cube_noise)
 
@@ -294,7 +285,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         do_vquad = True,
         do_errormaps = False,
         ):
-        """
+        """ collapse masked cube
         """
         if do_moment0==True:
             if do_errormaps==True:
