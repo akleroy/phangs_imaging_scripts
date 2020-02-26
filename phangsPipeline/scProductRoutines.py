@@ -15,7 +15,8 @@ def write_moment0(cube,
                   rms=None, 
                   channel_correlation=None,
                   overwrite=True,
-                  unit=None):
+                  unit=None,
+                  return_products=False):
     """
     Write out moment0 map for a SpectralCube
     
@@ -46,24 +47,29 @@ def write_moment0(cube,
     unit : astropy.Unit
         Preferred unit for moment masks
     
+    return_products : np.bool
+        Return products calculated in the map
     """
 
     mom0 = cube.moment0()
+    mom0err_proj = None
     if unit is not None:
         mom0 = mom0.to(unit)
-    mom0.write(outfile, overwrite=overwrite)
+    if outfile is not None:
+        mom0.write(outfile, overwrite=overwrite)
 
     if errorfile is not None and rms is None:
         logger.error("Moment 0 error requested but no RMS provided")
 
-    if rms is not None and errorfile is not None:
+    if rms is not None:
 
         if channel_correlation is None:
             channel_correlation = np.array([1])
 
         mom0err = np.empty(mom0.shape)
         mom0err.fill(np.nan)
-  
+        dv = channel_width(cube)
+        rms = rms.with_mask(cube._mask, inherit_mask=False)
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
             if not mask.any():
@@ -77,19 +83,20 @@ def write_moment0(cube,
                                      channel_correlation=channel_correlation,
                                      index=index)
 
-            mom0err = (np.sum(covar**2))**0.5
-        mom0err = u.Quantity(mom0err, mom0.unit, copy=False)
+            mom0err[x, y] = (np.sum(covar**2))**0.5
+        mom0err = u.Quantity(mom0err * dv.value, cube.unit * dv.unit, copy=False)
         if unit is not None:
             mom0err = mom0err.to(unit)
-        mom0projection = Projection(mom0err,
-                                    wcs=mom0.wcs,
-                                    header=mom0.header)
-        
-        mom0projection.write(errorfile, overwrite=overwrite)
-    #     return(mom0, mom0err)
-    # else:
-    #     return(mom0, None)
-
+        mom0err_proj = Projection(mom0err,
+                                  wcs=mom0.wcs,
+                                  header=mom0.header)
+        if errorfile is not None:
+            mom0err_proj.write(errorfile, overwrite=overwrite)
+            
+    if return_products and mom0err_proj is not None:
+        return(mom0, mom0err_proj)
+    elif return_products and mom0err_proj is None:
+        return(mom0)
 
 def write_moment1(cube,
                   outfile=None,
@@ -97,7 +104,8 @@ def write_moment1(cube,
                   rms=None,
                   channel_correlation=None,
                   overwrite=True,
-                  unit=None):
+                  unit=None,
+                  return_products=False):
     """
     Write out moment1 map for a SpectralCube
     
@@ -127,22 +135,25 @@ def write_moment1(cube,
         
     unit : astropy.Unit
         Preferred unit for moment masks
-    
+        
+    return_products : np.bool
+        Return products calculated in the map
     """
 
     mom1 = cube.moment1()
+    mom1err_proj = None
+    spaxis = cube.spectral_axis.value
     if unit is not None:
         mom1 = mom1.to(unit)
-        spaxis = cube.spectral_axis.to(unit).value
-    else:
-        spaxis = cube.spectral_axis.value
-    mom1.write(outfile, overwrite=True)
+
+    if outfile is not None:
+        mom1.write(outfile, overwrite=True)
 
     if errorfile is not None and rms is None:
         logger.error("Moment 1 error requested but no RMS provided")
 
-    if rms is not None and errorfile is not None:
-
+    if rms is not None:
+        
         if channel_correlation is None:
             channel_correlation = np.array([1])
 
@@ -150,6 +161,7 @@ def write_moment1(cube,
         mom1err.fill(np.nan)
         # Ensure the same mask applied to both.
         rms = rms.with_mask(cube._mask, inherit_mask=False)
+        
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
             if not mask.any():
@@ -170,17 +182,19 @@ def write_moment1(cube,
             mom1err[x, y] = np.dot(
                 np.dot(jacobian[np.newaxis, :], covar),
                 jacobian[:, np.newaxis])**0.5
-        mom1err = u.Quantity(mom1err, mom1.unit, copy=False)
+        mom1err = u.Quantity(mom1err, cube.spectral_axis.unit, copy=False)
         if unit is not None:
             mom1err = mom1err.to(unit)
-        mom1projection = Projection(mom1err,
+        mom1err_proj = Projection(mom1err,
                                     wcs=mom1.wcs,
                                     header=mom1.header)
-
-        mom1projection.write(errorfile, overwrite=overwrite)
-    #     return(mom1, mom1err)
-    # else:
-    #     return(mom1, None)
+        if errorfile is not None:
+            mom1err_proj.write(errorfile, overwrite=overwrite)
+            
+    if return_products and mom1err_proj is not None:
+        return(mom1, mom1err_proj)
+    elif return_products and mom1err_proj is None:
+        return(mom1)
 
 
 def write_moment2(cube,
@@ -732,6 +746,10 @@ def build_covariance(spectrum=None,
 def calculate_channel_correlation(cube, length=1):
     raise NotImplementedError
 
+def channel_width(cube):
+    dv = np.median(np.abs(cube.spectral_axis[1:] 
+                          - cube.spectral_axis[0:-1]))
+    return(dv)
 
 def write_moment1_advanced(cube,
                            broad_mask=None,
@@ -786,7 +804,7 @@ def write_moment1_advanced(cube,
     else:
         mom1prior = None
 
-    
+
     if type(broad_mask) is SpectralCube:
         broad_cube = cube.with_mask(
             broad_mask.filled_data[:].value.astype(np.bool),
@@ -848,7 +866,7 @@ def write_moment1_advanced(cube,
                              < vfield_reject_thresh)
                             )
     mom1hybrid[valid_broad_mom1] = (mom1broad.value)[valid_broad_mom1]
-    return(mom1hybrid)
+    return(None)
         # mom0err_proj = Projection(mom0err,
         #                           wcs=mom0_broad.wcs,
         #                           header=mom0_broad.header)
