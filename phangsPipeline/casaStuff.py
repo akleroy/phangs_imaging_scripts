@@ -25,3 +25,6 @@ from tclean import tclean
 from uvcontsub import uvcontsub
 from visstat import visstat
 
+# Version
+
+simple_version = '.'.join((casa['version'].split('.'))[0:2])
