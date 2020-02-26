@@ -4,7 +4,7 @@ etc. This is the program that navigates the galaxy list, directory
 structure, etc. This part is pure python.
 """
 
-import os
+import os, sys, re
 import glob
 import ast
 import numpy as np
@@ -1524,6 +1524,239 @@ class KeyHandler:
         """
         self._dochecks = dochecks
         return
+
+    def get_system_velocity_and_velocity_width_for_target(
+        self, 
+        target=None,
+        ):
+        """
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+            return None
+        
+        target_vsys = None
+        target_vwidth = None
+        if target in self._target_dict:
+            if 'vsys' in self._target_dict[target] and 'vwidth' in self._target_dict[target]:
+                target_vsys = self._target_dict[target]['vsys']
+                target_vwidth = self._target_dict[target]['vwidth']
+        
+        if target_vsys is None or target_vwidth is None:
+            logging.error('No vsys or vwidth values set for the target '+target+'. Please check your "target_definitions.txt".')
+            raise Exception('No vsys or vwidth values set for the target '+target)
+        
+        return target_vsys, target_vwidth
+    
+    def get_channel_width_for_line_product(
+        self, 
+        product=None,
+        ):
+        """
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        channel_kms = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'channel_kms' in self._config_dict['line_product'][product]:
+                    channel_kms = self._config_dict['line_product'][product]['channel_kms']
+                #<TODO># maybe we can allow user to set 'channel_width' in units of channels in the "config_definitions.txt" at some point. 
+        
+        if channel_kms is None:
+            logging.error('No channel_kms value set for the input line product '+product+'. Please check your "config_definitions.txt".')
+            raise Exception('No channel_kms value set for the input line product '+product)
+        
+        return channel_kms
+
+    def get_line_tag_for_line_product(
+        self, 
+        product=None,
+        ):
+        """
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        line_tag = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'line_tag' in self._config_dict['line_product'][product]:
+                    line_tag = self._config_dict['line_product'][product]['line_tag']
+        
+        if line_tag is None:
+            logging.error('No line_tag value set for the input line product '+product+'. Please check your "config_definitions.txt".')
+            raise Exception('No line_tag value set for the input line product '+product)
+        
+        return line_tag
+
+    def get_lines_to_flag_for_continuum_product(
+        self, 
+        product=None,
+        ):
+        """
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        lines_to_flag = []
+        if 'cont_product' in self._config_dict:
+            if product in self._config_dict['cont_product']:
+                if 'lines_to_flag' in self._config_dict['cont_product'][product]:
+                    lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+        
+        if len(lines_to_flag) == 0:
+            logging.error('No lines to flag for the input continuum product '+product)
+            #raise Exception('No lines to flag for the input continuum product '+product)
+            
+        return lines_to_flag
+    
+    def get_array_tags_for_config(
+        self, 
+        config=None, 
+        ):
+        """
+        """
+        if config is None:
+            logging.error("Please specify a config.")
+            return None
+        
+        if 'interf_config' in self._config_dict:
+            if config in self._config_dict['interf_config']:
+                if 'array_tags' in self._config_dict['interf_config'][config]:
+                    return self._config_dict['interf_config'][config]['array_tags']
+        
+        return None
+        
+    def get_ms_projects_and_multiobs_for_target(
+        self, 
+        target=None, 
+        config=None, 
+        ):
+        """
+        List the target name, project tag, array tag and multiobs number for each ms data of the input target and config.
+        
+        The target name, project tag, array tag and multiobs number are specified in "ms_file_key.txt". 
+        
+        For example, `get_ms_for_target(target='ngc3621')` returns 
+        `target = ['ngc3621_1', 'ngc3621_1', 'ngc3621_2', 'ngc3621_2']`, 
+        `project = ['886', '886', '886', '886']`, 
+        `arraytag = ['7m', '7m', '7m', '7m']`
+        `multiobs = ['1', '2', '1', '2']`
+        """
+        
+        if target in self._ms_dict.keys():
+            targets = [target]
+        else:
+            targets = self.get_parts_for_linmos(target=target)
+        
+        # if user has input a config, match to it
+        if config is not None:
+            matching_arraytags = self.get_array_tags_for_config(config)
+        else:
+            matching_arraytags = []
+        
+        for this_target in targets:
+            for this_project in self._ms_dict[this_target].keys():
+                for this_config_with_multiobs_suffix in self._ms_dict[this_target][this_project].keys():
+                    if re.match(r'^(.*)_([0-9]+)$', this_config_with_multiobs_suffix):
+                        this_arraytag = re.sub(r'^(.*)_([0-9]+)$', r'\1', this_config_with_multiobs_suffix)
+                        this_multiobs = re.sub(r'^(.*)_([0-9]+)$', r'\2', this_config_with_multiobs_suffix)
+                    else:
+                        this_arraytag = this_config_with_multiobs_suffix
+                        this_multiobs = ''
+                    # if user has input a config, match it
+                    if config is not None:
+                        if not (this_arraytag in matching_arraytags):
+                            continue
+                    yield this_target, this_project, this_arraytag, this_multiobs
+
+    def get_ms_filepath_for_ms_project(
+        self, 
+        target=None, 
+        project=None, 
+        arraytag=None, 
+        multiobs=None, 
+        ):
+        """
+        Find the absolute file path of a ms project.
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            return None
+        if project is None:
+            logging.error("Please specify a project.")
+            return None
+        if arraytag is None:
+            logging.error("Please specify a arraytag.")
+            return None
+        if multiobs is None:
+            logging.error("Please specify a multiobs.")
+            return None
+        
+        if multiobs == '':
+            this_config_with_multiobs_suffix = arraytag
+        else:
+            this_config_with_multiobs_suffix = arraytag+'_'+multiobs
+        
+        ms_file_path = ''
+        file_paths = []
+        for ms_root in self._ms_roots:
+            file_path = ms_root + self._ms_dict[target][project][this_config_with_multiobs_suffix]
+            if os.path.isdir(file_path):
+                file_paths.append(file_path)
+        # make sure there is only one ms data for each 'target_project_config_multiobs.ms'
+        if len(file_paths) == 0:
+            logging.warning('Could not find any ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+multiobs+'!')
+        else:
+            if len(file_paths) > 1:
+                logging.warning('Found multiple ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+multiobs+':\n'+'\n'.join(file_paths)+'\n'+'Returning the first one.')
+            ms_file_path = file_paths[0]
+        
+        return ms_file_path
+        
+    def get_ms_filenames_and_filepaths(
+        self, 
+        target=None, 
+        config=None, 
+        ):
+        """
+        Get the ms data names and absolute file path(s) for the input target and config.
+        
+        Here we need to input target, config and project tag. These should be specified in "ms_file_key.txt". 
+        
+        For example, `get_ms_filepaths(target='ngc3621_1', config='7m')` returns 
+        `filenames = ['ngc3621_1_886_7m_1.ms', 'ngc3621_1_886_7m_2.ms', ...]` and 
+        `filepaths = ['/path/to/*886*/sci*/group*/mem*/calibrated/uid*.ms.split.cal', ..., ...]`
+        """
+        
+        ms_filenames = []
+        ms_filepaths = []
+        for this_target, this_project, this_arraytag, this_multiobs in \
+            self.get_ms_projects_and_multiobs_for_target(target=target, config=config):
+            # 
+            ms_filepath = self.get_ms_filepath_for_ms_project(target=this_target, 
+                                                              project=this_project, 
+                                                              arraytag=this_arraytag, 
+                                                              multiobs=this_multiobs)
+            # 
+            if this_multiobs == '':
+                ms_filename = this_target+'_'+this_project+'_'+this_arraytag
+            else:
+                ms_filename = this_target+'_'+this_project+'_'+this_arraytag+'_'+this_multiobs
+            # append to output lists
+            ms_filenames.append(ms_filename) # without '.ms' suffix
+            ms_filepaths.append(ms_filepath)
+        # output
+        return ms_filenames, ms_filepaths
 
     def get_cube_filename(
         self, 
