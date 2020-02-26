@@ -18,8 +18,8 @@ calls to CASA from this class.
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)
     this_prh.set_targets(only = ['ngc4321'])
-    this_prh.set_no_interf_configs(no_interf = True)
-    this_prh.set_interf_configs(only = ['7m']) # this doesn't work because difefrent nchan of 7m+tp and 7m
+    this_prh.set_no_interf_configs(no_interf = False)
+    this_prh.set_interf_configs(only = ['7m'])
     this_prh.set_feather_configs(only = ['7m+tp'])
     this_prh.set_line_products(only = ['co21'])
     this_prh.set_no_cont_products(no_cont = True)
@@ -89,7 +89,6 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
 
     def loop_product(
         self,
-        config_lowresmask = "7m+tp",
         res_lowresmask = "10p72",
         make_directories=True,
         ):
@@ -126,27 +125,29 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             ### step from build_products_12m.pro; generate a low resolution mask from the flat cube
             tag = 'pbcorr_trimmed_k'
             lowres_pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                target = this_target, config = config_lowresmask, product = this_product,
+                target = this_target, config = this_config.replace("12m+",""), product = this_product,
                 ext = tag+"_res"+res_lowresmask,
                 casa = True,
                 casaext = '.fits')
 
+            # use 10p72 cube as a "low-resolution" cube
+            # if not present, use available lowest resoltuion cube instead
             there = glob.glob(indir+lowres_pbcorr_trimmed_k_file)
             if there:
                 lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
-                    self.recipe_make_mask_one_beam(indir+lowres_pbcorr_trimmed_k_file)
+                    self.recipe_simple_masking(indir+lowres_pbcorr_trimmed_k_file)
             else:
                 for this_res in np.sort(res_list)[::-1]:
                     res_tag = self._kh.get_tag_for_res(this_res)
                     lowres_pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                        target = this_target, config = config_lowresmask, product = this_product,
+                        target = this_target, config = this_config.replace("12m+",""), product = this_product,
                         ext = tag+"_res"+res_tag,
                         casa = True,
                         casaext = '.fits')
                     there = glob.glob(indir+lowres_pbcorr_trimmed_k_file)
                     if there:
                         lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
-                            self.recipe_make_mask_one_beam(indir+lowres_pbcorr_trimmed_k_file)
+                            self.recipe_simple_masking(indir+lowres_pbcorr_trimmed_k_file)
                         break
 
             ### step from build_products_12m.pro; estimate the noise for each cube
@@ -164,134 +165,46 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                 there = glob.glob(indir+pbcorr_trimmed_k_file)
                 if there:
                     cube_data, cube_wcs, cube_noise, cube_mask = \
-                        self.recipe_make_mask_one_beam(indir+pbcorr_trimmed_k_file)
+                        self.recipe_simple_masking(indir+pbcorr_trimmed_k_file)
 
-            ### step from build_products_12m.pro; hybridize the masks
-            # hybridmasked cubes
-                    combined_mask = cube_mask + lowres_cube_mask
-                    hybrid_mask = np.where(combined_mask>=1, 1, 0)
-                    cube_data_hybridmasked = cube_data * hybrid_mask
-                    cube_noise_hybridmasked = cube_noise * hybrid_mask
+                    ### step from build_products_12m.pro; hybridize the masks
+                    # hybridmasked cubes
+                    broadcube_data, broadcube_noise = self.recipe_hybrid_masking(
+                       cube_data, cube_wcs, cube_noise, cube_mask, lowres_cube_mask,
+                       outfitsfile =  outdir+pbcorr_trimmed_k_file.replace(".fits","_hybridmask.fits").replace("_"+tag,""))
 
-                    broadcube_data = SpectralCube(data=cube_data_hybridmasked, wcs=cube_wcs)
-                    broadcube_noise = SpectralCube(data=cube_noise_hybridmasked, wcs=cube_wcs)
+                    # signal masked cubes
+                    strictcube_data, strictcube_noise = self.recipe_signal_masking(
+                       cube_data, cube_wcs, cube_noise, cube_mask,
+                       outfitsfile =  outdir + pbcorr_trimmed_k_file.replace(".fits","_signalmask.fits").replace("_"+tag,""))
 
-                    os.system("rm -rf " + outdir + pbcorr_trimmed_k_file.replace(".fits","_hybridmask.fits").replace("_pbcorr_trimmed_k",""))
-                    hybrid_mask_spectralcube = SpectralCube(data=hybrid_mask, wcs=cube_wcs)
-                    hybrid_mask_spectralcube.write(outdir + pbcorr_trimmed_k_file.replace(".fits","_hybridmask.fits").replace("_pbcorr_trimmed_k",""), format="fits")
-
-            # signal masked cubes
-                    cube_data_signalmasked = cube_data * cube_mask
-                    cube_noise_signalmasked = cube_noise * cube_mask
-
-                    strictcube_data = SpectralCube(data=cube_data_signalmasked, wcs=cube_wcs)
-                    strictcube_noise = SpectralCube(data=cube_noise_signalmasked, wcs=cube_wcs)
-
-                    os.system("rm -rf " + outdir + pbcorr_trimmed_k_file.replace(".fits","_signalmask.fits").replace("_pbcorr_trimmed_k",""))
-                    cube_mask_spectralcube = SpectralCube(data=cube_mask.astype(int), wcs=cube_wcs)
-                    cube_mask_spectralcube.write(outdir + pbcorr_trimmed_k_file.replace(".fits","_signalmask.fits").replace("_pbcorr_trimmed_k",""), format="fits")
-
-            ### step from build_products_12m.pro; collapse into a simple set of moment maps
-            # broad map creation
-                    scproduct.write_moment0(
+                    ### step from build_products_12m.pro; collapse into a simple set of moment maps
+                    # broad map creation
+                    self.recipe_products(
                         cube = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_mom0.fits").replace("_pbcorr_trimmed_k",""),
                         rms = broadcube_noise,
-                        )
+                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad.fits").replace("_pbcorr_trimmed_k",""),
+                        do_vmax = False,
+                        do_vquad = False)
 
-                    scproduct.write_moment1(
-                        cube = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_mom1.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = broadcube_noise,
-                        )
-
-                    scproduct.write_moment2(
-                        cube = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_mom2.fits").replace("_pbcorr_trimmed_k",""),
-		        rms = broadcube_noise,
-                        )
-
-                    scproduct.write_ew(
-                        cube = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_ew.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = broadcube_noise,
-                        )
-
-                    scproduct.write_tmax(
-                        cubein = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_tmax.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = broadcube_noise,
-                        )
-
-                    """ValueError: All-NaN slice encountered
-                    scproduct.write_vmax(
-                        cubein = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_vmax.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = broadcube_noise,
-                        )
-                    """
-                    """ValueError: All-NaN slice encountered
-                    scproduct.write_vquad(
-                        cubein = broadcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad_vquad.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = broadcube_noise,
-                        )
-                    """ 
-
-            # strict map creation
-                    scproduct.write_moment0(
+                    # strict map creation
+                    self.recipe_products(
                         cube = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_mom0.fits").replace("_pbcorr_trimmed_k",""),
                         rms = strictcube_noise,
-                        )
+                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict.fits").replace("_pbcorr_trimmed_k",""),
+                        do_vmax = False,
+                        do_vquad = False)
 
-                    scproduct.write_moment1(
-                        cube = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_mom1.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = strictcube_noise,
-                        )
-
-                    scproduct.write_moment2(
-                        cube = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_mom2.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = strictcube_noise,
-                        )
-
-                    scproduct.write_ew(
-                        cube = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_ew.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = strictcube_noise,
-                        )
-
-                    scproduct.write_tmax(
-                        cubein = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_tmax.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = strictcube_noise,
-                        )
-
-                    """ValueError: All-NaN slice encountered
-                    scproduct.write_vmax(
-                        cubein = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_vmax.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = strictcube_noise,
-                        )
-                    """
-                    """ValueError: All-NaN slice encountered
-                    scproduct.write_vquad(
-                        cubein = strictcube_data,
-                        outfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict_vquad.fits").replace("_pbcorr_trimmed_k",""),
-                        rms = strictcube_noise,
-                        )
-                    """ 
+                    # <TODO> error map crearion
 
             ### IDL step; make maps using more sophisticated masking techniques
 
 
-    #############################
-    # recipe_make_mask_one_beam #
-    #############################
+    #########################
+    # recipe_simple_masking #
+    #########################
 
-    def recipe_make_mask_one_beam(
+    def recipe_simple_masking(
         self,
         fitsimage = None,
         ):
@@ -304,4 +217,123 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         cube_mask = scmasking.simple_mask(cube_data, cube_noise)
 
         return cube_data, cube_wcs, cube_noise, cube_mask
+
+
+    #########################
+    # recipe_hybrid_masking #
+    #########################
+
+    def recipe_hybrid_masking(
+        self,
+        cube_data,
+        cube_wcs,
+        cube_noise,
+        cube_mask,
+        lowres_cube_mask,
+        outfitsfile,
+        ):
+        """build hybrid mask and export to FITS format
+        """
+        combined_mask = cube_mask + lowres_cube_mask
+        hybrid_mask = np.where(combined_mask>=1, 1, 0)
+        cube_data_hybridmasked = cube_data * hybrid_mask
+        cube_noise_hybridmasked = cube_noise * hybrid_mask
+
+        broadcube_data = SpectralCube(data=cube_data_hybridmasked, wcs=cube_wcs)
+        broadcube_noise = SpectralCube(data=cube_noise_hybridmasked, wcs=cube_wcs)
+
+        os.system("rm -rf " + outfitsfile)
+        hybrid_mask_spectralcube = SpectralCube(data=hybrid_mask, wcs=cube_wcs)
+        hybrid_mask_spectralcube.write(outfitsfile, format="fits")
+
+        return broadcube_data, broadcube_noise
+
+
+    #########################
+    # recipe_signal_masking #
+    #########################
+
+    def recipe_signal_masking(
+        self,
+        cube_data,
+        cube_wcs,
+        cube_noise,
+        cube_mask,
+        outfitsfile,
+        ):
+        """build signal mask and export to FITS format
+        """
+        cube_data_signalmasked = cube_data * cube_mask
+        cube_noise_signalmasked = cube_noise * cube_mask
+
+        strictcube_data = SpectralCube(data=cube_data_signalmasked, wcs=cube_wcs)
+        strictcube_noise = SpectralCube(data=cube_noise_signalmasked, wcs=cube_wcs)
+
+        os.system("rm -rf " + outfitsfile)
+        cube_mask_spectralcube = SpectralCube(data=cube_mask.astype(int), wcs=cube_wcs)
+        cube_mask_spectralcube.write(outfitsfile, format="fits")
+
+        return strictcube_data, strictcube_noise
+
+
+    ###################
+    # recipe_products #
+    ###################
+
+    def recipe_products(
+        self,
+        cube,
+        rms,
+        commonoutfitsfile,
+        do_moment0 = True,
+        do_moment1 = True,
+        do_moment2 = True,
+        do_ew = True,
+        do_tmax = True,
+        do_vmax = True,
+        do_vquad = True,
+        ):
+        """
+        """
+        if do_moment0==True:
+            scproduct.write_moment0(
+                cube = cube,
+                outfile = commonoutfitsfile.replace(".fits","_mom0.fits"),
+                rms = rms)
+
+        if do_moment1==True:
+            scproduct.write_moment1(
+                cube = cube,
+                outfile = commonoutfitsfile.replace(".fits","_mom1.fits"),
+                rms = rms)
+
+        if do_moment2==True:
+            scproduct.write_moment2(
+                cube = cube,
+                outfile = commonoutfitsfile.replace(".fits","_mom2.fits"),
+		rms = rms)
+
+        if do_ew==True:
+            scproduct.write_ew(
+                cube = cube,
+                outfile = commonoutfitsfile.replace(".fits","_ew.fits"),
+                rms = rms)
+
+        if do_tmax==True:
+            scproduct.write_tmax(
+                cubein = cube,
+                outfile = commonoutfitsfile.replace(".fits","_tmax.fits"),
+                rms = rms)
+
+        if do_vmax==True: # <TODO> ValueError: All-NaN slice encountered
+            scproduct.write_vmax(
+                cubein = cube,
+                outfile = commonoutfitsfile.replace(".fits","_vmax.fits"),
+                rms = rms)
+
+        if do_vquad==True: # <TODO> ValueError: All-NaN slice encountered
+            scproduct.write_vquad(
+                cubein = cube,
+                outfile = commonoutfitsfile.replace(".fits","_vquad.fits"),
+                rms = rms)
 
