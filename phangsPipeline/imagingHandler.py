@@ -1,6 +1,6 @@
 """imagingHandler
 
-This module makes image cubes out of the uv data from each spectral line and continuum of each galaxy. 
+This module makes images and cubes out of the uv data products created by uvdataHandler. 
 
 This code needs to be run inside CASA. 
 
@@ -62,9 +62,6 @@ casa_enabled = (sys.argv[0].endswith('start_casa.py')) #<TODO># check whether we
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    #import casaCubeRoutines as ccr
-    #import casaMosaicRoutines as cmr
-    #import casaFeatherRoutines as cfr
     import casaImagingRoutines as imr
     import casaMaskingRoutines as msr
     reload(imr) #<TODO><DEBUG># 
@@ -99,19 +96,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
     
     
-    
     ################
     # loop_imaging #
     ################
     
     def loop_imaging(
         self, 
-        target = None, 
-        project = None, 
-        config = None, 
-        product = None, 
-        process_individual_mosaic = False, 
-        process_individual_project = False, 
         do_chan0 = False, 
         make_dirty_image = True, 
         revert_to_dirty = False, 
@@ -150,13 +140,11 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             self._kh.make_missing_directories(imaging=True)
         
         # loop
-        for this_target, this_product, this_config in self.looper(do_targets=True, do_products=True, do_configs=True, just_interf=True):
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True, do_products=True, do_configs=True, just_interf=True):
             # 
             # get imaging dir
-            this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-            # 
-            # set project to empty <TODO>
-            this_project = ''
+            this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target, changeto=True)
             # 
             # print starting message
             logger.info("")
@@ -168,26 +156,14 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             logger.info('Product: '+this_product)
             logger.info('Imaging dir: '+this_imaging_dir)
             # 
-            # check config suffix if processing individual project ms data <TODO> 
-            if process_individual_project:
-                this_config_suffix = re.sub(r'^(.*?)_([0-9]+)$', r'\2', this_config)
-                this_config = re.sub(r'^(.*?)_([0-9]+)$', r'\1', this_config)
-            # 
-            # 
-            # change directory to imaging dir
-            current_dir = os.getcwd()
-            os.chdir(this_imaging_dir)
-            # 
-            # 
             # build clean call
             logger.info('Running recipe_build_clean_call')
             clean_call = \
             self.recipe_build_clean_call(
                 target = this_target, 
-                project = this_project, 
                 config = this_config, 
                 product = this_product, 
-                tag = '', 
+                tag = '', # <-- need to come back to this, this is an OUTPUT tag, also need INPUT tag
                 forceSquare = forceSquare, 
                 overwrite = overwrite, 
                 )
@@ -228,43 +204,70 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     # 
     # end of loop_imaging()
     
-    
-    
     #############################
     # task_pick_cell_and_imsize #
     #############################
     
     def task_pick_cell_and_imsize(
         self, 
-        in_file=None,
+        target = None,
+        product = None,
+        config = None,
+        extra_ext_in = ''.
         oversamp=5,
-        forceSquare=False
+        forceSquare=False,
+        check_files=True,
         ):
-        """Pick a cell size and imsize for cleaning. 
-        
-        This will call casaImagingRoutines.estimate_cell_and_imsize() first, 
-        then apply custom overrides if any.
         """
+        Pick a cell size and imsize for cleaning given a target,
+        product, and configuration.
+        
+        This will call casaImagingRoutines.estimate_cell_and_imsize()
+        first, then apply custom overrides if they exist.
+        """
+                
+        # Generate file names
+        indir = self._kh.get_imaging_dir_for_target(target)
+        inffile = self._kh.get_vis_filename(
+            target = target, config = config, product = product,
+            ext = extra_ext_in)            
+
+        if check_files:
+            if (not (os.path.isdir(indir+infile))) and \
+                    (not (os.path.isfile(indir+infile))):
+                logger.warning("Missing "+infile)
+                return()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Calculating target cell sizes for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
         
         if (not self._dry_run) and casa_enabled:
             cell_size_string, x_size_string, y_size_string = \
-                imr.estimate_cell_and_imsize(in_file, 
+                imr.estimate_cell_and_imsize(infile, 
                                              oversamp,
                                              forceSquare=forceSquare)
         else:
             cell_size_string, x_size_string, y_size_string = \
                 '0.1', '1000', '1000'
             logger.info('DRY RUN skips calling imr.estimate_cell_and_imsize()')
-                
+          
         # Check for overrides
-        #<TODO> should we remove the '.ms' suffix?
+
+        #<TODO> should we remove the '.ms' suffix? We need to get a general framework here.
         in_file_name = in_file.replace('.ms','')
         logger.debug('Checking overrides for "'+in_file_name+'"')
         if self._kh.has_overrides_for_key(in_file_name):
             cell_size_string = self._kh.get_overrides(key = in_file_name, param = 'cell_size', default = cell_size_string)
             x_size_string = self._kh.get_overrides(key = in_file_name, param = 'x_size', default = x_size_string)
             y_size_string = self._kh.get_overrides(key = in_file_name, param = 'y_size', default = y_size_string)
-        return cell_size_string, x_size_string, y_size_string
+
+        # Return
+
+        return cell_size_string, x_size_string, y_size_string       
     
     
     
@@ -275,7 +278,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     def recipe_build_clean_call(
         self, 
         target = None, 
-        project = None, 
         config = None, 
         product = None, 
         tag = '', 
@@ -285,53 +287,41 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         ):
         """Build a clean call before running the clean task with the function phangsImagingRecipe().
         """
-        
-        # 
-        # This code is adapted from the function buildPhangsCleanCall() in phangsPipeline.py / imagingPipeline.py.
-        # 
-        
+                
         # 
         # check user input. 
         if target is None or config is None or product is None:
             logger.error('Please input target, config and product! (e.g., target = "ngc3627_1", config = "12m+7m", product = "co21")')
             raise Exception('Please input target, config and product!')
+
         # 
         # Initialize the call
         clean_call = CleanCall()
         # 
-        # Set ms data file name
-        if project is None or project == '':
-            clean_call.vis = target+'_'+config+'_'+product+'.ms'
-        else:
-            clean_call.vis = target+'_'+project+'_'+config+'_'+product+'.ms'
+
+        # TODO input tag here
+        clean_call.vis = target+'_'+config+'_'+product+'.ms'
+
         # 
-        # append tag
+        # append OUTPUT tag
         if tag == '':
             clean_call.image_root = target+'_'+config+'_'+product
         else:
             clean_call.image_root = target+'_'+config+'_'+product+'_'+tag
-        # 
-        # select antenna
-        if config == '12m+7m':
-            clean_call.antenna = ''
-            #clean_call.antenna = select_12m7m
-        if config == '12m':
-            clean_call.antenna = ''
-            #clean_call.antenna = select_12m
-        if config == '7m':
-            clean_call.antenna = ''
-            #clean_call.antenna = select_7m
-        # 
+
+        #
         # Look up the center and shape of the mosaic
         mosaic_key = self._kh._target_dict # read_mosaic_key() #<TODO>#
         this_ra = mosaic_key[target]['rastring']
         this_dec = mosaic_key[target]['decstring']
         clean_call.phase_center = 'J2000 '+this_ra+' '+this_dec
+
         # 
         # check ms data file
         if not os.path.isdir(clean_call.vis):
             logger.warning("Visibility data "+'"'+os.getcwd()+os.sep+clean_call.vis+'"'+" not found. Returning empty.")
             return None
+
         # 
         # get cell size and imsize
         cell_size, x_size, y_size = \
@@ -344,22 +334,17 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         clean_call.image_size = image_size
         
         # Look up the line and data product
+        # TODO - this should generic, just get freq for line given the line name
         
         if product == 'co21':
             clean_call.specmode = 'cube'
-            clean_call.restfreq_ghz = line_list.line_list['co21']
-
-        if product == 'co21_chan0':
-            clean_call.specmode = 'mfs'
             clean_call.restfreq_ghz = line_list.line_list['co21']
 
         if product == 'c18o21':
             clean_call.specmode = 'cube'
             clean_call.restfreq_ghz = line_list.line_list['c18o21']
 
-        if product == 'c18o21_chan0':
-            clean_call.specmode = 'mfs'
-            clean_call.restfreq_ghz = line_list.line_list['c18o21']
+        # Continuum case
 
         if product == 'cont':
             clean_call.specmode = 'mfs'
@@ -415,10 +400,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         return clean_call
     
     # end of recipe_build_clean_call()
-    
-    
-    
-    
+      
     #############################
     # recipe_imaging_one_target #
     #############################

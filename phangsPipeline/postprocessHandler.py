@@ -12,17 +12,16 @@ call any of the CASA-specific routines). Right now, just avoid direct
 calls to CASA from this class.
 """
 
-import os
+import os, sys, re, shutil
 import glob
+import numpy as np
 import handlerTemplate
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Replace this with a check on load in the future
-casa_enabled = True
-
+casa_enabled = (sys.argv[0].endswith('start_casa.py'))
 if casa_enabled:
     import casaCubeRoutines as ccr
     import casaMosaicRoutines as cmr

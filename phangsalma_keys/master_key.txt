@@ -26,6 +26,7 @@ cleanmask_key		cleanmask_key.txt
 
 config_key		config_definitions.txt
 target_key		target_definitions.txt
+imaging_key		imaging_recipes.txt
 linmos_key		linearmosaic_definitions.txt
 override_key		overrides.txt
 dir_key			dir_key.txt
@@ -120,6 +121,16 @@ dir_key			dir_key.txt
 # spectral data products, like CO 2-1 or continuum) and
 # "configurations" (which are combinations of inteferometer and single
 # dish data).
+
+# ----------------------
+# imaging_key
+# ----------------------
+
+# This file maps between product and configuration combinations to
+# clean parameter files of the type saved by save_input in CASA. These
+# parameters get read in as the baseline values for cleaning using
+# that config/product combination, they are then modified by the
+# imaging scripts and cleaning procedures.
 
 # --------------
 # target_key

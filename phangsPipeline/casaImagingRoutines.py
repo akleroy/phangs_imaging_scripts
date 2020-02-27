@@ -29,15 +29,14 @@ from pipelineVersion import version as pipeVer
 
 #endregion
 
-
-
-
-
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Routines to set up imaging
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 #region Setting up imaging
 
 def estimate_cell_and_imsize(
-    in_file=None,    
+    infile=None,    
     oversamp=5,
     forceSquare=False,
     ):
@@ -47,10 +46,12 @@ def estimate_cell_and_imsize(
     for the FFT and will try to pick a round number for the cell size.
     """
 
-    if os.path.isdir(in_file) == False:
-        logger.error('Error! The input file "'+in_file+'" was not found!')
+    if os.path.isdir(infile) == False:
+        logger.error('Error! The input file "'+infile+'" was not found!')
         return
     
+    # These are the CASA-preferred sizes for fast FFTs
+
     valid_sizes = []
     for ii in range(10):
         for kk in range(3):
@@ -63,7 +64,7 @@ def estimate_cell_and_imsize(
     # utilities.
 
     au_cellsize, au_imsize, au_centralField = \
-        au.pickCellSize(in_file, imsize=True, npix=oversamp)
+        au.pickCellSize(infile, imsize=True, npix=oversamp)
     xextent = au_cellsize*au_imsize[0]*1.2
     yextent = au_cellsize*au_imsize[1]*1.2
 
@@ -109,300 +110,164 @@ def estimate_cell_and_imsize(
 
 #endregion
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Routines to set manipulate files associated with imaging
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
 #region Input and output of imaging products
 
 def wipe_imaging(
-    image_root=None):
+    image_root=None,
+    ):
     """
-    Wipe files associated with a cube.
+    Wipe files associated with a cube or continuum imaging. Tries to
+    delete all images and supporting products, including the output of
+    any MFS imaging.
     """
+
     if image_root == None:
         return
     
     logger.debug('wipe_imaging')
-    logger.debug('rm -rf '+image_root+'.image')
-    logger.debug('rm -rf '+image_root+'.model')
-    logger.debug('rm -rf '+image_root+'.mask')
-    logger.debug('rm -rf '+image_root+'.pb')
-    logger.debug('rm -rf '+image_root+'.psf')
-    logger.debug('rm -rf '+image_root+'.residual')
-    logger.debug('rm -rf '+image_root+'.weight')
-    logger.debug('rm -rf '+image_root+'.sumwt')
-    
-    os.system('rm -rf '+image_root+'.image')
-    os.system('rm -rf '+image_root+'.model')
-    os.system('rm -rf '+image_root+'.mask')
-    os.system('rm -rf '+image_root+'.pb')
-    os.system('rm -rf '+image_root+'.psf')
-    os.system('rm -rf '+image_root+'.residual')
-    os.system('rm -rf '+image_root+'.weight')
-    os.system('rm -rf '+image_root+'.sumwt')
+    cmd_list = [
+        'rm -rf '+image_root+'.image',
+        'rm -rf '+image_root+'.alpha',
+        'rm -rf '+image_root+'.beta',
+        'rm -rf '+image_root+'.tt0',
+        'rm -rf '+image_root+'.tt1',
+        'rm -rf '+image_root+'.tt2',
+        'rm -rf '+image_root+'.model',
+        'rm -rf '+image_root+'.mask',
+        'rm -rf '+image_root+'.pb',
+        'rm -rf '+image_root+'.psf',
+        'rm -rf '+image_root+'.residual',
+        'rm -rf '+image_root+'.weight',
+        'rm -rf '+image_root+'.sumwt',
+        ]
+
+    for this_cmd in cmd_list:
+        logger.debug(this_cmd)
+        os.system(this_cmd)
+
+    return()
 
 def save_copy_of_imaging(
     input_root=None,
     output_root=None):
     """
-    Copy a cube to a new name. Used to make a backup copy. Overwrites
-    the previous cube of that name.
+    Copy all of the files from a cube or continuum imaging output by
+    clean to have a new root name. Most commonly used to make a backup
+    copy of imaging output during iterative imaging (e.g., clean
+    loops, shifting clean modes, selfcal, etc). Overwrites any
+    previous imaging with that output name.
     """
     
     wipe_cube(output_root)
     
     logger.debug('save_copy_of_imaging')
-    logger.debug('cp -r '+input_root+'.image '+output_root+'.image')
-    logger.debug('cp -r '+input_root+'.model '+output_root+'.model')
-    logger.debug('cp -r '+input_root+'.mask '+output_root+'.mask')
-    logger.debug('cp -r '+input_root+'.pb '+output_root+'.pb')
-    logger.debug('cp -r '+input_root+'.psf '+output_root+'.psf')
-    logger.debug('cp -r '+input_root+'.residual '+output_root+'.residual')
-    logger.debug('cp -r '+input_root+'.weight '+output_root+'.weight')
-    logger.debug('cp -r '+input_root+'.sumwt '+output_root+'.sumwt')
+    cmd_list = [
+        'cp -r '+input_root+'.image '+output_root+'.image',
+        'cp -r '+input_root+'.alpha '+output_root+'.alpha',
+        'cp -r '+input_root+'.beta '+output_root+'.beta',
+        'cp -r '+input_root+'.tt0 '+output_root+'.tt0',
+        'cp -r '+input_root+'.tt1 '+output_root+'.tt1',
+        'cp -r '+input_root+'.tt2 '+output_root+'.tt2',
+        'cp -r '+input_root+'.model '+output_root+'.model',
+        'cp -r '+input_root+'.mask '+output_root+'.mask',
+        'cp -r '+input_root+'.pb '+output_root+'.pb',
+        'cp -r '+input_root+'.psf '+output_root+'.psf',
+        'cp -r '+input_root+'.residual '+output_root+'.residual',
+        'cp -r '+input_root+'.weight '+output_root+'.weight',
+        'cp -r '+input_root+'.sumwt '+output_root+'.sumwt',
+        ]
     
-    os.system('cp -r '+input_root+'.image '+output_root+'.image')
-    os.system('cp -r '+input_root+'.model '+output_root+'.model')
-    os.system('cp -r '+input_root+'.mask '+output_root+'.mask')
-    os.system('cp -r '+input_root+'.pb '+output_root+'.pb')
-    os.system('cp -r '+input_root+'.psf '+output_root+'.psf')
-    os.system('cp -r '+input_root+'.residual '+output_root+'.residual')
-    os.system('cp -r '+input_root+'.weight '+output_root+'.weight')
-    os.system('cp -r '+input_root+'.sumwt '+output_root+'.sumwt')
+    for this_cmd in cmd_list:
+        logger.debug(this_cmd)
+        os.system(this_cmd)
 
 def replace_imaging_with_copy(
-    to_root=None,
-    from_root=None):
-    """
-    Replace a cube with a copy.
-    """
-    
-    wipe_cube(to_root)
-    
-    logger.debug('replace_imaging_with_copy')
-    logger.debug('cp -r '+from_root+'.image '+to_root+'.image')
-    logger.debug('cp -r '+from_root+'.model '+to_root+'.model')
-    logger.debug('cp -r '+from_root+'.mask '+to_root+'.mask')
-    logger.debug('cp -r '+from_root+'.pb '+to_root+'.pb')
-    logger.debug('cp -r '+from_root+'.psf '+to_root+'.psf')
-    logger.debug('cp -r '+from_root+'.residual '+to_root+'.residual')
-    logger.debug('cp -r '+from_root+'.weight '+to_root+'.weight')
-    logger.debug('cp -r '+from_root+'.sumwt '+to_root+'.sumwt')
-
-    os.system('cp -r '+from_root+'.image '+to_root+'.image')
-    os.system('cp -r '+from_root+'.model '+to_root+'.model')
-    os.system('cp -r '+from_root+'.mask '+to_root+'.mask')
-    os.system('cp -r '+from_root+'.pb '+to_root+'.pb')
-    os.system('cp -r '+from_root+'.psf '+to_root+'.psf')
-    os.system('cp -r '+from_root+'.residual '+to_root+'.residual')
-    os.system('cp -r '+from_root+'.weight '+to_root+'.weight')
-    os.system('cp -r '+from_root+'.sumwt '+to_root+'.sumwt')
-
-def export_imaging_to_fits(
-    image_root=None,
-    bitpix=-32):
-    """
-    Export the various products associated with a CASA cube to FITS.
-    """
-    
-    logger.debug('export_imaging_to_fits')
-    logger.debug('exportfits '+image_root+'.image '+image_root+'.fits')
-    casaStuff.exportfits(imagename=image_root+'.image',
-                         fitsimage=image_root+'.fits',
-                         velocity=True, overwrite=True, dropstokes=True, 
-                         dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+image_root+'.model '+image_root+'_model.fits')
-    casaStuff.exportfits(imagename=image_root+'.model',
-                         fitsimage=image_root+'_model.fits',
-                         velocity=True, overwrite=True, dropstokes=True, 
-                         dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+image_root+'.residual '+image_root+'_residual.fits')
-    casaStuff.exportfits(imagename=image_root+'.residual',
-                         fitsimage=image_root+'_residual.fits',
-                         velocity=True, overwrite=True, dropstokes=True, 
-                         dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+image_root+'.mask '+image_root+'_mask.fits')
-    casaStuff.exportfits(imagename=image_root+'.mask',
-                         fitsimage=image_root+'_mask.fits',
-                         velocity=True, overwrite=True, dropstokes=True, 
-                         dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+image_root+'.pb '+image_root+'_pb.fits')
-    casaStuff.exportfits(imagename=image_root+'.pb',
-                         fitsimage=image_root+'_pb.fits',
-                         velocity=True, overwrite=True, dropstokes=True, 
-                         dropdeg=True, bitpix=bitpix)
-    
-    return
-
-
-#endregion
-
-
-
-
-
-
-
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Routines to characterize and manipulate cubes
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-# 
-# stat_clean_cube is now in casaMaskingRoutines.py
-# 
-#def stat_clean_cube(cube_file=None):
-#    """
-#    Calculate statistics for an image cube.
-#    """
-#    if cube_file == None:
-#        logger.info("No cube file specified. Returning")
-#        return
-#    imstat_dict = imstat(cube_file)
-#    
-#    return imstat_dict
-
-
-def save_copy_of_cube(
     input_root=None,
     output_root=None):
     """
-    Copy a cube to a new name. Used to make a backup copy. Overwrites
-    the previous cube of that name.
+    Replace a cube with a copy. Wipes any imaging associated with the
+    target root root first.
     """
-
+    
     wipe_cube(output_root)
     
-    logger.debug('save_copy_of_cube')
-    logger.debug('cp -r '+input_root+'.image '+output_root+'.image')
-    logger.debug('cp -r '+input_root+'.model '+output_root+'.model')
-    logger.debug('cp -r '+input_root+'.mask '+output_root+'.mask')
-    logger.debug('cp -r '+input_root+'.pb '+output_root+'.pb')
-    logger.debug('cp -r '+input_root+'.psf '+output_root+'.psf')
-    logger.debug('cp -r '+input_root+'.residual '+output_root+'.residual')
-    logger.debug('cp -r '+input_root+'.psf '+output_root+'.weight')
-    logger.debug('cp -r '+input_root+'.residual '+output_root+'.sumwt')
-    
-    os.system('cp -r '+input_root+'.image '+output_root+'.image')
-    os.system('cp -r '+input_root+'.model '+output_root+'.model')
-    os.system('cp -r '+input_root+'.mask '+output_root+'.mask')
-    os.system('cp -r '+input_root+'.pb '+output_root+'.pb')
-    os.system('cp -r '+input_root+'.psf '+output_root+'.psf')
-    os.system('cp -r '+input_root+'.residual '+output_root+'.residual')
-    os.system('cp -r '+input_root+'.psf '+output_root+'.weight')
-    os.system('cp -r '+input_root+'.residual '+output_root+'.sumwt')
+    logger.debug('replace_imaging_with_copy')
 
+    cmd_list = [
+        'cp -r '+input_root+'.image '+output_root+'.image',
+        'cp -r '+input_root+'.alpha '+output_root+'.alpha',
+        'cp -r '+input_root+'.beta '+output_root+'.beta',
+        'cp -r '+input_root+'.tt0 '+output_root+'.tt0',
+        'cp -r '+input_root+'.tt1 '+output_root+'.tt1',
+        'cp -r '+input_root+'.tt2 '+output_root+'.tt2',
+        'cp -r '+input_root+'.mask '+output_root+'.mask',
+        'cp -r '+input_root+'.pb '+output_root+'.pb',
+        'cp -r '+input_root+'.psf '+output_root+'.psf',
+        'cp -r '+input_root+'.residual '+output_root+'.residual',
+        'cp -r '+input_root+'.weight '+output_root+'.weight',
+        'cp -r '+input_root+'.sumwt '+output_root+'.sumwt',
+        ]
 
-def wipe_cube(
-    cube_root=None):
+    for this_cmd in cmd_list:
+        logger.debug(this_cmd)
+        os.system(this_cmd)
+
+def export_imaging_to_fits(
+    image_root=None,
+    bitpix=-32,
+    just_image=False):
     """
-    Wipe files associated with a cube.
-    """
-    if cube_root == None:
-        return
-    
-    logger.debug('wipe_cube')
-    logger.debug('rm -rf '+cube_root+'.image')
-    logger.debug('rm -rf '+cube_root+'.model')
-    logger.debug('rm -rf '+cube_root+'.mask')
-    logger.debug('rm -rf '+cube_root+'.pb')
-    logger.debug('rm -rf '+cube_root+'.psf')
-    logger.debug('rm -rf '+cube_root+'.residual')
-    logger.debug('rm -rf '+cube_root+'.weight')
-    logger.debug('rm -rf '+cube_root+'.sumwt')
-    
-    os.system('rm -rf '+cube_root+'.image')
-    os.system('rm -rf '+cube_root+'.model')
-    os.system('rm -rf '+cube_root+'.mask')
-    os.system('rm -rf '+cube_root+'.pb')
-    os.system('rm -rf '+cube_root+'.psf')
-    os.system('rm -rf '+cube_root+'.residual')
-    os.system('rm -rf '+cube_root+'.weight')
-    os.system('rm -rf '+cube_root+'.sumwt')
-
-
-def replace_cube_with_copy(
-    to_root=None,
-    from_root=None):
-    """
-    Replace a cube with a copy.
+    Export the products associated with a CASA imaging run to FITS.
     """
     
-    wipe_cube(to_root)
+    logger.debug('export_imaging_to_fits')
+
+    ext_map = {
+        '.image':'.fits',
+        '.tt0':'.fits',
+        '.tt1':'_tt1.fits',
+        '.tt2':'_tt2.fits',
+        '.alpha':'_alpha.fits',
+        '.beta':'_beta.fits',
+        '.mask':'_mask.fits',
+        '.pb':'_pb.fits',
+        '.psf':'_psf.fits',
+        '.residual':'_residual.fits',
+        '.weight':'_weight.fits',
+        '.sumwt':'_sumwt.fits',
+        }
+
+    for this_ext in ext_map.keys():
+        if just_image and ((this_ext != '.tt0') and this_ext != '.image'):
+            continue
+
+        this_casa_ext = this_ext
+        this_fits_ext = ext_map[this_ext]
+
+        casa_image = image_root + this_casa_ext
+        if not os.pwd.isdir(casa_image):
+            continue
+        fits_image = image_root + this_fits_ext
+
+        logger.debug('exportfits from '+casa_image+' to '+fits_image)
+        casaStuff.exportfits(imagename=casa_image,
+                             fitsimage=fits_image,
+                             velocity=True, overwrite=True, dropstokes=True, 
+                             dropdeg=True, bitpix=bitpix)
     
-    logger.debug('replace_cube_with_copy')
-    logger.debug('cp -r '+from_root+'.image '+to_root+'.image')
-    logger.debug('cp -r '+from_root+'.model '+to_root+'.model')
-    logger.debug('cp -r '+from_root+'.mask '+to_root+'.mask')
-    logger.debug('cp -r '+from_root+'.pb '+to_root+'.pb')
-    logger.debug('cp -r '+from_root+'.psf '+to_root+'.psf')
-    logger.debug('cp -r '+from_root+'.residual '+to_root+'.residual')
-    logger.debug('cp -r '+from_root+'.psf '+to_root+'.weight')
-    logger.debug('cp -r '+from_root+'.residual '+to_root+'.sumwt')
-    
-    os.system('cp -r '+from_root+'.image '+to_root+'.image')
-    os.system('cp -r '+from_root+'.model '+to_root+'.model')
-    os.system('cp -r '+from_root+'.mask '+to_root+'.mask')
-    os.system('cp -r '+from_root+'.pb '+to_root+'.pb')
-    os.system('cp -r '+from_root+'.psf '+to_root+'.psf')
-    os.system('cp -r '+from_root+'.residual '+to_root+'.residual')
-    os.system('cp -r '+from_root+'.psf '+to_root+'.weight')
-    os.system('cp -r '+from_root+'.residual '+to_root+'.sumwt')
+    return()
 
+#endregion
 
-def export_to_fits(
-    cube_root=None,
-    bitpix=-32):
-    """
-    Export the various products associated with a CASA cube to FITS.
-    """
-    
-    logger.debug('export_to_fits')
-    logger.debug('exportfits '+cube_root+'.image '+cube_root+'.fits')
-    casaStuff.exportfits(\
-               imagename=cube_root+'.image',
-               fitsimage=cube_root+'.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+cube_root+'.model '+cube_root+'_model.fits')
-    casaStuff.exportfits(\
-               imagename=cube_root+'.model',
-               fitsimage=cube_root+'_model.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+cube_root+'.residual '+cube_root+'_residual.fits')
-    casaStuff.exportfits(\
-               imagename=cube_root+'.residual',
-               fitsimage=cube_root+'_residual.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+cube_root+'.mask '+cube_root+'_mask.fits')
-    casaStuff.exportfits(\
-               imagename=cube_root+'.mask',
-               fitsimage=cube_root+'_mask.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-    
-    logger.debug('exportfits '+cube_root+'.pb '+cube_root+'_pb.fits')
-    casaStuff.exportfits(\
-               imagename=cube_root+'.pb',
-               fitsimage=cube_root+'_pb.fits',
-               velocity=True, overwrite=True, dropstokes=True, 
-               dropdeg=True, bitpix=bitpix)
-    
-    return
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Routines to actually execute the cleaning
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-
-
-
-
-
-
-
-
+#region clean call execution
 
 def execute_clean_call(
     clean_call = None
@@ -441,17 +306,10 @@ def execute_clean_call(
         wipe_cube(clean_call.image_root)
     
     logger.debug('Clean call: '+str(clean_call.kwargs()))
-    casaStuff.tclean(**clean_call.kwargs())
+    casaStuff.tclean(**clean_call.kwargs_for_clean())
 
     if clean_call.logfile != None:
         casaStuff.casalog.setlogfile(oldlogfile)
-
-
-
-
-
-
-
     
 def make_dirty_map(
     clean_call = None, 
@@ -763,7 +621,7 @@ def multiscale_loop(
         input_root=clean_call.image_root,
         output_root=clean_call.image_root+'_multiscale')
 
-
+#endregion
 
 
 

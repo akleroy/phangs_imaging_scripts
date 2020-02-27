@@ -24,6 +24,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+VALID_IMAGING_STAGES = ['dirty','multiscale','singlescale']
+
 class KeyHandler:
     """
     Class to handle data files that indicate the names and data sets
@@ -42,6 +44,7 @@ class KeyHandler:
 
         self._target_dict = None
         self._config_dict = None
+        self._imaging_dict = None
         
         self._ms_dict = None
         self._sd_dict = None
@@ -86,6 +89,7 @@ class KeyHandler:
         self._read_sd_keys()
         self._read_cleanmask_keys()
         self._read_linmos_keys() 
+        self._read_imaging_keys()
         self._read_override_keys()
 
         logger.info("")
@@ -165,6 +169,7 @@ class KeyHandler:
         self._target_keys = []
         self._linmos_keys = []
         self._dir_keys = []
+        self._imaging_keys = []
         self._override_keys = []
 
         first_key_dir = True
@@ -261,6 +266,10 @@ class KeyHandler:
                 self._target_keys.append(this_value)
                 lines_read += 1
 
+            if this_key == 'imaging_key':
+                self._imaging_keys.append(this_value)
+                lines_read += 1
+
             if this_key == 'override_key':
                 self._override_keys.append(this_value)
                 lines_read += 1
@@ -311,7 +320,7 @@ class KeyHandler:
             return(all_valid)
 
         all_key_lists = \
-            [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys,
+            [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
              self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
@@ -808,6 +817,135 @@ class KeyHandler:
 
         logger.info("Read "+str(lines_read)+" lines into the linear mosaic definition dictionary.")
 
+        return()
+
+    def _read_imaging_keys(self):
+        """
+        Read all of the imaging keys.
+        """
+
+        self._imaging_dict = {}
+        for this_key in self._imaging_keys:
+            this_fname = self._key_dir + this_key
+            if os.path.isfile(this_fname) is False:
+                logger.error("I tried to read key "+this_fname+" but it does not exist.")
+                return()
+            self._read_one_imaging_key(fname=this_fname)
+
+        return()
+
+    def _read_one_imaging_key(self, fname=None):
+        """
+        Read one file of imaging recipe keys.
+        """
+
+        logger.info("Reading an imaging recipe key.")
+        logger.info("Reading: "+fname)
+        
+        # should not get to this, but check just in case
+        if os.path.isfile(fname) is False:
+            self.update_files()
+            return()
+
+        infile = open(fname, 'r')
+
+        # Initialize the dictionary to have an entry for each
+        # interferometric config and product and stage.
+
+        if self._imaging_dict is None:
+            if self._config_dict is None:
+                logger.error("I can't initialize the imaging recipes before the configurations.")
+                return(None)
+
+        self._imaging_dict = {}
+
+        # Loop over configs
+        for this_config in self.get_interf_configs():
+            self._imaging_dict[this_config] = {}
+
+            # Loop over line products
+            for this_product in self.get_line_products():
+                self._imaging_dict[this_config][this_product] = {}
+                # Loop over stages
+                for this_stage in VALID_IMAGING_STAGES:
+                    self._imaging_dict[this_config][this_product][this_stage] = []
+
+            # Loop over continuum products
+            for this_product in self.get_continuum_products():
+                self._imaging_dict[this_config][this_product] = {}
+                # Loop over stages
+                for this_stage in VALID_IMAGING_STAGES:
+                    self._imaging_dict[this_config][this_product][this_stage] = []
+
+        lines_read = 0
+        while True:
+            line = infile.readline()    
+            if len(line) == 0:
+                break
+            if line[0] == '#' or line == '\n':
+                continue
+
+            words = line.split()
+            if len(words) != 4:
+                logger.warning("Skipping line because it does not match imaging recipe format.")
+                logger.warning("Format is space delimited: config product stage recipe .")
+                logger.warning("Line is: ")
+                logger.warning(line)
+                continue
+
+            this_config = words[0]
+            this_product = words[1]
+            this_stage = words[2]
+            this_recipe = words[3]
+
+            if this_config.lower() != 'all':
+                if this_config not in self.get_interf_configs():
+                    logger.warning("Config not recognized. Line is:")
+                    logger.warning(line)
+                    continue
+
+            if this_product.lower() != 'all_line' and this_product.lower() != 'all_cont':
+                if (this_product not in self.get_line_products()) and \
+                        (this_product not in self.get_continuum_products()):
+                    logger.warning("Product not recognized. Line is:")
+                    logger.warning(line)
+                    continue
+
+            if this_stage.lower() != 'all' and this_stage.lower() not in VALID_IMAGING_STAGES:
+                logger.warning("Imaging stage not recognized. Line is:")
+                logger.warning(line)
+                continue
+                
+            # Just to make the last bit clean, force everything into a list
+
+            if this_config.lower() == 'all':
+                config_list = self.get_interf_configs()
+            else:
+                config_list = [this_config]
+
+            if this_product.lower() == 'all_line':
+                product_list = self.get_line_products()
+            elif this_product.lower() == 'all_cont':
+                product_list = self.get_continuum_products()
+            else:
+                product_list = [this_product]
+
+            if this_stage == 'all':
+                stage_list = VALID_IMAGING_STAGES
+            else:
+                stage_list = [this_stage]
+
+            for each_config in config_list:
+                for each_product in product_list:
+                    for each_stage in stage_list:
+                        self._imaging_dict[each_config][each_product][each_stage] = this_recipe
+
+            lines_read += 1
+
+        infile.close()
+
+        logger.info("Read "+str(lines_read)+" lines into the imaging recipe dictionary.")
+    
         return()
 
     def _read_override_keys(self):
