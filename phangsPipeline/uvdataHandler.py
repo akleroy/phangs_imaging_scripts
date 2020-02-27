@@ -263,11 +263,11 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             this_ms_filename = this_ms_filenames[i]
             logger.debug('Computing channel width in "'+this_ms_filename+'" for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
             if not self._dry_run:
-                this_chanwidth = cvr.chanwidth_for_line(in_file = this_ms_filename, 
-                                                        line = line, 
-                                                        vsys = vsys, 
-                                                        vwidth = vwidth, 
-                                                        )
+                this_chanwidth = cvr.compute_chanwidth_for_line(in_file = this_ms_filename, 
+                                                                line = product, 
+                                                                vsys = vsys, 
+                                                                vwidth = vwidth, 
+                                                                )
                 if this_chanwidth is None:
                     this_chanwidth = np.nan
                 all_chanwidths.append(this_chanwidth)
@@ -275,9 +275,10 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         # 
         # take the coarsest chanwidth as the common_chanwidth
         if not self._dry_run:
-            common_chanwidth = np.nanmax(all_chanwidths)
+            common_chanwidth = np.nanmax(np.array(all_chanwidths).flatten())
         else:
             common_chanwidth = 5.0 #<TODO><DEBUG>#
+        logger.debug('Common channel width '+str(common_chanwidth)+' km/s for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
         # 
         logger.info('END: Computing common channel width among all ms data for target '+target+', config '+config+' and product '+product+'.')
         # 
@@ -292,6 +293,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             extra_ext = '', 
             do_statwt = True, 
             edge_for_statwt = -1, 
+            method_for_channel_regridding = 1, 
             overwrite = False, 
             ):
         """
@@ -309,8 +311,8 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         common_chanwidth = self.task_compute_common_channel_width(target=target, product=product, config=config, extra_ext=extra_ext)
         # 
         # compute the rebinning factor to make the rebinned chanwidth as close to the target channel width as possible (but not exceeding it)
-        one_plus_eps = 1.0+1e-3
-        interpolate_cw = common_chanwidth * one_plus_eps #<TODO>#
+        one_plus_eps = 1.0+1e-3 #<TODO># documentation
+        interpolate_cw = common_chanwidth * one_plus_eps #<TODO># documentation
         rat = target_chanwidth / interpolate_cw
         rebin_fac = int(np.round(rat))
         if rebin_fac < 1:
@@ -342,18 +344,58 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             this_ms_extracted = fname_dict['ms_extracted'][i]
             logger.debug('Extracting spectral line: "'+this_ms_extracted+'" <-- "'+this_ms_filename+'"')
             if not self._dry_run:
+                # 
                 # extract line channels data for each ms data
-                cvr.extract_line(in_file = this_ms_filename, 
-                                 out_file = this_ms_extracted, 
-                                 line = line, 
-                                 vsys = vsys, 
-                                 vwidth = vwidth, 
-                                 chan_fine = interpolate_cw, 
-                                 rebin_factor = rebin_fac, 
-                                 do_statwt = do_statwt, 
-                                 edge_for_statwt = edge_for_statwt, 
-                                 overwrite = overwrite,
-                                )
+                # this includes regridding and rebinning the velocity axis
+                if method_for_channel_regridding == 1:
+                    # first regridding then rebinning
+                    cvr.extract_line(in_file = this_ms_filename, 
+                                     out_file = this_ms_extracted, 
+                                     line = product, 
+                                     vsys = vsys, 
+                                     vwidth = vwidth, 
+                                     chan_fine = interpolate_cw, 
+                                     rebin_factor = rebin_fac, 
+                                     rebin_first = False, 
+                                     do_statwt = do_statwt, 
+                                     edge_for_statwt = edge_for_statwt, 
+                                     overwrite = overwrite,
+                                    )
+                # 
+                elif method_for_channel_regridding == 2:
+                    # first rebinning then regridding
+                    cvr.extract_line(in_file = this_ms_filename, 
+                                     out_file = this_ms_extracted, 
+                                     line = product, 
+                                     vsys = vsys, 
+                                     vwidth = vwidth, 
+                                     chan_fine = target_chanwidth, 
+                                     rebin_factor = rebin_fac, 
+                                     rebin_first = True, 
+                                     do_statwt = do_statwt, 
+                                     edge_for_statwt = edge_for_statwt, 
+                                     overwrite = overwrite,
+                                    )
+                # 
+                elif method_for_channel_regridding == 3:
+                    # do only one regridding step
+                    # this is not recommended because this creates non-uniform noise due to non-integer binning, 
+                    # i.e., the spectral sawtooth issue
+                    cvr.extract_line(in_file = this_ms_filename, 
+                                     out_file = this_ms_extracted, 
+                                     line = product, 
+                                     vsys = vsys, 
+                                     vwidth = vwidth, 
+                                     chan_fine = target_chanwidth, 
+                                     rebin_factor = 0, 
+                                     rebin_first = False, 
+                                     do_statwt = do_statwt, 
+                                     edge_for_statwt = edge_for_statwt, 
+                                     overwrite = overwrite,
+                                    )
+                else:
+                    logger.error('Wrong value for method_for_channel_regridding! It is '+str(method_for_channel_regridding)+' but only 1, 2, or 3 is accepted. 1 is the default.')
+                    raise ValueError('Wrong value for method_for_channel_regridding!')
         # 
         logger.info('END: Extracting spectral line '+product+' for target '+target+' and config '+config+'.')
 

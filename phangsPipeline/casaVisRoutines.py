@@ -282,7 +282,100 @@ def find_spws_for_line(
 
 
 
-def chanwidth_for_line(
+def find_spw_channels_for_lines_to_flag(
+    in_file, 
+    lines_to_flag, 
+    vsys = None, 
+    vwidth = None, 
+    ):
+    """
+    List the spectral window and channels corresponding to the input lines in the input ms data. 
+    Galaxy system velocity (vsys) and velocity width (vwidth) in units of km/s are needed. 
+    """
+    
+    # 
+    # check input ms data dir
+    if not os.path.isdir(in_file):
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    # 
+    # check vsys
+    if vsys is None:
+        logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
+        raise Exception('Error! Please input vsys.')
+    # 
+    # check vwidth
+    if vwidth is None:
+        logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
+        raise Exception('Error! Please input vwidth.')
+    # 
+    # set the list of lines to flag
+    if lines_to_flag is None:
+        lines_to_flag = line_list.line_families['co'] + line_list.line_families['13co'] + line_list.line_families['c18o']
+    else:
+        lines_to_flag_copied = copy.copy(lines_to_flag)
+        lines_to_flag = []
+        for line_to_flag_copied in lines_to_flag_copied:
+            matched_line_names = line_list.get_line_names_in_line_family(line_to_flag_copied, exit_on_error = False)
+            if len(matched_line_names) > 0:
+                lines_to_flag.extend(matched_line_names)
+            else:
+                matched_line_name, matched_line_freq = line_list.get_line_name_and_frequency(line_to_flag_copied, exit_on_error = False)
+                if matched_line_name is not None:
+                    lines_to_flag.append(matched_line_name)
+    # 
+    if len(lines_to_flag) == 0:
+        logger.debug('No line to flag for the continuum .')
+    else:
+        logger.debug('Lines to flag for the continuum: '+str(lines_to_flag))
+    # 
+    # Figure out the line channels and flag them
+    vm = au.ValueMapping(in_file)
+    # 
+    spw_flagging_string = ''
+    first = True
+    for spw in vm.spwInfo.keys():
+        this_spw_string = str(spw)+':0'
+        if first:
+            spw_flagging_string += this_spw_string
+            first = False
+        else:
+            spw_flagging_string += ','+this_spw_string            
+    
+    for line in lines_to_flag:
+        rest_linefreq_ghz = line_list.line_list[line]
+        
+        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
+        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
+        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
+        
+        spw_list = au.getScienceSpwsForFrequency(in_file,
+                                                 shifted_linefreq_hz)
+        if len(spw_list) == 0:
+            continue
+        
+        for this_spw in spw_list:
+            freq_ra = vm.spwInfo[this_spw]['chanFreqs']
+            chan_ra = np.arange(len(freq_ra))
+            to_flag = (freq_ra >= lo_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
+            to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
+            low_chan = np.min(chan_ra[to_flag])
+            hi_chan = np.max(chan_ra[to_flag])                
+            this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
+            logger.info("... found line "+line+" in spw "+this_spw_string)
+            if first:
+                spw_flagging_string += this_spw_string
+                first = False
+            else:
+                spw_flagging_string += ','+this_spw_string
+    
+    logger.info("... proposed line channels to flag "+spw_flagging_string)
+    
+    return spw_flagging_string
+
+
+
+def compute_chanwidth_for_line(
     in_file, 
     line, 
     vsys = None, 
@@ -315,7 +408,7 @@ def chanwidth_for_line(
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     # 
     # Convert to km/s and return
-    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
+    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities
     # 
     # Return
     return chan_width_kms
@@ -328,8 +421,10 @@ def extract_line(
     line = 'co21', 
     vsys = None, 
     vwidth = None, 
-    chan_fine = 0.5, 
+    chan_fine = 0.0, 
     rebin_factor = 5, 
+    do_regrid_first = True, 
+    do_regrid_only = False, 
     do_statwt = False, 
     edge_for_statwt = -1, 
     overwrite = False, 
@@ -343,20 +438,41 @@ def extract_line(
     regridding and rebinning.
     
     This functions calls CASA mstransform three times:
-        1. regrid the velocity axis to the common coarest channel width
-        2. bin the velocity axis from common coarest channel width to the target channel width by an integer rebin_factor (this can be 1 if target channel width is not large enough)
-        3. combine spws
+        1. `mstransform(regridms=True, width=common_chanwidth*one_plus_eps)`
+           Regrid the velocity axis to the common coarest channel width
+           
+        2. `mstransform(regridms=False, chanbin=rebin_factor)`
+           Bin the velocity axis from common coarest channel width to the target channel width 
+           by an integer rebin_factor (this can be 1 if target channel width is not large enough)
+           
+        3. `mstransform(regridms=False, chanaverage=False, combinespws=True)`
+           Combine spws
     
-    Alternatively, we can also do this by providing the argument XXX:
-        1. regrid the velocity axis to the target channel width
-        2. 
+    Alternatively, we can also do this with a different order (`regrid_method = 2`):
+        1. `mstransform(regridms=False, chanbin=rebin_factor)`
+           Rebin the velocity axis by an integer factor so as to get as close to 
+           the target channel width as possible.
+           
+        2. `mstransform(regridms=True, width=target_chanwidth)`
+           Regrid the velocity axis to the exact target channel width
+        
+        3. `mstransform(regridms=False, chanaverage=False, combinespws=True)`
+           Combine spws
     
     Args:
         in_file (str): The input measurement set data with suffix ".ms".
         out_file (str): The output measurement set data with suffix ".ms".
         line (str): Line name. 
-        chan_fine (float): 
-        rebin_factor (float): 
+        chan_fine (float): Channel width in units of km/s to regrid to. 
+                           If it is -1 then we will keep the original channel width.
+                           If do_regrid_only is True then this will be the exact output channel width.
+        rebin_factor (int): channel rebin factor, must be an integer.  
+        do_regrid_first (bool): If True, then first do regridding then do rebinning, and the final channel 
+                                width will be `chan_fine * rebin_factor`. If False, then first do rebinning
+                                then do regridding, and the final channel width will be `chan_fine`. 
+                                The default is True. 
+        do_regrid_only (bool): If True then only regridding will be done. The default is False, that is, 
+                               we do both regridding and rebinning. 
         do_statwt (bool): 
         edge_for_statwt (int): 
     
@@ -414,120 +530,120 @@ def extract_line(
         # there has already a warning message inside find_spws_for_line()
         return
     # 
+    # get the line name and line center rest-frame frequency in the line_list module for the input line
+    line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=True) # exit_on_error = True
+    # 
     # print starting message
     logger.info("EXTRACT_LINE begins:")
     logger.info("... line: "+line)
     logger.info("... spectral windows to consider: "+spw_list_string)
     # 
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 1. Shift the zero point AND change the channel width (slightly).
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # 
     start_vel_kms = (vsys - vwidth/2.0)
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
-    if chan_fine == -1:
-        nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
-    else:
-        nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
-    # 
-    # Cast to text with specified precision.
     restfreq_string = "{:12.8f}".format(restfreq_ghz)+'GHz'
     start_vel_string =  "{:12.8f}".format(start_vel_kms)+'km/s'
-    chanwidth_string =  "{:12.8f}".format(chan_fine)+'km/s'
+    current_chanwidth_string = "{:12.8f}".format(current_chan_width_kms)+'km/s'
+    if chan_fine > 0:
+        nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
+        chanwidth_string =  "{:12.8f}".format(chan_fine)+'km/s'
+    else:
+        nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
+        chanwidth_string =  "{:12.8f}".format(current_chan_width_kms)+'km/s'
     # 
-    logger.info("... shifting the fine grid (before any regridding)")
     logger.info("... rest frequency: "+restfreq_string)
     logger.info("... new starting velocity: "+start_vel_string)
     logger.info("... original velocity width: "+str(current_chan_width_kms))
     logger.info("... target velocity width: "+str(chan_fine))
     logger.info("... number of channels at this stage: "+str(nchan_for_recenter))
     # 
-    if chan_fine == -1:
-        os.mkdir(out_file+'.temp'+'.touch')
-        casaStuff.mstransform(vis=in_file,
-                              outputvis=out_file+'.temp',
-                              spw=spw_list_string,
-                              datacolumn='DATA',
-                              combinespws=False,
-                              regridms=True,
-                              mode='velocity',
-                              #interpolation='linear',
-                              interpolation='cubic',
-                              start=start_vel_string,
-                              nchan=nchan_for_recenter,
-                              restfreq=restfreq_string,
-                              outframe='lsrk',
-                              veltype='radio',
-                              )
-        os.rmdir(out_file+'.temp'+'.touch')
-    else:
-        os.mkdir(out_file+'.temp'+'.touch')
-        casaStuff.mstransform(vis=in_file,
-                              outputvis=out_file+'.temp',
-                              spw=spw_list_string,
-                              datacolumn='DATA',
-                              combinespws=False,
-                              regridms=True,
-                              mode='velocity',
-                              #interpolation='linear',
-                              interpolation='cubic',
-                              start=start_vel_string,
-                              nchan=nchan_for_recenter,
-                              restfreq=restfreq_string,
-                              width=chanwidth_string,
-                              outframe='lsrk',
-                              veltype='radio',
-                              )
-        os.rmdir(out_file+'.temp'+'.touch')
-
-    current_file = out_file+'.temp'
-
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 2. Change the channel width by integer binning. 
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-    logger.info("... channel averaging")
-    logger.info("... rebinning factor: "+str(rebin_factor))
-
-    if rebin_factor > 1:
-        #os.system('rm -rf '+out_file+'.temp2')
-        #os.system('rm -rf '+out_file+'.temp2.flagversions')
-        os.mkdir(out_file+'.temp2'+'.touch')
-        casaStuff.mstransform(vis=current_file,
-                              outputvis=out_file+'.temp2',
-                              spw='',
-                              datacolumn='DATA',
-                              regridms=False,
-                              chanaverage=True,
-                              chanbin=rebin_factor,
-                              )
-        os.rmdir(out_file+'.temp2'+'.touch')
-        current_file = out_file+'.temp2'
-    
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 3. Combine the SPWs
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    
-    logger.info("... combining spectral windows")
-    
-    os.mkdir(out_file+'.touch')
-    casaStuff.mstransform(vis=current_file,
-                          outputvis=out_file,
-                          spw='',
-                          datacolumn='DATA',
-                          regridms=False,
-                          chanaverage=False,
-                          combinespws=True
-                          )
-    os.rmdir(out_file+'.touch')
-    
-    logger.info("... deleting old files")
-    
+    # determine regridding/rebinning/combinespw order
+    # we can do regridding-rebinning-combinespw, 
+    # or rebinning-regridding-combinespw, 
+    # or only regridding-combinespw. 
+    mstransform_call_list = []
+    mstransform_call_message_list = []
+    # 
+    # build default mstransform params for regridding
+    mstransform_params_for_regrid = {'combinespws': False, 'regridms': True, 'mode': 'velocity', 'interpolation': 'cubic', 
+                                     'spw': spw_list_string, 'datacolumn': 'DATA', 
+                                     'start': start_vel_string, 'restfreq': restfreq_string, 
+                                     'outframe': 'lsrk', 'veltype': 'radio', 
+                                     'nchan': nchan_for_recenter, 'width': chanwidth_string }
+    mstransform_message_for_regrid = 'mstransform to regrid to line velocity and channel width of '+mstransform_params['width']+' from the original channel width of '+current_chanwidth_string+'.'
+    # 
+    if chan_fine <= 0.0:
+        del mstransform_params_for_regrid['width'] # if user has not input a valid chan_fine, then we will keep the original channel width.
+        mstransform_message_for_regrid = 'mstransform to regrid to line velocity while keeping the original channel width of '+current_chanwidth_string+'.'
+    # 
+    # build default mstransform params for rebinning
+    mstransform_params_for_rebin = {'combinespws': False, 'regridms': False, 
+                                    'spw': '', 'datacolumn': 'DATA', 
+                                    'chanaverage': True, 'chanbin': rebin_factor }
+    mstransform_message_for_rebin = 'mstransform to rebin by a factor of '+str(rebin_factor)+'.'
+    # 
+    # build default mstransform params for combinespw
+    mstransform_params_for_combinespw = {'combinespws': True, 'regridms': False, 
+                                         'spw': '', 'datacolumn': 'DATA', 
+                                         'chanaverage': False }
+    mstransform_message_for_combinespw = 'mstransform to combine spws.'
+    # 
+    # first mstransform call
+    if do_regrid_only or do_regrid_first:
+        # do regrid
+        mstransform_params = copy.copy(mstransform_params_for_regrid)
+        mstransform_message = mstransform_message_for_regrid
+        mstransform_call_list.append(mstransform_params)
+        mstransform_call_message_list.append(mstransform_message)
+    # 
+    # second mstransform call (or the first if not do_regrid_only and not do_regrid_first)
+    if not do_regrid_only and rebin_factor > 1:
+        # do rebin if user has input a valid rebin_factor > 1
+        # rebin will be done to all spws
+        mstransform_params = copy.copy(mstransform_params_for_rebin)
+        mstransform_message = mstransform_message_for_rebin
+        mstransform_call_list.append(mstransform_params)
+        mstransform_call_message_list.append(mstransform_message)
+    # 
+    # third mstransform call (or the second if not do_regrid_only and not do_regrid_first) (same as the first mstransform call)
+    if not do_regrid_only and not do_regrid_first:
+        # do regrid after rebin (if there is no rebin earlier because rebin_factor<=1, this will be the only mstransform call except for the last combinespw call.)
+        mstransform_params = copy.copy(mstransform_params_for_regrid)
+        mstransform_message = mstransform_message_for_regrid
+        mstransform_call_list.append(mstransform_params)
+        mstransform_call_message_list.append(mstransform_message)
+    # 
+    # last mstransform call, combine spw
+        mstransform_params = copy.copy(mstransform_params_for_combinespw)
+        mstransform_message = mstransform_message_for_combinespw
+        mstransform_call_list.append(mstransform_params)
+        mstransform_call_message_list.append(mstransform_message)
+    # 
+    # loop mstransform call list
+    logger.info('... we will have '+str(len(mstransform_call_list))+' mstransform calls')
+    for k, mstransform_params in enumerate(mstransform_call_list):
+        if k == 0:
+            mstransform_params['vis'] = in_file
+            mstransform_params['outputvis'] = out_file+'.temp%d'%(k+1)
+        elif k == len(mstransform_call_list)-1:
+            mstransform_params['vis'] = out_file+'.temp%d'%(k)
+            mstransform_params['outputvis'] = out_file
+        else:
+            mstransform_params['vis'] = out_file+'.temp%d'%(k)
+            mstransform_params['outputvis'] = out_file+'.temp%d'%(k+1)
+        # 
+        logger.info("... "+mstransform_call_message_list[k])
+        os.mkdir(mstransform_params['outputvis']+'.touch')
+        casaStuff.mstransform(**mstransform_params)
+        os.rmdir(mstransform_params['outputvis']+'.touch')
+    # 
     # Clean up
-    for suffix in ['.temp', '.temp.flagversions', '.temp2', '.temp2.flagversions', '.touch', '.temp.touch', '.temp2.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
+    if os.path.isdir(out_file):
+        logger.info("... deleting temporary files")
+        for k in range(len(mstransform_call_list)):
+            for suffix in ['.temp%d'%(k), '.temp%d.flagversions'%(k), '.temp%d.touch'%(k)]:
+                if os.path.isdir(out_file+suffix):
+                    shutil.rmtree(out_file+suffix)
     
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 4. Re-weight the data using statwt
@@ -536,46 +652,196 @@ def extract_line(
     # N.B. need the sliding time bin to make statwt work.
     
     if do_statwt:
-        
+        # 
         if edge_for_statwt == -1:
             exclude_str = ''
         else:
             nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
             exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
-                str(nchan_final-(edge_for_statwt-2))
-        
-        logger.info("... running statwt with exclusion: "+exclude_str)
-        
-        # This needs to revert to oldstatwt, it seems not to work in the new form
-        
+                               str(nchan_final-(edge_for_statwt-2))
+            logger.info("... running statwt with exclusion: "+exclude_str)
+        # 
         if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
             # CASA version somewhat >= 5.5.0
-            os.mkdir(out_file+'.touch')
-            test = casaStuff.statwt(vis=out_file,
-                                    timebin='0.001s',
-                                    slidetimebin=False,
-                                    chanbin='spw',
-                                    statalg='classic',
-                                    datacolumn='data',
-                                    fitspw=exclude_str,
-                                    excludechans=True,
-                                    )
-            os.rmdir(out_file+'.touch')
+            statwt_params = {'vis': out_file, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+                             'statalg': 'classic', 'datacolumn': 'data', 
+                             'fitspw': exclude_str, 'excludechans': True}
         else:
             # CASA version <= 5.4.1
-            os.mkdir(out_file+'.touch')
-            test = casaStuff.statwt(vis=out_file,
-                                    timebin='0.001s',
-                                    slidetimebin=False,
-                                    chanbin='spw',
-                                    statalg='classic',
-                                    datacolumn='data',
-                                    excludechans=exclude_str,
-                                    )
-            os.rmdir(out_file+'.touch')
+            statwt_params = {'vis': out_file, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+                             'statalg': 'classic', 'datacolumn': 'data', 
+                             'excludechans': exclude_str}
+        # 
+        os.mkdir(out_file+'.touch')
+        test = casaStuff.statwt(**statwt_params)
+        os.rmdir(out_file+'.touch')
     
     logger.info("---")
     
+    return
+
+
+
+def contsub(
+    in_file, 
+    lines_to_flag = None, 
+    vsys = None, 
+    vwidth = None, 
+    overwrite = False, 
+    ):
+    """
+    Carry out uv continuum subtraction on a measurement set. First
+    figures out channels corresponding to spectral lines for a suite
+    of bright lines.
+    """
+    
+    # 
+    # check input ms data dir
+    if not os.path.isdir(in_file):
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    # 
+    # check existing output data in the imaging directory
+    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
+            return
+    if os.path.isdir(in_file+'.contsub'):
+        shutil.rmtree(in_file+'.contsub')
+    if os.path.isdir(in_file+'.contsub'+'.touch'):
+        shutil.rmtree(in_file+'.contsub'+'.touch')
+    # 
+    # find_spw_channels_for_lines_to_flag
+    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
+                                                              lines_to_flag = lines_to_flag, 
+                                                              vsys = vsys, 
+                                                              vwidth = vwidth)
+    # 
+    # uvcontsub, this outputs in_file+'.contsub'
+    os.mkdir(in_file+'.contsub'+'.touch')
+    casaStuff.uvcontsub(vis = in_file,
+                        fitspw = spw_flagging_string,
+                        excludechans = True)
+    os.rmdir(in_file+'.contsub'+'.touch')
+    # 
+    return
+
+
+
+def extract_continuum(
+    in_file, 
+    out_file, 
+    lines_to_flag = None, 
+    vsys = None, 
+    vwidth = None, 
+    do_statwt = False, 
+    do_collapse = True, 
+    overwrite = False, 
+    ):
+    """Extract continuum uv data from a measurement set and collapse into a single channel. 
+    
+    Extract a continuum measurement set, flagging any specified lines,
+    reweighting using statwt, and then collapsing to a single "channel
+    0" measurement.
+    
+    Args:
+        in_file (str): The input measurement set data with suffix ".ms".
+        out_file (str): The output measurement set data with suffix ".ms".
+        lines_to_flag (list): A list of line names to flag. Lines names must be in our line_list module. If it is None, then we use all 12co, 13co and c18o lines.
+        do_statwt (bool): 
+        do_collapse (bool): Always True to produce the single-channel continuum data.
+    
+    Inputs:
+        in_file: ALMA measurement set data folder.
+    
+    Outputs:
+        out_file: ALMA measurement set data folder.
+    
+    """
+    
+    # 
+    # check input ms data dir
+    if not os.path.isdir(in_file):
+        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    # 
+    # check output suffix
+    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+        out_file = out_name + '.ms'
+    else:
+        out_name = out_file
+        out_file = out_name + '.ms'
+    # 
+    # check existing output data
+    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
+            return
+    # if overwrite, then delete existing output data.
+    for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', '.temp_copy', '.temp_copy.flagversions', '.touch']:
+        if os.path.isdir(out_file+suffix):
+            shutil.rmtree(out_file+suffix)
+    # 
+    # find_spw_channels_for_lines_to_flag
+    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
+                                                              lines_to_flag = lines_to_flag, 
+                                                              vsys = vsys, 
+                                                              vwidth = vwidth)
+    # 
+    # make a continuum copy of the data
+    os.mkdir(out_file+'.touch')
+    shutil.copy(in_file, out_file)
+    os.rmdir(out_file+'.touch')
+    # 
+    # flagdata
+    if spw_flagging_string != '':
+        os.mkdir(out_file+'.touch')
+        casaStuff.flagdata(vis=out_file,
+                           spw=spw_flagging_string,
+                           )
+        os.rmdir(out_file+'.touch')
+    # 
+    # statwt
+    # Here - this comman needs to be examined and refined in CASA
+    # 5.6.1 to see if it can be sped up. Right now things are
+    # devastatingly slow.
+    if do_statwt:
+        logger.info("... deriving empirical weights using STATWT.")
+        os.mkdir(out_file+'.touch')
+        casaStuff.statwt(vis=out_file,
+                         timebin='0.001s',
+                         slidetimebin=False,
+                         chanbin='spw',
+                         statalg='classic',
+                         datacolumn='data',
+                         )
+        os.rmdir(out_file+'.touch')
+    # 
+    # collapse
+    if do_collapse:
+        logger.info("... Collapsing the continuum to a single channel.")
+        
+        if os.path.isdir(out_file):
+            shutil.move(out_file, out_file+'.temp_copy')
+        if os.path.isdir(out_file+'.flagversions'):
+            shutil.move(out_file+'.flagversions', out_file+'.temp_copy'+'.flagversions')
+        
+        os.mkdir(out_file+'.touch')
+        casaStuff.split(vis=out_file+'.temp_copy',
+                        outputvis=out_file,
+                        width=10000,
+                        datacolumn='DATA',
+                        keepflags=False)        
+                        #<TODO><20200210># num_chan or width
+        os.rmdir(out_file+'.touch')
+        # 
+        # clean up
+        if os.path.isdir(out_file+'.temp_copy'):
+            shutil.rmtree(out_file+'.temp_copy')
+        if os.path.isdir(out_file+'.temp_copy.flagversions'):
+            shutil.rmtree(out_file+'.temp_copy.flagversions')
+    # 
     return
 
 
@@ -671,277 +937,11 @@ def concat_ms(
     #                    width = num_chan)
     #
 
-#endregion
-
-
-
-def find_spw_channels_for_lines_to_flag(
-    in_file, 
-    lines_to_flag, 
-    vsys = None, 
-    vwidth = None, 
-    ):
-    """
-    List the spectral window and channels corresponding to the input lines in the input ms data. 
-    Galaxy system velocity (vsys) and velocity width (vwidth) in units of km/s are needed. 
-    """
-    
-    # 
-    # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    # 
-    # check vsys
-    if vsys is None:
-        logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys.')
-    # 
-    # check vwidth
-    if vwidth is None:
-        logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vwidth.')
-    # 
-    # set the list of lines to flag
-    if lines_to_flag is None:
-        lines_to_flag = line_list.line_families['co'] + line_list.line_families['13co'] + line_list.line_families['c18o']
-    else:
-        lines_to_flag_copied = copy.copy(lines_to_flag)
-        lines_to_flag = []
-        for line_to_flag_copied in lines_to_flag_copied:
-            matched_line_names = line_list.get_line_names_in_line_family(line_to_flag_copied, exit_on_error = False)
-            if len(matched_line_names) > 0:
-                lines_to_flag.extend(matched_line_names)
-            else:
-                matched_line_name, matched_line_freq = line_list.get_line_name_and_frequency(line_to_flag_copied, exit_on_error = False)
-                if matched_line_name is not None:
-                    lines_to_flag.append(matched_line_name)
-    # 
-    if len(lines_to_flag) == 0:
-        logger.debug('No line to flag for the continuum .')
-    else:
-        logger.debug('Lines to flag for the continuum: '+str(lines_to_flag))
-    # 
-    # Figure out the line channels and flag them
-    vm = au.ValueMapping(in_file)
-    # 
-    spw_flagging_string = ''
-    first = True
-    for spw in vm.spwInfo.keys():
-        this_spw_string = str(spw)+':0'
-        if first:
-            spw_flagging_string += this_spw_string
-            first = False
-        else:
-            spw_flagging_string += ','+this_spw_string            
-    
-    for line in lines_to_flag:
-        rest_linefreq_ghz = line_list.line_list[line]
-        
-        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
-        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
-        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
-        
-        spw_list = au.getScienceSpwsForFrequency(in_file,
-                                                 shifted_linefreq_hz)
-        if len(spw_list) == 0:
-            continue
-        
-        for this_spw in spw_list:
-            freq_ra = vm.spwInfo[this_spw]['chanFreqs']
-            chan_ra = np.arange(len(freq_ra))
-            to_flag = (freq_ra >= lo_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
-            to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
-            low_chan = np.min(chan_ra[to_flag])
-            hi_chan = np.max(chan_ra[to_flag])                
-            this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
-            logger.info("... found line "+line+" in spw "+this_spw_string)
-            if first:
-                spw_flagging_string += this_spw_string
-                first = False
-            else:
-                spw_flagging_string += ','+this_spw_string
-    
-    logger.info("... proposed line channels to flag "+spw_flagging_string)
-    
-    return spw_flagging_string
-    
-    
-    
-     
-
-#region Continuum-related functions
-
-def contsub(
-    in_file, 
-    lines_to_flag = None, 
-    vsys = None, 
-    vwidth = None, 
-    overwrite = False, 
-    ):
-    """
-    Carry out uv continuum subtraction on a measurement set. First
-    figures out channels corresponding to spectral lines for a suite
-    of bright lines.
-    """
-    
-    # 
-    # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    # 
-    # check existing output data in the imaging directory
-    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
-            return
-    if os.path.isdir(in_file+'.contsub'):
-        shutil.rmtree(in_file+'.contsub')
-    if os.path.isdir(in_file+'.contsub'+'.touch'):
-        shutil.rmtree(in_file+'.contsub'+'.touch')
-    # 
-    # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
-                                                              lines_to_flag = lines_to_flag, 
-                                                              vsys = vsys, 
-                                                              vwidth = vwidth)
-    # 
-    # uvcontsub, this outputs in_file+'.contsub'
-    os.mkdir(in_file+'.contsub'+'.touch')
-    casaStuff.uvcontsub(vis = in_file,
-                        fitspw = spw_flagging_string,
-                        excludechans = True)
-    os.rmdir(in_file+'.contsub'+'.touch')
-    # 
-    return
-
-
-
-def extract_continuum(
-    in_file, 
-    out_file, 
-    lines_to_flag = None, 
-    vsys = None, 
-    vwidth = None, 
-    do_statwt = False, 
-    do_collapse = True, 
-    overwrite = False, 
-    ):
-    """Extract continuum uv data from a measurement set and collapse into a single channel. 
-    
-    Extract a continuum measurement set, flagging any specified lines,
-    reweighting using statwt, and then collapsing to a single "channel
-    0" measurement.
-    
-    Args:
-        in_file (str): The input measurement set data with suffix ".ms".
-        out_file (str): The output measurement set data with suffix ".ms".
-        lines_to_flag (list): A list of line names to flag. Lines names must be in our line_list module. If it is None, then we use all 12co, 13co and c18o lines.
-        do_statwt (bool): 
-        do_collapse (bool): Always True.
-    
-    Inputs:
-        in_file: ALMA measurement set data folder.
-    
-    Outputs:
-        out_file: ALMA measurement set data folder.
-    
-    """
-    
-    # 
-    # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    # 
-    # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
-    else:
-        out_name = out_file
-        out_file = out_name + '.ms'
-    # 
-    # check existing output data
-    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
-            return
-    # if overwrite, then delete existing output data.
-    for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', '.temp_copy', '.temp_copy.flagversions', '.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
-    # 
-    # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
-                                                              lines_to_flag = lines_to_flag, 
-                                                              vsys = vsys, 
-                                                              vwidth = vwidth)
-    # 
-    # make a continuum copy of the data
-    os.mkdir(out_file+'.touch')
-    shutil.copy(in_file, out_file)
-    os.rmdir(out_file+'.touch')
-    # 
-    # flagdata
-    if spw_flagging_string != '':
-        os.mkdir(out_file+'.touch')
-        casaStuff.flagdata(vis=out_file,
-                           spw=spw_flagging_string,
-                           )
-        os.rmdir(out_file+'.touch')
-    # 
-    # statwt
-    # Here - this comman needs to be examined and refined in CASA
-    # 5.6.1 to see if it can be sped up. Right now things are
-    # devastatingly slow.
-    if do_statwt:
-        logger.info("... deriving empirical weights using STATWT.")
-        os.mkdir(out_file+'.touch')
-        casaStuff.statwt(vis=out_file,
-                         timebin='0.001s',
-                         slidetimebin=False,
-                         chanbin='spw',
-                         statalg='classic',
-                         datacolumn='data',
-                         )
-        os.rmdir(out_file+'.touch')
-    # 
-    # collapse
-    if do_collapse:
-        logger.info("... Collapsing the continuum to a single channel.")
-        
-        if os.path.isdir(out_file):
-            shutil.move(out_file, out_file+'.temp_copy')
-        if os.path.isdir(out_file+'.flagversions'):
-            shutil.move(out_file+'.flagversions', out_file+'.temp_copy'+'.flagversions')
-        
-        os.mkdir(out_file+'.touch')
-        casaStuff.split(vis=out_file+'.temp_copy',
-                        outputvis=out_file,
-                        width=10000,
-                        datacolumn='DATA',
-                        keepflags=False)        
-                        #<TODO><20200210># num_chan or width
-        os.rmdir(out_file+'.touch')
-        # 
-        # clean up
-        if os.path.isdir(out_file+'.temp_copy'):
-            shutil.rmtree(out_file+'.temp_copy')
-        if os.path.isdir(out_file+'.temp_copy.flagversions'):
-            shutil.rmtree(out_file+'.temp_copy.flagversions')
-    # 
-    return
-
-#endregion
 
 
 
 
 
-
-#region Measurement set characterization, e.g., noise
 
 def noise_spectrum(
     vis=None,
@@ -981,7 +981,6 @@ def noise_spectrum(
         
     return spec
 
-#endregion
 
 
 
