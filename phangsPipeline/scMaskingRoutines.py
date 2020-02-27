@@ -18,18 +18,36 @@ logger.setLevel(logging.DEBUG)
 
 
 def mad_zero_centered(data, mask=None):
+    where_data_valid = np.logical_and(~np.isnan(data), np.isfinite(data))
     if mask is None:
         sig_false = ss.norm.isf(0.5 / data.size)
-        mad1 = mad_to_std_fac * np.abs(np.median(data[data < 0]))
-        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data <
-                                                        (sig_false * mad1)])))
+        # 
+        # The following 3 lines were replaced by the next 5 lines to avoid the "Invalid value encountered in less" issue. 
+        #mad1 = mad_to_std_fac * np.abs(np.median(data[data < 0]))
+        #mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data <
+        #                                                (sig_false * mad1)])))
+        # 
+        where_data_less_than_zero = np.less(data, 0, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool))
+        mad1 = mad_to_std_fac * np.abs(np.median(data[where_data_less_than_zero]))
+        # 
+        where_data_less_than_mad1 = np.less(data, sig_false * mad1, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool))
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[where_data_less_than_mad1])))
     else:
         nData = mask.sum()
         sig_false = ss.norm.isf(0.5 / nData)
-        mad1 = mad_to_std_fac * np.abs(np.median(data[(data < 0) * mask]))
-        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[(data <
-                                                        (sig_false * mad1)) 
-                                                        * mask])))
+        # 
+        # The following 4 lines were replaced by the next 5 lines to avoid the "Invalid value encountered in less" issue. 
+        #mad1 = mad_to_std_fac * np.abs(np.median(data[(data < 0) * mask]))
+        #mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[(data <
+        #                                                (sig_false * mad1)) 
+        #                                                * mask])))
+        # 
+        where_data_less_than_zero = np.logical_and(np.less(data, 0, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool)), mask)
+        mad1 = mad_to_std_fac * np.abs(np.median(data[where_data_less_than_zero]))
+        # 
+        where_data_less_than_mad1 = np.logical_and(np.less(data, (sig_false * mad1), where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool)), mask)
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[where_data_less_than_mad1])))
+    
     return(mad2)
 
 
@@ -78,8 +96,13 @@ def simple_mask(data, noise, hi_thresh=5, hi_nchan=2,
         signif *= -1
     if lo_thresh is None:
         lo_thresh = hi_thresh
-    hi_mask = signif >= hi_thresh
-    lo_mask = signif >= lo_thresh
+    
+    # The following 2 lines were replaced by the next 2 lines to avoid the "Invalid value encountered" issue. 
+    #hi_mask = signif >= hi_thresh
+    #lo_mask = signif >= lo_thresh
+    hi_mask = np.greater_equal(signif, hi_thresh, where=(~np.isnan(signif)), out=np.full(signif.shape, False, dtype=bool))
+    lo_mask = np.greater_equal(signif, lo_thresh, where=(~np.isnan(signif)), out=np.full(signif.shape, False, dtype=bool))
+    
     histr = np.ones(hi_nchan, dtype=np.bool)
     lostr = np.ones(lo_nchan, dtype=np.bool)
     hi_mask = morph.binary_opening(hi_mask, histr[:,
