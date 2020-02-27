@@ -76,6 +76,79 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
     
 
+
+    ###########################################
+    # Defined file names for various products #
+    ###########################################
+    
+    def _fname_dict(
+        self,
+        target=None,
+        config=None,
+        product=None,
+        extra_ext='',
+        res_lowresmask='',
+        ):
+
+        if target is None:
+            logger.error("Need a target.")
+            return()
+
+        if product is None:
+            logger.error("Need a product.")
+            return()
+
+        if config is None:
+            logger.error("Need a config.")
+            return()
+        
+        fname_dict = {}
+        
+        indir = self._kh.get_postprocess_dir_for_target(
+                    target=target, changeto=False)
+        
+        res_list = self._kh.get_res_for_config(config)
+        if res_list is None:
+            logger.error('No target resolutions found for target '+target+' and config'+config)
+            raise Exception('No target resolutions found for target '+target+' and config'+config)
+        
+        lowest_res_tag = ''
+        lowest_res = None
+        
+        for this_res in res_list:
+            
+            res_tag = self._kh.get_tag_for_res(this_res)
+
+            tag = 'pbcorr_trimmed_k_res'+res_tag
+            fname_dict[tag] = self._kh.get_cube_filename(
+                target = target, config = config, product = product,
+                ext = tag,
+                casa = False)
+            
+            if os.path.isfile(os.path.join(indir, fname_dict[tag])):
+                if lowest_res is None:
+                    lowest_res = this_res
+                    lowest_res_tag = res_tag
+                elif this_res > lowest_res:
+                    lowest_res = this_res
+                    lowest_res_tag = res_tag
+        
+        # if user has input a res_lowresmask, and the file exist, use it, otherwise use the lowest res data
+        if res_lowresmask != '' and os.path.isfile(os.path.join(indir, fname_dict['pbcorr_trimmed_k_res'+res_lowresmask])):
+            fname_dict['pbcorr_trimmed_k_lowest_res'] = fname_dict['pbcorr_trimmed_k_res'+res_lowresmask]
+        else:
+            fname_dict['pbcorr_trimmed_k_lowest_res'] = fname_dict['pbcorr_trimmed_k_res'+lowest_res_tag]
+        
+        for tag in ['hybridmask', 'signalmask', 'broad', 'strict']:
+            fname_dict[tag] = self._kh.get_cube_filename(
+                    target = target, config = config, product = product,
+                    ext = tag,
+                    casa = False)
+        
+        return fname_dict
+        
+        
+
     ################
     # loop_product #
     ################
@@ -101,62 +174,37 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         for this_target, this_product, this_config in \
             self.looper(do_targets=True,do_products=True,do_configs=True):
 
-            res_list = self._kh.get_res_for_config(this_config)
-            if res_list is None:
-                logger.error("No target resolutions found for config"+this_config)
-                return()
-
             indir = self._kh.get_postprocess_dir_for_target(
                 target=this_target, changeto=False)
             outdir = self._kh.get_product_dir_for_target(
                 target=this_target, changeto=False)
-
+            
+            # get resolution list
+            res_list = self._kh.get_res_for_config(this_config)
+            
+            # get fname dict for this target and config
+            fname_dict = self._fname_dict(target = this_target, config = this_config, res_lowresmask = res_lowresmask, product = this_product)
+            
             ### step from build_products_12m.pro; if requested, wipe previous versions of the convolution
             ### step from build_products_12m.pro; convolve to specific resolution
             # done by postprocessHandler.py
 
             ### step from build_products_12m.pro; generate a low resolution mask from the flat cube
-            tag = 'pbcorr_trimmed_k'
-            lowres_pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                target = this_target, config = this_config.replace("12m+",""), product = this_product,
-                ext = tag+"_res"+res_lowresmask,
-                casa = True,
-                casaext = '.fits')
-
             # use 10p72 cube as a "low-resolution" cube
             # if not present, use available lowest resoltuion cube instead
-            there = glob.glob(indir+lowres_pbcorr_trimmed_k_file)
-            if there:
-                lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
-                    self.recipe_simple_masking(indir+lowres_pbcorr_trimmed_k_file)
-            else:
-                for this_res in np.sort(res_list)[::-1]:
-                    res_tag = self._kh.get_tag_for_res(this_res)
-                    lowres_pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                        target = this_target, config = this_config.replace("12m+",""), product = this_product,
-                        ext = tag+"_res"+res_tag,
-                        casa = True,
-                        casaext = '.fits')
-                    there = glob.glob(indir+lowres_pbcorr_trimmed_k_file)
-                    if there:
-                        lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
-                            self.recipe_simple_masking(indir+lowres_pbcorr_trimmed_k_file)
-                        break
+            lowres_pbcorr_trimmed_k_file = fname_dict['pbcorr_trimmed_k_lowest_res']
+            lowres_cube_data, lowres_cube_wcs, lowres_cube_noise, lowres_cube_mask = \
+                self.recipe_simple_masking(indir+lowres_pbcorr_trimmed_k_file)
 
             ### step from build_products_12m.pro; estimate the noise for each cube
             ### step from build_products_12m.pro; build masks holding bright signal at each resolution
             for this_res in res_list:
                 res_tag = self._kh.get_tag_for_res(this_res)
 
-                tag = 'pbcorr_trimmed_k'
-                pbcorr_trimmed_k_file = self._kh.get_cube_filename(
-                    target = this_target, config = this_config, product = this_product,
-                    ext = tag+"_res"+res_tag,
-                    casa = True,
-                    casaext = '.fits')
+                tag = 'pbcorr_trimmed_k_res'+res_tag
+                pbcorr_trimmed_k_file = fname_dict[tag]
 
-                there = glob.glob(indir+pbcorr_trimmed_k_file)
-                if there:
+                if os.path.isfile(os.path.join(indir, pbcorr_trimmed_k_file)):
                     cube_data, cube_wcs, cube_noise, cube_mask = \
                         self.recipe_simple_masking(indir+pbcorr_trimmed_k_file)
 
@@ -164,19 +212,21 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     # hybridmasked cubes
                     broadcube_data, broadcube_noise = self.recipe_hybrid_masking(
                        cube_data, cube_wcs, cube_noise, cube_mask, lowres_cube_mask,
-                       outfitsfile =  outdir+pbcorr_trimmed_k_file.replace(".fits","_hybridmask.fits").replace("_"+tag,""))
+                       outfitsfile = os.path.join(outdir, fname_dict['hybridmask']),
+                       )
 
                     # signal masked cubes
                     strictcube_data, strictcube_noise = self.recipe_signal_masking(
                        cube_data, cube_wcs, cube_noise, cube_mask,
-                       outfitsfile =  outdir + pbcorr_trimmed_k_file.replace(".fits","_signalmask.fits").replace("_"+tag,""))
+                       outfitsfile = os.path.join(outdir, fname_dict['signalmask']),
+                       )
 
                     ### step from build_products_12m.pro; collapse into a simple set of moment maps
                     # broad map creation
                     self.recipe_products(
                         cube = broadcube_data,
                         rms = broadcube_noise,
-                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_broad.fits").replace("_"+tag,""),
+                        commonoutfitsfile = os.path.join(outdir, fname_dict['broad']),
                         do_vmax = False,
                         do_vquad = False)
 
@@ -184,7 +234,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     self.recipe_products(
                         cube = strictcube_data,
                         rms = strictcube_noise,
-                        commonoutfitsfile = outdir + pbcorr_trimmed_k_file.replace(".fits","_strict.fits").replace("_"+tag,""),
+                        commonoutfitsfile = os.path.join(outdir, fname_dict['strict']),
                         do_vmax = False,
                         do_vquad = False)
 
