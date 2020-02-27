@@ -155,11 +155,11 @@ def split_science_targets(
         # copy the data
         os.mkdir(copied_file+'.touch')
         if os.path.isdir(in_file):
-            shutil.copy2(in_file, copied_file)
-            logger.debug('shutil.copy2 "'+in_file+'", "'+copied_file+'"')
+            shutil.copytree(in_file, copied_file)
+            logger.debug('shutil.copytree "'+in_file+'", "'+copied_file+'"')
         if os.path.isdir(in_file+'.flagversions'):
-            shutil.copy2(in_file+'.flagversions', copied_file+'.flagversions')
-            logger.debug('shutil.copy2 "'+in_file+'.flagversions'+'", "'+copied_file+'.flagversions'+'"')
+            shutil.copytree(in_file+'.flagversions', copied_file+'.flagversions')
+            logger.debug('shutil.copytree "'+in_file+'.flagversions'+'", "'+copied_file+'.flagversions'+'"')
         os.rmdir(copied_file+'.touch')
         # 
         # check copied_file, make sure copying was done
@@ -615,10 +615,10 @@ def extract_line(
         mstransform_call_message_list.append(mstransform_message)
     # 
     # last mstransform call, combine spw
-        mstransform_params = copy.copy(mstransform_params_for_combinespw)
-        mstransform_message = mstransform_message_for_combinespw
-        mstransform_call_list.append(mstransform_params)
-        mstransform_call_message_list.append(mstransform_message)
+    mstransform_params = copy.copy(mstransform_params_for_combinespw)
+    mstransform_message = mstransform_message_for_combinespw
+    mstransform_call_list.append(mstransform_params)
+    mstransform_call_message_list.append(mstransform_message)
     # 
     # loop mstransform call list
     logger.info('... we will have '+str(len(mstransform_call_list))+' mstransform calls')
@@ -634,6 +634,7 @@ def extract_line(
             mstransform_params['outputvis'] = out_file+'.temp%d'%(k+1)
         # 
         logger.info("... "+mstransform_call_message_list[k])
+        logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, mstransform_params[t]) for t in mstransform_params.keys())+')')
         os.mkdir(mstransform_params['outputvis']+'.touch')
         casaStuff.mstransform(**mstransform_params)
         os.rmdir(mstransform_params['outputvis']+'.touch')
@@ -792,7 +793,7 @@ def extract_continuum(
     # 
     # make a continuum copy of the data
     os.mkdir(out_file+'.touch')
-    shutil.copy(in_file, out_file)
+    shutil.copytree(in_file, out_file)
     os.rmdir(out_file+'.touch')
     # 
     # flagdata
