@@ -1,6 +1,8 @@
 # Imports
 from phangsPipeline import keyHandler as kh
-from phangsPipeline import productHandler as prh
+#from phangsPipeline import productHandler as prh
+from phangsPipeline import productHandler_dzliu_20200226a as prh
+
 
 # Instantiate handlers
 this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
