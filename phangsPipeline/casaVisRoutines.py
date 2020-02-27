@@ -8,8 +8,8 @@ Standalone routines to analyze and manipulate visibilities.
 
 import os, sys, re, shutil, inspect, copy
 import numpy as np
-import pyfits # CASA has pyfits, not astropy
-import glob
+#import pyfits # CASA has pyfits, not astropy
+#import glob
 
 import logging
 logger = logging.getLogger(__name__)
@@ -540,6 +540,7 @@ def extract_line(
     # 
     start_vel_kms = (vsys - vwidth/2.0)
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
+    if not np.isscalar(chan_width_hz): chan_width_hz = chan_width_hz[0]
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
     restfreq_string = "{:12.8f}".format(restfreq_ghz)+'GHz'
     start_vel_string =  "{:12.8f}".format(start_vel_kms)+'km/s'
@@ -567,14 +568,14 @@ def extract_line(
     # build default mstransform params for regridding
     mstransform_params_for_regrid = {'combinespws': False, 'regridms': True, 'mode': 'velocity', 'interpolation': 'cubic', 
                                      'spw': spw_list_string, 'datacolumn': 'DATA', 
-                                     'start': start_vel_string, 'restfreq': restfreq_string, 
+                                     'start': start_vel_string.strip(), 'restfreq': restfreq_string.strip(), 
                                      'outframe': 'lsrk', 'veltype': 'radio', 
-                                     'nchan': nchan_for_recenter, 'width': chanwidth_string }
-    mstransform_message_for_regrid = 'mstransform to regrid to line velocity and channel width of '+mstransform_params['width']+' from the original channel width of '+current_chanwidth_string+'.'
+                                     'nchan': nchan_for_recenter, 'width': chanwidth_string.strip() }
+    mstransform_message_for_regrid = 'mstransform to regrid to line velocity and channel width of '+chanwidth_string.strip()+' from the original channel width of '+current_chanwidth_string.strip()+'.'
     # 
     if chan_fine <= 0.0:
         del mstransform_params_for_regrid['width'] # if user has not input a valid chan_fine, then we will keep the original channel width.
-        mstransform_message_for_regrid = 'mstransform to regrid to line velocity while keeping the original channel width of '+current_chanwidth_string+'.'
+        mstransform_message_for_regrid = 'mstransform to regrid to line velocity while keeping the original channel width of '+current_chanwidth_string.strip()+'.'
     # 
     # build default mstransform params for rebinning
     mstransform_params_for_rebin = {'combinespws': False, 'regridms': False, 
