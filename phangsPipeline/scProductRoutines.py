@@ -970,11 +970,3 @@ def channel_width(cube):
     dv = np.median(np.abs(cube.spectral_axis[1:] 
                           - cube.spectral_axis[0:-1]))
     return(dv)
-
-        # mom0err_proj = Projection(mom0err,
-        #                           wcs=mom0_broad.wcs,
-        #                           header=mom0_broad.header)
-        # mom1err_proj = Projection(mom1err,
-        #                           wcs=mom1_broad.wcs,
-        #                           header=mom1_broad.header)
-        
