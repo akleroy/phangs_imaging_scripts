@@ -1672,7 +1672,6 @@ class KeyHandler:
         if target is None:
             logging.error("Please specify a target.")
             raise Exception("Please specify a target.")
-            return None
         
         target_vsys = None
         target_vwidth = None
@@ -1685,8 +1684,32 @@ class KeyHandler:
             logging.error('No vsys or vwidth values set for the target '+target+'. Please check your "target_definitions.txt".')
             raise Exception('No vsys or vwidth values set for the target '+target)
         
-        return target_vsys, target_vwidth
+        return(target_vsys, target_vwidth)
     
+    def get_phasecenter_for_target(
+        self,
+        target=None,
+        ):
+        """
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+        
+        rastring = None
+        decstring = None
+        if target in self._target_dict:
+            if 'rastring' in self._target_dict[target]:
+                rastring = self._target_dict[target]['rastring']
+            if 'decstring' in self._target_dict[target]:
+                decstring = self._target_dict[target]['decstring']
+        
+        if rastring is None or decstring is None:
+            logging.error('Missing phase center for target ', target)
+            raise Exception('Missing phase center for target ', target)
+        
+        return(rastring, decstring)
+
     def get_channel_width_for_line_product(
         self, 
         product=None,
@@ -1895,6 +1918,62 @@ class KeyHandler:
             ms_filepaths.append(ms_filepath)
         # output
         return ms_filenames, ms_filepaths
+
+    def get_vis_filename(
+        self, 
+        target=None, 
+        config=None,
+        product=None,
+        ext=None,
+        suffix=None,
+        ):
+        """
+        Get the file name for a target, config, product visibility
+        combination. Optionally include an extension and a suffix. Convention is:
+
+        target_config_product_ext.ms.suffix
+        """
+
+        if target is None:
+            logging.error("Need a target.")            
+            return(None)
+
+        if config is None:
+            logging.error("Need a configuration.")            
+            return(None)
+
+        if product is None:
+            logging.error("Need a product.")            
+            return(None)
+        
+        if type(target) is not type(''):
+            logging.error("Target needs to be a string.", target)
+            return(None)
+
+        if type(product) is not type(''):
+            logging.error("Product needs to be a string.", product)
+            return(None)
+
+        if type(config) is not type(''):
+            logging.error("Config needs to be a string.", config)
+            return(None)
+        
+        filename = target+'_'+config+'_'+product
+        if ext is not None:
+            if type(ext) is not type(''):
+                logging.error("Ext needs to be a string or None.", ext)
+                return(None)
+            filename += '_'+ext
+
+        filename += '.ms'
+
+        if suffix is not None:
+            if type(suffix) is not type(''):
+                logging.error("Suffix needs to be a string or None.", suffix)
+                return(None)
+            filename += '.'+suffix        
+
+        return(filename)
 
     def get_cube_filename(
         self, 
@@ -2136,6 +2215,26 @@ class KeyHandler:
             return(None)
 
         return(feather_config_dict[feather_config]['interf_config'])
+
+    def get_clean_scales_for_config(
+        self,
+        config=None,
+        ):
+        """
+        Return the angular scales used for multiscale clean for an
+        interferometric configuration.
+        """
+
+        if config is None:
+            return(None)
+
+        if config in self._config_dict['interf_config'].keys():
+            this_dict = self._config_dict['interf_config'][config]
+        else:
+            return(None)
+                
+        return(this_dict['clean_Scales_arcsec'])
+
 
     def get_res_for_config(
         self,

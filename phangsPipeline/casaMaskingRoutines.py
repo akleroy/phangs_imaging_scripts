@@ -197,67 +197,12 @@ def noise_for_cube(
     
     return(this_noise)
 
-def noise_spectrum(
-    infile=None,
-    mask=None,
-    method='mad',
-    ):
-    """
-    Estimate a spectrum of noise along the velocity/frequency axis of a cube.
-    """
-
-    if infile is None:
-        logger.error('No infile specified.')
-        return(None)
-    
-    if not os.path.isdir(infile) and not os.path.isfile(infile):
-        logger.error('Infile specified but not found - '+infile)
-        return(None)
-        
-    # Not implemented. May deprecate this. This step is handled after
-    # exporting to FITS by the scRoutines.
-
-    pass
-
-def noise_map(
-    infile=None,
-    mask=None,
-    method='mad',
-    ):
-    """
-    Estimate a map of noise across a cube.
-    """
-
-    if infile is None:
-        logger.error('No infile specified.')
-        return(None)
-    
-    if not os.path.isdir(infile) and not os.path.isfile(infile):
-        logger.error('Infile specified but not found - '+infile)
-        return(None)
-
-    # Not implemented. May deprecate this. This step is handled after
-    # exporting to FITS by the scRoutines.
-
-    pass
-
-#endregion
-
-
-
-
-
-
-
-
-
-#region Mask creation and manipulation
-
-def stat_clean_cube(
+def stat_cube(
     cube_file=None, 
     ):
     """
-    Calculate statistics for an image cube.
+    Calculate statistics for an image cube. Right now this is a thin
+    wrapper to imstat.
     """
     if cube_file == None:
         logger.info("No cube file specified. Returning")
@@ -267,7 +212,9 @@ def stat_clean_cube(
     
     return imstat_dict
 
+#endregion
 
+#region Mask creation and manipulation
 
 def signal_mask(
     cube_root=None,
@@ -381,10 +328,6 @@ def apply_additional_mask(
     myia.close()
 
     return
-
-#endregion
-
-#region Mask alignment
 
 def import_and_align_mask(  
     in_file=None,

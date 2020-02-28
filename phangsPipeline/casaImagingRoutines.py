@@ -7,7 +7,7 @@ Standalone routines related to CASA imaging.
 import os
 import numpy as np
 import pyfits # CASA has pyfits, not astropy
-import glob
+import glob, copy
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,10 +18,9 @@ import analysisUtils as au
 
 # CASA stuff
 import casaStuff
+import casaMaskingRoutines as cmr
 
-from casaMaskingRoutines import signal_mask
-from casaMaskingRoutines import stat_clean_cube
-
+# Clean call object
 from clean_call import CleanCall
 
 # Pipeline versionining
@@ -38,12 +37,14 @@ from pipelineVersion import version as pipeVer
 def estimate_cell_and_imsize(
     infile=None,    
     oversamp=5,
-    forceSquare=False,
+    force_square=False,
     ):
     """
     Pick a cell and image size for a measurement set. Requests an
     oversampling factor, which is by default 5. Will pick a good size
-    for the FFT and will try to pick a round number for the cell size.
+    for the FFT and will try to pick a round number for the cell
+    size. Returns variables appropriate for cell= and imsize= in
+    tclean.
     """
 
     if os.path.isdir(infile) == False:
@@ -94,7 +95,7 @@ def estimate_cell_and_imsize(
     # If requested, force the mosaic to be square. This avoids
     # pathologies in CASA versions 5.1 and 5.3.
 
-    if forceSquare == True:
+    if force_square == True:
         if cells_y < cells_x:
             cells_y = cells_x
         if cells_x < cells_y:
@@ -103,10 +104,7 @@ def estimate_cell_and_imsize(
     image_size = [int(cells_x), int(cells_y)]
     cell_size_string = str(cell_size)+'arcsec'
 
-    x_size_string = str(image_size[0])
-    y_size_string = str(image_size[1])
-
-    return cell_size_string, x_size_string, y_size_string
+    return cell_size_string, image_size
 
 #endregion
 
@@ -151,9 +149,10 @@ def wipe_imaging(
 
     return()
 
-def save_copy_of_imaging(
+def copy_imaging(
     input_root=None,
-    output_root=None):
+    output_root=None,
+    wipe_first=True):
     """
     Copy all of the files from a cube or continuum imaging output by
     clean to have a new root name. Most commonly used to make a backup
@@ -162,9 +161,10 @@ def save_copy_of_imaging(
     previous imaging with that output name.
     """
     
-    wipe_cube(output_root)
+    if wipe_first:
+        wipe_cube(output_root)
     
-    logger.debug('save_copy_of_imaging')
+    logger.debug('Copying imaging from root '+input_root+' to root '+output_root)
     cmd_list = [
         'cp -r '+input_root+'.image '+output_root+'.image',
         'cp -r '+input_root+'.alpha '+output_root+'.alpha',
@@ -185,37 +185,6 @@ def save_copy_of_imaging(
         logger.debug(this_cmd)
         os.system(this_cmd)
 
-def replace_imaging_with_copy(
-    input_root=None,
-    output_root=None):
-    """
-    Replace a cube with a copy. Wipes any imaging associated with the
-    target root root first.
-    """
-    
-    wipe_cube(output_root)
-    
-    logger.debug('replace_imaging_with_copy')
-
-    cmd_list = [
-        'cp -r '+input_root+'.image '+output_root+'.image',
-        'cp -r '+input_root+'.alpha '+output_root+'.alpha',
-        'cp -r '+input_root+'.beta '+output_root+'.beta',
-        'cp -r '+input_root+'.tt0 '+output_root+'.tt0',
-        'cp -r '+input_root+'.tt1 '+output_root+'.tt1',
-        'cp -r '+input_root+'.tt2 '+output_root+'.tt2',
-        'cp -r '+input_root+'.mask '+output_root+'.mask',
-        'cp -r '+input_root+'.pb '+output_root+'.pb',
-        'cp -r '+input_root+'.psf '+output_root+'.psf',
-        'cp -r '+input_root+'.residual '+output_root+'.residual',
-        'cp -r '+input_root+'.weight '+output_root+'.weight',
-        'cp -r '+input_root+'.sumwt '+output_root+'.sumwt',
-        ]
-
-    for this_cmd in cmd_list:
-        logger.debug(this_cmd)
-        os.system(this_cmd)
-
 def export_imaging_to_fits(
     image_root=None,
     bitpix=-32,
@@ -224,8 +193,6 @@ def export_imaging_to_fits(
     Export the products associated with a CASA imaging run to FITS.
     """
     
-    logger.debug('export_imaging_to_fits')
-
     ext_map = {
         '.image':'.fits',
         '.tt0':'.fits',
@@ -264,362 +231,409 @@ def export_imaging_to_fits(
 #endregion
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Routines to actually execute the cleaning
+# Execute a clean call
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 #region clean call execution
 
 def execute_clean_call(
-    clean_call = None
+    clean_call = None,
+    reset = False,
     ):
     """
-    Execute the clean call.
+    Execute a clean call object, optionally deleting previous versions
+    of the imaging first.
     """
-    
-    logger.debug('execute_clean_call')
     
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
       
-    if clean_call.vis == None:
-        logger.info("No visibility. Returning.")
-        return
+    if not clean_call.has_param('vis'):
+        logger.warning("No visibility defined in clean_call. Returning.")
+        return()
 
-    if os.path.isdir(clean_call.vis) == False:
-        logger.info("Visibility file not found. Returning.")
-        return
+    if not os.path.isdir(clean_call.get_param('vis')):
+        logger.warning("Visibility file not found: ",vis)
+        return()
     
-    if clean_call.cell_size == None or clean_call.image_size == None:
-        logger.info("Estimating cell and image size.")
-        cell_size, x_size, y_size = \
-            estimate_cell_and_imsize(clean_call.vis, oversamp=5)
-        clean_call.cell_size = cell_size
-        clean_call.image_size = [x_size, y_size]
-
     if clean_call.logfile != None:
         oldlogfile = casaStuff.casalog.logfile()
         casaStuff.casalog.setlogfile(clean_call.logfile)
 
-    if clean_call.reset:
+    if reset:
         logger.info("Wiping previous versions of the cube.")
-        wipe_cube(clean_call.image_root)
+        wipe_cube(clean_call.getparam('imagename'))
     
-    logger.debug('Clean call: '+str(clean_call.kwargs()))
     casaStuff.tclean(**clean_call.kwargs_for_clean())
 
     if clean_call.logfile != None:
         casaStuff.casalog.setlogfile(oldlogfile)
+
+    return()
+
+#endregion
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Run a clean call with NITER=0 to make a dirty image
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
-def make_dirty_map(
+def make_dirty_image(
     clean_call = None, 
     ):
     """
-    Create a dirty map from a measurement set.
+    Create a dirty image using the provided clean call. Forces number
+    of iterations to zero before excuting the clean call and enforces
+    psf and residual caculation but otherwise leaves the clean_call
+    unchanged. Making a dirty image also forces a reset, wiping any
+    previous version of the imaging. Avoids mutating the clean_call.
     """
     
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
     
-    clean_call.niter = 0
-    clean_call.reset = True
-    clean_call.usemask = 'pb'
-    clean_call.logfile = clean_call.image_root+'_dirty.log'
-    
-    clean_call.calcres = True
-    clean_call.calcpsf = True
-    #clean_call.execute()
-    execute_clean_call(clean_call)
-    
-    clean_call.reset = False
-    clean_call.usemask = 'pb'
-    clean_call.logfile = None
-    
-    save_copy_of_cube(
-        input_root=clean_call.image_root,
-        output_root=clean_call.image_root+'_dirty')
+    dirty_clean_call = copy.deepcopy(clean_call)
+
+    dirty_clean_call.set_param('niter', 0)
+    dirty_clean_call.set_param('calcres',True)
+    dirty_clean_call.set_param('calcpsf',True)
+
+    execute_clean_call(dirty_clean_call, reset=True)
+
+    return()
 
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Repeated run a clean call, looking for convergence
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-
-
-
-
-
-
-
-def clean_loop(
-    clean_call = None,
-    record_file=None,
-    log_ext=None,
-    delta_flux_threshold=0.02,    
-    absolute_delta=True,
-    absolute_threshold=None,
-    snr_threshold=4.0,
-    stop_at_negative=True,
-    remask=False,
-    max_loop = 20
+def eval_niter(
+    loopnum=1,
+    baseval=10,
+    model='geometric',
+    factor=2.0,
+    saturation=1000,
+    other_input=None,
     ):
     """
-    Carry out an iterative clean until a convergence criteria is met.
+    Helper function to evaluate the number of iterations.
+    """
+    niter = None
+
+    # Fixed number of iterations
+
+    if model.lower() == 'fixed':
+        niter = baseval
+
+    # A geometric model starts at the base value and scales by
+    # factor each time.
+
+    if model.lower() == 'geometric':
+        niter = baseval*factor**(loopnum)
+
+    # A linear model starts at the base value and increases by
+    # baseval*(factor*loopnum) each time.
+
+    if model.lower() == 'linear':
+        niter = baseval*(1.0+factor*loopnum)
+
+    # Experimental/untested: a sequence of iterations
+    if model.lower() == 'sequence':
+        if loopnum >= len(other_input):
+            index = len(other_input)-1
+        else:
+            index = loopnum
+        niter = other_input[loopnum]
+
+    # Experimental/untested: an expression to be 'exec'ed
+    if model.lower() == 'expr':
+        exec(other_input)
+    
+    # Cap at the saturation value
+    if saturation is not None:
+        if niter >= saturation:
+            niter = saturation
+
+    return(niter)
+
+def clean_loop(
+    clean_call=None,
+    record_file=None,
+    log_ext=None,
+    niter_base_perchan = 10,
+    niter_growth_model = 'geometric', 
+    niter_growth_factor = 2.0, 
+    niter_saturation_perchan = 1000,    
+    niter_other_input = None,
+    cycleniter_base = 100,
+    cycleniter_growth_model='linear',
+    cycleniter_growth_factor = 1.0,
+    cycleniter_saturation_value = 1000,
+    cycleniter_other_input = None,
+    threshold_type = 'snr',
+    threshold_value = 4.0,
+    min_loops = 0,
+    max_loops = 20,
+    max_total_niter = None,
+    absolute_threshold=None,    
+    convergence_fracflux=0.02,    
+    convergence_totalflux=None,
+    convergence_fluxperniter=None,
+    use_absolute_delta=True,
+    stop_at_negative=True,
+    remask_each_loop=False,
+    force_dirty_image=False,    
+    ):
+    """
+    Carry out an iterative clean until a convergence criteria is
+    met. The loop releases progressively more iterations to the
+    provided clean call and checks for convergence after each call to
+    clean. 
+
+    Optional parameters control the growth of major cycle
+    (cycle_niter) and total (niter) iterations/components, the
+    implementation of absolute or signal-to-noise thresholds, and the
+    total number of loops allowed.
+
+    Convergence is checked by looking at the fractional change in the
+    integrated model flux during successive iterations. With a strong
+    threshold and enough iterations released, this can practically
+    reduce to approaching the signal to noise threshold. The user also
+    supplies a maximum number of loops, which prevent running away in
+    cases of divergence.
+
+    Future improvements could allow the execution of arbitrary
+    functions to characterize the data and check for convergence or to
+    manipulate the clean mask. Right now "remasking" and "stat_cube"
+    are the only option implemented in this step.
     """
     
+    # Some definitions and error checking
+
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
+
+    valid_model_types = ['fixed', 'geometric','linear','sequence','expr']
+    for growth_model in [niter_growth_model.lower(), cycleniter_growth_model.lower()]:
+        if growth_model not in valid_model_types:
+            logger.warning("Growth model not recognized: ", growth_model)
+            return()
+
+    valid_threshold_types = ['snr','absolute']
+    if threshold_type.lower() not in valid_threshold_types:
+        logger.warning("Threshold type not recognized: ", threshold_type)
+        return()
+
+    # Check if a residual image exists. If not, then build the dirty
+    # image. Also build the dirty image if the flag to
+    # force_dirt_image is set to True.
+    
+    missing_image = True
+    if os.pwd.isdir(clean_call.get_param('imagename')+'.residual'):
+        missing_image = False
+
+    if missing_imaging or force_dirty_image:
+        make_dirty_image(clean_call)
+
+    # Copy the clean call so we can manipulate it without changing the
+    # input version call.
+
+    working_call = copy.deepycopy(clean_call)
 
     # Note the number of channels, which is used in setting the number
     # of iterations that we give to an individual clean call.
 
-    vm = au.ValueMapping(clean_call.vis)
+    vm = au.ValueMapping(working_call.get_param('vis'))
     nchan = vm.spwInfo[0]['numChannels']
 
-    # Figure out the number of iterations we will use. Note that this
-    # step is highly tunable, and can still be improved as we go
-    # forward.
+    # Create a text record of progress through successive clean calls.
 
-    base_niter = 10*nchan
-    base_cycle_niter = 100
-    loop = 1
+    record = []
+    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, delta_flux")
+    record.append("# column 1: Loop number.")
+    record.append("# column 2: Deconvolver used in clean.")
+    record.append("# column 3: Allocated number of iterations.")
+    record.append("# column 4: Cycleniter used to force major cycles.")
+    record.append("# column 5: Threshold supplied to clean.")
+    record.append("# column 6: Noise level measured in residuals.")
+    record.append("# column 7: Integrated model flux.")
+    record.append("# column 8: Fractional change in flux from previous loop.")
 
-    # Initialize our tracking of the flux in the model
+    # Initialize the loop counter and our tracking of the flux in the
+    # model (which we use to estimate convergence).
 
-    model_flux = 0.0
-
-    # Open the text record if desired
-
-    if record_file != None:
-        f = open(record_file,'w')
-        f.write("# column 1: loop type\n")
-        f.write("# column 2: loop number\n")
-        f.write("# column 3: supplied threshold\n")
-        f.write("# column 4: model flux at end of this clean\n")
-        f.write("# column 5: fractional change in flux (current-previous)/current\n")
-        f.write("# column 6: number of iterations allocated (not necessarily used)\n")
-        f.close()
+    loop = 0
+    cumulative_niter = 0
+    previous_flux = 0.0
+    current_flux = 0.0
 
     # Run the main loop
 
     proceed = True
-    while proceed == True and loop <= max_loop:
+    while proceed == True:
 
-        # Figure out how many iterations to give clean.
+        # Calculate the number of total iterations (niter) and
+        # iterations per major cycle (cycleniter) released to clean
+        # during this call.
 
-        if loop > 5:
-            factor = 5
+        niter = eval_niter(loopnum = loop, 
+                           baseval = niter_base_perchan*nchan,
+                           model=niter_growth_model, factor=niter_growth_factor,
+                           saturation = niter_saturation_perchan*nchan,
+                           other_input=niter_other_input)
+
+        cycleniter = eval_niter(loopnum = loop, baseval = cycleniter_base,
+                                model=cycleniter_growth_model, factor=cycleniter_growth_factor,
+                                saturation = cycleniter_saturation_value,
+                                other_input=cycleniter_other_input)
+        
+        working_call.set_param('niter', niter, nowarning=True)
+        working_call.set_param('cycleniter', cycleniter, nowarning=True)
+
+        cumulative_niter = cumulative_niter + niter
+
+        # Calculate the current noise in the residual image. Don't
+        # exclude the masked region from the noise calculation but do
+        # turn on iterative noise estimation (Chauvenet+m.a.d. using 5
+        # iterations should be quite robust).
+        
+        current_noise = cmr.noise_for_cube(
+            infile=working_call.get_param('imagename')+'.residual',
+            method='chauvmad', niter=5)
+
+        # Set the threshold for the clean call. Clean expects a value
+        # in Jy/beam. Switch on the threshold type to make the string
+        # and attach it to the clean call.
+
+        if threshold_type == 'snr':
+            threshold_string = str(current_noise*snr_threshold)+'Jy/beam'
+        elif threshold_type == 'absolute':
+            if type(threshold_value) == type(0.0):
+                threshold_string = str(threshold_value)+'Jy/beam'
+            else:
+                threshold_string = threshold_value
         else:
-            factor = (loop-1)
-        
-        clean_call.niter = base_niter*(2**factor)
-        clean_call.cycle_niter = base_cycle_niter*factor
-        
-        # Set the threshold for the clean call.
+            threshold_string = '0.0Jy/beam'
 
-        if snr_threshold != None:
-            resid_stats = stat_clean_cube(clean_call.image_root+'.residual')        
-            current_noise = resid_stats['medabsdevmed'][0]/0.6745
-            clean_call.threshold = str(current_noise*snr_threshold)+'Jy/beam'
-        elif absolute_threshold != None:
-            clean_call.threshold = absolute_threshold
+        working_call.set_param('threshold', threshold_string, nowarning=True)
 
         # If requested mask at each step (this is experimental, we're
         # seeing if it helps to avoid divergence during the deep
         # single scale clean.)
 
-        if remask:
+        if remask_each_loop:
             logger.info("")
             logger.info("Remasking.")
             logger.info("")
             signal_mask(
-                cube_root=clean_call.image_root,
-                out_file=clean_call.image_root+'.mask',
+                cube_root=working_call.get_param('imagename'),
+                out_file=working_call.get_param('imagename')+'.mask',
                 operation='AND',
                 high_snr=4.0,
                 low_snr=2.0,
                 absolute=False)
-            clean_call.usemask='user'
+            working_call.usemask='user'
 
-        logger.debug('clean_loop '+clean_call.image_root+' loop '+str(loop))
-        
-        # Set the log file
+        # Set the log file (revisit this)
 
         if log_ext != None:
-            clean_call.logfile = clean_call.image_root+"_loop_"+str(loop)+"_"+log_ext+".log"
+            working_call.logfile = working_call.image_root+"_loop_"+str(loop)+"_"+log_ext+".log"
         else:
-            clean_call.logfile = None
+            working_call.logfile = None
 
-        # Save the previous version of the file
-        
-        save_copy_of_cube(
-            input_root=clean_call.image_root,
-            output_root=clean_call.image_root+'_prev')
+        # Save the previous version of the imaging for comparison
+            
+        copy_imaging(
+            input_root=working_call.get_param('imagename'),
+            output_root=working_call.get_param('imagename')+'_prev')
 
         # Execute the clean call.
 
-        clean_call.reset = False
-        #clean_call.execute()
-        execute_clean_call(clean_call)
+        execute_clean_call(working_call)
 
-        clean_call.niter = 0
-        clean_call.cycle_niter = 200
+        # Calculate the new model flux and the change relative to the
+        # previous step, normalized by current flux and by iterations.
 
-        # Record the new model flux and check for convergence. A nice
-        # way to improve this would be to calculate the flux per
-        # iteration.
+        model_stats = cmr.stat_cube(working_call.get_param('imagename')+'.model')
 
-        model_stats = stat_clean_cube(clean_call.image_root+'.model')
+        previous_flux = model_flux
+        current_flux = model_stats['sum'][0]
 
-        prev_flux = model_flux
-        model_flux = model_stats['sum'][0]
-
-        delta_flux = (model_flux-prev_flux)/model_flux
-        if absolute_delta:
+        delta_flux = (current_flux-previous_flux)
+        if use_absolute_delta:
             delta_flux = abs(delta_flux)
 
-        if delta_flux_threshold >= 0.0:
-            proceed = \
-                (delta_flux > delta_flux_threshold)
+        flux_per_iter = delta_flux / niter
+        frac_delta_flux = delta_flux / previous_flux
+
+        # Check whether the model flux convergence criteria is met
+
+        if convergence_fracflux is not None:
+            if frac_delta_flux < convergence_fracflux:
+                proceed = False
+
+        if convergence_totalflux is not None:
+            if delta_flux < convergence_totalflux:
+                proceed = False
+
+        if convergence_fluxperniter is not None:
+            if flux_per_iter < convergence_fluxperniter:
+                proceed = False
+
+        if max_total_niter is not None:
+            if cumulative_niter >= max_total_niter:
+                proceed = False
+
+        # If requested, stop if the integrated model flux becomes
+        # negative.
 
         if stop_at_negative:
-            if model_flux < 0.0:
+            if current_flux < 0.0:
                 proceed = False
+
+        # Enforce minimum and maximum limits on number of loops. These
+        # override other convergence criteria.
+
+        if loop >= max_loops:
+            proceed = False
+        if loop < min_loops:
+            proceed = True
+
+        # Generate a record line and print the current status to the screen
+        
+        this_record = ''
+        this_record += str(loop)+', '
+        this_record += str(working_call.get_param('deconvolver'))+', '
+        this_record += str(working_call.get_param('niter'))+', '
+        this_record += str(working_call.get_param('cycleniter'))+', '
+        this_record += str(working_call.get_param('threshold'))+', '
+        this_record += str(current_noise)+'Jy/beam, '
+        this_record += str(model_flux)+'Jy*chan, '
+        this_record += str(delta_flux)+''
             
-        # Print output
-                
-        logger.info("")
-        logger.info("******************************")
-        logger.info("CLEAN LOOP "+str(loop))
-        logger.info("... threshold "+str(clean_call.threshold))
-        logger.info("... old flux "+str(prev_flux))
-        logger.info("... new flux "+str(model_flux))
-        logger.info("... fractional change "+str(delta_flux)+" compare to stopping criterion of "+str(delta_flux_threshold))
-        logger.info("... proceed? "+str(proceed))
-        logger.info("******************************")
-        logger.info("")
+        # Print the current record to the screen
 
-        # Record to log
+        record.append(this_record)
+        for line in record:
+            print(line)
 
-        if record_file != None:
-            line = 'LOOP '+str(loop)+ \
-                ' '+clean_call.threshold+' '+str(model_flux)+ \
-                ' '+str(delta_flux) + ' ' + str(clean_call.niter)+ '\n' 
-            f = open(record_file,'a')
-            f.write(line)
-            f.close()
+        logger.info("... proceeding? "+str(proceed))
 
         if proceed == False:
             break
+
         loop += 1
 
-    return
+    # ... if requested also write this to a file.
 
+    if record_file != None:
+        f = open(record_file,'w')
+        f.writelines(record)
+        f.close()
 
-
-def singlescale_loop(
-    clean_call = None,
-    scales_as_angle=[],
-    record_file=None,
-    delta_flux_threshold=0.02,
-    absolute_delta=True,
-    absolute_threshold=None,
-    snr_threshold=4.0,
-    stop_at_negative=True,
-    remask=False,
-    max_loop = 20
-    ):
-    """
-    Carry out an iterative multiscale clean loop.
-    """
-    
-    # Check that we have a vile clean call
-
-    if not isinstance(clean_call, CleanCall):
-        logger.error("Please input a valid clean call!")
-        raise Exception("Please input a valid clean call!")
-        
-    clean_call.deconvolver = 'hogbom'
-    clean_call.calcres = False
-    clean_call.calcpsf = False
-
-    # Call the loop
-
-    clean_loop(
-        clean_call=clean_call,
-        record_file=record_file,
-        delta_flux_threshold=delta_flux_threshold,
-        absolute_delta=absolute_delta,
-        absolute_threshold=absolute_threshold,
-        snr_threshold=snr_threshold,
-        stop_at_negative=stop_at_negative,
-        remask=remask,
-        max_loop = max_loop, 
-        log_ext = 'singlescale', #<TODO># set log_ext to output log files
-        )
-
-    # Save a copy
-
-    save_copy_of_cube(
-        input_root=clean_call.image_root,
-        output_root=clean_call.image_root+'_singlescale')
-
-
-
-def multiscale_loop(
-    clean_call = None,
-    record_file=None,
-    delta_flux_threshold=0.02,
-    absolute_delta=True,
-    absolute_threshold=None,
-    snr_threshold=4.0,
-    stop_at_negative=True,
-    max_loop = 20
-    ):
-    """
-    Carry out an iterative multiscale clean loop.
-    """
-    
-    # Check that we have a vile clean call
-
-    if not isinstance(clean_call, CleanCall):
-        logger.error("Please input a valid clean call!")
-        raise Exception("Please input a valid clean call!")
-    
-    # Figure out the scales to use in pixel units
-
-    cell_as_num = float((clean_call.cell_size.split('arcsec'))[0])
-    scales_as_pix = []
-    for scale in clean_call.scales_as_angle:
-        scales_as_pix.append(int(scale/cell_as_num))
-        
-    clean_call.deconvolver = 'multiscale'
-    clean_call.scales_as_pix = scales_as_pix
-    clean_call.calcres = False
-    clean_call.calcpsf = False
-
-    logger.info("I will use the following scales: ")
-    logger.info("... as pixels: " + str(clean_call.scales_as_pix))
-    logger.info("... as arcseconds: " + str(clean_call.scales_as_angle))
-
-    # Call the loop
-
-    clean_loop(
-        clean_call=clean_call,
-        record_file=record_file,
-        delta_flux_threshold=delta_flux_threshold,
-        absolute_delta=absolute_delta,
-        absolute_threshold=absolute_threshold,
-        snr_threshold=snr_threshold,
-        stop_at_negative=stop_at_negative,
-        max_loop = max_loop, 
-        log_ext = 'multiscale', #<TODO># set log_ext to output log files
-        )
-
-    # Save a copy
-
-    save_copy_of_cube(
-        input_root=clean_call.image_root,
-        output_root=clean_call.image_root+'_multiscale')
+    return()
 
 #endregion
 

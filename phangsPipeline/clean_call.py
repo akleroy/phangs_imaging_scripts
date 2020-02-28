@@ -151,6 +151,16 @@ class CleanCall:
         # We don't worry about arcmin or deg right now - can adjust if needed
         return(float((cell_string).split('arcsec')))
     
+    def has_param(self, key=None):
+        """
+        Check if an attribute is in the clean parameter dictionary.
+        """
+        if key is None:
+            return(False)
+        if key in self.clean_params.keys():
+            return(True)
+        return(False)
+
     def get_param(self, key=None):
         """
         Get an attribute by its string name.
@@ -160,7 +170,7 @@ class CleanCall:
         if key in self.clean_params.keys():
             return(self.clean_params[key])
         else:
-            raise Exception('clean_params does not have an attribute named "'+str(key)+'"')
+            logger.warning('clean_params does not have an attribute named "'+str(key)+'"')
             return(None)
 
     ##################################
