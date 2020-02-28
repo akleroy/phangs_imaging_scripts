@@ -103,10 +103,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_dirty_image = True,
         do_revert_to_dirty = True,
         do_read_clean_mask = True, 
-        do_multiscale_clean = True
+        do_multiscale_clean = True,
         do_revert_to_multiscale = True,
         do_singlscale_mask = True,
-        do_singlescale_clean = True        
+        do_singlescale_clean = True,
         do_export_to_fits = True, 
         extra_ext_in = None,
         suffix_in = None,
@@ -167,10 +167,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                     do_dirty_image = True,
                     do_revert_to_dirty = True,
                     do_read_clean_mask = True, 
-                    do_multiscale_clean = True
+                    do_multiscale_clean = True,
                     do_revert_to_multiscale = True,
                     do_singlscale_mask = True,
-                    do_singlescale_clean = True        
+                    do_singlescale_clean = True,
                     do_export_to_fits = True, 
                     dynamic_sizing = dynamic_sizing,
                     force_square = force_square, 
@@ -252,7 +252,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Set the rest frequency or reference frequency
 
-        is_line_product = product in self._kh.get_line_products())
+        is_line_product = product in self._kh.get_line_products()
         if is_line_product:
             if clean_call.get_param('specmode') != 'cube':
                 logger.error('Line product detected but specmode is not cube.')
@@ -671,10 +671,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_dirty_image = True,
         do_revert_to_dirty = True,
         do_read_clean_mask = True, 
-        do_multiscale_clean = True
+        do_multiscale_clean = True,
         do_revert_to_multiscale = True,
         do_singlscale_mask = True,
-        do_singlescale_clean = True        
+        do_singlescale_clean = True,      
         do_export_to_fits = True, 
         dynamic_sizing = True,
         force_square = False,
