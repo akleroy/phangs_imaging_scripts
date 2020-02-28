@@ -1,0 +1,39 @@
+##########################################################################
+# This file defines the calibrated measurement sets for imaging.
+# 
+# Column 1: target name
+# Column 2: project tag
+# Column 3: array tag with multiobs suffix
+# Column 4: relative file path of the measurement set (to be search under 
+#           any 'ms_root')
+# 
+# Examples are given below as the commented lines. 
+##########################################################################
+
+ic1954       886     7m_1       2017.1.00886.L/science_goal.uid___A001_X1284_X28b3/group.uid___A001_X1284_X28b4/member.uid___A001_X1284_X28b7/calibrated/uid___A002_Xc63024_X4c8.ms
+ic1954       886     7m_2       2017.1.00886.L/science_goal.uid___A001_X1284_X28b3/group.uid___A001_X1284_X28b4/member.uid___A001_X1284_X28b7/calibrated/uid___A002_Xc63024_X568e.ms
+ic1954       886     7m_3       2017.1.00886.L/science_goal.uid___A001_X1284_X28b3/group.uid___A001_X1284_X28b4/member.uid___A001_X1284_X28b7/calibrated/uid___A002_Xc63024_X98b.ms
+ic1954       886     12m        2017.1.00886.L/science_goal.uid___A001_X1284_X28b3/group.uid___A001_X1284_X28b4/member.uid___A001_X1284_X28b5/calibrated/uid___A002_Xcf2c56_X583c.ms
+
+ngc3621_1    886     7m_1       2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc6e968_X29a3.ms
+ngc3621_1    886     7m_2       2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc6e968_X3283.ms
+ngc3621_1    886     7m_3       2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc6fa08_X2b8f.ms
+ngc3621_1    886     7m_4       2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc6ff69_X3a2c.ms
+ngc3621_1    886     7m_5       2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc7111c_X2a18.ms
+ngc3621_1    886     7m_6       2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2777/calibrated/uid___A002_Xc7111c_X7e68.ms
+ngc3621_1    886     12m_1      2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2775/calibrated/uid___A002_Xcef406_X855b.ms.split.cal
+ngc3621_1    886     12m_2      2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2775/calibrated/uid___A002_Xcef406_Xd67.ms.split.cal
+ngc3621_1    886     12m_3      2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2775/calibrated/uid___A002_Xd0c6e8_X418d.ms.split.cal
+ngc3621_1    886     12m_4      2017.1.00886.L/science_goal.uid___A001_X1284_X2773/group.uid___A001_X1284_X2774/member.uid___A001_X1284_X2775/calibrated/uid___A002_Xd0c6e8_X490d.ms.split.cal
+
+ngc3621_2    886     7m_1       2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc6fa08_X1b71.ms
+ngc3621_2    886     7m_2       2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc6fa08_X245d.ms
+ngc3621_2    886     7m_3       2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc73dee_X2278.ms
+ngc3621_2    886     7m_4       2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc743d2_X3b09.ms
+ngc3621_2    886     7m_5       2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc74b5b_X343d.ms
+ngc3621_2    886     7m_6       2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X2781/calibrated/uid___A002_Xc74b5b_X82e9.ms
+ngc3621_2    886     12m_1      2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X277f/calibrated/uid___A002_Xcee8a2_X19bc.ms.split.cal
+ngc3621_2    886     12m_2      2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X277f/calibrated/uid___A002_Xcef406_X5e4.ms.split.cal
+ngc3621_2    886     12m_3      2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X277f/calibrated/uid___A002_Xcfae6a_X77c5.ms.split.cal
+ngc3621_2    886     12m_4      2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X277f/calibrated/uid___A002_Xcfae6a_X8eab.ms.split.cal
+ngc3621_2    886     12m_5      2017.1.00886.L/science_goal.uid___A001_X1284_X277d/group.uid___A001_X1284_X277e/member.uid___A001_X1284_X277f/calibrated/uid___A002_Xcfae6a_X94f1.ms.split.cal

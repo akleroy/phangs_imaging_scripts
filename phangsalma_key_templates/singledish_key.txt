@@ -1,0 +1,14 @@
+##########################################################################
+# This file defines the file names of single dish image cubes. 
+# 
+# Column 1: target name
+# Column 3: file name (to be searched under 'singledish_root' directory)
+# Column 2: product to feather with this single dish image cube.
+# 
+# Examples are given below as the commented lines. 
+##########################################################################
+
+#ic1954      cycle5_data/ALMA_TP.IC1954.CO21.processed.fits        co21
+#ngc3621_1   cycle5_data/ALMA_TP.NGC3621.CO21.a.image.VLSRK.fits   co21
+#ngc3621_2   cycle5_data/ALMA_TP.NGC3621.CO21.b.image.VLSRK.fits   co21
+
