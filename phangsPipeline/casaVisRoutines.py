@@ -335,7 +335,7 @@ def find_spw_channels_for_lines_to_flag(
     spw_flagging_string = ''
     first = True
     for spw in vm.spwInfo.keys():
-        this_spw_string = str(spw)+':0'
+        this_spw_string = str(spw)+':0' #<TODO># flag the first channel for all spws
         if first:
             spw_flagging_string += this_spw_string
             first = False
@@ -834,7 +834,7 @@ def extract_continuum(
                         outputvis=out_file,
                         width=10000,
                         datacolumn='DATA',
-                        keepflags=False)        
+                        keepflags=False)
                         #<TODO><20200210># num_chan or width
         os.rmdir(out_file+'.touch')
         # 
