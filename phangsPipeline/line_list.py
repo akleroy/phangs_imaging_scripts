@@ -1,5 +1,11 @@
 # This is the line list.
 
+import re
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # Drawn from Splatalogue at http://www.cv.nrao.edu/php/splat/
 
 # Lists that combine multiple transitions for a single line
