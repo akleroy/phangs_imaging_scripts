@@ -139,8 +139,10 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     lowest_res_tag = res_tag
                 # 
                 image_basename = re.sub('_pbcorr_trimmed_k_res'+res_tag+r'\.fits$', '', os.path.basename(cube_filename)) # remove suffix
-                for tag in ['hybridmask', 'signalmask', 'broad', 'strict']:
+                for tag in ['hybridmask', 'signalmask']:
                     fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag+'_res'+res_tag+'.fits')
+                for tag in ['broad', 'strict']:
+                    fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag) # we will append mom0 mom1 then res_tag
             else:
                 # file not found
                 logger.warning('Cube with tag '+res_tag+' at '+str(np.round(this_res,2))+' arcsec resolution was not found: "'+os.path.join(indir, cube_filename)+'"')
@@ -297,7 +299,8 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     cube_signal_mask = scmasking.simple_mask(cube_data, cube_noise)
                     # 
                     # combine the cube signal mask and low-resolution mask to get the hybridmask
-                    cube_hybrid_mask = np.logical_or(cube_signal_mask, lowres_cube_mask)
+                    cube_hybrid_mask = np.logical_or(cube_signal_mask, lowres_cube_mask) #<TODO>#
+                    #cube_hybrid_mask = scmasking.hybridize_mask(hires_in=cube_signal_mask, lores_in=lowres_cube_mask) # this requires SpectralCube type, but the masks are np.array <TODO>
                     # 
                     # write the hybrid (broad) mask to disk
                     self.task_writing_mask(\
@@ -309,6 +312,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                                     'This lowresmask is made with the '+lowres_cube_tag+'arcsec resolution cube.'], 
                         outfile = fname_dict[res_tag]['hybridmask'], 
                         )
+                        #<TODO># We can add some comments here into the output FITS file header.
                     # 
                     # write the signal (strict) mask to disk
                     self.task_writing_mask(
@@ -318,6 +322,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                         comments = ['This signalmask is made with the '+res_tag+'arcsec resolution cube.'], 
                         outfile = fname_dict[res_tag]['signalmask'], 
                         )
+                        #<TODO># We can add some comments here into the output FITS file header.
                     # 
                     # apply hybrid (broad) mask to the cube data
                     broadcube_data = SpectralCube(data=cube_data, wcs=cube_wcs, mask=BooleanArrayMask(cube_hybrid_mask, wcs=cube_wcs))
@@ -331,14 +336,16 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     self.task_writting_products(
                         cube = broadcube_data,
                         rms = broadcube_noise,
-                        commonoutfitsfile = fname_dict[res_tag]['broad'], 
+                        outfile = fname_dict[res_tag]['broad'], 
+                        res_tag = res_tag, 
                         )
                     # 
                     # make moment maps and other products with the signal (strict) mask
                     self.task_writting_products(
                         cube = strictcube_data,
                         rms = strictcube_noise,
-                        commonoutfitsfile = fname_dict[res_tag]['strict'], 
+                        outfile = fname_dict[res_tag]['strict'], 
+                        res_tag = res_tag, 
                         )
             # 
     
@@ -386,7 +393,8 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         self,
         cube,
         rms,
-        commonoutfitsfile,
+        outfile, 
+        res_tag=None,
         do_moment0 = True,
         do_moment1 = True,
         do_moment2 = True,
@@ -399,15 +407,50 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         """Collapse masked cube as our products and write to disk. 
         """
         # 
-        commonoutfitsname = re.sub(r'\.fits$', r'', commonoutfitsfile) # remove suffix
+        if re.match(r'\.fits$', outfile):
+            outfile = re.sub(r'\.fits$', r'', outfile) # remove suffix
+        # 
+        if res_tag is not None:
+            res_tag_ext = '_res'+res_tag
+        else:
+            res_tag_ext = ''
+        # 
         process_list = []
-        if do_moment0:   process_list.append({'outfile': commonoutfitsname+'_mom0.fits',  'errorfile': commonoutfitsname+'_emom0.fits',  'func': scproduct.write_moment0, 'unit': u.K * u.km/u.s })
-        if do_moment1:   process_list.append({'outfile': commonoutfitsname+'_mom1.fits',  'errorfile': commonoutfitsname+'_emom1.fits',  'func': scproduct.write_moment1, 'unit': u.km/u.s })
-        if do_moment2:   process_list.append({'outfile': commonoutfitsname+'_mom2.fits',  'errorfile': commonoutfitsname+'_emom2.fits',  'func': scproduct.write_moment2, 'unit': u.km/u.s })
-        if do_ew:        process_list.append({'outfile': commonoutfitsname+'_ew.fits',    'errorfile': commonoutfitsname+'_eew.fits',    'func': scproduct.write_ew,      'unit': u.km/u.s })
-        if do_tmax:      process_list.append({'outfile': commonoutfitsname+'_tmax.fits',  'errorfile': commonoutfitsname+'_etmax.fits',  'func': scproduct.write_tmax,    'unit': u.K })
-        if do_vmax:      process_list.append({'outfile': commonoutfitsname+'_vmax.fits',  'errorfile': commonoutfitsname+'_evmax.fits',  'func': scproduct.write_vmax,    'unit': u.km/u.s })
-        if do_vquad:     process_list.append({'outfile': commonoutfitsname+'_vquad.fits', 'errorfile': commonoutfitsname+'_evquad.fits', 'func': scproduct.write_vquad,   'unit': u.km/u.s })
+        if do_moment0:   
+            process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_moment0, 
+                                 'unit': u.K * u.km/u.s })
+        if do_moment1:   
+            process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_moment1, 
+                                 'unit': u.km/u.s })
+        if do_moment2:   
+            process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_moment2, 
+                                 'unit': u.km/u.s })
+        if do_ew:        
+            process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
+                                 'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
+                                 'func': scproduct.write_ew,      
+                                 'unit': u.km/u.s })
+        if do_tmax:      
+            process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_tmax,    
+                                 'unit': u.K })
+        if do_vmax:      
+            process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_vmax,    
+                                 'unit': u.km/u.s })
+        if do_vquad:     
+            process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
+                                 'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
+                                 'func': scproduct.write_vquad,   
+                                 'unit': u.km/u.s })
         # 
         # delete old files
         for process_dict in process_list:
@@ -415,10 +458,10 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             errorfile = process_dict['errorfile'] if do_errormaps else None
             if os.path.isfile(outfile):
                 os.remove(outfile)
-                logger.info('Deleting old file "'+outfile+'"')
+                logger.debug('Deleting old file "'+outfile+'"')
             if os.path.isfile(errorfile):
                 os.remove(errorfile)
-                logger.info('Deleting old file "'+errorfile+'"')
+                logger.debug('Deleting old file "'+errorfile+'"')
         # 
         # make moment maps and other products using scProductRoutines functions.
         for process_dict in process_list:
