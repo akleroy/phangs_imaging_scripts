@@ -76,7 +76,6 @@ import utils
 import line_list
 import handlerTemplate
 
-
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
     Class to makes image cubes out of uv data from each spectral line and continuum of each galaxy. 
@@ -229,7 +228,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Test existence
         full_vis_file = self._kh.get_imaging_dir_for_target(target=target)+vis_file
-        if not os.pwd.isdir(full_vis_file):
+        if not os.path.isdir(full_vis_file):
             logger.error('Visibility file not found: ', vis_file)
             raise Exception('Missing visibility needed for imaging.')            
 
@@ -250,6 +249,28 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         phasecenter = 'J2000 '+rastring+' '+decstring
 
         clean_call.set_param('phasecenter', phasecenter)
+
+        # Set the rest frequency or reference frequency
+
+        is_line_product = product in self._kh.get_line_products())
+        if is_line_product:
+            if clean_call.get_param('specmode') != 'cube':
+                logger.error('Line product detected but specmode is not cube.')
+                raise Exception('Malformed clean call.')
+        else:
+            if clean_call.get_param('specmode') != 'mfs':
+                logger.error('Continuum product detected but specmode is not msf.')
+                raise Exception('Malformed clean call.')
+
+        if is_line_product:
+            this_line_tag = self.get_line_tag_for_line_products()
+            if this_line_tag not in line_list.keys():
+                logger.error("Did not find line in line_list ", this_line_tag)
+                raise Exception('Malformed clean call.')
+            rest_freq_ghz = line_list.line_list[this_line_tag]
+            clean_call.set_restfreq_ghz(rest_freq_ghz)
+        else:
+            clean_call.set_reffreq_ghz(-1.0)
 
         return(clean_call)
 
@@ -389,194 +410,223 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         clean_call = None,
         target = None,
         product = None,
-        config = None,
         ):
         """
+        Identify the clean mask associated with the target and
+        product, read it from disk (in FITS form) and align it to the
+        astrometry and grid of the current imaging.
         """
 
-        if read_in_clean_mask:
-            if (not self._dry_run) and casa_enabled:
-                logger.info("")
-                logger.info("READING IN THE CLEAN MASK.")
-                logger.info("")
-                if clean_call.clean_mask_file is not None:
-                    msr.import_and_align_mask(
-                        in_file=clean_call.clean_mask_file,
-                        out_file=clean_call.image_root+'.mask',
-                        template=clean_call.image_root+'.image',
-                        )
-                    clean_call.usemask = 'user'
-                else:
-                    logger.info("No clean mask defined.")
-                    clean_call.usemask = 'pb'
-            else:
-                logger.info("DRY RUN skips setting the clean mask")
-                clean_call.usemask = 'pb'
-        pass
+        if target is None:
+            logger.warning("Require a target. Returning.")
+            return()
+
+        if product is None:
+            logger.warning("Require a product. Returning.")
+            return()
+
+        if clean_call is None:
+            logger.warning("Require a clean_call object. Returning.")
+            return()
+
+        # Could add an error check here that the template imaging exists
+
+        this_cleanmask = self._kh.get_cleanmask_filename(target = target_name, product = product)
+        if this_cleanmask is None:
+            logger.info("No clean mask found for target, product: ", target, product)
+            clean_call.set_param('usemask','pb')
+            return()    
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Reading and aligning clean mask.")
+        logger.info('From ', target, product)
+        logger.info('To ', clean_call.get_param('imagename'))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+        if (not self._dry_run) and (casa_enabled):
+            msr.import_and_align_mask(in_file=this_cleanmask, \
+                                          out_file=clean_call.get_param('imagename')+'.mask', \
+                                          template=clean_call.get_param('imagename')+'.image')
+            clean_call.set_param('usemask','user')
+
+        return()
 
     def task_multiscale_clean(
         clean_call = None,
         ):
         """
+        Run a multiscale clean loop to convergence. This task
+        currently hardcodes some of the PHANGS-ALMA best choice
+        parameters.
         """
-            if (not self._dry_run) and casa_enabled:
-                logger.info("")
-                logger.info("RUNNING THE MULTISCALE CLEAN.")
-                logger.info("")
-                imr.multiscale_loop(
-                    clean_call = clean_call,
-                    record_file = clean_call.image_root+'_multiscale_record.txt',
-                    delta_flux_threshold=0.01,
-                    absolute_threshold=None,
-                    snr_threshold=4.0,
-                    stop_at_negative=True,
-                    max_loop = 20
-                    )
-            else:
-                logger.info("DRY RUN skips running imr.multiscale_loop() and outputting to "+clean_call.image_root+'_multiscale'+'.*')
-
- multiscale_loop(
-    clean_call = None,
-    record_file=None,
-    delta_flux_threshold=0.02,
-    absolute_delta=True,
-    absolute_threshold=None,
-    snr_threshold=4.0,
-    stop_at_negative=True,
-    max_loop = 20
-    ):
-    """
-    Carry out an iterative multiscale clean loop.
-    """
-    
-    # Check that we have a vile clean call
-
-    if not isinstance(clean_call, CleanCall):
-        logger.error("Please input a valid clean call!")
-        raise Exception("Please input a valid clean call!")
-    
-    # Figure out the scales to use in pixel units
-
-    cell_as_num = float((clean_call.cell_size.split('arcsec'))[0])
-    scales_as_pix = []
-    for scale in clean_call.scales_as_angle:
-        scales_as_pix.append(int(scale/cell_as_num))
         
-    clean_call.deconvolver = 'multiscale'
-    clean_call.scales_as_pix = scales_as_pix
-    clean_call.calcres = False
-    clean_call.calcpsf = False
+        # Check that we have a valid clean call
 
-    logger.info("I will use the following scales: ")
-    logger.info("... as pixels: " + str(clean_call.scales_as_pix))
-    logger.info("... as arcseconds: " + str(clean_call.scales_as_angle))
+        if clean_call is None:
+            logger.warning("Require a clean_call object. Returning.")
+            return()
 
-    # Call the loop
+        if not isinstance(clean_call, CleanCall):
+            logger.error("Please input a valid clean call!")
+            raise Exception("Please input a valid clean call!")
+                
+        if clean_call.get_param('deconvolver') != 'multiscale':
+            logger.warning("I expected a multiscale deconvolver.")
+            return()
 
-    clean_loop(
-        clean_call=clean_call,
-        record_file=record_file,
-        delta_flux_threshold=delta_flux_threshold,
-        absolute_delta=absolute_delta,
-        absolute_threshold=absolute_threshold,
-        snr_threshold=snr_threshold,
-        stop_at_negative=stop_at_negative,
-        max_loop = max_loop, 
-        log_ext = 'multiscale', #<TODO># set log_ext to output log files
-        )
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Running clean call to convergence for:")
+        logger.info(clean_call.get_param('imagename'))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+        if self._dry_run:
+            return()
+        if not casa_enabled:
+            return()
 
-        pass
-
+        imr.clean_loop(clean_call=clean_call, 
+                       record_file=clean_call.get_param('imagename')+'_multiscale_record.txt',
+                       log_ext='multiscale',
+                       niter_base_perchan = 10,
+                       niter_growth_model = 'geometric', 
+                       niter_growth_factor = 2.0, 
+                       niter_saturation_perchan = 1000,    
+                       niter_other_input = None,
+                       cycleniter_base = 100,
+                       cycleniter_growth_model='linear',
+                       cycleniter_growth_factor = 1.0,
+                       cycleniter_saturation_value = 1000,
+                       cycleniter_other_input = None,
+                       threshold_type = 'snr',
+                       threshold_value = 4.0,
+                       min_loops = 3,
+                       max_loops = 20,
+                       max_total_niter = None,
+                       convergence_fracflux=0.01,
+                       convergence_totalflux=None,
+                       convergence_fluxperniter=None,
+                       use_absolute_delta=True,
+                       stop_at_negative=True,
+                       remask_each_loop=False,
+                       force_dirty_image=False,    
+                       )
+        
+        return()
+    
     def task_singlescale_mask(
         clean_call = None
         ):
         """
+        Create a signal-to-noise based mask within the existing clean
+        mask for deep cleaning. Used before running a deep single
+        scale clean.
         """
-        pass
 
-        if make_singlescale_mask:
-            if (not self._dry_run) and casa_enabled:
-                logger.info("")
-                logger.info("MAKING THE MASK FOR SINGLE SCALE CLEAN.")
-                logger.info("")
-                msr.signal_mask(
-                    cube_root=clean_call.image_root,
-                    out_file=clean_call.image_root+'.mask',
-                    operation='AND',
-                    high_snr=4.0,
-                    low_snr=2.0,
-                    absolute=False)
-                clean_call.usemask='user'
-            else:
-                logger.info("DRY RUN skips running msr.signal_mask() and setting the clean mask")
+        # Check that we have a valid clean call
+
+        if clean_call is None:
+            logger.warning("Require a clean_call object. Returning.")
+            return()
+
+        if not isinstance(clean_call, CleanCall):
+            logger.error("Please input a valid clean call!")
+            raise Exception("Please input a valid clean call!")
+                
+        imagename = clean_call.get_param('imagename')+'.image'
+        if not os.path.isdir(imagename):
+            logger.error("Image not found: ", imagename)
+            return()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Creating signal-to-noise based clean mask for:")
+        logger.info(str(clean_call.get_param('imagename')))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+        
+        if self._dry_run:
+            return()
+        if not casa_enabled:
+            return()
+
+        msr.signal_mask(cube_root=clean_call.get_param('imagename'),
+                        out_file=clean_call.get_param('imagname')+'.mask',
+                        operation='AND',
+                        high_snr=4.0,
+                        low_snr=2.0,
+                        absolute=False)
+
+        clean_call.set_param('usemask','user')
+
+        return()
    
     def task_singlescale_clean(        
         clean_call = None,
         ):
         """
+        Run a multiscale clean loop to convergence. This task
+        currently hardcodes some of the PHANGS-ALMA best choice
+        parameters.
         """
-        pass
-    
-        if run_singlescale_clean:
-            if (not self._dry_run) and casa_enabled:
-                logger.info("")
-                logger.info("RUNNING THE SINGLE SCALE CLEAN.")
-                logger.info("")
-                imr.singlescale_loop(
-                    clean_call = clean_call,
-                    record_file = clean_call.image_root+'_singlescale_record.txt',
-                    delta_flux_threshold=0.01,
-                    absolute_delta=True,
-                    absolute_threshold=None,
-                    snr_threshold=1.0,
-                    stop_at_negative=False,
-                    remask=False,
-                    max_loop = 20
-                    )
-            else:
-                logger.info("DRY RUN skips running imr.singlescale_loop() and outputting to "+clean_call.image_root+'_singlescale'+'.*')
 
-                singlescale_loop(
-                    clean_call = None,
-                    scales_as_angle=[],
-                    record_file=None,
-                    delta_flux_threshold=0.02,
-                    absolute_delta=True,
-                    absolute_threshold=None,
-                    snr_threshold=4.0,
-                    stop_at_negative=True,
-                    remask=False,
-                    max_loop = 20
-                    ):
-    """
-    Carry out an iterative multiscale clean loop.
-    """
-    
-    # Check that we have a vile clean call
+        # Check that we have a valid clean call
 
-    if not isinstance(clean_call, CleanCall):
-        logger.error("Please input a valid clean call!")
-        raise Exception("Please input a valid clean call!")
+        if clean_call is None:
+            logger.warning("Require a clean_call object. Returning.")
+            return()
+
+        if not isinstance(clean_call, CleanCall):
+            logger.error("Please input a valid clean call!")
+            raise Exception("Please input a valid clean call!")
+                
+        if clean_call.get_param('deconvolver') != 'hogbom':
+            logger.warning("I expected a singlescale deconvolver.")
+            return()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Running clean call to convergence for:")
+        logger.info(target, product)
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+        if self._dry_run:
+            return()
+        if not casa_enabled:
+            return()
+
+        imr.clean_loop(clean_call=clean_call, 
+                       record_file=clean_call.get_param('imagename')+'_singlescale_record.txt',
+                       log_ext='multiscale',
+                       niter_base_perchan = 10,
+                       niter_growth_model = 'geometric', 
+                       niter_growth_factor = 2.0, 
+                       niter_saturation_perchan = 1000,    
+                       niter_other_input = None,
+                       cycleniter_base = 100,
+                       cycleniter_growth_model='linear',
+                       cycleniter_growth_factor = 1.0,
+                       cycleniter_saturation_value = 1000,
+                       cycleniter_other_input = None,
+                       threshold_type = 'snr',
+                       threshold_value = 1.0,
+                       min_loops = 3,
+                       max_loops = 20,
+                       max_total_niter = None,
+                       convergence_fracflux=0.01,
+                       convergence_totalflux=None,
+                       convergence_fluxperniter=None,
+                       use_absolute_delta=True,
+                       stop_at_negative=False,
+                       remask_each_loop=False,
+                       force_dirty_image=False,    
+                       )
         
-    clean_call.deconvolver = 'hogbom'
-    clean_call.calcres = False
-    clean_call.calcpsf = False
-
-    # Call the loop
-
-    clean_loop(
-        clean_call=clean_call,
-        record_file=record_file,
-        delta_flux_threshold=delta_flux_threshold,
-        absolute_delta=absolute_delta,
-        absolute_threshold=absolute_threshold,
-        snr_threshold=snr_threshold,
-        stop_at_negative=stop_at_negative,
-        remask=remask,
-        max_loop = max_loop, 
-        log_ext = 'singlescale', #<TODO># set log_ext to output log files
-        )
-
+        return()
 
     def task_export_to_fits(
         clean_call = None,
@@ -605,103 +655,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             imr.export_to_fits(image_root)
         
         return()
-
-    ###########################
-    # recipe_build_clean_call #
-    ###########################
-    
-    def recipe_build_clean_call(
-        self, 
-        target = None, 
-        config = None, 
-        product = None, 
-        tag = '', 
-        force_square = False, 
-        overwrite = False, 
-        dry_run = False, 
-        ):
-        """Build a clean call before running the clean task with the function phangsImagingRecipe().
-        """
-                
-
-        # 
-        # get cell size and imsize
-        cell_size, x_size, y_size = \
-            self.task_pick_cell_and_imsize(\
-                clean_call.vis, 
-                force_square=force_square) #<TODO># dzliu: this can be improved, and this already included checking overrides by ms file name.
-        image_size = [int(x_size), int(y_size)]
-        
-        clean_call.cell_size = cell_size
-        clean_call.image_size = image_size
-        
-        # Look up the line and data product
-        # TODO - this should generic, just get freq for line given the line name
-        
-        if product == 'co21':
-            clean_call.specmode = 'cube'
-            clean_call.restfreq_ghz = line_list.line_list['co21']
-
-        if product == 'c18o21':
-            clean_call.specmode = 'cube'
-            clean_call.restfreq_ghz = line_list.line_list['c18o21']
-
-        # Continuum case
-
-        if product == 'cont':
-            clean_call.specmode = 'mfs'
-            clean_call.restfreq_ghz = -1.0
-        
-        # Set angular scales to be used in multiscale clean
-        #scales_for_clean = self._config_dict['interf_config'][this_config]['clean_scales_arcsec']
-        
-        if config == '7m':
-            clean_call.pblimit = 0.25
-            clean_call.smallscalebias = 0.6
-            clean_call.scales_as_angle = [0, 5, 10]
-        elif config == '12m':
-            clean_call.smallscalebias = 0.6
-            clean_call.scales_as_angle = [0, 1, 2.5, 5]
-        elif config == '12m+7m':
-            clean_call.smallscalebias = 0.8
-            clean_call.scales_as_angle = [0, 1, 2.5, 5, 10]
-        
-        # Look up overrides in the imaging parameters
-        #logger.debug(str(clean_call))
-        #logger.debug('Checking overrides for "'+clean_call.image_root+'"')
-        if self._kh.has_overrides_for_key(clean_call.image_root):
-            clean_call.smallscalebias = float(self._kh.get_overrides(key = clean_call.image_root, param = 'smallscalebias', default = clean_call.smallscalebias))
-            clean_call.image_size[0] = int(self._kh.get_overrides(key = clean_call.image_root, param = 'x_size', default = clean_call.image_size[0]))
-            clean_call.image_size[1] = int(self._kh.get_overrides(key = clean_call.image_root, param = 'y_size', default = clean_call.image_size[1]))
-            clean_call.pblimit = float(self._kh.get_overrides(key = clean_call.image_root, param = 'pblimit', default = clean_call.pblimit))
-            clean_call.scales_as_angle = self._kh.get_overrides(key = clean_call.image_root, param = 'scales_as_angle', default = clean_call.scales_as_angle)
-            if type(clean_call.scales_as_angle) is str:
-                clean_call.scales_as_angle = np.array(list(filter(None, clean_call.scales_as_angle.split(',')))).astype(float).tolist()
-        #logger.debug(str(clean_call))
-        
-        # Define the clean mask (note one mask per galaxy, so we need to convert target multipart name to target name)
-        dir_key = self._kh._dir_keys # read_dir_key() #<TODO># Need KeyHandler function get_target_name_by_multipart_name()
-        if target in dir_key:
-            target_name = dir_key[target]
-        else:
-            target_name = target
-        
-        this_cleanmask = self._kh.get_cleanmask_filename(target = target_name, product = product)
-        if this_cleanmask is None:
-            #logger.warning('Warning! Clean mask is not defined for target "'+target+'" in "cleanmask_key.txt"! cleanmask_dict: '+str(cleanmask_dict.keys()))
-            this_cleanmask = ''
-        
-        if os.path.isfile(this_cleanmask):
-            clean_call.clean_mask_file = this_cleanmask
-        else:
-            clean_call.clean_mask_file = None
-            #logger.warning('Warning! Clean mask file for target "'+target_name+'" and product "'+product+'" was not found: "'+this_cleanmask+'"')
-        
-        # 
-        # Return
-        return clean_call
-    
-    # end of recipe_build_clean_call()
       
     #############################
     # recipe_imaging_one_target #
@@ -855,7 +808,18 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     
     # end of recipe_phangsalma_imaging()
     
+            
+        if os.path.isfile(this_cleanmask):
+            clean_call.clean_mask_file = this_cleanmask
+        else:
+            clean_call.clean_mask_file = None
+            #logger.warning('Warning! Clean mask file for target "'+target_name+'" and product "'+product+'" was not found: "'+this_cleanmask+'"')
+        
+        # 
+        # Return
+        return clean_call
     
+    # end of recipe_build_clean_call()
 
 
     

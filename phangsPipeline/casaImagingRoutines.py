@@ -376,7 +376,6 @@ def clean_loop(
     min_loops = 0,
     max_loops = 20,
     max_total_niter = None,
-    absolute_threshold=None,    
     convergence_fracflux=0.02,    
     convergence_totalflux=None,
     convergence_fluxperniter=None,
@@ -441,6 +440,8 @@ def clean_loop(
     # input version call.
 
     working_call = copy.deepycopy(clean_call)
+    working_call.set_param('calcres',False)
+    working_call.set_param('calcpsf',False)
 
     # Note the number of channels, which is used in setting the number
     # of iterations that we give to an individual clean call.

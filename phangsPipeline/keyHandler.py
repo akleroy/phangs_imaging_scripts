@@ -1691,6 +1691,8 @@ class KeyHandler:
         target=None,
         ):
         """
+        Return the strings (ra, dec) that define the phase center for
+        a target in the target dictionary.
         """
         if target is None:
             logging.error("Please specify a target.")

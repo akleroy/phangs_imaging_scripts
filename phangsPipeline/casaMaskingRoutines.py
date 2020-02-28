@@ -389,6 +389,6 @@ def import_and_align_mask(
 
     os.system('rm -rf '+out_file+'.temp_copy')
     os.system('rm -rf '+out_file+'.temp_aligned')
-    return
+    return()
 
 #endregion
