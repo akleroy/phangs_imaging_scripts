@@ -1,18 +1,42 @@
-###
-# Mapping from configuration and product to clean recipes.
-# 
+##########################################################################
+# IMAGING RECIPES KEY
+##########################################################################
+
+# The imaging pipeline builds "clean_call" objects that repeatedly
+# call tclean to build a deconvolved interferometric image. This
+# imaging recipes key links combinations of "config"uration, spectral
+# "product", and imaging step (see below) to "recipes." These recipes
+# are sets of tclean parameters similar to those written out by
+# save_input in CASA.
+
+# Note that some pipeline recipes overwrite some parameters, like
+# niter, scales, or (when using dynamic sizing) cell and imsize. The
+# parameters provided here serve as a base.
+
+# ALSO NOTE THAT ORDER IS VERY IMPORTANT HERE! The recipes are read in
+# as lists, which are applied ***in the order that they are read
+# in***. So a parameter in later recipe will override the same
+# parameter in the earlier recipe.
+ 
+# The columns in the file are:
+
 # Column 1: Configuration ("all" is okay)
 # Column 2: Product ("all_line", "all_cont" are okay)
 # Column 3: What stage of the imaging process does this apply to? (all/dirty/multiscale/singlescale)
 # Column 4: Name of the clean parameter file.
 
-# ORDER IS VERY IMPORTANT HERE! The recipes are read in as lists,
-# which are applied *in the order that they are read in. So a
-# parameter in later recipe will override the same parameter in the
-# earlier recipe.
+# Column 1: Configuration can be "all" or any valid interf_config defined in
+# config_key.txt.
 
-# STEP has valid values for step are
+# Column 2: Product. Similarly, product can be any line or continuum
+# product defined in config_key.txt.
+
+# Column 3: Stage. This is the stage of the imaging process. For the
+# basic phangsalma recipe, the valid values are
 # "all","dirty","multiscale","singlescale"
+
+# Column 4: The name of the clean parameter file to be read in. Should
+# be in this keys directory.
 
 all      co21        all           cube_mosaic.clean
 12m+7m   co21        all           cube_mosaic.clean
