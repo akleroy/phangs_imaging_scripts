@@ -50,9 +50,9 @@ import scProductRoutines as scproduct
 
 class ProductHandler(handlerTemplate.HandlerTemplate):
     """
-    Class to create signal masks based on image cubes, and then applies
-    the masks to make moment maps. This is done for each galaxy at multiple
-    spatial scales.
+    Class to create signal masks based on image cubes, and then apply
+    the masks to make moment maps. This is done for each galaxy at
+    multiple spatial/angular scales.
     """
 
    
@@ -69,7 +69,86 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         # inherit template class
         handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
     
+    ########################
+    # Main processing loop #
+    ########################
 
+    def loop_make_products(
+        self,
+        do_noise=True,
+        do_strict_masking=True,
+        do_hybrid_masking=True
+        do_moments=True,
+        make_directories=True,
+        ):
+        """
+        Loops over the full set of targets, spectral products (note
+        the dual definition here), and configurations to do the
+        imaging. Toggle the parts of the loop using the do_XXX
+        booleans. Other choices affect algorithms used.
+        """
+        
+        # Error checking
+        
+        if len(self.get_targets()) == 0:            
+            logger.error("Need a target list.")
+            return(None)
+ 
+        if len(self.get_all_products()) == 0:            
+            logger.error("Need a products list.")
+            return(None)
+
+        # If requested, make the directories
+
+        if make_directories:
+            self._kh.make_missing_directories(product = True)
+
+        # Loop over target, product, config combinations
+
+        for this_target, this_product, this_config in \
+            self.looper(do_targets=True,do_products=True,do_configs=True):
+
+            # Either put these flags here or wrap a
+            # "phangs_product_recipe" - but try to make the parts much
+            # more modular below?
+            
+            if do_noise:
+
+                # AKL - add the resolution loop HERE
+
+                pass
+
+            if do_strict_masking:
+
+                # AKL - add the resolution loop HERE
+
+                pass
+
+            if do_hybrid_masking:
+
+                # AKL- Resolution loop not needed, I think?
+
+                pass
+
+            if do_moments:
+
+                # AKL - add the resolution loop HERE
+
+            # generate a low resolution mask from the flat cube and estimate the local noise
+            lowres_cube_mask, \
+            lowres_cube_tag = \
+            self.recipe_building_low_resolution_mask(target=this_target, 
+                                                     product=this_product, 
+                                                     config=this_config)
+            # 
+            # build masks for all resolutions
+            self.recipe_building_all_resolution_masks(target=this_target, 
+                                                      product=this_product, 
+                                                      config=this_config, 
+                                                      lowres_cube_mask=lowres_cube_mask, 
+                                                      lowres_cube_tag=lowres_cube_tag)
+            # 
+            # end of loop
 
     ###########################################
     # Defined file names for various products #
@@ -83,6 +162,11 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         extra_ext='',
         res_lowresmask='',
         ):
+        """
+        Function to define file names used in other functions.
+        """
+
+        # Error checking
 
         if target is None:
             logger.error("Need a target.")
@@ -96,7 +180,10 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             logger.error("Need a config.")
             return()
         
-        fname_dict = {} # here we will create a subdict for each cube resolution (res_tag)
+        # The output is a nested dictionary structure, for each cube
+        # resolution (res_tag)
+
+        fname_dict = {} 
         
         indir = self._kh.get_postprocess_dir_for_target(target=target, changeto=False)
         indir = os.path.abspath(indir)
@@ -148,61 +235,204 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                 logger.warning('Cube with tag '+res_tag+' at '+str(np.round(this_res,2))+' arcsec resolution was not found: "'+os.path.join(indir, cube_filename)+'"')
         
         # if user has input a res_lowresmask, and the file exist, use it, otherwise use the lowest res data
+
         if (res_lowresmask != '') and (res_lowresmask in fname_dict):
             fname_dict['res_lowresmask'] = res_lowresmask
         else:
             fname_dict['res_lowresmask'] = lowest_res_tag
         
-        return fname_dict
+        return(fname_dict)        
         
-        
+    ##################################################################
+    # Tasks - discrete steps on target, product, config combinations #
+    ##################################################################
 
-    ########################
-    # loop_products_making #
-    ########################
-
-    def loop_products_making(
+    def task_estimate_noise(
         self,
-        make_directories=True,
+        target = None, 
+        config = None, 
+        product = None,
+        res_tag = None,         
         ):
         """
+        Placeholder for a task to generate a noise cube.
         """
-        
-        # Replacing build_products_12m.pro
-        
-        if len(self.get_targets()) == 0:            
-            logger.error("Need a target list.")
-            return(None)
- 
-        if len(self.get_all_products()) == 0:            
-            logger.error("Need a products list.")
-            return(None)
+        pass
 
-        if make_directories:
-            self._kh.make_missing_directories(product = True)
+    def task_generate_mask(
+        self,
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None,
+        ):
+        """
+        Placeholder for a task to generate a mask given a file name and noise cube.
+        """
+        pass
 
-        for this_target, this_product, this_config in \
-            self.looper(do_targets=True,do_products=True,do_configs=True):
-            # 
-            # convolve to specific resolution (this is now done by postprocessHandler.py)
-            # 
-            # generate a low resolution mask from the flat cube and estimate the local noise
-            lowres_cube_mask, \
-            lowres_cube_tag = \
-            self.recipe_building_low_resolution_mask(target=this_target, 
-                                                     product=this_product, 
-                                                     config=this_config)
-            # 
-            # build masks for all resolutions
-            self.recipe_building_all_resolution_masks(target=this_target, 
-                                                      product=this_product, 
-                                                      config=this_config, 
-                                                      lowres_cube_mask=lowres_cube_mask, 
-                                                      lowres_cube_tag=lowres_cube_tag)
-            # 
-            # end of loop
+    def task_write_mask(
+        self, 
+        mask = None, 
+        wcs = None, 
+        header = None, 
+        comments = None, 
+        outfile = None, 
+        ):
+        """
+        Write a cube mask 3D array to disk.
+        """
+        if mask is not None and wcs is not None and outfile is not None:
+            if os.path.isfile(outfile):
+                os.remove(outfile)
+            header_to_write = wcs.to_header()
+            if header is not None:
+                for key in ['BMAJ', 'BMIN', 'BPA']:
+                    if key in header:
+                        header_to_write[key] = header[key]
+            if comments is not None:
+                if np.isscalar(comments):
+                    comments = [comments]
+                header_to_write['COMMENT'] = ''
+                for comment in comments:
+                    header_to_write['COMMENT'] = str(comment).strip()
+                header_to_write['COMMENT'] = ''
+            mask_spectralcube = SpectralCube(data=mask.astype(int), wcs=wcs, header=header_to_write)
+            mask_spectralcube.write(outfile, format="fits")
 
-    
+    def task_generate_products(
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None,
+        do_moment0 = True,
+        do_moment1 = True,
+        do_moment2 = True,
+        do_ew = True,
+        do_tmax = True,
+        do_vmax = True,
+        do_vquad = True,
+        do_errormaps = True,
+        ):
+        """
+        Placeholder for a task to wrap product generation.
+        """
+        pass
+
+    def task_write_products(
+        self,
+        cube,
+        rms,
+        outfile, 
+        res_tag=None,
+        do_moment0 = True,
+        do_moment1 = True,
+        do_moment2 = True,
+        do_ew = True,
+        do_tmax = True,
+        do_vmax = True,
+        do_vquad = True,
+        do_errormaps = True,
+        ):
+        """
+        Collapse masked cube as our products and write to disk. 
+        """
+
+        # AKL - suggest to move this out of here. Do ALL the file
+        # naming in another task and make this one a generally useful
+        # task to make all the products for a cube+rms+outfile . That
+        # might even migrate out to the scRoutines as a general
+        # purpose utility. Minor, but I think we want to separate code
+        # about the context and file names from our generall useful
+        # things and this is generally useful.
+
+        # 
+        if re.match(r'\.fits$', outfile):
+            outfile = re.sub(r'\.fits$', r'', outfile) # remove suffix
+        # 
+        if res_tag is not None:
+            res_tag_ext = '_res'+res_tag
+        else:
+            res_tag_ext = ''
+        # 
+
+        # AKL - You could consider to change the format to a string
+        # list ['moment0','vmax, ...] if we want to avoid doing
+        # everything with hardcoded kwargs. Makes it easier to select
+        # a suite of products in the future, though the strings are a
+        # bit inelegant.
+
+        process_list = []
+        if do_moment0:   
+            process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_moment0, 
+                                 'unit': u.K * u.km/u.s })
+        if do_moment1:   
+            process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_moment1, 
+                                 'unit': u.km/u.s })
+        if do_moment2:   
+            process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_moment2, 
+                                 'unit': u.km/u.s })
+        if do_ew:        
+            process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
+                                 'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
+                                 'func': scproduct.write_ew,      
+                                 'unit': u.km/u.s })
+        if do_tmax:      
+            process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_tmax,    
+                                 'unit': u.K })
+        if do_vmax:      
+            process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
+                                 'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
+                                 'func': scproduct.write_vmax,    
+                                 'unit': u.km/u.s })
+        if do_vquad:     
+            process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
+                                 'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
+                                 'func': scproduct.write_vquad,   
+                                 'unit': u.km/u.s })
+        # 
+        # delete old files
+
+        # AKL - not a big deal, but do you want an overwrite flag?
+
+        for process_dict in process_list:
+            outfile = process_dict['outfile']
+            errorfile = process_dict['errorfile'] if do_errormaps else None
+            if os.path.isfile(outfile):
+                os.remove(outfile)
+                logger.debug('Deleting old file "'+outfile+'"')
+            if os.path.isfile(errorfile):
+                os.remove(errorfile)
+                logger.debug('Deleting old file "'+errorfile+'"')
+        # 
+        # make moment maps and other products using scProductRoutines functions.
+
+        for process_dict in process_list:
+            processfunction = process_dict['func']
+            outfile = process_dict['outfile']
+            errorfile = process_dict['errorfile'] if do_errormaps else None
+            logger.info('Producing "'+outfile+'"')
+            processfunction(cube,
+                            rms = rms, 
+                            outfile = outfile, 
+                            errorfile = errorfile)
+
+    ###############################################
+    # Recipes - larger combinations of many steps #
+    ###############################################
+
+    # AKL - I would deprecate this in favor of building ALL strict
+    # maps first then JUST writing a routine to select the appropriate
+    # low resolution mask.
+
     def recipe_building_low_resolution_mask(
         self,
         target = None, 
@@ -242,7 +472,10 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         
         return lowres_cube_mask, lowres_cube_tag
         
-    
+    # AKL - consider to break this apart as suggested above. Try to
+    # encapsulate the individual steps in smaller tasks so that we can
+    # reuse them in different circumstances.
+
     def recipe_building_all_resolution_masks(
         self,
         target = None, 
@@ -303,7 +536,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     #cube_hybrid_mask = scmasking.hybridize_mask(hires_in=cube_signal_mask, lores_in=lowres_cube_mask) # this requires SpectralCube type, but the masks are np.array <TODO>
                     # 
                     # write the hybrid (broad) mask to disk
-                    self.task_writing_mask(\
+                    self.task_write_mask(\
                         mask = cube_hybrid_mask, 
                         wcs = cube_wcs, 
                         header = cube_header, 
@@ -315,7 +548,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                         #<TODO># We can add some comments here into the output FITS file header.
                     # 
                     # write the signal (strict) mask to disk
-                    self.task_writing_mask(
+                    self.task_write_mask(
                         mask = cube_signal_mask, 
                         wcs = cube_wcs, 
                         header = cube_header, 
@@ -333,7 +566,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     strictcube_noise = SpectralCube(data=cube_noise, wcs=cube_wcs, mask=BooleanArrayMask(cube_signal_mask, wcs=cube_wcs))
                     # 
                     # make moment maps and other products with the hybrid (broad) mask
-                    self.task_writting_products(
+                    self.task_write_products(
                         cube = broadcube_data,
                         rms = broadcube_noise,
                         outfile = fname_dict[res_tag]['broad'], 
@@ -341,138 +574,15 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                         )
                     # 
                     # make moment maps and other products with the signal (strict) mask
-                    self.task_writting_products(
+                    self.task_write_products(
                         cube = strictcube_data,
                         rms = strictcube_noise,
                         outfile = fname_dict[res_tag]['strict'], 
                         res_tag = res_tag, 
                         )
             # 
-    
-    
-    
-    #####################
-    # task_writing_mask #
-    #####################
+            
 
-    def task_writing_mask(
-        self, 
-        mask = None, 
-        wcs = None, 
-        header = None, 
-        comments = None, 
-        outfile = None, 
-        ):
-        """
-        Write a cube mask 3D array to disk.
-        """
-        if mask is not None and wcs is not None and outfile is not None:
-            if os.path.isfile(outfile):
-                os.remove(outfile)
-            header_to_write = wcs.to_header()
-            if header is not None:
-                for key in ['BMAJ', 'BMIN', 'BPA']:
-                    if key in header:
-                        header_to_write[key] = header[key]
-            if comments is not None:
-                if np.isscalar(comments):
-                    comments = [comments]
-                header_to_write['COMMENT'] = ''
-                for comment in comments:
-                    header_to_write['COMMENT'] = str(comment).strip()
-                header_to_write['COMMENT'] = ''
-            mask_spectralcube = SpectralCube(data=mask.astype(int), wcs=wcs, header=header_to_write)
-            mask_spectralcube.write(outfile, format="fits")
-    
-    
-    ##########################
-    # task_writting_products #
-    ##########################
-
-    def task_writting_products(
-        self,
-        cube,
-        rms,
-        outfile, 
-        res_tag=None,
-        do_moment0 = True,
-        do_moment1 = True,
-        do_moment2 = True,
-        do_ew = True,
-        do_tmax = True,
-        do_vmax = True,
-        do_vquad = True,
-        do_errormaps = True,
-        ):
-        """Collapse masked cube as our products and write to disk. 
-        """
-        # 
-        if re.match(r'\.fits$', outfile):
-            outfile = re.sub(r'\.fits$', r'', outfile) # remove suffix
-        # 
-        if res_tag is not None:
-            res_tag_ext = '_res'+res_tag
-        else:
-            res_tag_ext = ''
-        # 
-        process_list = []
-        if do_moment0:   
-            process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment0, 
-                                 'unit': u.K * u.km/u.s })
-        if do_moment1:   
-            process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment1, 
-                                 'unit': u.km/u.s })
-        if do_moment2:   
-            process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment2, 
-                                 'unit': u.km/u.s })
-        if do_ew:        
-            process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
-                                 'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
-                                 'func': scproduct.write_ew,      
-                                 'unit': u.km/u.s })
-        if do_tmax:      
-            process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_tmax,    
-                                 'unit': u.K })
-        if do_vmax:      
-            process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_vmax,    
-                                 'unit': u.km/u.s })
-        if do_vquad:     
-            process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
-                                 'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
-                                 'func': scproduct.write_vquad,   
-                                 'unit': u.km/u.s })
-        # 
-        # delete old files
-        for process_dict in process_list:
-            outfile = process_dict['outfile']
-            errorfile = process_dict['errorfile'] if do_errormaps else None
-            if os.path.isfile(outfile):
-                os.remove(outfile)
-                logger.debug('Deleting old file "'+outfile+'"')
-            if os.path.isfile(errorfile):
-                os.remove(errorfile)
-                logger.debug('Deleting old file "'+errorfile+'"')
-        # 
-        # make moment maps and other products using scProductRoutines functions.
-        for process_dict in process_list:
-            processfunction = process_dict['func']
-            outfile = process_dict['outfile']
-            errorfile = process_dict['errorfile'] if do_errormaps else None
-            logger.info('Producing "'+outfile+'"')
-            processfunction(cube,
-                            rms = rms, 
-                            outfile = outfile, 
-                            errorfile = errorfile)
         
 
 
