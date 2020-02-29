@@ -46,8 +46,8 @@ Notes:
 #<TODO># 20200214 dzliu:     self._kh._override_dict    --> self._kh.get_overrides()
 #<TODO># 20200214 dzliu:     self._kh._dir_keys         --> self._kh.get_target_name_for_multipart_name()
 #<TODO># 20200214 dzliu:     self._kh._config_dict['interf_config']['clean_scales_arcsec'] # angular scales
-#<TODO># 20200218 dzliu: CASA 5.4.0 works, but CASA 5.6.0 does not work!!
-#<TODO># 20200218 dzliu: revert does not work!
+#<TODO># 20200218 dzliu: CASA 5.4.0 works, but CASA 5.6.0 does not work!! -- now should work.
+#<TODO># 20200218 dzliu: revert does not work! -- copy_imaging suffix bug fixed.
 #<TODO># 20200218 dzliu: need to test 'cont'
 
 import os, sys, re, shutil
@@ -64,13 +64,13 @@ if casa_enabled:
     logger.debug('casa_enabled = True')
     import casaImagingRoutines as imr
     import casaMaskingRoutines as msr
-    reload(imr) #<TODO><DEBUG># 
-    reload(msr) #<TODO><DEBUG># #<TODO># we still need imr.cleanCall for dry_run?
+    reload(imr)
+    reload(msr)
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from clean_call import CleanCall
+from clean_call import CleanCall, CleanCallFunctionDecorator
 
 import utils
 import line_list
@@ -105,7 +105,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_read_clean_mask = True, 
         do_multiscale_clean = True,
         do_revert_to_multiscale = True,
-        do_singlscale_mask = True,
+        do_singlescale_mask = True,
         do_singlescale_clean = True,
         do_export_to_fits = True, 
         extra_ext_in = None,
@@ -134,7 +134,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         
         known_recipes = ['phangsalma']
         if recipe not in known_recipes:
-            logger.error("Recipe not known ", recipe)
+            logger.error("Recipe not known "+recipe)
             return(None)
 
         if make_directories:
@@ -152,34 +152,34 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             # print starting message
             logger.info("")
             logger.info("--------------------------------------------------------")
-            logger.info("START: Imaging ", target, config, product)
+            logger.info("START: Imaging target "+this_target+" config "+this_config+" product "+this_product)
             logger.info("--------------------------------------------------------")
             logger.info('Imaging recipe: '+recipe)
 
             if recipe == 'phangsalma':
                 self.recipe_phangsalma_imaging(
-                    target=this_target,
-                    product=this_product,
-                    config=this_config,
-                    extra_ext_in = extra_ext_in,
-                    suffix_in = suffix_in,
-                    extra_ext_out = extra_ext_out,
-                    do_dirty_image = True,
-                    do_revert_to_dirty = True,
-                    do_read_clean_mask = True, 
-                    do_multiscale_clean = True,
-                    do_revert_to_multiscale = True,
-                    do_singlscale_mask = True,
-                    do_singlescale_clean = True,
-                    do_export_to_fits = True, 
-                    dynamic_sizing = dynamic_sizing,
+                    target = this_target, 
+                    product = this_product, 
+                    config = this_config, 
+                    extra_ext_in = extra_ext_in, 
+                    suffix_in = suffix_in, 
+                    extra_ext_out = extra_ext_out, 
+                    do_dirty_image = do_dirty_image, 
+                    do_revert_to_dirty = do_revert_to_dirty, 
+                    do_read_clean_mask = do_read_clean_mask, 
+                    do_multiscale_clean = do_multiscale_clean, 
+                    do_revert_to_multiscale = do_revert_to_multiscale, 
+                    do_singlescale_mask = do_singlescale_mask, 
+                    do_singlescale_clean = do_singlescale_clean, 
+                    do_export_to_fits = do_export_to_fits, 
+                    dynamic_sizing = dynamic_sizing, 
                     force_square = force_square, 
                     overwrite = overwrite, 
                     )
                 
             # print ending message
             logger.info("--------------------------------------------------------")
-            logger.info("END: Imaging ", target, config, product)
+            logger.info("END: Imaging target "+this_target+" config "+this_config+" product "+this_product)
             logger.info("--------------------------------------------------------")
         # 
         # end of for looper
@@ -224,13 +224,13 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # Get the visibility name
         vis_file = self._kh.get_vis_filename(
             target=target, product=product, config=config,
-            ext=extra_ext_in, suffix_in=None)
+            ext=extra_ext_in, suffix=suffix_in) #<TODO><DL># modified: suffix_in=None --> suffix=suffix_in
 
         # Test existence
         full_vis_file = self._kh.get_imaging_dir_for_target(target=target)+vis_file
         if not os.path.isdir(full_vis_file):
-            logger.error('Visibility file not found: ', vis_file)
-            raise Exception('Missing visibility needed for imaging.')            
+            logger.error('Visibility file not found: '+full_vis_file)
+            raise Exception('Missing visibility needed for imaging.')
 
         # Set the visibility file (note that we assume we are in the working directory)
 
@@ -263,9 +263,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 raise Exception('Malformed clean call.')
 
         if is_line_product:
-            this_line_tag = self.get_line_tag_for_line_products()
-            if this_line_tag not in line_list.keys():
-                logger.error("Did not find line in line_list ", this_line_tag)
+            this_line_tag = self._kh.get_line_tag_for_line_product(product=product)
+            if this_line_tag not in line_list.line_list.keys():
+                logger.error("Did not find line in line_list "+this_line_tag)
                 raise Exception('Malformed clean call.')
             rest_freq_ghz = line_list.line_list[this_line_tag]
             clean_call.set_restfreq_ghz(rest_freq_ghz)
@@ -273,7 +273,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             clean_call.set_reffreq_ghz(-1.0)
 
         return(clean_call)
-
+    
+    @CleanCallFunctionDecorator
     def task_pick_cell_and_imsize(
         self, 
         clean_call = None,
@@ -294,7 +295,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             return()
 
         # Look up the file name
-        vis = clean_call.get_param('vis')
+        vis_file = clean_call.get_param('vis')
 
         # Check visibility existence
         if check_files:
@@ -319,7 +320,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             cell, imsize = '0.1arcsec', [1000,1000]
             logger.info('DRY RUN skips calling imr.estimate_cell_and_imsize()')
           
-        logger.info('cell='+cell_size_str+'arcsec, imsize=['+x_size_string+','+y_size_string+']')
+        logger.info('cell='+cell+'arcsec, imsize='+str(imsize))
 
         clean_call.set_param('cell',cell,nowarning=True)
         clean_call.set_param('imsize',imsize,nowarning=True)
@@ -328,6 +329,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         return(cell, imsize)
     
+    @CleanCallFunctionDecorator
     def task_assign_multiscales(
         self, 
         clean_call = None,
@@ -346,19 +348,20 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         clean_call.set_multiscale_arcsec(scales=scales_to_clean)
 
         return()
-
+    
+    @CleanCallFunctionDecorator
     def task_make_dirty_image(
+        self, 
         clean_call = None,
         backup = True,
         ):
         """
         Execute the attached clean call with zero iterations to create
         a dirty image.
+        
+        Set backup to True will make a copy of the dirty image as 
+        {imagename}_dirty.image
         """
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -376,20 +379,18 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                     wipe_first=True)
                 
         return()
-
+    
+    @CleanCallFunctionDecorator
     def task_revert_to_imaging(
-        clean_call = None,
-        tag = 'dirty'
+        self, 
+        clean_call = None, 
+        tag = 'dirty', 
         ):
         """
         Reset the current imaging stack to an earlier imaging
         state. Requires a tag that will be used to define the old
         imaging moved into place. Wipes the current imaging.
         """
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -405,11 +406,14 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 wipe_first=True)
 
         return()
-
+    
+    @CleanCallFunctionDecorator
     def task_read_clean_mask(
-        clean_call = None,
-        target = None,
-        product = None,
+        self, 
+        clean_call = None, 
+        target = None, 
+        config = None, 
+        product = None, 
         ):
         """
         Identify the clean mask associated with the target and
@@ -421,12 +425,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             logger.warning("Require a target. Returning.")
             return()
 
+        #if config is None:
+        #    logger.warning("Require a config. Returning.")
+        #    return()
+
         if product is None:
             logger.warning("Require a product. Returning.")
-            return()
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
             return()
 
         # Could add an error check here that the template imaging exists
@@ -452,29 +456,25 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             clean_call.set_param('usemask','user')
 
         return()
-
+    
+    @CleanCallFunctionDecorator
     def task_multiscale_clean(
-        clean_call = None,
+        self, 
+        clean_call = None, 
+        backup = True, 
         ):
         """
         Run a multiscale clean loop to convergence. This task
         currently hardcodes some of the PHANGS-ALMA best choice
         parameters.
+        
+        Set backup to True will make a copy of the multiscale cleaned 
+        image as {imagename}_multiscale.image
         """
         
-        # Check that we have a valid clean call
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
-
-        if not isinstance(clean_call, CleanCall):
-            logger.error("Please input a valid clean call!")
-            raise Exception("Please input a valid clean call!")
-                
         if clean_call.get_param('deconvolver') != 'multiscale':
             logger.warning("I expected a multiscale deconvolver.")
-            return()
+            raise Exception("Incorrect clean call! Should have a multiscale deconvolver.")
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -490,7 +490,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         imr.clean_loop(clean_call=clean_call, 
                        record_file=clean_call.get_param('imagename')+'_multiscale_record.txt',
-                       log_ext='multiscale',
                        niter_base_perchan = 10,
                        niter_growth_model = 'geometric', 
                        niter_growth_factor = 2.0, 
@@ -514,31 +513,29 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                        remask_each_loop=False,
                        force_dirty_image=False,    
                        )
+                       # log_ext='multiscale',
+        if backup:
+            imr.copy_imaging(
+                input_root=clean_call.get_param('imagename'),
+                output_root=clean_call.get_param('imagename')+'_multiscale',
+                wipe_first=True)
         
         return()
     
+    @CleanCallFunctionDecorator
     def task_singlescale_mask(
-        clean_call = None
+        self, 
+        clean_call = None, 
         ):
         """
         Create a signal-to-noise based mask within the existing clean
         mask for deep cleaning. Used before running a deep single
         scale clean.
         """
-
-        # Check that we have a valid clean call
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
-
-        if not isinstance(clean_call, CleanCall):
-            logger.error("Please input a valid clean call!")
-            raise Exception("Please input a valid clean call!")
                 
         imagename = clean_call.get_param('imagename')+'.image'
         if not os.path.isdir(imagename):
-            logger.error("Image not found: ", imagename)
+            logger.error("Image not found: "+imagename)
             return()
 
         logger.info("")
@@ -554,7 +551,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             return()
 
         msr.signal_mask(cube_root=clean_call.get_param('imagename'),
-                        out_file=clean_call.get_param('imagname')+'.mask',
+                        out_file=clean_call.get_param('imagename')+'.mask',
                         operation='AND',
                         high_snr=4.0,
                         low_snr=2.0,
@@ -563,25 +560,21 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         clean_call.set_param('usemask','user')
 
         return()
-   
-    def task_singlescale_clean(        
-        clean_call = None,
+    
+    @CleanCallFunctionDecorator
+    def task_singlescale_clean(
+        self, 
+        clean_call = None, 
+        backup = True, 
         ):
         """
-        Run a multiscale clean loop to convergence. This task
+        Run a singlescale clean loop to convergence. This task
         currently hardcodes some of the PHANGS-ALMA best choice
         parameters.
+        
+        Set backup to True will make a copy of the singlescale cleaned 
+        image as {imagename}_singlescale.image
         """
-
-        # Check that we have a valid clean call
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
-
-        if not isinstance(clean_call, CleanCall):
-            logger.error("Please input a valid clean call!")
-            raise Exception("Please input a valid clean call!")
                 
         if clean_call.get_param('deconvolver') != 'hogbom':
             logger.warning("I expected a singlescale deconvolver.")
@@ -601,7 +594,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         imr.clean_loop(clean_call=clean_call, 
                        record_file=clean_call.get_param('imagename')+'_singlescale_record.txt',
-                       log_ext='multiscale',
                        niter_base_perchan = 10,
                        niter_growth_model = 'geometric', 
                        niter_growth_factor = 2.0, 
@@ -625,21 +617,25 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                        remask_each_loop=False,
                        force_dirty_image=False,    
                        )
+                       # log_ext='singlescale',
+        if backup:
+            imr.copy_imaging(
+                input_root=clean_call.get_param('imagename'),
+                output_root=clean_call.get_param('imagename')+'_singlescale',
+                wipe_first=True)
         
         return()
-
+    
+    @CleanCallFunctionDecorator
     def task_export_to_fits(
-        clean_call = None,
-        tag = None,
+        self, 
+        clean_call = None, 
+        tag = None, 
         ):
         """ 
         Export the results of a clean_call to FITS files. Optionally
         append _tag to the file.
         """
-
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
 
         image_root = str(clean_call.get_param('imagename'))
         if tag is not None:
@@ -652,10 +648,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
                     
         if (not self._dry_run) and casa_enabled:
-            imr.export_to_fits(image_root)
+            imr.export_imaging_to_fits(image_root)
         
         return()
-      
+    
     #############################
     # recipe_imaging_one_target #
     #############################
@@ -673,7 +669,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_read_clean_mask = True, 
         do_multiscale_clean = True,
         do_revert_to_multiscale = True,
-        do_singlscale_mask = True,
+        do_singlescale_mask = True,
         do_singlescale_clean = True,      
         do_export_to_fits = True, 
         dynamic_sizing = True,
@@ -695,6 +691,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         Operates by passing a "clean_call" object between steps. Can
         restart from any individual step.
+        
+        Input file names: {target}_{config}_{product}_{extra_ext_in}.ms{.suffix_in}
+        
+        Output file names: {target}_{config}_{product}_{extra_ext_out}.image
         """
 
         cell = None
@@ -709,7 +709,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = extra_ext_in, suffix_in = suffix_in,
             extra_ext_out = extra_ext_out,
             stage = 'dirty')
-            
+        
         if dynamic_sizing:
             if cell is None or imsize is None:
                 cell, imsize = self.task_pick_cell_and_imsize(
@@ -720,8 +720,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Make a dirty image (niter=0)
 
-        if do_dirty_image:
-
+        if do_dirty_image: 
+            
             self.task_make_dirty_image(clean_call=clean_call)
 
         if do_export_to_fits and export_dirty:
@@ -730,8 +730,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Reset the current imaging to the dirty image.
 
-        if do_revert_to_dirty:            
-
+        if do_revert_to_dirty: 
+            
             self.task_revert_to_imaging(clean_call=clean_call, tag='dirty')
 
         # Read and align the clean mask to the astrometry of the image.
@@ -805,21 +805,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         if do_export_to_fits:
 
             self.task_export_to_fits(clean_call=clean_call)
+        
+        # Return
+        
+        return
     
     # end of recipe_phangsalma_imaging()
-    
-            
-        if os.path.isfile(this_cleanmask):
-            clean_call.clean_mask_file = this_cleanmask
-        else:
-            clean_call.clean_mask_file = None
-            #logger.warning('Warning! Clean mask file for target "'+target_name+'" and product "'+product+'" was not found: "'+this_cleanmask+'"')
-        
-        # 
-        # Return
-        return clean_call
-    
-    # end of recipe_build_clean_call()
 
 
     

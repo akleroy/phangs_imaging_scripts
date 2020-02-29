@@ -126,7 +126,7 @@ def wipe_imaging(
     if image_root == None:
         return
     
-    logger.debug('wipe_imaging')
+    logger.debug('wipe_imaging under "'+os.getcwd()+'"')
     cmd_list = [
         'rm -rf '+image_root+'.image',
         'rm -rf '+image_root+'.alpha',
@@ -162,7 +162,7 @@ def copy_imaging(
     """
     
     if wipe_first:
-        wipe_cube(output_root)
+        wipe_imaging(output_root)
     
     logger.debug('Copying imaging from root '+input_root+' to root '+output_root)
     cmd_list = [
@@ -216,7 +216,7 @@ def export_imaging_to_fits(
         this_fits_ext = ext_map[this_ext]
 
         casa_image = image_root + this_casa_ext
-        if not os.pwd.isdir(casa_image):
+        if not os.path.isdir(casa_image):
             continue
         fits_image = image_root + this_fits_ext
 
@@ -243,6 +243,8 @@ def execute_clean_call(
     """
     Execute a clean call object, optionally deleting previous versions
     of the imaging first.
+    
+    Set reset to wipe any existing output data.
     """
     
     if not isinstance(clean_call, CleanCall):
@@ -250,27 +252,39 @@ def execute_clean_call(
         raise Exception("Please input a valid clean call!")
       
     if not clean_call.has_param('vis'):
-        logger.warning("No visibility defined in clean_call. Returning.")
-        return()
+        logger.error("No visibility defined in clean_call. Returning.")
+        return
+      
+    if not clean_call.has_param('imagename'):
+        logger.error("No imagename defined in clean_call. Returning.")
+        return
+    
+    #<TODO><DEBUG><DL># this will not overwrite existing data
+    #if os.path.isdir(clean_call.get_param('imagename')+'.image') and not os.path.isdir(clean_call.get_param('imagename')+'.image'+'.touch'):
+    #    logger.info('Found existing data "'+clean_call.get_param('imagename')+'.image'+'". Will not overwrite.')
+    #    return
 
     if not os.path.isdir(clean_call.get_param('vis')):
-        logger.warning("Visibility file not found: ",vis)
-        return()
+        logger.error("Visibility file not found: "+clean_call.get_param('vis'))
+        return
     
     if clean_call.logfile != None:
         oldlogfile = casaStuff.casalog.logfile()
         casaStuff.casalog.setlogfile(clean_call.logfile)
 
     if reset:
-        logger.info("Wiping previous versions of the cube.")
-        wipe_cube(clean_call.getparam('imagename'))
+        logger.debug("Wiping previous versions of the cube.")
+        wipe_imaging(clean_call.get_param('imagename'))
     
+    logger.debug("Running CASA tclean("+', '.join("{!s}={!r}".format(k,v) for k,v in list(clean_call.kwargs_for_clean().items()))+')')
+    os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
     casaStuff.tclean(**clean_call.kwargs_for_clean())
+    os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
 
     if clean_call.logfile != None:
         casaStuff.casalog.setlogfile(oldlogfile)
 
-    return()
+    return
 
 #endregion
 
@@ -430,16 +444,16 @@ def clean_loop(
     # force_dirt_image is set to True.
     
     missing_image = True
-    if os.pwd.isdir(clean_call.get_param('imagename')+'.residual'):
+    if os.path.isdir(clean_call.get_param('imagename')+'.residual'):
         missing_image = False
 
-    if missing_imaging or force_dirty_image:
+    if missing_image or force_dirty_image:
         make_dirty_image(clean_call)
 
     # Copy the clean call so we can manipulate it without changing the
     # input version call.
 
-    working_call = copy.deepycopy(clean_call)
+    working_call = copy.deepcopy(clean_call)
     working_call.set_param('calcres',False)
     working_call.set_param('calcpsf',False)
 
@@ -509,7 +523,7 @@ def clean_loop(
         # and attach it to the clean call.
 
         if threshold_type == 'snr':
-            threshold_string = str(current_noise*snr_threshold)+'Jy/beam'
+            threshold_string = str(current_noise*threshold_value)+'Jy/beam'
         elif threshold_type == 'absolute':
             if type(threshold_value) == type(0.0):
                 threshold_string = str(threshold_value)+'Jy/beam'
@@ -539,8 +553,8 @@ def clean_loop(
 
         # Set the log file (revisit this)
 
-        if log_ext != None:
-            working_call.logfile = working_call.image_root+"_loop_"+str(loop)+"_"+log_ext+".log"
+        if log_ext is not None:
+            working_call.logfile = working_call.get_param('imagename')+"_loop_"+str(loop)+"_"+log_ext+".log"
         else:
             working_call.logfile = None
 
@@ -559,7 +573,7 @@ def clean_loop(
 
         model_stats = cmr.stat_cube(working_call.get_param('imagename')+'.model')
 
-        previous_flux = model_flux
+        previous_flux = current_flux
         current_flux = model_stats['sum'][0]
 
         delta_flux = (current_flux-previous_flux)
@@ -611,7 +625,7 @@ def clean_loop(
         this_record += str(working_call.get_param('cycleniter'))+', '
         this_record += str(working_call.get_param('threshold'))+', '
         this_record += str(current_noise)+'Jy/beam, '
-        this_record += str(model_flux)+'Jy*chan, '
+        this_record += str(current_flux)+'Jy*chan, '
         this_record += str(delta_flux)+''
             
         # Print the current record to the screen
