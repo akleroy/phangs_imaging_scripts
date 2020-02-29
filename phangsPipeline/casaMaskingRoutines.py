@@ -247,9 +247,9 @@ def signal_mask(
             operation = 'NEW'    
 
     if os.path.isdir(cube_root+'.residual') == True:
-        stats = stat_clean_cube(cube_root+'.residual')
+        stats = stat_cube(cube_root+'.residual')
     else:
-        stats = stat_clean_cube(cube_root+'.image')
+        stats = stat_cube(cube_root+'.image')
     rms = stats['medabsdevmed'][0]/0.6745
     hi_thresh = high_snr*rms
     low_thresh = low_snr*rms
@@ -294,7 +294,7 @@ def signal_mask(
     os.system('rm -rf '+cube_root+'.mask')
     os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
     myia.open(cube_root+'.mask')
-    myia.putchunk(mask)
+    myia.putchunk(mask.astype(int)) #<TODO><DL># modified mask --> mask.astype(int)
     myia.close()
 
 def apply_additional_mask(

@@ -29,6 +29,30 @@ class CleanCall:
         self.clean_params = {}
         self.reset_params()
 
+    def __str__(self):
+        """
+        Return the clean call as a string that can be pasted into
+        CASA. Uses the default CASA version.
+        """
+        #clean_text = 'tclean('
+        #kwargs_for_clean = self.kwargs_for_clean()
+        #first = True
+        #for this_kwarg in kwargs_for_clean:
+        #    if first:
+        #        first = False
+        #    else:
+        #        clean_text += ','
+        #    string_for_kwarg = str(kwargs_for_clean[this_kwarg])
+        #    if type(kwargs_for_clean[this_kwarg]) == type(''):
+        #        string_for_kwarg = '"'+string_for_kwarg+'"'
+        #    clean_text += str(this_kwarg)+'='+string_for_kwarg
+        #clean_text += ')'
+        #return clean_text
+        # 
+        #<TODO><DL># return 'tclean('+', '.join("{!s}={!r}".format(k, self.clean_params[k]) for k in self.clean_params.keys())+')'
+        kwargs_for_clean = self.kwargs_for_clean()
+        return 'tclean('+', '.join("{!s}={!r}".format(k, kwargs_for_clean[k]) for k in kwargs_for_clean.keys())+')'
+
     #########################
     # Attributes From Files #
     #########################
@@ -107,20 +131,20 @@ class CleanCall:
         self.clean_params['reffreq']=str(value)+'GHz'
         return()
     
-    def set_multiscale_arcsec(self, scales_in_arcsec=[]):
+    def set_multiscale_arcsec(self, scales=[]):
         """
         Set the scales for deconvolution in acseconds. Requires that a
         cell size already be defined so that these can be translated
         into pixel units.
         """
         cell_in_pix = self.get_cell_in_arcsec()
-        if cell_size is None:
+        if cell_in_pix is None:
             return()
 
         scales_in_pix = []
-        for this_scale_arcsec in scales_in_arcsec:
+        for this_scale_arcsec in scales:
             this_scale_pix = this_scale_arcsec/cell_in_pix
-            scales_in_pix.append()
+            scales_in_pix.append(this_scale_pix)
 
         scales_in_pix.sort()
         self.clean_params['scales'] = scales_in_pix
@@ -149,7 +173,7 @@ class CleanCall:
         else:
             cell_string = self.clean_params['cell']
         # We don't worry about arcmin or deg right now - can adjust if needed
-        return(float((cell_string).split('arcsec')))
+        return(float((cell_string).replace('arcsec','')))
     
     def has_param(self, key=None):
         """
@@ -176,26 +200,6 @@ class CleanCall:
     ##################################
     # Hook up to executions of clean #
     ##################################
-
-    def __str__(self):
-        """
-        Return the clean call as a string that can be pasted into
-        CASA. Uses the default CASA version.
-        """
-        clean_text = 'tclean('
-        kwargs_for_clean = self.kwargs_for_clean()
-        first = True
-        for this_kwarg in kwargs_for_clean:
-            if first:
-                first = False
-            else:
-                clean_text += ','
-            string_for_kwarg = str(kwargs_for_clean[this_kwarg])
-            if type(kwargs_for_clean[this_kwarg]) == type(''):
-                string_for_kwarg = '"'+string_for_kwarg+'"'
-            clean_text += str(this_kwarg)+'='+string_for_kwarg
-        clean_text += ')'
-        return(clean_text)
     
     def kwargs_for_clean(
         self,        
@@ -211,7 +215,32 @@ class CleanCall:
             return(None)
 
         #<TODO># Work on adapting to different CASA versions
+        #<TODO><DL># use inspect package? provide CASA version compatibility inside recipe.clean file, then do the CASA version check only when executing it?
         
         return(self.clean_params)
         
 #endregion
+
+
+
+
+def CleanCallFunctionDecorator(func):
+    def func_wrapper(*args, **kwargs):
+        for k in kwargs.keys():
+            #print('CleanCallFunctionDecorator', kwargs[k], type(kwargs[k]), isinstance(kwargs[k], CleanCall))
+            if k == 'clean_call':
+                if kwargs[k] is None:
+                    logger.warning("Require a clean_call object. Returning.")
+                    return
+                elif not isinstance(kwargs[k], CleanCall):
+                    logger.error('Error! Invalid clean_call! It should be a CleanCall instance!')
+                    raise Exception('Error! Invalid clean_call! It should be a CleanCall instance!')
+                    return
+        return func(*args, **kwargs)
+    return func_wrapper
+
+
+
+
+
+

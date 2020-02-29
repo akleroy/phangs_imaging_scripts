@@ -939,6 +939,7 @@ class KeyHandler:
                 for each_product in product_list:
                     for each_stage in stage_list:
                         self._imaging_dict[each_config][each_product][each_stage] = this_recipe
+                        #logger.debug('self._imaging_dict[%r][%r][%r] = %r'%(each_config, each_product, each_stage, this_recipe))
 
             lines_read += 1
 
@@ -1656,6 +1657,24 @@ class KeyHandler:
         """
         return(target in self._mosaic_assign_dict.keys())
 
+    def get_imaging_recipes(self, config=None, product=None, stage=None):
+        """
+        Return the imaging recipe for the input config and product.
+        """
+        if config is None or product is None:
+            return None
+        if config in self._imaging_dict:
+            if product in self._imaging_dict[config]:
+                imaging_recipe_dir = self._key_dir #<TODO><DL># imaging_recipe_dir
+                if not imaging_recipe_dir.endswith(os.sep):
+                    imaging_recipe_dir += os.sep
+                if stage is not None:
+                    if stage in self._imaging_dict[config][product]:
+                        return imaging_recipe_dir+self._imaging_dict[config][product][stage] #<TODO><DL># multiple recipes for one stage?
+                else:
+                    return [imaging_recipe_dir+self._imaging_dict[config][product][t] for t in VALID_IMAGING_STAGES]
+        return None
+
     def set_dochecks(self, dochecks=True):
         """
         Set the feedback level.
@@ -1931,9 +1950,9 @@ class KeyHandler:
         ):
         """
         Get the file name for a target, config, product visibility
-        combination. Optionally include an extension and a suffix. Convention is:
-
-        target_config_product_ext.ms.suffix
+        combination. Optionally include an extension and a suffix. 
+        Convention is:
+        {target}_{config}_{product}_{ext}.ms{.suffix}
         """
 
         if target is None:
@@ -2235,7 +2254,7 @@ class KeyHandler:
         else:
             return(None)
                 
-        return(this_dict['clean_Scales_arcsec'])
+        return(this_dict['clean_scales_arcsec'])
 
 
     def get_res_for_config(
@@ -2306,16 +2325,17 @@ class KeyHandler:
             logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
             logger.info("... ... clean these scales in arcsec "+str(scales_for_clean))
 
-        logger.info("Feather Configurations")
-        for this_config in self._config_dict['feather_config'].keys():
-            logger.info("... "+this_config)
-            this_other_config = self._config_dict['feather_config'][this_config]['interf_config']
-            this_min_res = self._config_dict['feather_config'][this_config]['res_min_arcsec']
-            this_max_res = self._config_dict['feather_config'][this_config]['res_max_arcsec']
-            res_step_factor = self._config_dict['feather_config'][this_config]['res_step_factor']
-            logger.info("... ... maps to interferometer config "+str(this_other_config))
-            logger.info("... ... minimum, maximum resolution for products "+str(this_min_res)+' '+str(this_max_res))
-            logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
+        if 'feather_config' in self._config_dict:
+            logger.info("Feather Configurations")
+            for this_config in self._config_dict['feather_config'].keys():
+                logger.info("... "+this_config)
+                this_other_config = self._config_dict['feather_config'][this_config]['interf_config']
+                this_min_res = self._config_dict['feather_config'][this_config]['res_min_arcsec']
+                this_max_res = self._config_dict['feather_config'][this_config]['res_max_arcsec']
+                res_step_factor = self._config_dict['feather_config'][this_config]['res_step_factor']
+                logger.info("... ... maps to interferometer config "+str(this_other_config))
+                logger.info("... ... minimum, maximum resolution for products "+str(this_min_res)+' '+str(this_max_res))
+                logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
 
         return()
 
@@ -2411,27 +2431,30 @@ class KeyHandler:
 
         if imaging:
             if not os.path.isdir(self._imaging_root):
-                logging.error("Missing imaging root directory. Returning.")
-                logging.error("Create: "+self._imaging_root)
-                return(False)
+                logging.info("Missing imaging root directory.")
+                logging.info("Create: "+self._imaging_root)
+                #return(False)
+                os.makedirs(self._imaging_root)
 
         if postprocess:
             if not os.path.isdir(self._postprocess_root):
-                logging.error("Missing postprocess root directory. Returning.")
-                logging.error("Create: "+self._postprocess_root)
-                return(False)
+                logging.info("Missing postprocess root directory.")
+                logging.info("Create: "+self._postprocess_root)
+                #return(False)
+                os.makedirs(self._postprocess_root)
 
         if product:
             if not os.path.isdir(self._product_root):
-                logging.error("Missing product root directory. Returning.")
-                logging.error("Create: "+self._product_root)
-                return(False)
+                logging.info("Missing product root directory.")
+                logging.info("Create: "+self._product_root)
+                #return(False)
+                os.makedirs(self._product_root)
 
         missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product)
         made_directories = 0
         for this_missing_dir in missing_dirs:
             made_directories += 1
-            os.mkdir(this_missing_dir)
+            os.makedirs(this_missing_dir)
         
         missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product)
 
