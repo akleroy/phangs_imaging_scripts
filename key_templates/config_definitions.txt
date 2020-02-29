@@ -170,8 +170,8 @@ This must be one of the following:
 #feather_config  7m+tp       {'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
 
 ##########################################################################
-# PHANGS-ALMA KEY
-##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
 
 line_product    co21      {'line_tag':'co21','channel_kms':2.5}
 line_product    13co21    {'line_tag':'13co21','channel_kms':2.5}
