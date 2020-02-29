@@ -33,7 +33,7 @@ if not os.path.isdir(template_key_dir):
 global confparfile
 global confpar
 global confparsection
-confparfile = 'keyprep.last'
+confparfile = 'start_project.last'
 confpar = ConfigParser()
 confparsection = None
 if os.path.isfile(confparfile):
