@@ -503,6 +503,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         self,
         do_copy = True,
         do_custom = False,
+        do_continuum_subtraction = False, 
         do_extract_line = True,
         do_extract_cont = True,
         do_concat_line = True,
@@ -543,6 +544,21 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         #                    just_interf=True):
         #        
         #        pass
+        
+        
+        if do_continuum_subtraction:
+            # 
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_cont=True,just_interf=True):
+                # 
+                self.task_run_continuum_subtraction(
+                    target = this_target, 
+                    config = this_config, 
+                    product = this_product, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
         
         
         if do_extract_line:

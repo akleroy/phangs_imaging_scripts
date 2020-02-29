@@ -723,7 +723,10 @@ def contsub(
     os.mkdir(in_file+'.contsub'+'.touch')
     casaStuff.uvcontsub(vis = in_file,
                         fitspw = spw_flagging_string,
-                        excludechans = True)
+                        excludechans = True,
+                        combine='spw',
+                        )
+                        # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
     os.rmdir(in_file+'.contsub'+'.touch')
     # 
     return
