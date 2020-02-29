@@ -70,9 +70,11 @@ This must be one of the following:
 # cubes in units of km/s. Depending on the chosen regridding algorithm
 # this may be the exact channel width or an approximate target.
 
-line_product    co21      {'line_tag':'co21','channel_kms':2.5}
-line_product    13co21    {'line_tag':'13co21','channel_kms':2.5}
-line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0}
+# PHANGS-ALMA examples:
+
+#line_product    co21      {'line_tag':'co21','channel_kms':2.5}
+#line_product    13co21    {'line_tag':'13co21','channel_kms':2.5}
+#line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0}
 
 # ------------------------------------------------------------------------
 # cont_product : a continuum data product
@@ -88,7 +90,9 @@ line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0}
 # (at the velocity and bandwidth of the source) from continuum
 # imaging. They need to be known by our line_list.py . 
 
-cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
+# PHANGS-ALMA examples:
+
+#cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
 
 # ------------------------------------------------------------------------
 # interferometry configuation
@@ -119,17 +123,19 @@ cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
 # sets the multiplicative step size using in postprocessing
 # convolution. This may be deprecated in the near future.
 
-interf_config   12m       {'array_tags':['12m']}
-interf_config   12m       {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
-interf_config   12m       {'clean_scales_arcsec':[0,1,2.5,5.0]}
+# PHANGS-ALMA examples:
 
-interf_config   12m+7m    {'array_tags':['12m','7m']}
-interf_config   12m+7m    {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
-interf_config   12m+7m    {'clean_scales_arcsec':[0,1,2.5,5.0,10.0]}
+#interf_config   12m       {'array_tags':['12m']}
+#interf_config   12m       {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+#interf_config   12m       {'clean_scales_arcsec':[0,1,2.5,5.0]}
 
-interf_config   7m        {'array_tags':['7m']}
-interf_config   7m        {'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
-interf_config   7m        {'clean_scales_arcsec':[0,5.0,10.0]}
+#interf_config   12m+7m    {'array_tags':['12m','7m']}
+#interf_config   12m+7m    {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+#interf_config   12m+7m    {'clean_scales_arcsec':[0,1,2.5,5.0,10.0]}
+
+#interf_config   7m        {'array_tags':['7m']}
+#interf_config   7m        {'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
+#interf_config   7m        {'clean_scales_arcsec':[0,5.0,10.0]}
 
 # ------------------------------------------------------------------------
 # feathering configuation (combining single dish and interferometry data)
@@ -155,10 +161,38 @@ interf_config   7m        {'clean_scales_arcsec':[0,5.0,10.0]}
 # sets the multiplicative step size using in postprocessing
 # convolution. This may be deprecated in the near future.
 
+# PHANGS-ALMA examples:
+
+#feather_config  12m+7m+tp   {'interf_config':'12m+7m'}
+#feather_config  12m+7m+tp   {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+
+#feather_config  7m+tp       {'interf_config':'7m'}
+#feather_config  7m+tp       {'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
+
+##########################################################################
+# PHANGS-ALMA KEY
+##########################################################################
+
+line_product    co21      {'line_tag':'co21','channel_kms':2.5}
+line_product    13co21    {'line_tag':'13co21','channel_kms':2.5}
+line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0}
+
+cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
+
+interf_config   12m       {'array_tags':['12m']}
+interf_config   12m       {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+interf_config   12m       {'clean_scales_arcsec':[0,1,2.5,5.0]}
+
+interf_config   12m+7m    {'array_tags':['12m','7m']}
+interf_config   12m+7m    {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
+interf_config   12m+7m    {'clean_scales_arcsec':[0,1,2.5,5.0,10.0]}
+
+interf_config   7m        {'array_tags':['7m']}
+interf_config   7m        {'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
+interf_config   7m        {'clean_scales_arcsec':[0,5.0,10.0]}
+
 feather_config  12m+7m+tp   {'interf_config':'12m+7m'}
 feather_config  12m+7m+tp   {'res_min_arcsec':0.5,'res_max_arcsec':7.5,'res_step_factor':1.1}
 
 feather_config  7m+tp       {'interf_config':'7m'}
 feather_config  7m+tp       {'res_min_arcsec':5.0,'res_max_arcsec':15.0,'res_step_factor':1.1}
-
-
