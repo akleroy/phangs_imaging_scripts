@@ -1,7 +1,33 @@
-# column 1: galaxy
-# column 2: file where the single dish map is located *relative to the singledish root directory.*
-# column 3: product
+##########################################################################
+# SINGLEDISH KEY
+##########################################################################
+
+# Key to define files of user-supplied single dish FITS files.
+
+# Currently (and for the foreseeable future) single dish FITS files
+# are created by an independent total power pipeline. The pipeline
+# requires that any single dish data used for feathering be provided
+# by the user. This file defines the locations of those data and maps
+# them to a target and product.
+ 
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 3: file name (to be searched under 'singledish_root' directory)
+# Column 2: spectral product for this single dish image cube.
+
+# PHANGS-ALMA examples:
+
+#ic1954      cycle5_data/ALMA_TP.IC1954.CO21.processed.fits        co21
+#ngc3621_1   cycle5_data/ALMA_TP.NGC3621.CO21.a.image.VLSRK.fits   co21
+#ngc3621_2   cycle5_data/ALMA_TP.NGC3621.CO21.b.image.VLSRK.fits   co21
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
 # Cycle 3
+
 ic5332	    	cycle3_data/ALMA_TP.IC_5332.CO21.v0p2.image.VLSRK.fits			co21
 ngc0628		cycle3_data/ALMA_TP.M74.v0p2_rebin.fits					co21
 ngc1087	 	cycle3_data/ALMA_TP.NGC_1087.CO21.v0p2.casa.fits				co21
@@ -36,7 +62,9 @@ ngc5068_1	cycle3_data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits		co21
 ngc5068_2	cycle3_data/ALMA_TP.NGC_5068.CO21.v0p2.2parts.image.VLSRK.fits		co21
 ngc6744_1	cycle3_data/ALMA_TP.NGC6744.CO21.v0p2.image.VLSRK.fits			co21
 ngc6744_2	cycle3_data/ALMA_TP.NGC_6744south.CO21.v0p2.fits				co21
+
 # Cycle 5
+
 # IC 1954 - there is also a "blank" version.
 ic1954		cycle5_data/ALMA_TP.IC1954.CO21.processed.fits				co21
 ic5273		cycle5_data/ALMA_TP.IC5273.CO21.image.VLSRK.fits				co21
@@ -105,7 +133,9 @@ ngc5643_2	cycle5_data/ALMA_TP.NGC5643.CO21.b.image.VLSRK.fits			co21
 ngc6300		cycle5_data/ALMA_TP.NGC6300.CO21.image.VLSRK.fits				co21
 ngc7456		cycle5_data/ALMA_TP.NGC7456.CO21.image.VLSRK.fits				co21
 ngc7496		cycle5_data/ALMA_TP.NGC7496.CO21.image.VLSRK.fits				co21
+
 # Cycle 6
+
 circinus_1	cycle6_data/ALMA_TP.Circinus_b.CO21.image.VLSRK.fits				co21
 circinus_2	cycle6_data/ALMA_TP.Circinus_a.CO21.image.VLSRK.fits				co21
 ngc0253_1	cycle6_data/ALMA_TP.NGC_253a.CO21.image.VLSRK.fits				co21

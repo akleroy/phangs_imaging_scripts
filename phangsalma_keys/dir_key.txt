@@ -1,6 +1,36 @@
-# Directory mapping key - include only nonstandard mapping
-# Column 1: name of data set (e.g., ngc3627north)
-# Column 2: name of directory that this goes in (e.g., ngc3627)
+##########################################################################
+# DIRECTORY MAPPING KEY
+##########################################################################
+
+# Key to map from target to working directory name.
+
+# BY DEFAULT the working directory for any target is a directory with
+# the same name as the target. The programs will create this directory
+# in the imaging, postprocessing, etc. directories.
+
+# This key allows targets to be mapped to other directories.
+
+# The most common use is to combine several targets into a single
+# directory. This comes up for PHANGS-ALMA in the context of linear
+# mosaics. Several targets are observed and then larter combined into
+# a single data cube. Thus we prefer to image and process these parts
+# together in a single directory.
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 2: working directory name
+
+# In PHANGS-ALMA the convention is to map parts to a working directory
+# with the name of the full galaxy. For example:
+
+#circinus_1       circinus
+#circinus_2       circinus
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
 circinus_1  	 circinus
 circinus_2  	 circinus
 ngc0247_1	 ngc0247

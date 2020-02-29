@@ -1,8 +1,40 @@
-# column 1: target name
-# column 2: phase center r.a. string
-# column 3: phase center dec string
-# column 4: source velocity [km/s]
-# column 5: velocity width [km/s]
+##########################################################################
+# TARGET DEFINITION KEY
+##########################################################################
+
+# Key to define the targets in a project.
+
+# In the ms_key each measurement set is mapped to a target. This key
+# defined targets according to their phase center, systemic velocity
+# and velocity width. These are used in processing the u-v data and
+# then imaging the data.
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 2: phase center r.a. string
+# Column 3: phase center dec string
+# Column 4: source velocity [km/s]
+# Column 5: velocity width [km/s]
+
+# Note that the phase center isn't the same as the object center. This
+# is an importnat distinction mainly in the case of mosaics that cover
+# only part of the object (our linear mosaic cases..
+
+# PHANGS-ALMA examples:
+
+#circinus     14h13m10.0s   -65d20m21s    429    700
+#circinus_1   14h12m58.4s   -65d21m43s    429    700
+#circinus_2   14h13m17.1s   -65d19m24s    429    700
+#ic1954       03h31m31.4s   -51d54m17s    1062   500
+#ngc3621      11h18m16.5s   -32d48m51s    730    700
+#ngc3621_1    11h18m18.3s   -32d49m47s    730    700
+#ngc3621_2    11h18m15.0s   -32d48m06s    730    700
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
 circinus	14h13m10.0s   -65d20m21s	429	700
 circinus_1  	14h12m58.4s   -65d21m43s	429	700
 circinus_2  	14h13m17.1s   -65d19m24s	429	700

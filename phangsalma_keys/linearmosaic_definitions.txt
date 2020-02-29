@@ -1,5 +1,30 @@
-# column 1: linear mosaic target
-# column 2: imaging target that belongs to that mosaic
+##########################################################################
+# LINEAR MOSAIC DEFINITIONS
+##########################################################################
+
+# Define the mapping of imaging targets to linear mosaics. Imaging
+# targets (column 2) will be separately cleaned and deconvolved and
+# then combined into a single data product via linear mosaic in the
+# postprocessing.
+
+# This file links target name of each mosaic observation to galaxy name. 
+
+# Column 1: Name of the target for the full linear mosaic
+# Column 2: Name of the imaging target that belongs to that mosaic
+
+# So each entry in Column 1 will share several entries in Column 2,
+# e.g.,
+
+#circinus  circinus_1
+#circinus  circinus_2
+ 
+# would merge together circinus_1 and circinus_2 into circinus during
+# linear mosaicking.
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
 circinus  circinus_1
 circinus  circinus_2
 ngc0247	  ngc0247_1
