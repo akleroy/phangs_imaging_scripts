@@ -435,17 +435,17 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Could add an error check here that the template imaging exists
 
-        this_cleanmask = self._kh.get_cleanmask_filename(target = target_name, product = product)
+        this_cleanmask = self._kh.get_cleanmask_filename(target = target, product = product)
         if this_cleanmask is None:
-            logger.info("No clean mask found for target, product: ", target, product)
+            logger.info("No clean mask found for target "+target+" product "+product)
             clean_call.set_param('usemask','pb')
             return()    
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Reading and aligning clean mask.")
-        logger.info('From ', target, product)
-        logger.info('To ', clean_call.get_param('imagename'))
+        logger.info('From target '+target+' product '+product)
+        logger.info('To '+clean_call.get_param('imagename'))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             

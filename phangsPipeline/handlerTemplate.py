@@ -344,13 +344,13 @@ class HandlerTemplate:
         considered.
         """
 
-        if len(self._cont_products_list) is 0:
-            return(self._line_products_list)
+        if len(self.get_cont_products()) is 0:
+            return(self.get_line_products())
 
-        if len(self._line_products_list) is 0:
-            return(self._cont_products_list)
+        if len(self.get_line_products()) is 0:
+            return(self.get_cont_products())
         
-        return(self._line_products_list + self._cont_products_list)
+        return(self.get_line_products() + self.get_cont_products())
 
     def get_interf_configs(
         self
@@ -382,13 +382,13 @@ class HandlerTemplate:
         consider.
         """
 
-        if len(self._interf_configs_list) is 0:
-            return(self._feather_configs_list)
+        if len(self.get_interf_configs()) == 0:
+            return(self.get_feather_configs())
 
-        if len(self._feather_configs_list) is 0:
-            return(self._interf_configs_list)
+        if len(self.get_feather_configs()) == 0:
+            return(self.get_interf_configs())
         
-        return(self._interf_configs_list + self._feather_configs_list)
+        return(self.get_interf_configs() + self.get_feather_configs())
 
 #endregion
 
