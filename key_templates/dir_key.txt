@@ -17,7 +17,7 @@
 # together in a single directory.
 
 # The syntax for the key is space or tab delimited:
-# 
+
 # Column 1: target name
 # Column 2: working directory name
 

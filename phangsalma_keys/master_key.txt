@@ -95,7 +95,6 @@ dir_key			dir_key.txt
 # calibrated u-v data to be ingested by the project and the key maps
 # from measurement set to target and array.
 
-
 # ----------------------
 # singledish_key
 # ----------------------
