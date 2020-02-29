@@ -1,0 +1,49 @@
+##########################################################################
+# This file defines the detailed parameters to override. 
+# 
+# Column 1: keyword - image name or other file name
+# Column 2: parameter to override
+# Column 3: new value
+# 
+# If the first column is an image name, e.g., composite of galaxy name, 
+#   config, and product, we can set following parameters for imaging:
+#   - 'pblimit' for CASA tclean
+#   - 'smallscalebias' for CASA tclean
+# 
+# If the first column is a galaxy name, we can set following parameters
+#   for linear mosaicking:
+#   - 'linearmosaic_deltara', the mosaic extent along RA in units of arcsec.
+#   - 'linearmosaic_deltadec', the mosaic extent along Dec in units of arcsec.
+# 
+# Examples are given below as the commented lines. 
+##########################################################################
+
+# -----------------------------------------------------------
+# Imaging parameters
+# -----------------------------------------------------------
+
+#ngc1365_12m+7m_co21        pblimit             0.75
+#ngc1365_12m+7m_co21        smallscalebias      0.9
+#ngc1365_12m_co21           smallscalebias      0.9
+#ngc1365_7m_co21            smallscalebias      0.7
+
+#ngc2903_1_12m+7m_co21      pblimit             0.5
+#ngc2903_2_12m+7m_co21      pblimit             0.5
+
+#ngc5128_12m+7m_co21        pblimit             0.5
+#ngc5128_12m+7m_co21        pblimit             0.5
+
+#ngc6744north_12m+7m_co21   pblimit             0.5
+#ngc6744south_12m+7m_co21   pblimit             0.5
+
+# -----------------------------------------------------------
+# Linear mosaic extents
+# -----------------------------------------------------------
+
+#circinus    linearmosaic_deltara    600
+#circinus    linearmosaic_deltadec   600
+
+#ngc3621     linearmosaic_deltara    300
+#ngc3621     linearmosaic_deltadec   380
+
+

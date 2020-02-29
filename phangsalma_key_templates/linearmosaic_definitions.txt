@@ -1,0 +1,13 @@
+##########################################################################
+# This file links target name of each mosaic observation to galaxy name. 
+# 
+# Column 1: galaxy name (appears as the output sub-directory name).
+# Column 2: target name for each mosaic observation.
+# 
+# If a galaxy does not have more than one mosaic, no need to set it here.
+# 
+# Examples are given below as the commented lines. 
+##########################################################################
+
+#circinus  circinus_1
+#circinus  circinus_2

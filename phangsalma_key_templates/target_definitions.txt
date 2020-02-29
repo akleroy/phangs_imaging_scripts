@@ -1,0 +1,21 @@
+##########################################################################
+# This file defines the observation and galaxy parameters. 
+# 
+# Column 1: target name
+# Column 2: phase center r.a. string
+# Column 3: phase center dec string
+# Column 4: source velocity [km/s]
+# Column 5: velocity width [km/s]
+# 
+# Examples are given below as the commented lines. 
+##########################################################################
+
+circinus     14h13m10.0s   -65d20m21s    429    700
+circinus_1   14h12m58.4s   -65d21m43s    429    700
+circinus_2   14h13m17.1s   -65d19m24s    429    700
+ic1954       03h31m31.4s   -51d54m17s    1062   500
+ngc3621      11h18m16.5s   -32d48m51s    730    700
+ngc3621_1    11h18m18.3s   -32d49m47s    730    700
+ngc3621_2    11h18m15.0s   -32d48m06s    730    700
+
+

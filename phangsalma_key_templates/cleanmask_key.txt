@@ -1,0 +1,13 @@
+##########################################################################
+# This file defines the file names of clean masks. 
+# 
+# Column 1: target name
+# Column 2: spectral product for this clean mask (or "all")
+# Column 3: file name (to be searched under 'cleanmask_root' directory)
+# 
+# Examples are given below as the commented lines. 
+##########################################################################
+
+#ngc4321     all   ngc4321_co21_clean_mask.fits
+#ngc3621_1   all   ngc3621_co21_clean_mask.fits
+#ngc3621_2   all   ngc3621_co21_clean_mask.fits

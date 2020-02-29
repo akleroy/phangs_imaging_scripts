@@ -1,0 +1,118 @@
+##########################################################################
+# This file is the master key file. 
+# 
+# Please set the absolute file paths accordingly for your computer before
+#   running the pipeline! 
+# 
+# Other parameters may be kept as they are in this file. See details 
+#   below. 
+# 
+##########################################################################
+
+
+# ------------------------------------------------------------------------
+# Here we define the absolute file paths for our pipeline processing. 
+# 
+# 'key_dir' is the root directory storing all the key files 
+#   used by our pipeline. 
+# 
+# 'ms_root' is the root directory storing all the measurement sets. 
+#   Set more than one 'ms_root' below to have multiple search paths 
+#   for the measurement sets defined in the 'ms_key' below. These 
+#   measurement sets need to be calibrated in advance, with the ALMA
+#   calibration pipeline, e.g., "scriptForPI.py". 
+# 
+# 'cleanmask_root' is the root directory storing all the clean mask
+#   fits cubes. These clean masks need to be created by our Clean 
+#   Mask creation pipeline. 
+# 
+# 'singledish_root' is the root directory storing all the single dish
+#   imaged fits cubes. These cubes need to be produced by our Total 
+#   Power data reduction pipeline, if you have Total Power data. 
+# 
+# 'imaging_root' is the root directory to output our imaged CASA-format 
+#   and fits cubes. 
+# 
+# 'postprocess_root' is the root directory to output our post-processed 
+#   fits cubes. These cubes are convolved to round beam, corrected for 
+#   primary beam, mosaicked, feathered with single dish image cubes, and  
+#   convolved to various angular resolutions. 
+# 
+# 'product_root' is the root directory to output our fits image products. 
+#   This includes the moment maps and signal masks. 
+# 
+# 'release_root' is the root directory to output our final data release 
+#   contents. 
+# ------------------------------------------------------------------------
+
+key_dir              /PATH/EXAMPLE/phangsalma_keys/
+ms_root              /PATH/EXAMPLE/uvdata/
+cleanmask_root       /PATH/EXAMPLE/reduction/cleanmasks/
+singledish_root      /PATH/EXAMPLE/reduction/singledish/
+imaging_root         /PATH/EXAMPLE/reduction/imaging/
+postprocess_root     /PATH/EXAMPLE/reduction/postprocess/
+product_root         /PATH/EXAMPLE/reduction/product/
+release_root         /PATH/EXAMPLE/reduction/release/
+
+
+# ------------------------------------------------------------------------
+# Here we define the data-file-related keys to be used in our pipeline.
+# 
+# These files should be stored under the above 'key_dir' path. 
+#   The file names are hard-coded here but can be changed as long as
+#   the definition here and the files under 'key_dir' are agreed. 
+# 
+# "ms_file_key.txt" defines each the target name, array tag, 
+#   project tag and the relative file path of each measurement set.
+# 
+# "singledish_key.txt" defines the relative file path of each
+#   single dish cube that we obtained from our Total Power pipeline. 
+# 
+# "cleanmask_key.txt" defines the relative file path of each
+#   clean mask cube that we obtained from our Clean Mask creation 
+#   after a first-pass processing without clean mask. 
+# ------------------------------------------------------------------------
+
+ms_key               ms_file_key.txt
+singledish_key       singledish_key.txt
+cleanmask_key        cleanmask_key.txt
+
+
+# ------------------------------------------------------------------------
+# Here we define the observation-related keys to be used in our pipeline.
+# 
+# "config_definitions.txt" defines the detailed parameters for making 
+#   spectral lines and continuum products, interferometry imaging and 
+#   feathering with single dish data. 
+# 
+# "target_definitions.txt" defines the observation and galaxy parameters, 
+#   including a target name for each mosaicking observation, R.A., 
+#   Dec. coordinates of the phase center of this observation, and galaxy 
+#   system velocity and expected velocity width for the spectral lines. 
+# 
+# "linearmosaic_definitions.txt" defines the links from galaxy name to 
+#   target name. Each target name corresponds to a different mosaicking 
+#   observation of this galaxy. 
+# 
+# "dir_key.txt" defines the links from target name to galaxy name which 
+#   will appear as the output sub-directory name to hold our products. 
+# 
+# "imaging_recipes.txt" defines the imaging recipes for each interferometry
+#   config. 
+# 
+# "overrides.txt" defines more detailed parameters to override in 
+#   interferometry imaging and linear mosaicking steps. 
+# 
+# ------------------------------------------------------------------------
+
+config_key           config_definitions.txt
+target_key           target_definitions.txt
+linmos_key           linearmosaic_definitions.txt
+dir_key              dir_key.txt
+imaging_key          imaging_recipes.txt
+override_key         overrides.txt
+
+
+
+
+
