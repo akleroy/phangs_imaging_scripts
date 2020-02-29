@@ -444,8 +444,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Reading and aligning clean mask.")
-        logger.info('From ', target, product)
-        logger.info('To ', clean_call.get_param('imagename'))
+        logger.info('From target '+target+' product '+product)
+        logger.info('To '+clean_call.get_param('imagename'))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
