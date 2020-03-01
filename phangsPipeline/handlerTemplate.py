@@ -82,7 +82,7 @@ class HandlerTemplate:
         nobuild = False):
         """
         Set the keyhandler object being used by the pipeline. The
-        keyhandler object interaces with configuration files, target
+        handlerKeys object interaces with configuration files, target
         lists, etc.
         """
         self._kh = key_handler
@@ -248,10 +248,10 @@ class HandlerTemplate:
         configurations to loop over when a loop is run.
         """
 
-        # Make sure there is an attached keyHandler object.
+        # Make sure there is an attached handlerKeys object.
         
         if self._kh is None:
-            logger.error("Cannot build lists without a keyHandler.")
+            logger.error("Cannot build lists without a handlerKeys.")
             return(None)
 
         self._targets_list = self._kh.get_targets(

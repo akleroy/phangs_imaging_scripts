@@ -13,7 +13,7 @@ CASA. See an example application inside stage_7m_co21.py .
 Example:
 
     $ casa
-    from phangsPipeline import keyHandler as kh
+    from phangsPipeline import handlerKeys as kh
     from phangsPipeline import uvdataHandler as uvh
     this_kh = kh.KeyHandler(master_key = 'config_keys/master_key.txt')
     this_uvh = uvh.UVDataHandler(key_handler = this_kh, dry_run = False)

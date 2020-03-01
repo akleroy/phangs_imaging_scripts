@@ -6,8 +6,8 @@ This code needs to be run inside CASA.
 
 Example:
     $ casa
-    from phangsPipeline import keyHandler as kh
-    from phangsPipeline import imagingHandler as imh
+    from phangsPipeline import handlerKeys as kh
+    from phangsPipeline import handlerImaging as imh
     this_kh = kh.KeyHandler(master_key = 'config_keys/master_key.txt')
     this_imh = uvh.ImagingHandler(key_handler = this_kh)
     this_imh.set_targets(only = ['ngc3627'])
@@ -38,7 +38,7 @@ Notes:
 
 """
 
-#<DONE># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "keyHandler.py"!
+#<DONE># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "handlerKeys.py"!
 #<TODO># 20200214 dzliu: will users want to do imaging for individual project instead of concatenated ms?
 #<TODO># 20200214 dzliu: needing KeyHandler API: 
 #<DONE># 20200214 dzliu:     self._kh._cleanmask_dict   --> self._kh.get_cleanmask() # input target name, output clean mask file

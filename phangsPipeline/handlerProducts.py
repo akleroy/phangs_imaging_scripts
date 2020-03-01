@@ -6,7 +6,7 @@ spatial scales.
 
 Example:
     $ ipython
-    from phangsPipeline import keyHandler as kh
+    from phangsPipeline import handlerKeys as kh
     from phangsPipeline import productHandler as prh
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)

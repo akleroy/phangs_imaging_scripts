@@ -1,6 +1,6 @@
 # Imports
 from phangsPipeline import phangsLogger as pl
-from phangsPipeline import keyHandler as kh
+from phangsPipeline import handlerKeys as kh
 
 # Analysis utilities
 import analysisUtils as au
