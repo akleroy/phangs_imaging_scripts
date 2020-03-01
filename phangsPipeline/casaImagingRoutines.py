@@ -129,11 +129,6 @@ def wipe_imaging(
     logger.debug('wipe_imaging under "'+os.getcwd()+'"')
     cmd_list = [
         'rm -rf '+image_root+'.image',
-        'rm -rf '+image_root+'.alpha',
-        'rm -rf '+image_root+'.beta',
-        'rm -rf '+image_root+'.tt0',
-        'rm -rf '+image_root+'.tt1',
-        'rm -rf '+image_root+'.tt2',
         'rm -rf '+image_root+'.model',
         'rm -rf '+image_root+'.mask',
         'rm -rf '+image_root+'.pb',
@@ -141,11 +136,39 @@ def wipe_imaging(
         'rm -rf '+image_root+'.residual',
         'rm -rf '+image_root+'.weight',
         'rm -rf '+image_root+'.sumwt',
+        'rm -rf '+image_root+'.alpha',
+        'rm -rf '+image_root+'.alpha.error',
+        'rm -rf '+image_root+'.beta',
+        'rm -rf '+image_root+'.beta.error',
+        'rm -rf '+image_root+'.image.tt0',
+        'rm -rf '+image_root+'.image.tt1',
+        'rm -rf '+image_root+'.image.tt2',
+        'rm -rf '+image_root+'.model.tt0',
+        'rm -rf '+image_root+'.model.tt1',
+        'rm -rf '+image_root+'.model.tt2',
+        'rm -rf '+image_root+'.mask.tt0',
+        'rm -rf '+image_root+'.mask.tt1',
+        'rm -rf '+image_root+'.mask.tt2',
+        'rm -rf '+image_root+'.pb.tt0',
+        'rm -rf '+image_root+'.pb.tt1',
+        'rm -rf '+image_root+'.pb.tt2',
+        'rm -rf '+image_root+'.psf.tt0',
+        'rm -rf '+image_root+'.psf.tt1',
+        'rm -rf '+image_root+'.psf.tt2',
+        'rm -rf '+image_root+'.residual.tt0',
+        'rm -rf '+image_root+'.residual.tt1',
+        'rm -rf '+image_root+'.residual.tt2',
+        'rm -rf '+image_root+'.weight.tt0',
+        'rm -rf '+image_root+'.weight.tt1',
+        'rm -rf '+image_root+'.weight.tt2',
+        'rm -rf '+image_root+'.sumwt.tt0',
+        'rm -rf '+image_root+'.sumwt.tt1',
+        'rm -rf '+image_root+'.sumwt.tt2',
         ]
 
     for this_cmd in cmd_list:
         logger.debug(this_cmd)
-        os.system(this_cmd)
+        os.system(this_cmd+' 2>/dev/null')
 
     return()
 
@@ -167,23 +190,46 @@ def copy_imaging(
     logger.debug('Copying imaging from root '+input_root+' to root '+output_root)
     cmd_list = [
         'cp -r '+input_root+'.image '+output_root+'.image',
-        'cp -r '+input_root+'.alpha '+output_root+'.alpha',
-        'cp -r '+input_root+'.beta '+output_root+'.beta',
-        'cp -r '+input_root+'.tt0 '+output_root+'.tt0',
-        'cp -r '+input_root+'.tt1 '+output_root+'.tt1',
-        'cp -r '+input_root+'.tt2 '+output_root+'.tt2',
         'cp -r '+input_root+'.model '+output_root+'.model',
+        'cp -r '+input_root+'.residual '+output_root+'.residual',
         'cp -r '+input_root+'.mask '+output_root+'.mask',
         'cp -r '+input_root+'.pb '+output_root+'.pb',
         'cp -r '+input_root+'.psf '+output_root+'.psf',
-        'cp -r '+input_root+'.residual '+output_root+'.residual',
         'cp -r '+input_root+'.weight '+output_root+'.weight',
         'cp -r '+input_root+'.sumwt '+output_root+'.sumwt',
+        'cp -r '+input_root+'.alpha '+output_root+'.alpha',
+        'cp -r '+input_root+'.alpha.error '+output_root+'.alpha.error',
+        'cp -r '+input_root+'.beta '+output_root+'.beta',
+        'cp -r '+input_root+'.beta.error '+output_root+'.beta.error',
+        'cp -r '+input_root+'.image.tt0 '+output_root+'.image.tt0',
+        'cp -r '+input_root+'.image.tt1 '+output_root+'.image.tt1',
+        'cp -r '+input_root+'.image.tt2 '+output_root+'.image.tt2',
+        'cp -r '+input_root+'.model.tt0 '+output_root+'.model.tt0',
+        'cp -r '+input_root+'.model.tt1 '+output_root+'.model.tt1',
+        'cp -r '+input_root+'.model.tt2 '+output_root+'.model.tt2',
+        'cp -r '+input_root+'.residual.tt0 '+output_root+'.residual.tt0',
+        'cp -r '+input_root+'.residual.tt1 '+output_root+'.residual.tt1',
+        'cp -r '+input_root+'.residual.tt2 '+output_root+'.residual.tt2',
+        'cp -r '+input_root+'.mask.tt0 '+output_root+'.mask.tt0',
+        'cp -r '+input_root+'.mask.tt1 '+output_root+'.mask.tt1',
+        'cp -r '+input_root+'.mask.tt2 '+output_root+'.mask.tt2',
+        'cp -r '+input_root+'.pb.tt0 '+output_root+'.pb.tt0',
+        'cp -r '+input_root+'.pb.tt1 '+output_root+'.pb.tt1',
+        'cp -r '+input_root+'.pb.tt2 '+output_root+'.pb.tt2',
+        'cp -r '+input_root+'.psf.tt0 '+output_root+'.psf.tt0',
+        'cp -r '+input_root+'.psf.tt1 '+output_root+'.psf.tt1',
+        'cp -r '+input_root+'.psf.tt2 '+output_root+'.psf.tt2',
+        'cp -r '+input_root+'.weight.tt0 '+output_root+'.weight.tt0',
+        'cp -r '+input_root+'.weight.tt1 '+output_root+'.weight.tt1',
+        'cp -r '+input_root+'.weight.tt2 '+output_root+'.weight.tt2',
+        'cp -r '+input_root+'.sumwt.tt0 '+output_root+'.sumwt.tt0',
+        'cp -r '+input_root+'.sumwt.tt1 '+output_root+'.sumwt.tt1',
+        'cp -r '+input_root+'.sumwt.tt2 '+output_root+'.sumwt.tt2',
         ]
     
     for this_cmd in cmd_list:
         logger.debug(this_cmd)
-        os.system(this_cmd)
+        os.system(this_cmd+' 2>/dev/null')
 
 def export_imaging_to_fits(
     image_root=None,
@@ -194,16 +240,40 @@ def export_imaging_to_fits(
     """
     
     ext_map = {
-        '.image':'.fits',
-        '.tt0':'.fits',
-        '.tt1':'_tt1.fits',
-        '.tt2':'_tt2.fits',
         '.alpha':'_alpha.fits',
+        '.alpha.error':'_alpha_error.fits',
         '.beta':'_beta.fits',
+        '.beta.error':'_beta_error.fits',
+        '.image.tt0':'.fits',
+        '.image.tt1':'_tt1.fits',
+        '.image.tt2':'_tt2.fits',
+        '.model.tt0':'_model.fits',
+        '.model.tt1':'_model_tt1.fits',
+        '.model.tt2':'_model_tt2.fits',
+        '.residual.tt0':'_residual.fits',
+        '.residual.tt1':'_residual_tt1.fits',
+        '.residual.tt2':'_residual_tt2.fits',
+        '.mask.tt0':'_mask.fits',
+        '.mask.tt1':'_mask_tt1.fits',
+        '.mask.tt2':'_mask_tt2.fits',
+        '.pb.tt0':'_pb.fits',
+        '.pb.tt1':'_pb_tt1.fits',
+        '.pb.tt2':'_pb_tt2.fits',
+        '.psf.tt0':'_psf.fits',
+        '.psf.tt1':'_psf_tt1.fits',
+        '.psf.tt2':'_psf_tt2.fits',
+        '.weight.tt0':'_weight.fits',
+        '.weight.tt1':'_weight_tt1.fits',
+        '.weight.tt2':'_weight_tt2.fits',
+        '.sumwt.tt0':'_sumwt.fits',
+        '.sumwt.tt1':'_sumwt_tt1.fits',
+        '.sumwt.tt2':'_sumwt_tt2.fits',
+        '.image':'.fits',
+        '.model':'_model.fits',
+        '.residual':'_residual.fits',
         '.mask':'_mask.fits',
         '.pb':'_pb.fits',
         '.psf':'_psf.fits',
-        '.residual':'_residual.fits',
         '.weight':'_weight.fits',
         '.sumwt':'_sumwt.fits',
         }
@@ -276,11 +346,36 @@ def execute_clean_call(
         logger.debug("Wiping previous versions of the cube.")
         wipe_imaging(clean_call.get_param('imagename'))
     
-    logger.debug("Running CASA tclean("+', '.join("{!s}={!r}".format(k,v) for k,v in list(clean_call.kwargs_for_clean().items()))+')')
-    os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
-    casaStuff.tclean(**clean_call.kwargs_for_clean())
-    os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
-
+    
+    # a simple way to slightly solve the compatible issue is to check 
+    # the list of expected_kwargs and only return keys inside it. 
+    logger.debug("Running CASA "+str(clean_call))
+    clean_kwargs = clean_call.kwargs_for_clean()
+    expected_kwargs = inspect.getargspec(casaStuff.tclean)[0]
+    active_kwargs = {} # kwarg dict
+    if expected_kwargs is not None:
+        missing_kwargs = [] # list
+        unused_kwargs = [] # list
+        for k in expected_kwargs:
+            if k in clean_kwargs:
+                active_kwargs[k] = clean_kwargs[k]
+            else:
+                missing_kwargs.append(k)
+        for k in clean_kwargs:
+            if not (k in expected_kwargs):
+                unused_kwargs.append(k)
+        if len(unused_kwargs) > 0:
+            logger.warning('Unused key arguments for clean: '+str(unused_kwargs))
+        if len(missing_kwargs) > 0:
+            logger.warning('Missing key arguments for clean: '+str(missing_kwargs)+'. Caution that CASA will use some default values depending on the CASA version.')
+    else:
+        active_kwargs = copy.deepcopy(clean_kwargs)
+    
+    
+    #os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
+    casaStuff.tclean(**active_kwargs)
+    #os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
+    
     if clean_call.logfile != None:
         casaStuff.casalog.setlogfile(oldlogfile)
 
