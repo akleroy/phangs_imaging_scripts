@@ -77,7 +77,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         self,
         do_noise=True,
         do_strict_masking=True,
-        do_hybrid_masking=True
+        do_hybrid_masking=True,
         do_moments=True,
         make_directories=True,
         ):
@@ -133,6 +133,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             if do_moments:
 
                 # AKL - add the resolution loop HERE
+                pass
 
             # generate a low resolution mask from the flat cube and estimate the local noise
             lowres_cube_mask, \
