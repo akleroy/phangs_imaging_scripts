@@ -16,9 +16,14 @@ except ImportError:
     from phangsPipeline import line_list as ll
 
 try:
-    import utils
+    import utilsLists as list_utils
 except ImportError:
-    from phangsPipeline import utils as utils
+    from phangsPipeline import utilsLists as list_utils
+
+try:
+    import utilsKeyReaders as key_readers
+except ImportError:
+    from phangsPipeline import utilsKeyReaders as key_readers
 
 import logging
 logger = logging.getLogger(__name__)
@@ -33,7 +38,7 @@ class KeyHandler:
     """
 
     def __init__(self,
-                 master_key = 'phangsalma_keys/master_key.txt',
+                 master_key = 'key_templates/master_key.txt',
                  quiet=False,
                  dochecks=True,
                  ):
@@ -55,6 +60,10 @@ class KeyHandler:
         self._override_dict = None
 
         self.build_key_handler(master_key)
+
+##############################################################
+# FILE READING
+##############################################################
 
 #region Initialize the key handler and read files.
 
@@ -82,15 +91,7 @@ class KeyHandler:
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
 
-        self._read_config_keys()
-        self._read_ms_keys()
-        self._read_dir_keys()
-        self._read_target_keys()    
-        self._read_sd_keys()
-        self._read_cleanmask_keys()
-        self._read_linmos_keys() 
-        self._read_imaging_keys()
-        self._read_override_keys()
+        self._read_all_keys()
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -139,6 +140,13 @@ class KeyHandler:
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
+
+##############################################################
+# READ THE MASTER KEY
+##############################################################
+
+# This steers the whole pipeline process and infrastructure and links
+# from fields into attributes of the object.
 
     def _read_master_key(self):
         """
@@ -337,566 +345,86 @@ class KeyHandler:
         
         return(all_valid)
 
-    def _read_ms_keys(self):
+##############################################################
+# READ THE INDIVIDUAL KEYS INTO DICTIONARIES
+##############################################################
+
+    def _initialize_imaging_dict(self):
         """
-        Read all of the measurement set keys.
+        Initialize the imaging dictionary. Requires the config dict to
+        exist already to work successfully.
         """
 
-        self._ms_dict = {}
-        for this_key in self._ms_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_ms_key(fname=this_fname)
+        logger.info("Initializing the imaging dictionary using known configs and stages.")
+
+        full_dict = {}
+
+        # Loop over configs
+        for this_config in self.get_interf_configs():
+            full_dict[this_config] = {}
+        
+            # Loop over line products
+            for this_product in self.get_line_products():
+                full_dict[this_config][this_product] = {}
+            
+                # Loop over stages
+                for this_stage in VALID_IMAGING_STAGES:
+                    full_dict[this_config][this_product][this_stage] = []
+
+            # Loop over continuum products
+            for this_product in self.get_continuum_products():
+                full_dict[this_config][this_product] = {}
+                # Loop over stages
+                for this_stage in VALID_IMAGING_STAGES:
+                    full_dict[this_config][this_product][this_stage] = []
+
+        self._imaging_dict = full_dict
 
         return()
 
-    def _read_one_ms_key(self, fname=None):
+    def _read_imaging_key(self, fname=None, existing_dict=None, delim=None):
         """
-        Read one measurement set key. Called by _read_ms_keys. 
+        Read an imaging recipe key. Needs to be in the keyHandler
+        object because the order of entries matters AND wild cards
+        matter and these interact.
         """
-
-        # should not get to this, but check just in case
+    
+        # Check file existence
+        
         if os.path.isfile(fname) is False:
             logger.error("I tried to read key "+fname+" but it does not exist.")
-            return()
-        
-        logger.info("Reading a measurement set key")
+            return(existing_dict)
+
         logger.info("Reading: "+fname)
 
+        # Expected Format
+
+        expected_words = 4
+        expected_format = "config product stage recipe"
+
+        # Open File
+
         infile = open(fname, 'r')
-        
+    
+        # Initialize the dictionary
+
+        if existing_dict is None:
+            out_dict = {}
+        else:
+            out_dict = existing_dict
+
+        # Loop over the lines    
         lines_read = 0
         while True:
             line  = infile.readline()
             if len(line) == 0:
                 break
-            if line[0] == '#' or line == '\n':
+            if key_readers.skip_line(line, expected_words=expected_words, 
+                                     delim=delim, expected_format=expected_format):
                 continue
 
-            words = line.split()
-
-            if len(words) != 4:
-                logger.warning("Skipping line because it does not match ms_key format.")
-                logger.warning("Format is space delimited: target project_tag array_tag filename .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_target = words[0]
-            this_proj_tag = words[1]
-            this_array_tag = words[2]
-            this_file = words[3]
-
-            # Initialize the dictionary the first time we get a result.
-            if self._ms_dict is None:
-                self._ms_dict = {}
-
-            # Check if the target is new
-            if (this_target in self._ms_dict.keys()) == False:
-                self._ms_dict[this_target] = {}
-
-            # Check if the project tag exists already
-            if (this_proj_tag not in self._ms_dict[this_target].keys()):
-                self._ms_dict[this_target][this_proj_tag] = {}
-
-            # Check if the array tag exists already
-            if this_array_tag in self._ms_dict[this_target][this_proj_tag].keys():
-                logger.warning("Possible double entry/mistake for: ", this_target, this_proj_tag, this_array_tag)
-
-            # Add the filename to the dictionary
-            self._ms_dict[this_target][this_proj_tag][this_array_tag] = this_file
-            lines_read += 1
-            
-        infile.close() 
-
-        logger.info("Read "+str(lines_read)+" lines into the ms dictionary.")
-
-        return()
-
-    def _read_dir_keys(self):
-        """
-        Read all of the directory keys.
-        """
-
-        self._dir_for_target = {}
-        for this_key in self._dir_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_dir_key(fname=this_fname)
-
-        return()
-
-    def _read_one_dir_key(self, fname=None):
-        """
-        Read one directory key. This is called by read_dir_keys.
-        """
-
-        logger.info("Reading a directory key.")
-        logger.info("Reading: "+fname)
-
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            logger.error("I tried to read key "+fname+" but it does not exist.")
-            return()
-
-        infile = open(fname, 'r')
-    
-        lines_read = 0
-
-        while True:
-
-            line  = infile.readline()    
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
-                continue
-
-            words = line.split()
-                
-            if len(words) != 2:
-                logger.warning("Skipping line because it does not match dir_key format.")
-                logger.warning("Format is space delimited: target directory .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_target = words[0]
-            this_dir = words[1]    
-
-            # Initialize the dictionary the first time we get a result.
-            if self._dir_for_target is None:
-                self._dir_for_target = {}
-
-            self._dir_for_target[this_target] = this_dir
-            lines_read += 1
-        
-        infile.close()
-
-        logger.info("Read "+str(lines_read)+" lines into the directory mapping dictionary.")
-
-        return()
-
-    def _read_target_keys(self):
-        """
-        Read all of the target keys.
-        """
-        
-        self._target_dict = {}
-
-        for this_key in self._target_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_target_key(fname=this_fname)
-
-        return()
-
-    def _read_one_target_key(self, fname=None):
-        """
-        Read one target key. Called by read_target_keys.
-        """
-        
-        logger.info("Reading a target key.")
-        logger.info("Reading: "+fname)
-
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
-
-        infile = open(fname, 'r')
-
-        lines_read = 0
-        while True:
-            line  = infile.readline()    
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
-                continue
-            words = line.split()
-
-            if len(words) != 5:
-                logger.warning("Skipping line because it does not match target_key format.")
-                logger.warning("Format is space delimited: target RA Dec vsys vwidth .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            # Initialize the dictionary the first time we get a result.
-            if self._target_dict is None:
-                self._target_dict = {}
-
-            this_target = words[0]
-            this_ra = words[1]
-            this_dec = words[2]
-            this_vsys = words[3]
-            this_vwidth = words[4]
-        
-            self._target_dict[this_target] = {}
-            self._target_dict[this_target]['rastring'] = this_ra
-            self._target_dict[this_target]['decstring'] = this_dec
-            self._target_dict[this_target]['vsys'] = float(this_vsys)
-            self._target_dict[this_target]['vwidth'] = float(this_vwidth)
-
-            lines_read += 1
-
-        infile.close()
-
-        logger.info("Read "+str(lines_read)+" lines into the target definition dictionary.")
-    
-        return()
-
-    def _read_sd_keys(self):
-        """
-        Read all of the single dish keys.
-        """
-
-        self._sd_dict = {}
-        for this_key in self._sd_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_sd_key(fname=this_fname)
-
-        return()
-
-    def _read_one_sd_key(self,fname=None):
-        """
-        Read one single dish key. Called by read_single_dish_keys()
-        """
-
-        logger.info("Reading a singledish key.")
-        logger.info("Reading: "+fname)
-                
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
-
-        infile = open(fname, 'r')
-
-        lines_read = 0
-        while True:
-
-            line = infile.readline()    
-
-            if len(line) == 0:
-                break
-
-            if line[0] == '#' or line == '\n':
-                continue
-
-            words = line.split()
-
-            if len(words) != 3:
-                logger.warning("Skipping line because it does not match singledish_key format.")
-                logger.warning("Format is space delimited: target filename product/line .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_target = words[0]
-            this_file = words[1]
-            this_product = words[2]
-
-            # Initialize the dictionary the first time we get a result.
-            if self._sd_dict is None:
-                self._sd_dict = {}
-        
-            if this_target not in self._sd_dict.keys():
-                self._sd_dict[this_target] = {}
-
-            self._sd_dict[this_target][this_product] = this_file
-            lines_read += 1
-
-        infile.close()
-
-        logger.info("Read "+str(lines_read)+" lines into the single dish dictionary.")
-    
-        return()
-
-    def _read_config_keys(self):
-        """
-        Read all of the configuration definitions.
-        """
-
-        self._config_dict = {}
-        for this_key in self._config_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_config_key(fname=this_fname)
-
-        return()
-
-    def _read_one_config_key(self, fname=None):
-        """
-        Read one configuration key. Called by _read_config_keys().
-        """
-
-        logger.info("Reading a configuration key.")
-        logger.info("Reading: "+fname)
-        
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
-
-        infile = open(fname, 'r')
-
-        lines_read = 0
-        while True:
-            line = infile.readline()    
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
-                continue
-
-            words = line.split()
-            if len(words) != 3:
-                logger.warning("Skipping line because it does not match configuration definition format.")
-                logger.warning("Format is space delimited: config_type config_name params_as_dict .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_type = words[0]
-            this_value = words[1]
-            this_params = words[2]
-
-            # Initialize the dictionary the first time we get a result.
-            if self._config_dict is None:
-                self._config_dict = {}
-
-            # Check if the type of entry is new
-            if (this_type in self._config_dict.keys()) == False:
-                self._config_dict[this_type] = {}
-
-            # Initialize a configuration on the first entry - configs can have several lines
-            if (this_value not in self._config_dict[this_type].keys()):
-                self._config_dict[this_type][this_value] = {}
-
-            # Parse the parameters as a literal
-            try:
-                this_params_dict = ast.literal_eval(this_params)
-            except:
-                logger.error("Could not parse parameters as a dictionary.")
-                logger.error("Line is: ")
-                logger.error(line)
-                continue
-
-            # Now read in parameters. To do this, define templates for
-            # expected fields and data types for each type of
-            # configuration. Check to match these.
-
-            if this_type == "interf_config":
-                expected_params = {
-                    'array_tags':[],
-                    'res_min_arcsec':0.0,
-                    'res_max_arcsec':0.0,
-                    'res_step_factor':1.0,
-                    'clean_scales_arcsec':[]}
-
-            if this_type == "feather_config":
-                expected_params = {
-                    'interf_config':'',
-                    'res_min_arcsec':0.0,
-                    'res_max_arcsec':0.0,
-                    'res_step_factor':1.0}
-
-            if this_type == "line_product":
-                expected_params = {
-                    'line_tag':'',
-                    'channel_kms':0.0}
-                
-            if this_type == "cont_product":
-                expected_params = {
-                    'lines_to_flag':[]}                
-
-            # Check configs for expected name and data type
-                
-            for this_key in this_params_dict.keys():
-                if this_key not in expected_params.keys():
-                    logger.error('Got an unexpected parameter key.')
-                    logger.error('Line is:')
-                    logger.error(line)
-                    continue
-                if type(this_params_dict[this_key]) != type(expected_params[this_key]):
-                    logger.error('Got an unexpected parameter type for parameter '+str(this_key))
-                    logger.error('Line is:')
-                    logger.error(line)
-                    continue
-                if this_key in self._config_dict[this_type][this_value].keys():
-                    logger.debug("Got a repeat parameter definition for "+this_type+" "+this_value)
-                    logger.debug("Parameter "+this_key+" repeats. Using the latest value.")
-                    
-                self._config_dict[this_type][this_value][this_key] = this_params_dict[this_key]
-
-            lines_read += 1
-
-        infile.close()
-
-        # Can add more error checking here.
-
-        logger.info("Read "+str(lines_read)+" lines into the configuration definition dictionary.")
-
-        return()
-
-    def _read_linmos_keys(self):
-        """
-        Read all of the linear mosaic keys.
-        """
-
-        self._linmos_dict = {}
-        for this_key in self._linmos_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_linmos_key(fname=this_fname)
-
-        return()
-
-    def _read_one_linmos_key(self, fname=None):
-        """
-        Read one file containing the assignments of targets to linear
-        mosaics. Called by read_linmos_keys().
-        """
-
-        logger.info("Reading a linear mosaic assignment key.")
-        logger.info("Reading: "+fname)
-                
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
-
-        infile = open(fname, 'r')
-            
-        lines_read = 0
-        while True:
-            line  = infile.readline()    
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
-                continue
-            words = line.split()
-
-            if len(words) != 2:
-                logger.warning("Skipping line because it does not match linmos key format.")
-                logger.warning("Format is space delimited: mosaic_target assigned_target .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_mosaic_name = words[0]
-            this_target_name = words[1]
-    
-            # Initialize the dictionary the first time we get a result.
-            if self._linmos_dict is None:
-                self._linmos_dict = {}
-
-            if this_mosaic_name not in self._linmos_dict.keys():
-                self._linmos_dict[this_mosaic_name] = [this_target_name]
-            else:
-                current_targets = self._linmos_dict[this_mosaic_name]
-                if this_target_name not in current_targets:
-                    current_targets.append(this_target_name)
-                self._linmos_dict[this_mosaic_name] = current_targets
-
-            lines_read += 1
-
-        infile.close()
-
-        logger.info("Read "+str(lines_read)+" lines into the linear mosaic definition dictionary.")
-
-        return()
-
-    def _read_imaging_keys(self):
-        """
-        Read all of the imaging keys.
-        """
-
-        self._imaging_dict = {}
-        for this_key in self._imaging_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_imaging_key(fname=this_fname)
-
-        return()
-
-    def _read_one_imaging_key(self, fname=None):
-        """
-        Read one file of imaging recipe keys.
-        """
-
-        logger.info("Reading an imaging recipe key.")
-        logger.info("Reading: "+fname)
-        
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
-
-        infile = open(fname, 'r')
-
-        # Initialize the dictionary to have an entry for each
-        # interferometric config and product and stage.
-
-        if self._imaging_dict is None:
-            if self._config_dict is None:
-                logger.error("I can't initialize the imaging recipes before the configurations.")
-                return(None)
-
-        self._imaging_dict = {}
-
-        # Loop over configs
-        for this_config in self.get_interf_configs():
-            self._imaging_dict[this_config] = {}
-
-            # Loop over line products
-            for this_product in self.get_line_products():
-                self._imaging_dict[this_config][this_product] = {}
-                # Loop over stages
-                for this_stage in VALID_IMAGING_STAGES:
-                    self._imaging_dict[this_config][this_product][this_stage] = []
-
-            # Loop over continuum products
-            for this_product in self.get_continuum_products():
-                self._imaging_dict[this_config][this_product] = {}
-                # Loop over stages
-                for this_stage in VALID_IMAGING_STAGES:
-                    self._imaging_dict[this_config][this_product][this_stage] = []
-
-        lines_read = 0
-        while True:
-            line = infile.readline()    
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
-                continue
-
-            words = line.split()
-            if len(words) != 4:
-                logger.warning("Skipping line because it does not match imaging recipe format.")
-                logger.warning("Format is space delimited: config product stage recipe .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_config = words[0]
-            this_product = words[1]
-            this_stage = words[2]
-            this_recipe = words[3]
+            this_config, this_product, this_stage, this_recipe = \
+                key_readers.parse_one_line(line, delim=delim)
 
             if this_config.lower() != 'all':
                 if this_config not in self.get_interf_configs():
@@ -949,143 +477,57 @@ class KeyHandler:
     
         return()
 
-    def _read_override_keys(self):
-        """
-        Read all of the override keys.
-        """
 
-        self._override_dict = {}
-        for this_key in self._override_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_override_key(fname=this_fname)
+# Mostly these wrap around the programs in utilsKeyReaders , which
+# parse individual key files into dictionaries.        
 
-        return()
-
-    def _read_one_override_key(self, fname=None):
+    def _read_all_keys(self):
         """
-        Read one file of hand-set overrides. Called by read_override_keys().
+        Read the other keys into dictionary attributes.
         """
 
-        logger.info("Reading a keyword override key.")
-        logger.info("Reading: "+fname)
-        
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
+        self._ms_dict = key_readers.batch_read(
+            key_list=self._ms_keys, reader_function=key_readers.read_ms_key,
+            key_dir=self._key_dir)
 
-        infile = open(fname, 'r')
+        self._cleanmask_dict = key_readers.batch_read(
+            key_list=self._cleanmask_keys, reader_function=key_readers.read_cleanmask_key,
+            key_dir=self._key_dir)
 
-        lines_read = 0
-        while True:
-            line = infile.readline()    
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
-                continue
+        self._sd_dict = key_readers.batch_read(
+            key_list=self._sd_keys, reader_function=key_readers.read_singledish_key,
+            key_dir=self._key_dir)
 
-            words = line.split()
-            if len(words) != 3:
-                logger.warning("Skipping line because it does not match override format.")
-                logger.warning("Format is space delimited: vis_file param new_value .")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
+        self._config_dict = key_readers.batch_read(
+            key_list=self._config_keys, reader_function=key_readers.read_config_key,
+            key_dir=self._key_dir)
 
-            this_target = words[0]
-            this_param = words[1]
-            this_value = words[2]
+        self._target_dict = key_readers.batch_read(
+            key_list=self._target_keys, reader_function=key_readers.read_target_key,
+            key_dir=self._key_dir)
 
-            # Initialize the dictionary the first time we get a result
-            if self._override_dict is None:
-                self._override_dict = {}
+        self._linmos_dict = key_readers.batch_read(
+            key_list=self._linmos_keys, reader_function=key_readers.read_linmos_key,
+            key_dir=self._key_dir)
 
-            if this_target not in self._override_dict.keys():
-                self._override_dict[this_target] = {}
-            self._override_dict[this_target][this_param] = this_value
-            lines_read += 1
+        self._dir_for_target = key_readers.batch_read(
+            key_list=self._dir_keys, reader_function=key_readers.read_dir_key,
+            key_dir=self._key_dir)
 
-        infile.close()
+        self._initialize_imaging_dict()
+        self._imaging_dict = key_readers.batch_read(
+            key_list=self._imaging_keys, reader_function=self._read_imaging_key,
+            key_dir=self._key_dir, existing_dict=self._imaging_dict)
 
-        logger.info("Read "+str(lines_read)+" lines into the override dictionary.")
-    
-        return()
-
-    def _read_cleanmask_keys(self):
-        """
-        Read all of the clean mask keys.
-        """
-
-        self._cleanmask_dict = {}
-        for this_key in self._cleanmask_keys:
-            this_fname = self._key_dir + this_key
-            if os.path.isfile(this_fname) is False:
-                logger.error("I tried to read key "+this_fname+" but it does not exist.")
-                return()
-            self._read_one_cleanmask_key(fname=this_fname)
-
-        return()
-
-    def _read_one_cleanmask_key(self,fname=None):
-        """
-        Read one cleanmask key. Called by read_cleanmask_keys()
-        """
-
-        logger.info("Reading a cleanmask key.")
-        logger.info("Reading: "+fname)
-                
-        # should not get to this, but check just in case
-        if os.path.isfile(fname) is False:
-            self.update_files()
-            return()
-
-        infile = open(fname, 'r')
-
-        lines_read = 0
-        while True:
-
-            line = infile.readline()    
-
-            if len(line) == 0:
-                break
-
-            if line[0] == '#' or line == '\n':
-                continue
-
-            words = line.split()
-
-            if len(words) != 3:
-                logger.warning("Skipping line because it does not match cleanmask format.")
-                logger.warning("Format is space delimited: target product/line filename.")
-                logger.warning("Line is: ")
-                logger.warning(line)
-                continue
-
-            this_target = words[0]
-            this_product = words[1]
-            this_file = words[2]
-
-            # Initialize the dictionary the first time we get a result.
-            if self._cleanmask_dict is None:
-                self._cleanmask_dict = {}
-        
-            if this_target not in self._cleanmask_dict.keys():
-                self._cleanmask_dict[this_target] = {}
-
-            self._cleanmask_dict[this_target][this_product] = this_file
-            lines_read += 1
-
-        infile.close()
-
-        logger.info("Read "+str(lines_read)+" lines into the clean mask dictionary.")
-    
-        return()
-
+        self._override_dict = key_readers.batch_read(
+            key_list=self._override_keys, reader_function=key_readers.read_override_key,
+            key_dir=self._key_dir)
 
 #endregion
+
+##############################################################
+# LINKING AND KEY BUILDING
+##############################################################
 
 #region Programs to cross-link and build internal structures
 
@@ -1284,20 +726,21 @@ class KeyHandler:
         for target in self._ms_dict.keys():
             for project_tag in self._ms_dict[target].keys():
                 for array_tag in self._ms_dict[target][project_tag].keys():                    
-                    found = False
-                    local_found_count = 0
-                    for ms_root in self._ms_roots:
-                        this_ms = ms_root + self._ms_dict[target][project_tag][array_tag]
-                        if os.path.isdir(this_ms):
-                            found = True
-                            found_count += 1
-                            local_found_count += 1
-                    if local_found_count > 1:                        
-                        logger.error("Found multiple copies of ms for "+target+" "+project_tag+" "+array_tag)
-                    if found:
-                        continue
-                    missing_count += 1
-                    logger.error("Missing ms for "+target+" "+project_tag+" "+array_tag)
+                    for obs_tag in self._ms_dict[target][project_tag][array_tag].keys():
+                        found = False
+                        local_found_count = 0
+                        for ms_root in self._ms_roots:
+                            this_ms = ms_root + self._ms_dict[target][project_tag][array_tag][obs_tag]['file']
+                            if os.path.isdir(this_ms):
+                                found = True
+                                found_count += 1
+                                local_found_count += 1
+                            if local_found_count > 1:                        
+                                logger.error("Found multiple copies of ms for "+target+" "+project_tag+" "+array_tag)
+                        if found:
+                            continue
+                        missing_count += 1
+                        logger.error("Missing ms for "+target+" "+project_tag+" "+array_tag)
         
         logger.info("Verified the existence of "+str(found_count)+" measurement sets.")
         if missing_count == 0:
@@ -1494,7 +937,7 @@ class KeyHandler:
         alphabetically after first and before last.
         """
         this_target_list = \
-            utils.select_from_list(self._target_list, first=first, last=last \
+            list_utils.select_from_list(self._target_list, first=first, last=last \
                                        , skip=skip, only=only, loose=True)
         return(this_target_list)
 
@@ -1513,7 +956,7 @@ class KeyHandler:
                 targets_with_ms.append(target)
 
         this_target_list = \
-            utils.select_from_list(targets_with_ms, first=first, last=last \
+            list_utils.select_from_list(targets_with_ms, first=first, last=last \
                                        , skip=skip, only=only, loose=True)
         return(this_target_list)
 
@@ -1530,7 +973,7 @@ class KeyHandler:
         mosaic_targets = list(self._linmos_dict.keys())
 
         this_target_list = \
-            utils.select_from_list(mosaic_targets, first=first, last=last \
+            list_utils.select_from_list(mosaic_targets, first=first, last=last \
                                        , skip=skip, only=only, loose=True)
         return(this_target_list)
 
@@ -1545,7 +988,7 @@ class KeyHandler:
         alphabetically after first and before last.
         """
         this_whole_target_list = \
-            utils.select_from_list(self._whole_target_list, first=first, last=last \
+            list_utils.select_from_list(self._whole_target_list, first=first, last=last \
                                        , skip=skip, only=only, loose=True)
         return(this_whole_target_list)
 
@@ -1562,7 +1005,7 @@ class KeyHandler:
             return(None)
         interf_configs = self._config_dict['interf_config'].keys()
         this_list = \
-            utils.select_from_list(interf_configs, skip=skip, only=only, loose=True)
+            list_utils.select_from_list(interf_configs, skip=skip, only=only, loose=True)
         return(this_list)
 
     def get_feather_configs(self, only=None, skip=None):
@@ -1579,7 +1022,7 @@ class KeyHandler:
             return(None)
         feather_configs = self._config_dict['feather_config'].keys()
         this_list = \
-            utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
+            list_utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
         return(this_list)
 
     def get_line_products(self, only=None, skip=None):
@@ -1596,7 +1039,7 @@ class KeyHandler:
             return(None)
         line_products = self._config_dict['line_product'].keys()
         this_list = \
-            utils.select_from_list(line_products, skip=skip, only=only, loose=True)
+            list_utils.select_from_list(line_products, skip=skip, only=only, loose=True)
         return(this_list)
 
     def get_continuum_products(self, only=None, skip=None):
@@ -1612,7 +1055,7 @@ class KeyHandler:
             return(None)
         cont_products = self._config_dict['cont_product'].keys()
         this_list = \
-            utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
+            list_utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
         return(this_list)
 
     def is_target_linmos(self, target=None):
@@ -2116,7 +1559,7 @@ class KeyHandler:
         last_found_file = None
         for this_root in self._sd_roots:
             this_fname = this_root + this_dict[product]
-            if os.path.isfile(this_fname) or os.path.isdir(this_file):
+            if os.path.isfile(this_fname) or os.path.isdir(this_fname):
                 found = True
                 found_count += 1
                 last_found_file = this_fname
@@ -2169,7 +1612,7 @@ class KeyHandler:
         last_found_file = None
         for this_root in self._cleanmask_roots:
             this_fname = this_root + this_dict[this_product]
-            if os.path.isfile(this_fname) or os.path.isdir(this_file):
+            if os.path.isfile(this_fname) or os.path.isdir(this_fname):
                 found = True
                 found_count += 1
                 last_found_file = this_fname

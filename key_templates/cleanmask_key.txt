@@ -45,7 +45,7 @@ ngc0253_1	all	ngc0253_co21_clean_mask.fits
 ngc0253_2	all	ngc0253_co21_clean_mask.fits
 ngc0253_3	all	ngc0253_co21_clean_mask.fits
 ngc0253_4	all	ngc0253_co21_clean_mask.fits
-ngc0253_4	all	ngc0253_co21_clean_mask.fits
+ngc0253_5	all	ngc0253_co21_clean_mask.fits
 ngc0300		all	ngc0300_co21_clean_mask.fits
 ngc0300_1	all	ngc0300_co21_clean_mask.fits
 ngc0300_2	all	ngc0300_co21_clean_mask.fits
@@ -62,7 +62,7 @@ ngc1300_2	all	ngc1300_co21_clean_mask.fits
 ngc1313		all	ngc1313_co21_clean_mask.fits
 ngc1313_1	all	ngc1313_co21_clean_mask.fits
 ngc1313_2	all	ngc1313_co21_clean_mask.fits
-ngc1313_2	all	ngc1313_co21_clean_mask.fits
+ngc1313_3	all	ngc1313_co21_clean_mask.fits
 ngc1317		all	ngc1317_co21_clean_mask.fits
 ngc1365		all	ngc1365_co21_clean_mask.fits
 ngc1385		all	ngc1385_co21_clean_mask.fits

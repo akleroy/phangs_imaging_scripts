@@ -24,7 +24,7 @@
 # Column 1 : "type of field"
 # ------------------------------------------------------------------------
 
-This must be one of the following:
+# This must be one of the following:
 
 # "line_product" : a spectral line imaging product (e.g., "lowresCO21")
 
