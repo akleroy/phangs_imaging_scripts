@@ -7,7 +7,7 @@ Standalone routines related to CASA imaging.
 import os
 import numpy as np
 import pyfits # CASA has pyfits, not astropy
-import glob, copy
+import glob, copy, inspect
 
 import logging
 logger = logging.getLogger(__name__)
@@ -469,6 +469,7 @@ def eval_niter(
 def clean_loop(
     clean_call=None,
     record_file=None,
+    suffix='', 
     log_ext=None,
     niter_base_perchan = 10,
     niter_growth_model = 'geometric', 
@@ -522,7 +523,12 @@ def clean_loop(
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
-
+    
+    if suffix == '':
+        if clean_call.has_param('specmode'):
+            if clean_call.get_param('specmode') == 'mfs':
+                suffix = '.tt0'
+    
     valid_model_types = ['fixed', 'geometric','linear','sequence','expr']
     for growth_model in [niter_growth_model.lower(), cycleniter_growth_model.lower()]:
         if growth_model not in valid_model_types:
@@ -539,7 +545,7 @@ def clean_loop(
     # force_dirt_image is set to True.
     
     missing_image = True
-    if os.path.isdir(clean_call.get_param('imagename')+'.residual'):
+    if os.path.isdir(clean_call.get_param('imagename')+'.residual'+suffix):
         missing_image = False
 
     if missing_image or force_dirty_image:
@@ -610,7 +616,7 @@ def clean_loop(
         # iterations should be quite robust).
         
         current_noise = cmr.noise_for_cube(
-            infile=working_call.get_param('imagename')+'.residual',
+            infile=working_call.get_param('imagename')+'.residual'+suffix,
             method='chauvmad', niter=5)
 
         # Set the threshold for the clean call. Clean expects a value
@@ -639,7 +645,9 @@ def clean_loop(
             logger.info("")
             signal_mask(
                 cube_root=working_call.get_param('imagename'),
-                out_file=working_call.get_param('imagename')+'.mask',
+                out_file=working_call.get_param('imagename')+'.mask'+suffix,
+                suffix_in=suffix, 
+                suffix_out=suffix, 
                 operation='AND',
                 high_snr=4.0,
                 low_snr=2.0,
@@ -666,7 +674,7 @@ def clean_loop(
         # Calculate the new model flux and the change relative to the
         # previous step, normalized by current flux and by iterations.
 
-        model_stats = cmr.stat_cube(working_call.get_param('imagename')+'.model')
+        model_stats = cmr.stat_cube(working_call.get_param('imagename')+'.model'+suffix)
 
         previous_flux = current_flux
         current_flux = model_stats['sum'][0]

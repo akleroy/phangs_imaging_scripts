@@ -128,7 +128,10 @@ class CleanCall:
         Set the refrence frequency used in continuum imaging. Expects
         a value in GHz.
         """
-        self.clean_params['reffreq']=str(value)+'GHz'
+        if value is not None:
+            self.clean_params['reffreq']=str(value)+'GHz'
+        else:
+            self.clean_params['reffreq']=''
         return()
     
     def set_multiscale_arcsec(self, scales=[]):
@@ -147,7 +150,7 @@ class CleanCall:
             scales_in_pix.append(this_scale_pix)
 
         scales_in_pix.sort()
-        self.clean_params['scales'] = scales_in_pix
+        self.clean_params['scales'] = [int(t) for t in scales_in_pix]
 
     def set_round_uvtaper_arcsec(self, taper=0.0):
         """

@@ -110,6 +110,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         is_line_product = product in self._kh.get_line_products()
         if is_line_product:
             fname_dict['root'] = imagename
+            fname_dict['suffix'] = ''
             fname_dict['image'] = imagename+'.image'
             fname_dict['model'] = imagename+'.model'
             fname_dict['residual'] = imagename+'.residual'
@@ -120,6 +121,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             fname_dict['sumwt'] = imagename+'.sumwt'
         else:
             fname_dict['root'] = imagename
+            fname_dict['suffix'] = '.tt0'
             fname_dict['image'] = imagename+'.image.tt0'
             fname_dict['model'] = imagename+'.model.tt0'
             fname_dict['residual'] = imagename+'.residual.tt0'
@@ -309,7 +311,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             rest_freq_ghz = line_list.line_list[this_line_tag]
             clean_call.set_restfreq_ghz(rest_freq_ghz)
         else:
-            clean_call.set_reffreq_ghz(-1.0)
+            clean_call.set_reffreq_ghz(None)
 
         return(clean_call)
     
@@ -519,9 +521,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         image as {imagename}_multiscale.image
         """
         
-        if clean_call.get_param('deconvolver') != 'multiscale':
-            logger.warning("I expected a multiscale deconvolver.")
-            raise Exception("Incorrect clean call! Should have a multiscale deconvolver.")
+        if clean_call.get_param('deconvolver') not in ['multiscale','mtmfs']:
+            logger.warning("I expected a multiscale or mtmfs deconvolver.")
+            raise Exception("Incorrect clean call! Should have a multiscale or mtmfs deconvolver.")
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -573,6 +575,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     def task_singlescale_mask(
         self, 
         clean_call = None, 
+        product = None, 
         ):
         """
         Create a signal-to-noise based mask within the existing clean
@@ -603,6 +606,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # signal_mask
         msr.signal_mask(cube_root=fname_dict['root'],
                         out_file=fname_dict['mask'],
+                        suffix_in=fname_dict['suffix'], 
+                        suffix_out=fname_dict['suffix'], 
                         operation='AND',
                         high_snr=4.0,
                         low_snr=2.0,
@@ -843,7 +848,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if do_singlescale_mask:
             
-            self.task_singlescale_mask(clean_call=clean_call)
+            self.task_singlescale_mask(clean_call=clean_call, product = product)
 
         # Run a singlescale clean until it converges.
 

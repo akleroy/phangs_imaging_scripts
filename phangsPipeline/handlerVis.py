@@ -270,12 +270,16 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                                                                 )
                 if this_chanwidth is None:
                     this_chanwidth = np.nan
-                all_chanwidths.append(this_chanwidth)
+                if np.isscalar(this_chanwidth):
+                    this_chanwidth = [this_chanwidth]
+                else:
+                    this_chanwidth = this_chanwidth.flatten()
+                all_chanwidths.extend(this_chanwidth)
                 logger.debug('Computed channel width '+str(this_chanwidth)+' km/s in "'+this_ms_filename+'" for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
         # 
         # take the coarsest chanwidth as the common_chanwidth
         if not self._dry_run:
-            common_chanwidth = np.nanmax(np.array(all_chanwidths).flatten())
+            common_chanwidth = np.nanmax(all_chanwidths)
         else:
             common_chanwidth = 5.0 #<TODO><DEBUG>#
         logger.debug('Common channel width '+str(common_chanwidth)+' km/s for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))

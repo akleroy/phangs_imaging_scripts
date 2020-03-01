@@ -295,7 +295,7 @@ def signal_mask(
 
     os.system('rm -rf '+cube_root+'.mask'+suffix_out)
     os.system('cp -r '+cube_root+'.image'+suffix_in+' '+cube_root+'.mask'+suffix_out)
-    myia.open(cube_root+'.mask')
+    myia.open(cube_root+'.mask'+suffix_out)
     myia.putchunk(mask.astype(int)) #<TODO><DL># modified mask --> mask.astype(int)
     myia.close()
 
@@ -343,54 +343,125 @@ def import_and_align_mask(
     """
 
     # Import from FITS (could make optional)
-    os.system('rm -rf '+out_file+'.temp_copy')
+    os.system('rm -rf '+out_file+'.temp_copy'+' 2>/dev/null')
+    logger.debug('Importing mask file: "'+in_file+'"')
     casaStuff.importfits(fitsimage=in_file, 
-               imagename=out_file+'.temp_copy'
-               , overwrite=True)
-
+               imagename=out_file+'.temp_copy', 
+               overwrite=True)
+    
+    # Prepare analysis utility tool
+    myia = au.createCasaTool(casaStuff.iatool)
+    myim = au.createCasaTool(casaStuff.imtool)
+    
+    # Read mask data
+    #myia.open(out_file+'.temp_copy')
+    #mask = myia.getchunk(dropdeg=True)
+    #myia.close()
+    #print('**********************')
+    #print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # note that here the mask is in F dimension order, not Pythonic.
+    #print(np.max(mask), np.min(mask))
+    #print('**********************')
+    
+    # Read template image header
+    hdr = casaStuff.imhead(template)
+    #print('hdr', hdr)
+    
+    maskhdr = casaStuff.imhead(out_file+'.temp_copy')
+    #print('maskhdr', maskhdr)
+    
+    # Check if 2D or 3D
+    logger.debug('Template data axis names: '+str(hdr['axisnames'])+', shape: '+str(hdr['shape']))
+    logger.debug('Mask data axis names: '+str(maskhdr['axisnames'])+', shape: '+str(maskhdr['shape']))
+    is_template_2D = (np.prod(list(hdr['shape'])) == np.prod(list(hdr['shape'])[0:2]))
+    is_mask_2D = (np.prod(list(maskhdr['shape'])) == np.prod(list(maskhdr['shape'])[0:2]))
+    if is_template_2D and not is_mask_2D:
+        logger.debug('Template image is 2D but mask is 3D, collapsing the mask over channel axes: '+str(np.arange(maskhdr['ndim']-1, 2-1, -1)))
+        # read mask array
+        myia.open(out_file+'.temp_copy')
+        mask = myia.getchunk(dropdeg=True)
+        myia.close()
+        #print('**********************')
+        #print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
+        #print('**********************')
+        # 
+        # collapse channel and higher axes
+        #mask = np.any(mask.astype(int).astype(bool), axis=np.arange(maskhdr['ndim']-1, 2-1, -1)) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
+        #mask = mask.astype(int)
+        #while len(mask.shape) < len(hdr['shape']):
+        #    mask = np.expand_dims(mask, axis=len(mask.shape)) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
+        #print('**********************')
+        #print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
+        #print('**********************')
+        #os.system('rm -rf '+out_file+'.temp_collapsed'+' 2>/dev/null')
+        ##myia.open(out_file+'.temp_copy')
+        #newimage = myia.newimagefromarray(outfile=out_file+'.temp_collapsed', pixels=mask.astype(int), overwrite=True)
+        #newimage.done()
+        #myia.close()
+        # 
+        # collapse channel and higher axes
+        os.system('rm -rf '+out_file+'.temp_collapsed'+' 2>/dev/null')
+        myia.open(out_file+'.temp_copy')
+        collapsed = myia.collapse(outfile=out_file+'.temp_collapsed', function='max', axes=np.arange(maskhdr['ndim']-1, 2-1, -1))
+        collapsed.done()
+        myia.close()
+        # ia tools -- https://casa.nrao.edu/docs/CasaRef/image-Tool.html
+        os.system('rm -rf '+out_file+'.temp_copy'+' 2>/dev/null')
+        os.system('cp -r '+out_file+'.temp_collapsed'+' '+out_file+'.temp_copy'+' 2>/dev/null')
+        os.system('rm -rf '+out_file+'.temp_collapsed'+' 2>/dev/null')
+    
     # Align to the template grid
-    os.system('rm -rf '+out_file+'.temp_aligned')
+    os.system('rm -rf '+out_file+'.temp_aligned'+' 2>/dev/null')
     casaStuff.imregrid(imagename=out_file+'.temp_copy', 
-             template=template, 
-             output=out_file+'.temp_aligned', 
-             asvelocity=True,
-             interpolation='nearest',         
-             replicate=False,
-             overwrite=True)
+                template=template, 
+                output=out_file+'.temp_aligned', 
+                asvelocity=True,
+                interpolation='nearest',         
+                replicate=False,
+                overwrite=True)
 
     # Make an EXACT copy of the template, avoids various annoying edge cases
-    os.system('rm -rf '+out_file)
-    myim = au.createCasaTool(casaStuff.imtool)
+    os.system('rm -rf '+out_file+' 2>/dev/null')
     myim.mask(image=template, mask=out_file)
-
-    hdr = casaStuff.imhead(template)
-
+    
     # Pull the data out of the aligned mask and place it in the output file
-    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(out_file+'.temp_aligned')
     mask = myia.getchunk(dropdeg=True)
     myia.close()
-
+    
+    # 
+    if is_template_2D and not is_mask_2D:
+        while len(mask.shape) < len(hdr['shape']):
+            mask = np.expand_dims(mask, axis=len(mask.shape))
+        #print('**********************')
+        #print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
+        #print('**********************')
+    
+    myia.open(out_file)
+    data = myia.getchunk(dropdeg=False)
+    data = mask
+    myia.putchunk(data)
+    myia.close()
+    
     # Need to make sure this works for two dimensional cases, too.
-    if (hdr['axisnames'][3] == 'Frequency') and \
-            (hdr['ndim'] == 4):
-        myia.open(out_file)
-        data = myia.getchunk(dropdeg=False)
-        data[:,:,0,:] = mask
-        myia.putchunk(data)
-        myia.close()
-    elif (hdr['axisnames'][2] == 'Frequency') and \
-            (hdr['ndim'] == 4):
-        myia.open(mask_root+'.mask')
-        data = myia.getchunk(dropdeg=False)
-        data[:,:,:,0] = mask
-        myia.putchunk(data)
-        myia.close()
-    else:
-        logger.info("ALERT! Did not find a case.")
+    #if (hdr['axisnames'][3] == 'Frequency') and \
+    #        (hdr['ndim'] == 4):
+    #    myia.open(out_file)
+    #    data = myia.getchunk(dropdeg=False)
+    #    data[:,:,0,:] = mask
+    #    myia.putchunk(data)
+    #    myia.close()
+    #elif (hdr['axisnames'][2] == 'Frequency') and \
+    #        (hdr['ndim'] == 4):
+    #    myia.open(out_file)
+    #    data = myia.getchunk(dropdeg=False)
+    #    data[:,:,:,0] = mask
+    #    myia.putchunk(data)
+    #    myia.close()
+    #else:
+    #    logger.info("ALERT! Did not find a case.")
 
-    os.system('rm -rf '+out_file+'.temp_copy')
-    os.system('rm -rf '+out_file+'.temp_aligned')
+    os.system('rm -rf '+out_file+'.temp_copy'+' 2>/dev/null')
+    os.system('rm -rf '+out_file+'.temp_aligned'+' 2>/dev/null')
     return()
 
 #endregion
