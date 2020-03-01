@@ -93,7 +93,46 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         
         # inherit template class
         handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
-        
+    
+    ###############
+    # _fname_dict #
+    ###############
+    
+    def _fname_dict(
+        self, 
+        product, 
+        imagename, 
+        ):
+        """
+        Handles file names used in the imaging processes.
+        """
+        fname_dict = {}
+        is_line_product = product in self._kh.get_line_products()
+        if is_line_product:
+            fname_dict['root'] = imagename
+            fname_dict['image'] = imagename+'.image'
+            fname_dict['model'] = imagename+'.model'
+            fname_dict['residual'] = imagename+'.residual'
+            fname_dict['mask'] = imagename+'.mask'
+            fname_dict['pb'] = imagename+'.pb'
+            fname_dict['psf'] = imagename+'.psf'
+            fname_dict['weight'] = imagename+'.weight'
+            fname_dict['sumwt'] = imagename+'.sumwt'
+        else:
+            fname_dict['root'] = imagename
+            fname_dict['image'] = imagename+'.image.tt0'
+            fname_dict['model'] = imagename+'.model.tt0'
+            fname_dict['residual'] = imagename+'.residual.tt0'
+            fname_dict['mask'] = imagename+'.mask.tt0'
+            fname_dict['pb'] = imagename+'.pb.tt0'
+            fname_dict['psf'] = imagename+'.psf.tt0'
+            fname_dict['weight'] = imagename+'.weight.tt0'
+            fname_dict['sumwt'] = imagename+'.sumwt.tt0'
+            fname_dict['alpha'] = imagename+'.alpha'
+            fname_dict['beta'] = imagename+'.beta'
+        return fname_dict
+    
+    
     ################
     # loop_imaging #
     ################
@@ -432,7 +471,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         if product is None:
             logger.warning("Require a product. Returning.")
             return()
-
+        
         # Could add an error check here that the template imaging exists
 
         this_cleanmask = self._kh.get_cleanmask_filename(target = target, product = product)
@@ -448,12 +487,20 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info('To '+clean_call.get_param('imagename'))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-            
-        if (not self._dry_run) and (casa_enabled):
-            msr.import_and_align_mask(in_file=this_cleanmask, \
-                                          out_file=clean_call.get_param('imagename')+'.mask', \
-                                          template=clean_call.get_param('imagename')+'.image')
-            clean_call.set_param('usemask','user')
+        
+        if self._dry_run:
+            return()
+        if not casa_enabled:
+            return()
+
+        # Get fname dict
+        fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
+        
+        # import_and_align_mask
+        msr.import_and_align_mask(in_file=this_cleanmask, \
+                                  out_file=fname_dict['mask'], \
+                                  template=fname_dict['image'])
+        clean_call.set_param('usemask','user')
 
         return()
     
@@ -550,8 +597,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         if not casa_enabled:
             return()
 
-        msr.signal_mask(cube_root=clean_call.get_param('imagename'),
-                        out_file=clean_call.get_param('imagename')+'.mask',
+        # Get fname dict
+        fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
+
+        # signal_mask
+        msr.signal_mask(cube_root=fname_dict['root'],
+                        out_file=fname_dict['mask'],
                         operation='AND',
                         high_snr=4.0,
                         low_snr=2.0,

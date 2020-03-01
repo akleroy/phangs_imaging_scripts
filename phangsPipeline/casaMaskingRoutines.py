@@ -219,6 +219,8 @@ def stat_cube(
 def signal_mask(
     cube_root=None,
     out_file=None,
+    suffix_in='',
+    suffix_out='',
     operation='AND',
     high_snr = 4.0,
     low_snr = 2.0,
@@ -229,16 +231,16 @@ def signal_mask(
     fly during imaging. Leverages CASA statistics and scipy.
     """
     
-    if os.path.isdir(cube_root+'.image') == False:
-        logger.error('Data file not found: "'+cube_root+'.image'+'"')
+    if os.path.isdir(cube_root+'.image'+suffix_in) == False:
+        logger.error('Data file not found: "'+cube_root+'.image'+suffix_in+'"')
         logger.info('Need CUBE_ROOT.image to be an image file.')
         logger.info('Returning. Generalize the code if you want different syntax.')
         return
 
     myia = au.createCasaTool(casaStuff.iatool)
     if operation == 'AND' or operation == 'OR':
-        if os.path.isdir(cube_root+'.mask') == True:
-            myia.open(cube_root+'.mask')
+        if os.path.isdir(cube_root+'.mask'+suffix_in) == True:
+            myia.open(cube_root+'.mask'+suffix_in)
             old_mask = myia.getchunk()
             myia.close()
         else:
@@ -246,21 +248,21 @@ def signal_mask(
             logger.info("... will set operation=NEW.")
             operation = 'NEW'    
 
-    if os.path.isdir(cube_root+'.residual') == True:
-        stats = stat_cube(cube_root+'.residual')
+    if os.path.isdir(cube_root+'.residual'+suffix_in) == True:
+        stats = stat_cube(cube_root+'.residual'+suffix_in)
     else:
-        stats = stat_cube(cube_root+'.image')
+        stats = stat_cube(cube_root+'.image'+suffix_in)
     rms = stats['medabsdevmed'][0]/0.6745
     hi_thresh = high_snr*rms
     low_thresh = low_snr*rms
 
-    header = casaStuff.imhead(cube_root+'.image')
+    header = casaStuff.imhead(cube_root+'.image'+suffix_in)
     if header['axisnames'][2] == 'Frequency':
         spec_axis = 2
     else:
         spec_axis = 3
 
-    myia.open(cube_root+'.image')
+    myia.open(cube_root+'.image'+suffix_in)
     cube = myia.getchunk()
     myia.close()
 
@@ -291,8 +293,8 @@ def signal_mask(
     if operation == 'NEW':
         mask = mask
 
-    os.system('rm -rf '+cube_root+'.mask')
-    os.system('cp -r '+cube_root+'.image '+cube_root+'.mask')
+    os.system('rm -rf '+cube_root+'.mask'+suffix_out)
+    os.system('cp -r '+cube_root+'.image'+suffix_in+' '+cube_root+'.mask'+suffix_out)
     myia.open(cube_root+'.mask')
     myia.putchunk(mask.astype(int)) #<TODO><DL># modified mask --> mask.astype(int)
     myia.close()
