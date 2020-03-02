@@ -720,6 +720,7 @@ for line_product in line_products:
     imaging_recipes_dict['recipe'] = 'cube_mosaic.clean'
     imaging_recipes_list.append(imaging_recipes_dict)
 if do_continuum:
+    imaging_recipes_dict = OrderedDict() # = {}
     imaging_recipes_dict['config'] = 'all'
     imaging_recipes_dict['product'] = 'cont'
     imaging_recipes_dict['stage'] = 'all'
