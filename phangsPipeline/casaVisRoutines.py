@@ -586,7 +586,8 @@ def extract_line(
     # build default mstransform params for combinespw
     mstransform_params_for_combinespw = {'combinespws': True, 'regridms': False, 
                                          'spw': '', 'datacolumn': 'DATA', 
-                                         'chanaverage': False }
+                                         'chanaverage': False,
+                                         'keepflags': False }
     mstransform_message_for_combinespw = 'mstransform to combine spws.'
     # 
     # first mstransform call

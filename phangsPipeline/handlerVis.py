@@ -256,6 +256,9 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
         this_ms_filenames = fname_dict['ms_filenames']
         # 
+        # get line tag for product
+        line_tag = self._kh.get_line_tag_for_line_product(product)
+        # 
         # loop ms data for the input target and config
         all_chanwidths = []
         logger.debug('Current directory: "'+os.getcwd()+'"')
@@ -264,7 +267,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             logger.debug('Computing channel width in "'+this_ms_filename+'" for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
             if not self._dry_run:
                 this_chanwidth = cvr.compute_chanwidth_for_line(in_file = this_ms_filename, 
-                                                                line = product, 
+                                                                line = line_tag, 
                                                                 vsys = vsys, 
                                                                 vwidth = vwidth, 
                                                                 )
@@ -341,6 +344,9 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         if product == '13co21': edge_for_statwt = 25
         if product == 'c18o21': edge_for_statwt = 20
         # 
+        # get line tag for product
+        line_tag = self._kh.get_line_tag_for_line_product(product)
+        # 
         # extract line for each ms data
         logger.debug('Current directory: "'+os.getcwd()+'"')
         for i in range(len(this_ms_filenames)):
@@ -355,7 +361,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                     # first regridding then rebinning
                     cvr.extract_line(in_file = this_ms_filename, 
                                      out_file = this_ms_extracted, 
-                                     line = product, 
+                                     line = line_tag, 
                                      vsys = vsys, 
                                      vwidth = vwidth, 
                                      chan_fine = interpolate_cw, 
@@ -371,7 +377,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                     # first rebinning then regridding
                     cvr.extract_line(in_file = this_ms_filename, 
                                      out_file = this_ms_extracted, 
-                                     line = product, 
+                                     line = line_tag, 
                                      vsys = vsys, 
                                      vwidth = vwidth, 
                                      chan_fine = target_chanwidth, 
@@ -389,7 +395,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                     # i.e., the spectral sawtooth issue
                     cvr.extract_line(in_file = this_ms_filename, 
                                      out_file = this_ms_extracted, 
-                                     line = product, 
+                                     line = line_tag, 
                                      vsys = vsys, 
                                      vwidth = vwidth, 
                                      chan_fine = target_chanwidth, 

@@ -464,7 +464,7 @@ def eval_niter(
         if niter >= saturation:
             niter = saturation
 
-    return(niter)
+    return int(niter)
 
 def clean_loop(
     clean_call=None,

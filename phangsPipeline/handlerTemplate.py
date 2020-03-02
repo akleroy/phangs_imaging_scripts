@@ -252,6 +252,7 @@ class HandlerTemplate:
         
         if self._kh is None:
             logger.error("Cannot build lists without a handlerKeys.")
+            raise Exception("Cannot build lists without a handlerKeys.")
             return(None)
 
         self._targets_list = self._kh.get_targets(
