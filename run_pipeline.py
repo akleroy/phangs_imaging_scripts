@@ -4,6 +4,7 @@
 # 
 
 import os, sys
+sys.path.append(os.getcwd())
 casa_enabled = (sys.argv[0].endswith('start_casa.py'))
 if not casa_enabled:
     print('Please run this script inside CASA!')

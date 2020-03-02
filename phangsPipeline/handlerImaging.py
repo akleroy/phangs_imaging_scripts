@@ -72,7 +72,6 @@ else:
 
 from clean_call import CleanCall, CleanCallFunctionDecorator
 
-import utils
 import line_list
 import handlerTemplate
 
