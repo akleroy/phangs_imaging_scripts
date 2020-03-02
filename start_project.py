@@ -95,7 +95,7 @@ if os.path.isfile(confparfile):
 
 # Prepare needed variables
 welcome_var_dict = {        'name': 'welcome', 
-                            'prompt': 'Hello, I\'m going to ask about 15 questions to setup the project, ready to go? (You can exit by pressing Ctrl+C and resume next time) [Y/N]', 
+                            'prompt': 'Hello, I\'m going to ask about 15 questions to setup the project, ready to go? \n (You can exit by pressing Ctrl+C and resume next time) [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -104,7 +104,7 @@ welcome_var_dict = {        'name': 'welcome',
                             }
 
 galaxy_name_var_dict = {    'name': 'galaxy_name', 
-                            'prompt': 'Please input a galaxy name (no whitespace)', 
+                            'prompt': '\nPlease input a galaxy name (no whitespace)', 
                             'prompt_fields': None, 
                             'regex': r'^([0-9a-zA-Z_]+)$', 
                             'func': lambda x: x.strip(), 
@@ -113,7 +113,7 @@ galaxy_name_var_dict = {    'name': 'galaxy_name',
                             }
 
 has_multipart_var_dict = {  'name': 'has_multipart', 
-                            'prompt': 'Does this galaxy have multiple mosaic observations (different phase centers)? [Y/N]', 
+                            'prompt': '\nDoes this galaxy have multiple mosaic observations (different phase centers)? [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -122,7 +122,7 @@ has_multipart_var_dict = {  'name': 'has_multipart',
                             }
 
 multipart_num_var_dict = {  'name': 'multipart_num', 
-                            'prompt': 'How many different mosaic observations are there for this galaxy? (input an integer)', 
+                            'prompt': '\nHow many different mosaic observations are there for this galaxy? (input an integer)', 
                             'prompt_fields': None, 
                             'regex': r'^([0-9]+)$', 
                             'func': lambda x: int(x), 
@@ -131,7 +131,7 @@ multipart_num_var_dict = {  'name': 'multipart_num',
                             }
 
 phase_center_var_dict = {   'name': 'phase_center', 
-                            'prompt': 'Please input R.A. and Dec. of the phase center of {} (J2000 epoch, FK5 frame)', 
+                            'prompt': '\nPlease input R.A. and Dec. of the phase center of {} (J2000 epoch, FK5 frame)\n Optimal formats: 00h00m00s +01d00m00s (HMS dms) or 0.0 0.0 (decimal degrees):\n', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([0-9hms:.+-]+) +([0-9dms:.+-]+)$', 
                             'func': lambda x: SkyCoord(re.sub(r'^([0-9hms:.+-]+) +([0-9dms:.+-]+)$', r'\1 \2', x), unit='deg'), 
@@ -140,7 +140,7 @@ phase_center_var_dict = {   'name': 'phase_center',
                             }
 
 ms_root_path_var_dict = {   'name': 'ms_root_path', 
-                            'prompt': 'Please input the root path to find all ALMA calibrated Measurement Sets for {} (no whitespace)', 
+                            'prompt': '\nPlease input the root path to find all ALMA calibrated Measurement Sets for {} (no whitespace)\n', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: os.path.abspath(x)+os.sep, 
@@ -149,7 +149,7 @@ ms_root_path_var_dict = {   'name': 'ms_root_path',
                             }
 
 ms_data_path_var_dict = {   'name': 'ms_data_path', 
-                            'prompt': 'Please input the name pattern of the ALMA calibrated Measurement Set for {} (no whitespace)', 
+                            'prompt': '\nPlease input the name pattern of the ALMA calibrated Measurement Set for {} (no whitespace).\n Use * for matching multiple MS names.\n', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: x, 
@@ -158,7 +158,7 @@ ms_data_path_var_dict = {   'name': 'ms_data_path',
                             }
 
 array_tag_var_dict = {      'name': 'array_tag', 
-                            'prompt': 'Which antenna array is used for {} (e.g., 7m or 12m, no whitespace)?', 
+                            'prompt': '\nWhich antenna array is used for {} (e.g., 7m or 12m, no whitespace)?', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: x, 
@@ -167,7 +167,7 @@ array_tag_var_dict = {      'name': 'array_tag',
                             }
 
 project_tag_var_dict = {    'name': 'project_tag', 
-                            'prompt': 'Which project tag for {} (simple project nick name, no whitespace)?', 
+                            'prompt': '\nWhich project tag for {} (simple project nick name, no whitespace)?', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: x, 
@@ -177,7 +177,7 @@ project_tag_var_dict = {    'name': 'project_tag',
 
 multi_ms_same_array_var_dict = { \
                             'name': 'multi_ms_same_array', 
-                            'prompt': 'Multiple observations found! Do they have the same array tag and project tag? [Y/N]', 
+                            'prompt': '\nMultiple observations found! Do they have the same array tag and project tag? [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -186,7 +186,7 @@ multi_ms_same_array_var_dict = { \
                             }
 
 more_ms_data_var_dict = {   'name': 'more_ms_data', 
-                            'prompt': 'More ALMA calibrated Measurement Set to add? [Y/N]', 
+                            'prompt': '\nAre there more calibrated Measurement Set to add? [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -195,7 +195,7 @@ more_ms_data_var_dict = {   'name': 'more_ms_data',
                             }
 
 galaxy_vsys_var_dict = {    'name': 'galaxy_vsys', 
-                            'prompt': 'Please input the system velocity of {} (in units of km/s)', 
+                            'prompt': '\nPlease input the system velocity of {} (in units of km/s)', 
                             'prompt_fields': ['this galaxy'], 
                             'regex': r'^([0-9eE.]+)$', 
                             'func': lambda x: float(x), 
@@ -204,7 +204,7 @@ galaxy_vsys_var_dict = {    'name': 'galaxy_vsys',
                             }
 
 galaxy_vwidth_var_dict = {  'name': 'galaxy_vwidth', 
-                            'prompt': 'Please input the expected line velocity width of {} (in units of km/s)', 
+                            'prompt': '\nPlease input the expected line velocity width of {} (in units of km/s)', 
                             'prompt_fields': ['this galaxy'], 
                             'regex': r'^([0-9eE.]+)$', 
                             'func': lambda x: float(x), 
@@ -213,7 +213,7 @@ galaxy_vwidth_var_dict = {  'name': 'galaxy_vwidth',
                             }
 
 line_products_var_dict = {  'name': 'line_products', 
-                            'prompt': 'What spectral lines to process (select from co21, 13co, c18o, CI, HI, input the selected ones in one line with whitespace separated)?', 
+                            'prompt': '\nWhat spectral lines should be processed (e.g., co21, 13co21, c18o21, CI, HI)?\n Input the selected ones in one line with whitespace separated).\n', 
                             'prompt_fields': None, 
                             'regex': r'^[^ ]+.*$', 
                             'func': lambda x: get_line_tags_for_line_products(x.split()), 
@@ -224,7 +224,7 @@ line_products_var_dict = {  'name': 'line_products',
                             # 'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
 
 channel_kms_var_dict = {    'name': 'channel_kms', 
-                            'prompt': 'Please input the targetting line channel width in velocity (in units of km/s)', 
+                            'prompt': '\nPlease input the target spectral channel width in velocity (km/s):\n', 
                             'prompt_fields': None, 
                             'regex': r'^([0-9eE.]+)$', 
                             'func': lambda x: float(x), 
@@ -233,7 +233,7 @@ channel_kms_var_dict = {    'name': 'channel_kms',
                             }
 
 do_continuum_var_dict = {   'name': 'do_continuum', 
-                            'prompt': 'Should we process continuum for {}? [Y/N]', 
+                            'prompt': '\nShould we process continuum for {}? [Y/N]', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -242,7 +242,7 @@ do_continuum_var_dict = {   'name': 'do_continuum',
                             }
 
 lines_to_flag_var_dict = {  'name': 'lines_to_flag', 
-                            'prompt': 'What spectral lines to flag for the continuum (select from co21, 13co, c18o, CI, HI, input the selected ones in one line with whitespace separated)?', 
+                            'prompt': '\nWhat spectral lines should be flagged for continuum processing (e.g., co21, 13co21, c18o21, CI, HI)?\n Input the selected ones in one line with whitespace separated):\n', 
                             'prompt_fields': None, 
                             'regex': r'^[^ ]+.*$', 
                             'func': lambda x: get_line_tags_for_line_products(x.split()), 
@@ -253,7 +253,7 @@ lines_to_flag_var_dict = {  'name': 'lines_to_flag',
                             # 'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
 
 key_dir_ok_var_dict = {     'name': 'key_dir_ok', 
-                            'prompt': 'We will take current directory as the directory to create our pipeline keys under a "phangsalma_keys" sub-directory, is that OK? [Y/N]', 
+                            'prompt': '\nWe will take current directory as the directory to create our pipeline keys under a "phangsalma_keys" sub-directory.\n Is that OK? [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -271,7 +271,7 @@ key_dir_keep_var_dict = {   'name': 'key_dir_keep',
                             }
 
 key_dir_path_var_dict = {   'name': 'key_dir', 
-                            'prompt': 'Please input your preferred configuration key directory (no whitespace)', 
+                            'prompt': '\nPlease input your preferred configuration key directory (no whitespace):\n', 
                             'prompt_fields': None, 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: os.path.abspath(x)+os.sep, 
@@ -280,7 +280,7 @@ key_dir_path_var_dict = {   'name': 'key_dir',
                             }
 
 work_dir_ok_var_dict = {    'name': 'work_dir_ok', 
-                            'prompt': 'We will take current directory as the working directory and create our "reduction" sub-directories to work inside it, is that OK? [Y/N]', 
+                            'prompt': '\nWe will take current directory as the working directory and create our "reduction" sub-directories to work inside it.\n Is that OK? [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -289,7 +289,7 @@ work_dir_ok_var_dict = {    'name': 'work_dir_ok',
                             }
 
 work_dir_path_var_dict = {  'name': 'work_dir', 
-                            'prompt': 'Please input your preferred working directory (no whitespace)', 
+                            'prompt': '\nPlease input your preferred working directory (no whitespace):\n', 
                             'prompt_fields': None, 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: os.path.abspath(x)+os.sep, 

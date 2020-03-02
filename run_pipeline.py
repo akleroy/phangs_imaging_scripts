@@ -13,12 +13,12 @@ if not casa_enabled:
 # Imports
 
 #sys.path.insert(1, )
-from phangsPipeline import handlerKeys as kh
-from phangsPipeline import handlerVis as uvh
-from phangsPipeline import handlerImaging as imh
-from phangsPipeline import handlerPostprocess as pph
-from phangsPipeline import handlerProducts as prh
-from phangsPipeline import phangsLogger as pl
+import handlerKeys as kh
+import handlerVis as uvh
+import handlerImaging as imh
+import handlerPostprocess as pph
+import handlerProducts as prh
+import phangsLogger as pl
 reload(kh)
 reload(uvh)
 reload(imh)
