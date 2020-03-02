@@ -23,7 +23,7 @@ from phangsPipeline import handlerVis as uvh
 from phangsPipeline import handlerImaging as imh
 from phangsPipeline import handlerPostprocess as pph
 
-# Reloads for debugging
+
 reload(kh)
 reload(uvh)
 reload(imh)
