@@ -258,6 +258,11 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Look up the recipes for this case
         recipe_list = self._kh.get_imaging_recipes(config=config, product=product)
+        #logger.debug('self._kh._imaging_dict = ' + str(self._kh._imaging_dict))
+        #print(self._kh._imaging_dict)
+        if recipe_list is None:
+            logger.error('Error! Could not get imaging recipe for config '+config+' product '+product+'. Please check your "imaging_recipes.txt".')
+            raise Exception('Error! Could not get imaging recipe for config '+config+' product '+product+'. Please check your "imaging_recipes.txt".')
 
         # Initialize the clean call with the appropriate recipe list
         clean_call = CleanCall(recipe_list)
