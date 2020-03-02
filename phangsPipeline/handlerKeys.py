@@ -80,6 +80,7 @@ class KeyHandler:
 
         if os.path.isfile(master_key) is False:
             logger.error("Master key "+master_key+" not found. Aborting.")
+            raise Exception("Master key "+master_key+" not found. Aborting.")
             return(False)
         pwd = os.getcwd()
         self._master_key = pwd + '/' + master_key
@@ -1291,18 +1292,13 @@ class KeyHandler:
         
         for this_target in targets:
             for this_project in self._ms_dict[this_target].keys():
-                for this_config_with_multiobs_suffix in self._ms_dict[this_target][this_project].keys():
-                    if re.match(r'^(.*)_([0-9]+)$', this_config_with_multiobs_suffix):
-                        this_arraytag = re.sub(r'^(.*)_([0-9]+)$', r'\1', this_config_with_multiobs_suffix)
-                        this_multiobs = re.sub(r'^(.*)_([0-9]+)$', r'\2', this_config_with_multiobs_suffix)
-                    else:
-                        this_arraytag = this_config_with_multiobs_suffix
-                        this_multiobs = ''
+                for this_arraytag in self._ms_dict[this_target][this_project].keys():
                     # if user has input a config, match it
                     if config is not None:
                         if not (this_arraytag in matching_arraytags):
                             continue
-                    yield this_target, this_project, this_arraytag, this_multiobs
+                    for this_multiobs in self._ms_dict[this_target][this_project][this_arraytag].keys():
+                        yield this_target, this_project, this_arraytag, this_multiobs
 
     def get_ms_filepath_for_ms_project(
         self, 
@@ -1327,23 +1323,29 @@ class KeyHandler:
             logging.error("Please specify a multiobs.")
             return None
         
-        if multiobs == '':
-            this_config_with_multiobs_suffix = arraytag
-        else:
-            this_config_with_multiobs_suffix = arraytag+'_'+multiobs
+        check_valid = False
+        if target in self._ms_dict.keys():
+            if project in self._ms_dict[target].keys():
+                if arraytag in self._ms_dict[target][project].keys():
+                    if multiobs in self._ms_dict[target][project][arraytag].keys():
+                        if 'file' in self._ms_dict[target][project][arraytag][multiobs]:
+                            check_valid = True
+        if not check_valid:
+            logger.error('No target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+' defined in "ms_file_key.txt"!')
+            raise Exception('No target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+' defined in "ms_file_key.txt"!')
         
         ms_file_path = ''
         file_paths = []
         for ms_root in self._ms_roots:
-            file_path = ms_root + self._ms_dict[target][project][this_config_with_multiobs_suffix]
+            file_path = ms_root + self._ms_dict[target][project][arraytag][multiobs]['file']
             if os.path.isdir(file_path):
                 file_paths.append(file_path)
         # make sure there is only one ms data for each 'target_project_config_multiobs.ms'
         if len(file_paths) == 0:
-            logging.warning('Could not find any ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+multiobs+'!')
+            logging.warning('Could not find any ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+'!')
         else:
             if len(file_paths) > 1:
-                logging.warning('Found multiple ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+multiobs+':\n'+'\n'.join(file_paths)+'\n'+'Returning the first one.')
+                logging.warning('Found multiple ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+':\n'+'\n'.join(file_paths)+'\n'+'Returning the first one.')
             ms_file_path = file_paths[0]
         
         return ms_file_path
@@ -1373,10 +1375,10 @@ class KeyHandler:
                                                               arraytag=this_arraytag, 
                                                               multiobs=this_multiobs)
             # 
-            if this_multiobs == '':
+            if str(this_multiobs) == '':
                 ms_filename = this_target+'_'+this_project+'_'+this_arraytag
             else:
-                ms_filename = this_target+'_'+this_project+'_'+this_arraytag+'_'+this_multiobs
+                ms_filename = this_target+'_'+this_project+'_'+this_arraytag+'_'+str(this_multiobs)
             # append to output lists
             ms_filenames.append(ms_filename) # without '.ms' suffix
             ms_filepaths.append(ms_filepath)

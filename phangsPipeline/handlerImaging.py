@@ -792,7 +792,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Read and align the clean mask to the astrometry of the image.
 
-        if do_read_clean_mask:            
+        if do_read_clean_mask: 
 
             self.task_read_clean_mask(
                 clean_call = clean_call,
@@ -806,7 +806,11 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = extra_ext_in, suffix_in = suffix_in,
             extra_ext_out = extra_ext_out,
             stage = 'multiscale')
-
+        
+        if not do_read_clean_mask: 
+            clean_call.set_param('usemask', 'pb')
+            clean_call.set_param('pbmask', 0.2)
+        
         if dynamic_sizing:
             clean_call.set_param('cell',cell,nowarning=True)
             clean_call.set_param('imsize',imsize,nowarning=True)                    

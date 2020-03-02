@@ -435,30 +435,27 @@ def import_and_align_mask(
         #print('**********************')
         #print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
         #print('**********************')
-    
-    myia.open(out_file)
-    data = myia.getchunk(dropdeg=False)
-    data = mask
-    myia.putchunk(data)
-    myia.close()
-    
-    # Need to make sure this works for two dimensional cases, too.
-    #if (hdr['axisnames'][3] == 'Frequency') and \
-    #        (hdr['ndim'] == 4):
-    #    myia.open(out_file)
-    #    data = myia.getchunk(dropdeg=False)
-    #    data[:,:,0,:] = mask
-    #    myia.putchunk(data)
-    #    myia.close()
-    #elif (hdr['axisnames'][2] == 'Frequency') and \
-    #        (hdr['ndim'] == 4):
-    #    myia.open(out_file)
-    #    data = myia.getchunk(dropdeg=False)
-    #    data[:,:,:,0] = mask
-    #    myia.putchunk(data)
-    #    myia.close()
-    #else:
-    #    logger.info("ALERT! Did not find a case.")
+        myia.open(out_file)
+        data = myia.getchunk(dropdeg=False)
+        data = mask
+        myia.putchunk(data)
+        myia.close()
+    else:
+        # Need to make sure this works for two dimensional cases, too.
+        if (hdr['axisnames'][3] == 'Frequency') and (hdr['ndim'] == 4):
+            myia.open(out_file)
+            data = myia.getchunk(dropdeg=False)
+            data[:,:,0,:] = mask
+            myia.putchunk(data)
+            myia.close()
+        elif (hdr['axisnames'][2] == 'Frequency') and (hdr['ndim'] == 4):
+            myia.open(out_file)
+            data = myia.getchunk(dropdeg=False)
+            data[:,:,:,0] = mask
+            myia.putchunk(data)
+            myia.close()
+        else:
+            logger.info("ALERT! Did not find a case.")
 
     os.system('rm -rf '+out_file+'.temp_copy'+' 2>/dev/null')
     os.system('rm -rf '+out_file+'.temp_aligned'+' 2>/dev/null')
