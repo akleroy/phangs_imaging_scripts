@@ -24,6 +24,31 @@ else:
     from configparser import ConfigParser
     # https://docs.python.org/3/library/configparser.html
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline')
+import line_list
+
+# Define function to get line tag for line product
+def get_line_tag_for_line_product(line_product):
+    line_tag, line_freq = line_list.get_line_name_and_frequency(line_product, exit_on_error = False)
+    return line_tag
+
+def get_line_tags_for_line_products(line_products):
+    line_tags = []
+    for line_product in line_products:
+        line_tag = get_line_tag_for_line_product(line_product)
+        if line_tag is None:
+            print('Sorry, line "%s" is not found in our line list: %s'%(line_product, line_list.line_list.keys()))
+            possible_names = []
+            for key in line_list.line_list.keys():
+                if key.find(line_product.lower()) >= 0:
+                    possible_names.append(key)
+            if len(possible_names) > 0:
+                print('Possible names? %r'%(possible_names))
+            return None # return None if any of the line is not found
+        line_tags.append(line_tag)
+    return line_tags
+
+
 
 # Get template phangsalma_keys dir, we will copy documentation and header from there. 
 template_key_dir = os.path.dirname(os.path.abspath(__file__))+os.sep+'key_templates'+os.sep
@@ -190,11 +215,13 @@ galaxy_vwidth_var_dict = {  'name': 'galaxy_vwidth',
 line_products_var_dict = {  'name': 'line_products', 
                             'prompt': 'What spectral lines to process (select from co21, 13co, c18o, CI, HI, input the selected ones in one line with whitespace separated)?', 
                             'prompt_fields': None, 
-                            'regex': r'^((co21|13co|c18o|CI|HI) *)+$', 
-                            'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
+                            'regex': r'^[^ ]+.*$', 
+                            'func': lambda x: get_line_tags_for_line_products(x.split()), 
                             'type': list, 
                             'value': None, 
                             } #<TODO># line_list.py
+                            # 'regex': r'^((co21|13co|c18o|CI|HI) *)+$', 
+                            # 'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
 
 channel_kms_var_dict = {    'name': 'channel_kms', 
                             'prompt': 'Please input the targetting line channel width in velocity (in units of km/s)', 
@@ -217,11 +244,13 @@ do_continuum_var_dict = {   'name': 'do_continuum',
 lines_to_flag_var_dict = {  'name': 'lines_to_flag', 
                             'prompt': 'What spectral lines to flag for the continuum (select from co21, 13co, c18o, CI, HI, input the selected ones in one line with whitespace separated)?', 
                             'prompt_fields': None, 
-                            'regex': r'^((co21|13co|c18o|CI|HI) *)+$', 
-                            'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
+                            'regex': r'^[^ ]+.*$', 
+                            'func': lambda x: get_line_tags_for_line_products(x.split()), 
                             'type': list, 
                             'value': None, 
                             } #<TODO># line_list.py
+                            # 'regex': r'^((co21|13co|c18o|CI|HI) *)+$', 
+                            # 'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
 
 key_dir_ok_var_dict = {     'name': 'key_dir_ok', 
                             'prompt': 'We will take current directory as the directory to create our pipeline keys under a "phangsalma_keys" sub-directory, is that OK? [Y/N]', 
@@ -363,48 +392,49 @@ def read_user_input(var_dict, repeat = True, check_file_existence = False, check
             # apply predefined function to format the var value
             var_value = var_dict['func'](var_str)
             #print('var_value', var_value, 'var_str', var_str)
-            print('%s = %r'%(var_dict['name'], var_value))
-            var_ok = True
-            # 
-            if root_dir != '':
-                if not root_dir.endswith(os.sep):
-                    root_dir += os.sep
-            # 
-            if check_dir_existence:
-                if var_value.find('*') >= 0:
-                    found_files = list(find_files_and_dirs(root_dir, var_value, find_files=False, find_dirs=True))
-                    if len(found_files) == 0:
-                        print('Error! No directory "%s" found!'%(root_dir+var_value))
-                        var_ok = False
-                    else:
-                        for found_file in found_files:
-                            print('%s = %r'%(var_dict['name'], found_file))
-                        if len(found_files) == 1:
-                            var_value = found_files[0]
+            if var_value is not None:
+                print('%s = %r'%(var_dict['name'], var_value))
+                var_ok = True
+                # 
+                if root_dir != '':
+                    if not root_dir.endswith(os.sep):
+                        root_dir += os.sep
+                # 
+                if check_dir_existence:
+                    if var_value.find('*') >= 0:
+                        found_files = list(find_files_and_dirs(root_dir, var_value, find_files=False, find_dirs=True))
+                        if len(found_files) == 0:
+                            print('Error! No directory "%s" found!'%(root_dir+var_value))
+                            var_ok = False
                         else:
-                            var_value = found_files
-                else:
-                    if not os.path.isdir(root_dir+var_value):
-                        print('Error! Directory "%s" does not exist!'%(root_dir+var_value))
-                        var_ok = False
-            # 
-            if check_file_existence:
-                if var_value.find('*') >= 0:
-                    found_files = list(find_files_and_dirs(root_dir, var_value, find_files=True, find_dirs=False))
-                    if len(found_files) == 0:
-                        print('Error! No file "%s" found!'%(root_dir+var_value))
-                        var_ok = False
+                            for found_file in found_files:
+                                print('%s = %r'%(var_dict['name'], found_file))
+                            if len(found_files) == 1:
+                                var_value = found_files[0]
+                            else:
+                                var_value = found_files
                     else:
-                        for found_file in found_files:
-                            print('%s = %r'%(var_dict['name'], found_file))
-                        if len(found_files) == 1:
-                            var_value = found_files[0]
+                        if not os.path.isdir(root_dir+var_value):
+                            print('Error! Directory "%s" does not exist!'%(root_dir+var_value))
+                            var_ok = False
+                # 
+                if check_file_existence:
+                    if var_value.find('*') >= 0:
+                        found_files = list(find_files_and_dirs(root_dir, var_value, find_files=True, find_dirs=False))
+                        if len(found_files) == 0:
+                            print('Error! No file "%s" found!'%(root_dir+var_value))
+                            var_ok = False
                         else:
-                            var_value = found_files
-                else:
-                    if not os.path.isfile(root_dir+var_value):
-                        print('Error! File "%s" does not exist!'%(root_dir+var_value))
-                        var_ok = False
+                            for found_file in found_files:
+                                print('%s = %r'%(var_dict['name'], found_file))
+                            if len(found_files) == 1:
+                                var_value = found_files[0]
+                            else:
+                                var_value = found_files
+                    else:
+                        if not os.path.isfile(root_dir+var_value):
+                            print('Error! File "%s" does not exist!'%(root_dir+var_value))
+                            var_ok = False
         # 
         if var_ok:
             break
@@ -506,6 +536,7 @@ def write_list_of_dict_to_fp(fp, input_list, check_contents=None):
                 fp.write('\n')
                 firstline = False # write a first line before writing whole content
             fp.write(line_content) # write each column of each row
+        
 
 
 
@@ -600,6 +631,7 @@ for i in range(multipart_num):
     more_ms_data = True
     ms_data_paths = []
     array_tags = []
+    field_tags = []
     project_tags = []
     while more_ms_data:
         ms_data_path_var_dict_copy = copy.deepcopy(ms_data_path_var_dict)
@@ -621,6 +653,8 @@ for i in range(multipart_num):
                 if not multi_ms_same_array:
                     array_tag_var_dict_copy['prompt_fields'][0] = 'the data "%s"'%(multi_ms_loop_list[j])
                 array_tag = read_user_input(array_tag_var_dict_copy)
+                # field tag
+                field_tag = 'all'
                 # project tag
                 project_tag_var_dict_copy = copy.deepcopy(project_tag_var_dict)
                 if not multi_ms_same_array:
@@ -628,26 +662,31 @@ for i in range(multipart_num):
                 project_tag = read_user_input(project_tag_var_dict_copy)
             # 
             array_tags.append(array_tag)
+            field_tags.append(field_tag)
             project_tags.append(project_tag)
             ms_data_paths.append(multi_ms_loop_list[j])
         # more to add?
         more_ms_data = read_user_input(more_ms_data_var_dict)
         if not more_ms_data:
             break
-    # re-numbering array tags
+    # re-numbering array tags -> multiobs
     array_tag_check_list = list(set(array_tags)) # keep unique arrag_tags
+    multi_obs = ['1']*len(array_tags)
     for array_tag in array_tag_check_list:
         if array_tags.count(array_tag) > 1:
             found_indices = [t for t in range(len(array_tags)) if array_tags[t]==array_tag]
             for j in range(len(found_indices)):
-                array_tags[found_indices[j]] = array_tags[found_indices[j]]+'_%d'%(j+1) # update array_tag with number suffix
+                #array_tags[found_indices[j]] = array_tags[found_indices[j]]+'_%d'%(j+1) # update array_tag with number suffix
+                multi_obs[found_indices[j]] = '_%d'%(j+1) # update array_tag with number suffix
     
     # add to dict
     for j in range(len(ms_data_paths)):
         ms_file_key_dict = OrderedDict() # = {}
         ms_file_key_dict['target'] = target_name
         ms_file_key_dict['project_tag'] = project_tags[j]
+        ms_file_key_dict['field_tag'] = field_tags[j]
         ms_file_key_dict['array_tag'] = array_tags[j]
+        ms_file_key_dict['multi_obs'] = multi_obs[j]
         ms_file_key_dict['measurement_set'] = ms_data_paths[j]
         ms_file_key_list.append(ms_file_key_dict)
 
@@ -672,6 +711,20 @@ if do_continuum:
     lines_to_flag = read_user_input(lines_to_flag_var_dict)
 
 
+imaging_recipes_list = []
+for line_product in line_products:
+    imaging_recipes_dict = OrderedDict() # = {}
+    imaging_recipes_dict['config'] = 'all'
+    imaging_recipes_dict['product'] = get_line_tag_for_line_product(line_product)
+    imaging_recipes_dict['stage'] = 'all'
+    imaging_recipes_dict['recipe'] = 'cube_mosaic.clean'
+    imaging_recipes_list.append(imaging_recipes_dict)
+if do_continuum:
+    imaging_recipes_dict['config'] = 'all'
+    imaging_recipes_dict['product'] = 'cont'
+    imaging_recipes_dict['stage'] = 'all'
+    imaging_recipes_dict['recipe'] = 'continuum_mosaic.clean'
+    imaging_recipes_list.append(imaging_recipes_dict)
 
 
 
@@ -930,10 +983,11 @@ with open(key_filepath, 'a') as fp:
     colformat = '{:%d} {:%d} {}\n'%(colwidth1, colwidth2)
     if len(line_products) > 0:
         for line_product in line_products:
+            line_tag = get_line_tag_for_line_product(line_product) #<TODO># check line tag
             write_line_content_to_fp(fp, colformat.format(\
                                          "line_product", 
                                          line_product, 
-                                         "{'line_tag':'%s','channel_kms':%s}"%(line_product, channel_kms)
+                                         "{'line_tag':'%s','channel_kms':%s}"%(line_tag, channel_kms)
                                          ), 
                                          check_contents = key_contents)
     if do_continuum:
@@ -1057,8 +1111,16 @@ key_filename = target_and_config_keys['imaging_key']
 key_filepath = location_keys['key_dir']+key_filename
 # 
 if not os.path.isfile(key_filepath):
-    copy_key_file_header(template_key_dir+os.sep+key_filename, key_filepath, copy_everything = True)
+    copy_key_file_header(template_key_dir+os.sep+key_filename, key_filepath) # copy_everything = True
     print('Initialized "%s"'%(key_filepath))
+else:
+    key_contents = read_key_file_contents(key_filepath) # below check_contents = key_contents will make us not write duplicated lines. 
+# 
+if len(target_definitions_list) > 0:
+    with open(key_filepath, 'a') as fp:
+        write_list_of_dict_to_fp(fp, imaging_recipes_list, check_contents = key_contents)
+    # 
+    print('Written to "%s"'%(key_filepath))
 
 
 
@@ -1140,5 +1202,14 @@ for file_name in list_of_files:
             #print(template_key_dir+file_name, key_filepath)
             shutil.copy(template_key_dir+file_name, key_filepath)
             print('Initialized "%s"'%(key_filepath))
+
+
+
+# 
+# done
+print('Please check all the above key files carefully!')
+
+
+
 
 

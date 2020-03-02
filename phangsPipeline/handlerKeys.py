@@ -410,7 +410,9 @@ class KeyHandler:
         # Initialize the dictionary
 
         if existing_dict is None:
-            out_dict = {}
+            if self._imaging_dict is None:
+                self._initialize_imaging_dict()
+            out_dict = self._imaging_dict
         else:
             out_dict = existing_dict
 
@@ -467,16 +469,19 @@ class KeyHandler:
             for each_config in config_list:
                 for each_product in product_list:
                     for each_stage in stage_list:
-                        self._imaging_dict[each_config][each_product][each_stage] = this_recipe
+                        out_dict[each_config][each_product][each_stage] = this_recipe
+                        #out_dict[each_config][each_product][each_stage] = this_recipe
                         #logger.debug('self._imaging_dict[%r][%r][%r] = %r'%(each_config, each_product, each_stage, this_recipe))
 
             lines_read += 1
+        
+        self._imaging_dict = out_dict
 
         infile.close()
 
         logger.info("Read "+str(lines_read)+" lines into the imaging recipe dictionary.")
     
-        return()
+        return out_dict
 
 
 # Mostly these wrap around the programs in utilsKeyReaders , which
