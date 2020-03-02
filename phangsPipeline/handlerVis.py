@@ -74,6 +74,16 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
     # Define file names for various products. #
     ###########################################
 
+    def _input_ms_dict(
+        self,
+        target=None):
+        """
+        Internal function to provide file names before extracting
+        products. These follow the convention
+        target_project_arraytag_obsnum.ms
+        """
+        
+
     def _fname_dict(
             self, 
             target=None,
@@ -120,60 +130,194 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         
         return fname_dict
         
+    ######################################
+    # Loop through all steps and targets #
+    ######################################
     
+    def loop_stage_uvdata(
+        self,
+        do_copy = True,
+        do_custom = False,
+        do_continuum_subtraction = False, 
+        do_extract_line = True,
+        do_extract_cont = True,
+        do_concat_line = True,
+        do_concat_cont = True,
+        make_directories = True,
+        extra_ext = '', 
+        overwrite = False, 
+        ):
+        """
+        Loops over the full set of targets, products, and configurations
+        to run the uv data processing. Toggle the parts of the loop
+        using the do_XXX booleans. Other choices affect the algorithms
+        used.
+        """
+        
+        if make_directories:
+            self._kh.make_missing_directories(imaging=True)
+        
+        
+        if do_copy:
+            
+            for this_target, this_config in \
+                    self.looper(do_targets=True,do_products=False,do_configs=False,
+                                just_interf=True):
+                # 
+                self.task_copy_and_split(
+                    target = this_target, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
+        
+        
+        #if do_custom:
+        #    # 
+        #    for this_target, this_config in \
+        #        self.looper(do_targets=True,do_products=False,do_configs=True,
+        #                    just_interf=True):
+        #        
+        #        pass
+        
+        
+        if do_continuum_subtraction:
+            # 
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_cont=True,just_interf=True):
+                # 
+                self.task_run_continuum_subtraction(
+                    target = this_target, 
+                    config = this_config, 
+                    product = this_product, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
+        
+        
+        if do_extract_line:
+            # 
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_line=True,just_interf=True):
+                # 
+                self.task_extract_line(
+                    target = this_target, 
+                    config = this_config, 
+                    product = this_product, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
+        
+        
+        if do_concat_line:
+            # 
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_line=True,just_interf=True):
+                # 
+                self.task_concat_uvdata(
+                    target = this_target, 
+                    config = this_config, 
+                    product = this_product, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
+        
+        
+        if do_extract_cont:
+            # 
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_cont=True,just_interf=True):
+                # 
+                self.task_extract_continuum(
+                    target = this_target, 
+                    config = this_config, 
+                    product = this_product, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
+        
+        
+        if do_concat_cont:
+            # 
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_cont=True,just_interf=True):
+                # 
+                self.task_concat_uvdata(
+                    target = this_target, 
+                    config = this_config, 
+                    product = this_product, 
+                    extra_ext = extra_ext, 
+                    overwrite = overwrite, 
+                    )
+        
+        
+        return
+        
     ##########################################
     # Tasks - individual operations on data. #
     ##########################################
     
-    def task_copy_data_and_split_science_targets(
+    def task_copy_and_split(
             self, 
             target = None, 
-            config = None, 
             extra_ext = '', 
             do_split = True, 
             do_statwt = False, 
             use_symlink = True, 
             overwrite = False, 
             ):
-        """Copy uv data from uvdata directory to imaging directory, and split science targets.
-        
-        The uvdata directory should be specified in the "ms_file_key.txt". 
-        
-        The imaging directory should be specified in the "master_key.txt". 
-        
-        Note that one target one config may have more than one project and each project has more than one observations.
-        A config is like "12m", "7m", "12m+7m", or "12m+7m+tp", etc., and an arraytag can only be "12m", "7m", "tp". 
         """
-        # 
-        logger.info('START: Copying ms data from original location to imaging directory for target '+target+' and config '+config+'.')
-        # 
-        # get imaging dir and change directory
+        Copy visibility data from their original location to the
+        imaging directory for the target. Then optionally split out
+        only the science targets.         
+        """
+           
+        if clean_call is None:
+            logger.warning("Require a clean_call object. Returning.")
+            return()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Copying u-v data.")
+        logger.info("All data for target: "+str(target)
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+        # Change to the imaging directory for the target
+
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-        # 
+        
         # get fname dict for the list of ms data for the input target and config
-        fname_dict = self._fname_dict(target = target, config = config, all_ms_data = True, extra_ext = extra_ext)
+
+        fname_dict = self._fname_dict(target = target, config = config, 
+                                      all_ms_data = True, extra_ext = extra_ext)
         this_ms_filepaths = fname_dict['ms_filepaths']
         this_ms_filenames = fname_dict['ms_filenames']
-        # 
-        # loop ms data and split science targets data
-        logger.debug('Current directory: "'+os.getcwd()+'"')
+
+        # loop over all measurement sets to copy-and-split each one
+
         for i in range(len(this_ms_filenames)):
-            this_ms_filepath = this_ms_filepaths[i]
-            this_ms_filename = this_ms_filenames[i]
-            logger.debug('Copying and splitting: "'+this_ms_filename+'" <-- "'+this_ms_filepath+'"')
-            if not self._dry_run:
-                # copy ms data into imaging dir (or make symlink) and split science targets in one function
-                cvr.split_science_targets(in_file = this_ms_filepath, 
-                                          out_file = this_ms_filename,  
-                                          do_split = do_split, 
-                                          do_statwt = do_statwt, 
-                                          use_symlink = use_symlink, 
-                                          overwrite = overwrite, 
-                                          )
-        # 
-        logger.info('END: Copying ms data from original location to imaging directory for target '+target+' and config '+config+'.')
-        # 
-        # end of task_copy_data_and_split_science_targets()
+
+            this_infile = this_ms_filepaths[i]
+            this_outfile = this_ms_filenames[i]
+
+            logger.debug('Copying from "'+this_ms_filename+'" <-- "'+this_ms_filepath+'"')
+
+            if not self._dry_run and casa_enabled:
+
+                cvr.split_science_targets(
+                    in_file = this_ms_filepath, 
+                    out_file = this_ms_filename,  
+                    do_split = do_split, 
+                    do_statwt = do_statwt, 
+                    use_symlink = use_symlink, 
+                    overwrite = overwrite, 
+                    )
+        return()
     
     def task_run_continuum_subtraction(
             self, 
@@ -504,138 +648,6 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
     ###################################
     # Recipes - combinations of tasks #
     ###################################
-
-    ######################################
-    # Loop through all steps and targets #
-    ######################################
-    
-    def loop_stage_uvdata(
-        self,
-        do_copy = True,
-        do_custom = False,
-        do_continuum_subtraction = False, 
-        do_extract_line = True,
-        do_extract_cont = True,
-        do_concat_line = True,
-        do_concat_cont = True,
-        make_directories = True,
-        extra_ext = '', 
-        overwrite = False, 
-        ):
-        """
-        Loops over the full set of targets, products, and configurations
-        to run the uv data processing. Toggle the parts of the loop
-        using the do_XXX booleans. Other choices affect the algorithms
-        used.
-        """
-        
-        if make_directories:
-            self._kh.make_missing_directories(imaging=True)
-        
-        
-        if do_copy:
-            # 
-            for this_target, this_config in \
-                self.looper(do_targets=True,do_products=False,do_configs=True,
-                            just_interf=True):
-                # 
-                self.task_copy_data_and_split_science_targets(
-                    target = this_target, 
-                    config = this_config, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        #if do_custom:
-        #    # 
-        #    for this_target, this_config in \
-        #        self.looper(do_targets=True,do_products=False,do_configs=True,
-        #                    just_interf=True):
-        #        
-        #        pass
-        
-        
-        if do_continuum_subtraction:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-                # 
-                self.task_run_continuum_subtraction(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        if do_extract_line:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
-                # 
-                self.task_extract_line(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        if do_concat_line:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
-                # 
-                self.task_concat_uvdata(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        if do_extract_cont:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-                # 
-                self.task_extract_continuum(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        if do_concat_cont:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-                # 
-                self.task_concat_uvdata(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        return
-        
-    
-    
-    
     
     ########################################
     # 20200226: DEPRECATED FUNCTIONS BELOW #
