@@ -16,7 +16,7 @@ def moment_generator(cubefile,
                                  'ew','vquad',
                                  'tpeak', 'tpeak_12p5kms',
                                  'vpeak','vpeak_12p5kms',
-                                 'mom1xs']):
+                                 'mom1_xs']):
     cube = SpectralCube.read(cubefile)
     cube = cube.to(u.K)
 
@@ -28,6 +28,6 @@ def moment_generator(cubefile,
     if rms_file is not None:
         rms = SpectralCube.read(rms_file)
 
-    
+    raise NotImplementedError    
     
 
