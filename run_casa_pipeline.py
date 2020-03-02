@@ -10,6 +10,10 @@ if not casa_enabled:
     print('Please run this script inside CASA!')
     sys.exit()
 
+# Set the logging
+from phangsPipeline import phangsLogger as pl
+reload(pl)
+pl.setup_logger(level='DEBUG', logfile=None)
 
 # Imports
 
@@ -18,28 +22,19 @@ from phangsPipeline import handlerKeys as kh
 from phangsPipeline import handlerVis as uvh
 from phangsPipeline import handlerImaging as imh
 from phangsPipeline import handlerPostprocess as pph
-from phangsPipeline import handlerProducts as prh
-from phangsPipeline import phangsLogger as pl
+
+# Reloads for debugging
 reload(kh)
 reload(uvh)
 reload(imh)
 reload(pph)
-reload(prh)
-reload(pl)
-
-
-# Set the logging level
-pl.setup_logger(level='DEBUG', logfile=None)
-
 
 # Initialize key handler
 
-this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
+this_kh = kh.KeyHandler(master_key = 'key_templates/master_key.txt')
 this_uvh = uvh.UVDataHandler(key_handler = this_kh)
 this_imh = imh.ImagingHandler(key_handler = this_kh)
 this_pph = pph.PostProcessHandler(key_handler= this_kh)
-this_prh = prh.ProductHandler(key_handler = this_kh)
-
 
 # Set which data to process
 
@@ -50,7 +45,6 @@ this_prh = prh.ProductHandler(key_handler = this_kh)
 #    #this_handler.set_feather_configs(only=['7m+tp'])
 #    this_handler.set_line_products(only=['co21'])
 #    this_handler.set_no_cont_products(True)
-
 
 # Run all steps
 
@@ -77,7 +71,6 @@ this_imh.loop_imaging(\
         #extra_ext_in = '', 
         #extra_ext_out = '', 
 
-
 this_pph.loop_postprocess(\
         )
         #do_prep=True,
@@ -90,23 +83,5 @@ this_pph.loop_postprocess(\
         #feather_before_mosaic=True,
         #feather_after_mosaic=True,
         #extra_ext_out NOT IMPLEMENTED
-
-
-this_prh.loop_products_making(\
-        )
-        # 
-
-
-#this_rrh.loop_data_release()
-# 
-
-
-
-
-
-
-
-
-
 
 
