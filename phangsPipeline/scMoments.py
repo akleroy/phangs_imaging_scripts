@@ -5,8 +5,7 @@ from astropy.io import fits
 import numpy as np
 
 
-product_dict = {'mom0':
-    }
+product_dict = {'mom0': None}
 
 
 def moment_generator(cubefile,
