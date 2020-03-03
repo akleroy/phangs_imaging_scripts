@@ -21,33 +21,30 @@ def mad_zero_centered(data, mask=None):
     where_data_valid = np.logical_and(~np.isnan(data), np.isfinite(data))
     if mask is None:
         sig_false = ss.norm.isf(0.5 / data.size)
-        # 
-        # The following 3 lines were replaced by the next 5 lines to avoid the "Invalid value encountered in less" issue. 
-        #mad1 = mad_to_std_fac * np.abs(np.median(data[data < 0]))
-        #mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data <
-        #                                                (sig_false * mad1)])))
-        # 
-        where_data_less_than_zero = np.less(data, 0, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool))
-        mad1 = mad_to_std_fac * np.abs(np.median(data[where_data_less_than_zero]))
-        # 
-        where_data_less_than_mad1 = np.less(data, sig_false * mad1, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool))
-        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[where_data_less_than_mad1])))
+        data_lt_zero = np.less(data, 0,
+                               where=where_data_valid,
+                               out=np.full(where_data_valid.shape,
+                                           False, dtype=bool))
+        mad1 = mad_to_std_fac * np.abs(np.median(data[data_lt_zero]))
+    
+        data_lt_mad1 = np.less(data, sig_false * mad1,
+                               where=where_data_valid,
+                               out=np.full(where_data_valid.shape,
+                                           False, dtype=bool))
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data_lt_mad1])))
     else:
         nData = mask.sum()
         sig_false = ss.norm.isf(0.5 / nData)
-        # 
-        # The following 4 lines were replaced by the next 5 lines to avoid the "Invalid value encountered in less" issue. 
-        #mad1 = mad_to_std_fac * np.abs(np.median(data[(data < 0) * mask]))
-        #mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[(data <
-        #                                                (sig_false * mad1)) 
-        #                                                * mask])))
-        # 
-        where_data_less_than_zero = np.logical_and(np.less(data, 0, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool)), mask)
-        mad1 = mad_to_std_fac * np.abs(np.median(data[where_data_less_than_zero]))
-        # 
-        where_data_less_than_mad1 = np.logical_and(np.less(data, (sig_false * mad1), where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool)), mask)
-        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[where_data_less_than_mad1])))
-    
+        data_lt_zero = np.logical_and(np.less(data, 0, 
+                                      where=where_data_valid,
+                                      out=np.full(where_data_valid.shape,
+                                                  False, dtype=bool)), mask)
+        mad1 = mad_to_std_fac * np.abs(np.median(data[data_lt_zero]))
+        data_lt_mad1 = np.logical_and(np.less(data, (sig_false * mad1),
+                                      where=where_data_valid,
+                                      out=np.full(where_data_valid.shape,
+                                                  False, dtype=bool)), mask)
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data_lt_mad1])))
     return(mad2)
 
 
