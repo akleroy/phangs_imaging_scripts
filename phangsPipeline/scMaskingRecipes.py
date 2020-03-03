@@ -1,10 +1,11 @@
 from astropy.io import fits
 from spectral_cube import SpectralCube
-from astropy.wcs import wcs
+from astropy import wcs
 import numpy as np
 import warnings
 from scMaskingRoutines import simple_mask, noise_cube
 import logging
+import astropy.units as u
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -48,17 +49,23 @@ def hybridize_mask(hires_in, lores_in, order='bilinear',
     return(mask)
 
 
-def phangs_rms(cube, noise_kwargs=None,
-               return_spectral_cube=False):
+def phangs_noise(cube, noise_kwargs=None,
+                 return_spectral_cube=False):
     if noise_kwargs is None:
-        pixels_per_beam = (s.beam.sr
-                        / wcs.utils.proj_plane_pixel_area(s.wcs)
+        pixels_per_beam = (cube.beam.sr
+                        / wcs.utils.proj_plane_pixel_area(cube.wcs)
                         / u.deg**2).to(u.dimensionless_unscaled).value
-        box_radius = np.ceil(1.5 * pixels_per_beam**0.5)
+        box = np.ceil(2.5 * pixels_per_beam**0.5)
         spectral_smooth = np.ceil(cube.shape[0] / 5)
+        # This looks for a non-trivial signal mask.
+        if (np.sum(cube.mask.include()) 
+            < np.sum(np.isfinite(cube.unmasked_data[:].value))):
+            m = cube.mask.include()
+        else:   
+            m = None
         rms = noise_cube(cube.unmasked_data[:].value,
-                         mask=cube.mask.include(),
-                         box=box_radius,
+                         mask=m,
+                         box=box,
                          bandpass_smooth_window=spectral_smooth,
                          spec_box=5,
                          iterations=3)
@@ -76,7 +83,7 @@ def phangs_mask(cube,
                 noise_kwargs=None, 
                 return_rms=False):
     
-    rms = phangs_rms(cube, noise_kwargs=noise_kwargs)
+    rms = phangs_noise(cube, noise_kwargs=noise_kwargs)
     
     if mask_kwargs is None:
         mask = simple_mask(cube.unmasked_data[:].value,

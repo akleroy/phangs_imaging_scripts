@@ -11,6 +11,8 @@ from spectral_cube import SpectralCube
 from astropy.wcs import wcs
 # from pipelineVersion import version as pipeVer
 
+np.seterr(divide='ignore', invalid='ignore')
+
 mad_to_std_fac = 1.482602218505602
 
 logger = logging.getLogger(__name__)
@@ -196,10 +198,10 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
     boxr = step // 2
     if box is not None:
         step = np.floor(box/2.5).astype(np.int)
-        boxr = step // 2
+        boxr = int(box // 2)
     if spec_box is not None:
         spec_step = np.floor(box/2).astype(np.int)
-        boxv = spec_step // 2
+        boxv = int(spec_box // 2)
     else:
         boxv = 0
 
@@ -242,8 +244,8 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
         # Smooth spectral shape
         if bandpass_smooth_window > 0:
             noise_spec = savgol_filter(noise_spec,
-                                       bandpass_smooth_window,
-                                       bandpass_smooth_order)
+                                       int(bandpass_smooth_window),
+                                       int(bandpass_smooth_order))
         noise_spec /= np.nanmedian(noise_spec)
         noise_cube = np.ones_like(data)
         noise_cube *= (noise_map[np.newaxis, :]
@@ -254,41 +256,3 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
             data = data / noise_cube
             noise_cube_out *= noise_cube
     return(noise_cube_out)
-
-
-def hybridize_mask(hires_in, lores_in, order='bilinear',
-                   return_cube=False):
-    
-    if type(hires_in) is str:
-        hires_hdulist = fits.open(hires_in)
-        hires = SpectralCube(np.array(hires_hdulist[0].data,
-                                      dtype=np.bool),
-                             wcs=wcs.WCS(hires_hdulist[0].header),
-                             header=hires_hdulist[0].header)
-    elif type(hires_in) is SpectralCube:
-        hires = hires_in
-    else:
-        logging.log('Unrecognized input type')
-        raise NotImplementedError
-
-    if type(lores_in) is str:
-        lores_hdulist = fits.open(lores_filename)
-        lores = SpectralCube(np.array(lores_hdulist[0].data,
-                                      dtype=np.bool),
-                             wcs=wcs.WCS(lores_hdulist[0].header),
-                             header=lores_hdulist[0].header)
-    elif type(lores_in) is SpectralCube:
-        lores = lores_in
-    else:
-        logging.log('Unrecognized input type')
-        raise NotImplementedError
-
-    lores = lores.reproject(hires.header, order=order)
-    lores = lores.spectral_interpolate(hires.spectral_axis)
-    mask = np.logical_or(np.array(hires.filled_data[:].value, dtype=np.bool),
-                         np.array(lores.filled_data[:].value, dtype=np.bool))
-    if return_cube:
-        mask = SpectralCube(mask, wcs=wcs.WCS(hires.header),
-                            header=hires.header,
-                            meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
-    return(mask)
