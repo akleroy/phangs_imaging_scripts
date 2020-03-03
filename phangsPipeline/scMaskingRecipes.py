@@ -48,11 +48,8 @@ def hybridize_mask(hires_in, lores_in, order='bilinear',
     return(mask)
 
 
-def phangs_mask(cube,
-                mask_kwargs=None,
-                noise_kwargs=None, 
-                return_rms=False):
-    
+def phangs_rms(cube, noise_kwargs=None,
+               return_spectral_cube=False):
     if noise_kwargs is None:
         pixels_per_beam = (s.beam.sr
                         / wcs.utils.proj_plane_pixel_area(s.wcs)
@@ -60,15 +57,27 @@ def phangs_mask(cube,
         box_radius = np.ceil(1.5 * pixels_per_beam**0.5)
         spectral_smooth = np.ceil(cube.shape[0] / 5)
         rms = noise_cube(cube.unmasked_data[:].value,
-                        mask=cube.mask.include(),
-                        box=box_radius,
-                        bandpass_smooth_window=spectral_smooth,
-                        spec_box=5,
-                        iterations=3)
+                         mask=cube.mask.include(),
+                         box=box_radius,
+                         bandpass_smooth_window=spectral_smooth,
+                         spec_box=5,
+                         iterations=3)
     else:
         rms = noise_cube(cube.unmasked_data[:].value,
                          mask=cube.mask.include(),
                          **noise_kwargs)
+    if return_spectral_cube:
+        rms = SpectralCube(rms, wcs=cube.wcs, header=cube.header)
+    return(rms)
+
+
+def phangs_mask(cube,
+                mask_kwargs=None,
+                noise_kwargs=None, 
+                return_rms=False):
+    
+    rms = phangs_rms(cube, noise_kwargs=noise_kwargs)
+    
     if mask_kwargs is None:
         mask = simple_mask(cube.unmasked_data[:].value,
                            rms, hi_thresh=4, hi_nchan=2,
