@@ -1326,7 +1326,7 @@ class KeyHandler:
         just_arraytags = []
         if config is not None:
             if type(config) == type(''):
-                input_configs = [target]
+                input_configs = [config]
             elif type(config) == type([]):
                 input_configs = config
             else:
@@ -1361,7 +1361,7 @@ class KeyHandler:
                 for this_arraytag in self._ms_dict[this_target][this_project].keys():
 
                     if len(just_arraytags) > 0:
-                        if not (this_arraytag in just_targets):
+                        if not (this_arraytag in just_arraytags):
                             continue
 
                     # loop over obs nums
