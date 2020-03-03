@@ -1,0 +1,224 @@
+##########################################################################
+# MASTER KEY
+##########################################################################
+
+# VERY IMPORTANT! The pipeline (currently) operates on absolute path
+# definitions. Even if you are using an otherwise already set up
+# project, please set these absolute file paths to be appropriate to
+# for your system before running the pipeline!
+
+# The master key defines the directory structure for the project and
+# links to the other keys that define configurations, targets, uv
+# data, algorithmic choices, etc. for the project.
+
+# ------------------------------------------------------------------------
+# DIRECTORIES
+# ------------------------------------------------------------------------
+
+# 'key_dir' 
+
+# is the location all the key files used by an individual pipeline
+# product. This file is almost certainly in your key_dir.
+ 
+# 'ms_root' 
+
+# is any directory in which the calibrated measurement sets (listed in
+# the ms_key below) are located. These directories are pre-pended to
+# the file paths in ms_key to identify the locations of the uv data.
+
+# You can set more than one 'ms_root' below to have multiple search
+# paths for the measurement sets defined in the 'ms_key' below.
+ 
+# 'cleanmask_root' 
+
+# is the root directory storing all the clean mask FITS
+# cubes. Currently clean masks are treated as an external input to the
+# process. This is likely to change in the near future.
+ 
+# 'singledish_root' 
+
+# is the root directory storing all the single dish imaged FITS
+# cubes. Currently single dish data are treated as an external input
+# to the process. For PHANGS-ALMA these are output by the separate
+# total power pipeline. This is might change at some point in the
+# future, but not the near term.
+
+# You can set more than one 'singledish_root' below to have multiple
+# search paths for the measurement sets defined in the
+# 'singledish_key' below.
+ 
+# 'imaging_root' 
+
+# is the root directory for staging and process the visibility data
+# and imaging. Each individual target will have a subdirectory of this
+# imaging directory where processing for that target occurs.
+ 
+# 'postprocess_root' 
+
+# is the root directory for processing the imaged cube, including
+# feathering and linear mosaicking. Each individual target will have a
+# subdirectory of this imaging directory where processing for that
+# target occurs.
+
+# 'product_root' 
+
+# is the root directory for creating data products, like moment maps
+# and masks from the postprocessed image cubes. Each individual target
+# will have a subdirectory of this imaging directory where processing
+# for that target occurs.
+ 
+# 'release_root' 
+
+# is the root directory for creating a distributed release. Currently,
+# each individual target will have a subdirectory of this imaging
+# directory where processing for that target occurs, though this may
+# change.
+
+# PHANGS-ALMA examples:
+
+#key_dir              /PATH/EXAMPLE/phangsalma_keys/
+#ms_root              /PATH/EXAMPLE/uvdata/
+#cleanmask_root       /PATH/EXAMPLE/reduction/cleanmasks/
+#singledish_root      /PATH/EXAMPLE/reduction/singledish/
+#imaging_root         /PATH/EXAMPLE/reduction/imaging/
+#postprocess_root     /PATH/EXAMPLE/reduction/postprocess/
+#product_root         /PATH/EXAMPLE/reduction/product/
+#release_root         /PATH/EXAMPLE/reduction/release/
+
+# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------
+# FILES GIVING LOCATIONS OF INPUT DATA
+# ------------------------------------------------------------------------
+ 
+# These are files giving the location of input data to be processed by
+# the pipeline. Right now, we expect list of input uv data (ms_key),
+# single dish data (singledish_key), and clean masks (cleanmask_key).
+
+# These key files should be exist (or be defined relative to the
+# 'key_dir' path set above). The easiest solution is to put all the
+# keys in the same directory.
+ 
+# ms_key 
+
+# The data file(s) that list the individual u-v data used by the
+# project. Each entry maps from a calibrated u-v data set to a target
+# name, array tag, and project tag.
+ 
+# These measurement sets need to be calibrated in advance, e.g., with
+# the ALMA calibration pipeline or VLA pipeline.
+
+# singledish_key
+
+# The data file(s) that list individual single dish FITS files for use
+# in feathering. Each entry maps from a target and product to a single
+# dish cube.
+
+# The pipeline expects the calibrated single dish data to already
+# exist, e.g., as output by the PHANGS-ALMA total power pipeline.
+ 
+# cleanmask_key 
+
+# The data file(s) that list individual clean masks as FITS
+# files. These are used in imaging. Each entry maps from a target and
+# product to a clean mask. This may be deprecated in the near future
+# as algorithic clean mask creation is migrated into the pipeline.
+
+# PHANGS-ALMA examples:
+
+#ms_key               ms_file_key.txt
+#singledish_key       singledish_key.txt
+#cleanmask_key        cleanmask_key.txt
+
+# ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------
+# FILES DEFINING TARGETS AND ALGORITHMS
+# ------------------------------------------------------------------------
+ 
+# config_key
+
+# This file defines the configurations of lines, inteferometric
+# arrays, and combinations of interferometric and total power data
+# looped over by the pipeline. It defines "products" (which are
+# spectral data products, like CO 2-1 or continuum) and
+# "configurations" (which are combinations of inteferometer and single
+# dish data).
+ 
+# target_key
+
+# The file containing the phase centers, velocities, and widths for
+# each target. The velocity information is used for gridding,
+# continuum extraction, identifying spectral windows, etc.. The
+# position information can be taken as the phase center of the image
+# during imaging.
+
+# linmos_key
+
+# This file maps targets to linear mosaics. Linear mosaics combine
+# individual targets into a single image as part of
+# post-processing. This has some redundancy with the directory key,
+# but in theory targets might be processed separately and still
+# mosaicked, so the keys both exist but look very similar. In
+# principle, the same file could be assigned to both.
+
+# dir_key
+
+# The (optional) mapping between target and directory within the
+# working directory. Use this, e.g., to image and process target
+# 'ngc3627_1' in the directory 'ngc3627'.
+ 
+# imaging_key
+
+# This file maps between product and configuration combinations to
+# clean parameter files of the type saved by save_input in CASA. These
+# parameters get read in as the baseline values for cleaning using
+# that config/product combination, they are then modified by the
+# imaging scripts and cleaning procedures.
+
+# override_key
+
+# This file contains by hand overrides for the post-processing and
+# imaging steps. These are specific things and not required, but,
+# e.g., allow a different weighting or cell size for specific data
+# sets. Most of these capabilities are currently not implemented.
+
+# PHANGS-ALMA examples:
+
+#config_key           config_definitions.txt
+#target_key           target_definitions.txt
+#linmos_key           linearmosaic_definitions.txt
+#dir_key              dir_key.txt
+#imaging_key          imaging_recipes.txt
+#override_key         overrides.txt
+
+#   ------------------------------------------------------------------------
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
+# Locations
+
+key_dir        	     	/data/tycho/0/leroy.42/reduction/alma/PHANGS/scripts/key_templates/
+cleanmask_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/cleanmasks/
+imaging_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/imaging/
+postprocess_root	/data/tycho/0/leroy.42/reduction/alma/PHANGS/postprocess/
+product_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/product/
+release_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/release/
+ms_root			/data/tycho/0/leroy.42/reduction/alma/PHANGS/uvdata/
+ms_root			/data/young/leroy.42/alma_data/PHANGS/
+singledish_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/singledish/
+
+# Data files
+
+ms_key			ms_file_key.txt
+singledish_key		singledish_key.txt
+cleanmask_key		cleanmask_key.txt
+
+# Definitions and mapping
+
+config_key		config_definitions.txt
+target_key		target_definitions.txt
+imaging_key		imaging_recipes.txt
+linmos_key		linearmosaic_definitions.txt
+override_key		overrides.txt
+dir_key			dir_key.txt

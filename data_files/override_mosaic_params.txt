@@ -1,6 +1,0 @@
-# column 1: visibility name
-# column 2: parameter to override (cell_size, x_size, y_size)
-# column 3: value (string or number)
-avis.ms	 cell_size	  0.1arcsec
-avis.ms	 x_size	  	  1440
-avis.ms	 y_size	  	  1440

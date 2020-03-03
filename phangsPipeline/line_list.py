@@ -1,12 +1,31 @@
 # This is the line list.
 
+import re
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 # Drawn from Splatalogue at http://www.cv.nrao.edu/php/splat/
 
 # Lists that combine multiple transitions for a single line
 
-lines_co = ['co10','co21','co32','co43','co54','co65']
-lines_13co = ['13co10','13co21','13co32','13co43','13co54','13co65']
-lines_c18o = ['c18o10','c18o21','c18o32','c18o43','c18o54','c18o65']
+line_families = {
+    'co':['co10','co21','co32','co43','co54','co65'],
+    '13co':['13co10','13co21','13co32','13co43','13co54','13co65'],
+    'c18o':['c18o10','c18o21','c18o32','c18o43','c18o54','c18o65'],
+    'hcn':['hcn10','hcn21','hcn32','hcn43','hcn54','hcn65','hcn76'],
+    'h13cn':['h13cn10','h13cn21','h13cn32','h13cn43','h13cn54','h13cn65','h13cn76'],
+    'hnc':['hnc10','hnc21','hnc32','hnc43','hnc54','hnc65','hnc76'],
+    'hn13c':['hn13c10','hn13c21','hn13c32','hn13c43','hn13c54','hn13c65','hn13c76'],
+    'hcop':['hcop10','hcop21','hcop32','hcop43','hcop54','hcop65','hcop76'],
+    'h13cop':['h13cop10','h13cop21','h13cop32','h13cop43','h13cop54','h13cop65','h13cop76'],
+    'cs':['cs10','cs21','cs32','cs43','cs54','cs65','cs76','cs87','cs98','cs109','cs1110','cs1211','cs1312','cs1413'],
+    '13cs':['13cs10','13cs21','13cs32','13cs43','13cs54','13cs65','13cs76','13cs87','13cs98','13cs109','13cs1110','13cs1211','13cs1312','13cs1413'],
+    'sio':['sio10','sio21','sio32','sio43','sio54','sio65','sio76','sio87','sio98','sio109','sio1110','sio1211','sio1312','sio1413','sio1514','sio1615'],
+    'hi':['hi21cm'],
+    'ci':['ci10','ci21'],
+    }
 
 # The line list dictionary
 
@@ -37,11 +56,12 @@ line_list = {
     'hcn65':531.71639,
     'hcn76':620.30410,
     'h13cn10':86.33992140,
-    'h13cn21'172.67785120:,
+    'h13cn21':172.67785120,
     'h13cn32':259.01179760,
     'h13cn43':345.33976930,
     'h13cn54':431.65977480,
     'h13cn65':517.96982100,
+    'h13cn76':604.26791400,
     'cs10':48.99095,
     'cs21':97.98095,
     'cs32':146.96903,
@@ -77,13 +97,13 @@ line_list = {
     'hcop54':445.90287,
     'hcop65':535.06158,
     'hcop76':624.20836,
-    '13hcop10':86.75428840,
-    '13hcop21':173.50670030,
-    '13hcop32':260.25533900,
-    '13hcop43':346.99834400,
-    '13hcop54':433.73383270,
-    '13hcop65':520.45988430,
-    '13hcop76':607.17464560,
+    'h13cop10':86.75428840,
+    'h13cop21':173.50670030,
+    'h13cop32':260.25533900,
+    'h13cop43':346.99834400,
+    'h13cop54':433.73383270,
+    'h13cop65':520.45988430,
+    'h13cop76':607.17464560,
     'hnc10':90.66357,
     'hnc21':181.32476,
     'hnc32':271.98114,
@@ -118,3 +138,90 @@ line_list = {
     'sio1615':694.27543,
     'hi21cm':1.420405751,
     }
+
+# Run some consistency checks
+
+def run_checks():
+    """
+    """
+    all_okay = True
+    
+    for family in line_families:
+        this_list = line_families[family]
+        for this_line in this_list:
+            if this_line not in line_list.keys():
+                print("Line missing from line list but in line families: "+this_line)
+                all_okay = False
+    
+    if all_okay:
+        print("All lines in line families present in line list.")
+
+    no_repeats = True
+
+    for this_line in line_list:
+        for other_line in line_list:
+            if this_line == other_line:
+                continue
+            if line_list[this_line] == line_list[other_line]:
+                print("Duplicate frequencies for: "+this_line+" and "+other_line+" . Check for typos.")
+                no_repeats = False
+
+    if no_repeats:
+        print("No repeat frequencies in list.")
+
+
+# Find line in line list
+def get_line_name_and_frequency(line, exit_on_error = True):
+    matched_line_name = None
+    matched_line_freq = None
+    # try to find by input line name
+    if matched_line_name is None:
+        if line in line_list:
+            matched_line_name = line
+            matched_line_freq = line_list[matched_line_name]
+    # if not found, try to find by input line name in lower case
+    if matched_line_name is None:
+        if line.lower() in line_list:
+            matched_line_name = line.lower()
+            matched_line_freq = line_list[matched_line_name]
+    # if not found, try to find by input line name in lower case and removed non-letters
+    if matched_line_name is None:
+        line_name_cleaned = re.sub(r'[^0-9a-zA-Z]', r'', line.lower())
+        if line_name_cleaned in line_list:
+            matched_line_name = line_name_cleaned
+            matched_line_freq = line_list[matched_line_name]
+    # report error
+    if matched_line_name is None:
+        if exit_on_error:
+            logger.error('Error! Could not find the input line "'+line+'" in our line_list module. Candiate line names are: '+str(line_list.keys()))
+            raise Exception('Error! Could not find the input line "'+line+'" in our line_list module.')
+        else:
+            logger.warning('Could not find the input line "'+line+'" in our line_list module. ')
+    # return
+    return matched_line_name, matched_line_freq
+
+
+# Find line in line families
+def get_line_names_in_line_family(line, exit_on_error = True):
+    matched_line_family_name = None
+    matched_line_names = []
+    # 
+    line_name_cleaned = re.sub(r'[^0-9a-zA-Z]', r'', line.lower())
+    # try 
+    if matched_line_family_name is None:
+        if line_name_cleaned in line_families:
+            matched_line_family_name = line_name_cleaned
+            matched_line_names.extend(line_families[line_name_cleaned])
+    # report error
+    if matched_line_family_name is None:
+        if exit_on_error:
+            logger.error('Error! Could not find the input line family "'+line+'" in our line_list module. Candiate line families are: '+str(line_families.keys()))
+            raise Exception('Error! Could not find the input line family "'+line+'" in our line_list module.')
+        else:
+            logger.warning('Could not find the input line family "'+line+'" in our line_list module. ')
+    # return
+    return matched_line_names
+
+
+
+

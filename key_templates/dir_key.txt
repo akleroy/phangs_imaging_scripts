@@ -1,0 +1,94 @@
+##########################################################################
+# DIRECTORY MAPPING KEY
+##########################################################################
+
+# Key to map from target to working directory name.
+
+# BY DEFAULT the working directory for any target is a directory with
+# the same name as the target. The programs will create this directory
+# in the imaging, postprocessing, etc. directories.
+
+# This key allows targets to be mapped to other directories.
+
+# The most common use is to combine several targets into a single
+# directory. This comes up for PHANGS-ALMA in the context of linear
+# mosaics. Several targets are observed and then larter combined into
+# a single data cube. Thus we prefer to image and process these parts
+# together in a single directory.
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 2: working directory name
+
+# In PHANGS-ALMA the convention is to map parts to a working directory
+# with the name of the full galaxy. For example:
+
+#circinus_1       circinus
+#circinus_2       circinus
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
+circinus_1  	 circinus
+circinus_2  	 circinus
+ngc0247_1	 ngc0247
+ngc0247_2	 ngc0247
+ngc0247_3	 ngc0247
+ngc0247_4	 ngc0247
+ngc0253_1   	 ngc0253
+ngc0253_2   	 ngc0253
+ngc0253_3   	 ngc0253
+ngc0253_4   	 ngc0253
+ngc0253_5   	 ngc0253
+ngc0300_1   	 ngc0300
+ngc0300_2   	 ngc0300
+ngc0300_3   	 ngc0300
+ngc1097_1   	 ngc1097
+ngc1097_2   	 ngc1097
+ngc1300_1	 ngc1300
+ngc1300_2	 ngc1300
+ngc1313_1	 ngc1313
+ngc1313_2	 ngc1313
+ngc1313_3	 ngc1313
+ngc1433_1	 ngc1433
+ngc1433_2	 ngc1433
+ngc1566_1	 ngc1566
+ngc1566_2	 ngc1566
+ngc1792_1   	 ngc1792
+ngc1792_2   	 ngc1792
+ngc2903_1	 ngc2903
+ngc2903_2	 ngc2903
+ngc2903_3	 ngc2903
+ngc2997_1	 ngc2997
+ngc2997_2	 ngc2997
+ngc2997_3	 ngc2997
+ngc3521_1	 ngc3521
+ngc3521_2	 ngc3521
+ngc3621_1	 ngc3621
+ngc3621_2	 ngc3621
+ngc3627_1	 ngc3627
+ngc3627_2	 ngc3627
+ngc4254_1	 ngc4254
+ngc4254_2	 ngc4254
+ngc4321_1	 ngc4321
+ngc4321_2	 ngc4321
+ngc4536_1	 ngc4536
+ngc4536_2	 ngc4536
+ngc4945_1	 ngc4945
+ngc4945_2	 ngc4945
+ngc4945_3	 ngc4945
+ngc5068_1	 ngc5068
+ngc5068_2	 ngc5068
+ngc5128_1	 ngc5128
+ngc5128_2	 ngc5128
+ngc5128_3	 ngc5128
+ngc5248_1	 ngc5248
+ngc5248_2	 ngc5248
+ngc5643_1	 ngc5643
+ngc5643_2	 ngc5643
+ngc6744_1	 ngc6744
+ngc6744_2	 ngc6744
+ngc7793_1	 ngc7793
+ngc7793_2	 ngc7793
