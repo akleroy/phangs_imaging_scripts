@@ -46,6 +46,11 @@ else:
 
 import handlerTemplate
 
+try:
+    import utilsFilenames as fnames
+except ImportError:
+    from phangsPipeline import utilsFilenames as fnames
+
 
 class UVDataHandler(handlerTemplate.HandlerTemplate):
     """
@@ -73,16 +78,43 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
     ###########################################
     # Define file names for various products. #
     ###########################################
-
-    def _input_ms_dict(
-        self,
-        target=None):
+        
+    def get_all_input_ms(
+        self, 
+        target=None, 
+        just_for_configs=None
+        ):
         """
-        Internal function to provide file names before extracting
-        products. These follow the convention
-        target_project_arraytag_obsnum.ms
+
+        Get all the absolute file path(s) to the input measurement
+        sets for the input target. Optionally, restrict to array_tags
+        that overlap the configurations provided in
+        just_for_configs. This is used
+        
+        Here we need to input target, config and project tag. These should be specified in "ms_file_key.txt". 
+        
+        For example, `get_ms_filepaths(target='ngc3621_1', config='7m')` returns 
+        `filenames = ['ngc3621_1_886_7m_1.ms', 'ngc3621_1_886_7m_2.ms', ...]` and 
+        `filepaths = ['/path/to/*886*/sci*/group*/mem*/calibrated/uid*.ms.split.cal', ..., ...]`
         """
         
+        ms_filenames = []
+        ms_filepaths = []
+        for this_target, this_project, this_arraytag, this_obsnum in \
+            self.get_ms_projects_and_obsnum_for_target(target=target, config=config):
+            # 
+            ms_filepath = self.get_input_ms_file(
+                target=this_target, 
+                project=this_project, 
+                arraytag=this_arraytag, 
+                obsnum=this_obsnum)
+
+            # append to output lists
+            ms_filenames.append(ms_filename) # without '.ms' suffix
+            ms_filepaths.append(ms_filepath)
+        # output
+        return ms_filenames, ms_filepaths
+
 
     def _fname_dict(
             self, 
@@ -137,14 +169,15 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
     def loop_stage_uvdata(
         self,
         do_copy = True,
-        do_custom = False,
-        do_continuum_subtraction = False, 
-        do_extract_line = True,
-        do_extract_cont = True,
         do_concat_line = True,
         do_concat_cont = True,
+        do_custom = False,
+        do_contsub = False, 
+        do_extract_line = True,
+        do_extract_cont = True,
         make_directories = True,
-        extra_ext = '', 
+        extra_ext = '',         
+        just_projects=None,        
         overwrite = False, 
         ):
         """
@@ -157,105 +190,113 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         if make_directories:
             self._kh.make_missing_directories(imaging=True)
         
+                
+        target_list = self.get_targets()
+        config_list = self.get_interf_configs()
+
+        # This loop goes over target, array, observation number, and
+        # project and prepares each observation for imaging and
+        # analysis.
+
+        for this_target, this_project, this_array_tag, this_obsnum in \
+                self._kh.loop_over_input_ms(targets=target_list,
+                                            configs=config_list,
+                                            projects=just_projects):
         
-        if do_copy:
-            
-            for this_target, this_config in \
-                    self.looper(do_targets=True,do_products=False,do_configs=False,
-                                just_interf=True):
-                # 
-                self.task_copy_and_split(
-                    target = this_target, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        #if do_custom:
-        #    # 
-        #    for this_target, this_config in \
-        #        self.looper(do_targets=True,do_products=False,do_configs=True,
-        #                    just_interf=True):
-        #        
-        #        pass
-        
-        
-        if do_continuum_subtraction:
-            # 
-            for this_target, this_product, this_config in \
+                if do_copy:
+
+                    self.task_copy_and_split(
+                        target = this_target, 
+                        project = this_project, 
+                        array_tag = this_array_tag, 
+                        obsnum = this_obsnum, 
+                        extra_ext = extra_ext, 
+                        # could add algorithm flags here
+                        overwrite = overwrite, 
+                        )
+
+        # This loop goes over target, product, and configuration and
+        # combines all data for each target + product + config
+        # combination.
+
+        for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-                # 
-                self.task_run_continuum_subtraction(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
+                            just_line=True,just_interf=True):
+
+                if do_concat_line:
+
+                    self.task_concat_uvdata(
+                        target = this_target, 
+                        config = this_config, 
+                        product = this_product, 
+                        extra_ext = extra_ext,                         
+                        overwrite = overwrite, 
+                        )
+                
+                if do_concat_cont:
+
+                    self.task_concat_uvdata(
+                        target = this_target, 
+                        config = this_config, 
+                        product = this_product, 
+                        extra_ext = extra_ext, 
+                        overwrite = overwrite, 
+                        )
         
+        # This loop processes the concatenated data
+
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_line=True,just_interf=True):
+
+                if do_contsub:
+                    
+                    self.task_contsub(
+                        target = this_target, 
+                        project = this_project, 
+                        array_tag = this_array_tag, 
+                        obsnum = this_obsnum, 
+                        extra_ext = extra_ext, 
+                        # could add algorithm flags here
+                        overwrite = overwrite, 
+                        )
         
+
         if do_extract_line:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
-                # 
-                self.task_extract_line(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
+
+            for this_product in self.get_line_products():
+            
+                common_chan_width = self.task_compute_common_channel(
+                    product = this_product, extra_ext = extra_ext
                     )
-        
-        
-        if do_concat_line:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
-                # 
-                self.task_concat_uvdata(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        if do_extract_cont:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-                # 
-                self.task_extract_continuum(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        if do_concat_cont:
-            # 
-            for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-                # 
-                self.task_concat_uvdata(
-                    target = this_target, 
-                    config = this_config, 
-                    product = this_product, 
-                    extra_ext = extra_ext, 
-                    overwrite = overwrite, 
-                    )
-        
-        
-        return
+
+                        self.task_extract_line(
+                            target = this_target, 
+                            project = this_project, 
+                            array_tag = this_array_tag, 
+                            obsnum = this_obsnum, 
+                            product = this_product, 
+                            extra_ext = extra_ext,
+                            # could add algorithm flags here
+                            overwrite = overwrite, 
+                            )
+
+                if do_extract_cont:
+
+                    for this_product in self.get_cont_products():
+
+                        self.task_extract_continuum(
+                            target = this_target, 
+                            project = this_project, 
+                            array_tag = this_array_tag, 
+                            obsnum = this_obsnum, 
+                            product = this_product, 
+                            extra_ext = extra_ext,
+                            # could add algorithm flags here
+                            overwrite = overwrite, 
+                            )                
+                
+        return()
         
     ##########################################
     # Tasks - individual operations on data. #
@@ -263,27 +304,54 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
     
     def task_copy_and_split(
             self, 
-            target = None, 
-            extra_ext = '', 
+            target = None,
+            project = None,
+            array_tag = None,
+            obsnum = None,
+            extra_ext_out = '',
             do_split = True, 
             do_statwt = False, 
             use_symlink = True, 
             overwrite = False, 
             ):
         """
-        Copy visibility data from their original location to the
-        imaging directory for the target. Then optionally split out
-        only the science targets.         
+        Copy visibility data for one target, project, array_tag,
+        obsnum combination from their original location to the imaging
+        directory for the target. Then optionally split out only the
+        science targets.
         """
-           
-        if clean_call is None:
-            logger.warning("Require a clean_call object. Returning.")
-            return()
+        
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if project is None:
+            logging.error("Please specify a project.")
+            raise Exception("Please specify a project.")
+
+        if array_tag is None:
+            logging.error("Please specify an array_tag.")
+            raise Exception("Please specify an array_tag.")
+
+        if obsnum is None:
+            logging.error("Please specify an obsnum.")
+            raise Exception("Please specify an obsnum.")
+        
+        infile = self._kh.get_file_for_input_ms(
+            target=target, project=project, array_tag=array_tag, obsnum=obsnum)
+        
+        field = self._kh.get_field_for_input_ms(
+            target=target, project=project, array_tag=array_tag, obsnum=obsnum)
+        if (field.lower()).strip() == 'all':
+            field = ''
+
+        outfile = fnames.get_staged_msname(
+            target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
+            ext=extra_ext_out)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Copying u-v data.")
-        logger.info("All data for target: "+str(target)
+        logger.info("Copying u-v data for "+outfile)
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
@@ -291,79 +359,140 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
         
-        # get fname dict for the list of ms data for the input target and config
+        if not self._dry_run and casa_enabled:
 
-        fname_dict = self._fname_dict(target = target, config = config, 
-                                      all_ms_data = True, extra_ext = extra_ext)
-        this_ms_filepaths = fname_dict['ms_filepaths']
-        this_ms_filenames = fname_dict['ms_filenames']
+            cvr.split_science_targets(
+                infile = infile, 
+                outfile = outfile,  
+                field = field,
+                do_split = do_split, 
+                do_statwt = do_statwt, 
+                use_symlink = use_symlink, 
+                overwrite = overwrite, 
+                )
 
-        # loop over all measurement sets to copy-and-split each one
-
-        for i in range(len(this_ms_filenames)):
-
-            this_infile = this_ms_filepaths[i]
-            this_outfile = this_ms_filenames[i]
-
-            logger.debug('Copying from "'+this_ms_filename+'" <-- "'+this_ms_filepath+'"')
-
-            if not self._dry_run and casa_enabled:
-
-                cvr.split_science_targets(
-                    in_file = this_ms_filepath, 
-                    out_file = this_ms_filename,  
-                    do_split = do_split, 
-                    do_statwt = do_statwt, 
-                    use_symlink = use_symlink, 
-                    overwrite = overwrite, 
-                    )
         return()
-    
-    def task_run_continuum_subtraction(
+
+    def task_concat_uvdata(
             self, 
             target = None, 
             product = None, 
             config = None, 
-            extra_ext = '', 
+            extra_ext_in = '', 
+            extra_ext_out = '', 
             overwrite = False, 
             ):
+
         """
-        Run continuum subtraction for the uv data of the input target, config and product. 
+        Concatenate all measurement sets for the supplied
+        target+config+product combination.
         """
-        # 
-        logger.info('START: Running continuum subtraction for all ms data of target '+target+' and config '+config+'.')
+        
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        if config is None:
+            logging.error("Please specify a config.")
+            raise Exception("Please specify a config.")
+        
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Concatenating u-v data for:")
+        logger.info("... product "+product '+product+' for target '+target+' and config '+config+'.')                    
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+
+        logger.info('START: Concatenating 
         # 
         # get imaging dir and change directory
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
         # 
+        # get the fname dict for the input target and config
+        fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
+        ms_concatenated = fname_dict['ms_concatenated']
+        ms_list_to_concatenate = fname_dict['ms_extracted']
+        ms_list_to_concatenate = sorted(ms_list_to_concatenate)
+        str_of_ms_list_to_concatenate = ', '.join(['"'+t+'"' for t in ms_list_to_concatenate]) # for printing
+        logger.debug('Current directory: "'+os.getcwd()+'"')
+        logger.debug('Concatenating: "'+ms_concatenated+'" <-- ['+str_of_ms_list_to_concatenate+']')
+        if not self._dry_run:
+            # concat_ms
+            cvr.concat_ms(in_file_list = ms_list_to_concatenate, 
+                          out_file = ms_concatenated, 
+                          overwrite = overwrite, 
+                          )
+        # 
+        logger.info('END: Concatenating product '+product+' for target '+target+' and config '+config+'.')
+        
+    
+
+    
+    def task_contsub(
+            self, 
+            target = None, 
+            project = None, 
+            array_tag = None, 
+            obsnum = None, 
+            product = None,
+            extra_ext = '', 
+            overwrite = False, 
+            ):
+        """
+        Run u-v plane continuum subtraction on individual input measurement sets.
+        """
+
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if project is None:
+            logging.error("Please specify a project.")
+            raise Exception("Please specify a project.")
+
+        if array_tag is None:
+            logging.error("Please specify an array_tag.")
+            raise Exception("Please specify an array_tag.")
+
+        if obsnum is None:
+            logging.error("Please specify an obsnum.")
+            raise Exception("Please specify an obsnum.")
+        
+        infile = fnames.get_staged_msname(
+            target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
+            product=product, ext=extra_ext)
+
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
-        # 
+
         # get lines to flag as defined in keys
         lines_to_flag = self._kh.get_lines_to_flag_for_continuum_product(product=product)
-        # 
-        # get fname dict for the list of ms data for the input target and config
-        fname_dict = self._fname_dict(target = target, config = config, all_ms_data = True, extra_ext = extra_ext)
-        this_ms_filenames = fname_dict['ms_filenames']
-        # 
-        # loop ms data and split science targets data
-        logger.debug('Current directory: "'+os.getcwd()+'"')
-        for i in range(len(this_ms_filenames)):
-            this_ms_filename = this_ms_filenames[i]
-            logger.debug('Running contsub: "'+this_ms_filename+'.contsub'+'" <-- "'+this_ms_filename+'"')
-            if not self._dry_run:
-                # copy ms data into imaging dir (or make symlink) and split science targets in one function
-                cvr.contsub(in_file = this_ms_filename, 
-                            lines_to_flag = lines_to_flag, 
-                            vsys = vsys, 
-                            vwidth = vwidth, 
-                            overwrite = overwrite, 
-                            )
-        # 
-        logger.info('END: Running continuum subtraction for all ms data of target '+target+' and config '+config+'.')
-        # 
-        # end of task_run_continuum_subtraction()
-    
+        
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("u-v continuum subtraction for "+infile)
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+        # Change to the imaging directory for the target
+
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+        
+        if not self._dry_run and casa_enabled:
+
+            cvr.contsub(in_file = infile, 
+                        lines_to_flag = lines_to_flag, 
+                        vsys = vsys, 
+                        vwidth = vwidth, 
+                        overwrite = overwrite, 
+                        )
+
+        return()
     
     def task_run_custom_scripts(
             self, 
@@ -377,7 +506,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         pass
 
 
-    def task_compute_common_channel_width(
+    def task_compute_common_channel(
             self, 
             target = None, 
             product = None, 
@@ -387,21 +516,27 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         """
         Compute the coarsest channel width among all ms data for the input target, config and product. 
         """
+
         # 
         logger.info('START: Computing common channel width among all ms data for target '+target+', config '+config+' and product '+product+'.')
+
         # 
         # get imaging dir and change directory
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
         # 
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
+
         # 
         # get fname dict for the list of ms data for the input target and config
         fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
         this_ms_filenames = fname_dict['ms_filenames']
+
         # 
         # get line tag for product
         line_tag = self._kh.get_line_tag_for_line_product(product)
+
         # 
         # loop ms data for the input target and config
         all_chanwidths = []
@@ -607,48 +742,11 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         # 
         # 
         logger.info('END: Extracting continuum '+product+' for target '+target+' and config '+config+'.')
-
-
-    def task_concat_uvdata(
-            self, 
-            target = None, 
-            product = None, 
-            config = None, 
-            extra_ext = '', 
-            overwrite = False, 
-            ):
-        """
-        Concatenate all ms projects for the line or continuum product of the input target and config.
-        """
-        # 
-        logger.info('START: Concatenating product '+product+' for target '+target+' and config '+config+'.')
-        # 
-        # get imaging dir and change directory
-        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-        # 
-        # get the fname dict for the input target and config
-        fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
-        ms_concatenated = fname_dict['ms_concatenated']
-        ms_list_to_concatenate = fname_dict['ms_extracted']
-        ms_list_to_concatenate = sorted(ms_list_to_concatenate)
-        str_of_ms_list_to_concatenate = ', '.join(['"'+t+'"' for t in ms_list_to_concatenate]) # for printing
-        logger.debug('Current directory: "'+os.getcwd()+'"')
-        logger.debug('Concatenating: "'+ms_concatenated+'" <-- ['+str_of_ms_list_to_concatenate+']')
-        if not self._dry_run:
-            # concat_ms
-            cvr.concat_ms(in_file_list = ms_list_to_concatenate, 
-                          out_file = ms_concatenated, 
-                          overwrite = overwrite, 
-                          )
-        # 
-        logger.info('END: Concatenating product '+product+' for target '+target+' and config '+config+'.')
-        
-    
     
     ###################################
     # Recipes - combinations of tasks #
     ###################################
-    
+     
     ########################################
     # 20200226: DEPRECATED FUNCTIONS BELOW #
     ########################################
