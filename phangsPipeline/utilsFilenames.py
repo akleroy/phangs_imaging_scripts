@@ -122,15 +122,15 @@ def get_vis_filename(target=None, config=None, product=None,
 # Visibility Names During Staging
 ##############################################################
 
-def get_staged_msname(target=None, project=None, array_tag=None,
-                      obsnum=None, ext=None, suffix=None,
+def get_staged_msname(target=None, project=None, array_tag=None,                     
+                      obsnum=None, product=None, ext=None, suffix=None,
                       ):
     """
     Get the file name for a staged measurement set (where we have
     not yet extracted the spectral product). Optionally include an
     extension and a suffix.  Convention is:
     
-    {target}_{project}_{array_tag}_{ext}.ms{.suffix}
+    {target}_{project}_{array_tag}_{product}_{ext}.ms{.suffix}
     
     """
 
@@ -161,6 +161,14 @@ def get_staged_msname(target=None, project=None, array_tag=None,
         logging.error("Obsnum needs to be a string."+str(obsnum))
 
     filename = target+'_'+project+'_'+array_tag+'_'+obsnum
+    
+    if product is not None:
+        if type(product) is not type(''):
+            logging.error("Product needs to be a string or None.", product)
+            return(None)
+        if len(product) > 0:
+            filename += '_'+ext
+
     if ext is not None:
         if type(ext) is not type(''):
             logging.error("Ext needs to be a string or None.", ext)
