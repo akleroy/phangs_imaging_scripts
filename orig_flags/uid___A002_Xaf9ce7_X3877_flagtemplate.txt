@@ -1,0 +1,25 @@
+# User flagging commands file
+#
+# Examples
+# Note: Do not put spaces inside the reason string !
+#
+# mode=manual correlation=YY antenna=DV01;DV08;DA43;DA48&DV23 spw=21:1920~2880  autocorr=False reason='bad_channels'
+# mode=manual spw='25:0~3;122~127' reason='stage8_2'
+# mode=manual antenna='DV07' timerange='2013/01/31/08:09:55.248~2013/01/31/08:10:01.296' reason='quack'
+#
+mode=manual field='1' antenna='DV10' reason='timegaincal_outlier_phase'
+mode=manual field='1' antenna='DV15&DV25;DA50&DA58' scan='4' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA43&PM04;DA44&DA51;DA53&PM04;DV04&DV21;DA51&DV09' scan='7' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DV13&DV21;DV13&PM03;DA43&DA58,DA45&DA55;DA43&DV21;DV14&DV17' scan='9' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DV16&DV21;DA50&DV25;DA50&PM04;DA55&DV04;DA65&DV21;DA42&DA58;DV06&DV13' scan='12' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA43&DV12;DA53&DV21;DA54&PM03;DV25&PM03;DA53&DA65;DA42&DV06;DA57&DV14;DV03&DV21;DA43&DA52;DV03&DV12;DA50&DA54;DA53&DV06;DA56&DV25;DA43&DA53;DA49DA54;DA54&DV18;DA52&DA65;DA42&DV12;DA60&DV12;DA61&DA65;DV03&DV16;DV03&DV25' scan='14' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA57&DV04;DA50&DV17;DA51&DV04;DA62&DV25;DA53&DV14;DA55&DV17;DA42&DV03;DA61&DV17;DV06&DV11;DV07&PM02;DV21&DV23;DA50&DA57;DA62&DV17&DA62&DV21;DV16&DV25;DA44&DA49' scan='17' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA65&DV13;DA52&PM04;DA44&DA65;DA42&DA48;DA45&DA52;DA50&DA58;DA51&DV07;DA52&DA55' scan='19' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA55&PM03;DV11&PM03;DA43&DV13;DA55&DV06;DA43&DA60;DA56&DV19;DA57&PM04;DA45&DV01;DA42&DA52;DA45&DV01;DA45&DV24;DA48&DA51' scan='22' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='PM02' scan='22' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA56&DA58;DA44&DV25;DA45&DV01;DA42&DA52,DA45&DV24;DA48&DA51' scan='24' spw='25' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DV14&PM03' scan='9' spw='27' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA42&PM04' scan='12' spw='27' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DV06&DV21;DA55&DV25;DA42&DA65;DA54&DV12;DV16&DV25;DV13&DV17;DA42&DV06;DA48&DV06;DV12&PM03;DV21&PM03;DA54&PM02;DV21&PM03;DA54&PM02;DV21&PM02;DV21&DV24;DV21&DV25' scan='14' spw='27' reason='applycal_outlier_phase'
+mode=manual field='1' antenna='DA55&PM03;DA43&DA55' scan='22' spw='27' reason='applycal_outlier_phase'
+

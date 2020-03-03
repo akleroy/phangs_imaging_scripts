@@ -1,0 +1,14 @@
+#
+# User flagging commands file for the calibration pipeline
+#
+# Examples
+# Note: Do not put spaces inside the reason string !
+#
+# mode='manual' correlation='YY' antenna='DV01;DV08;DA43;DA48&DV23' spw='21:1920~2880' autocorr=False reason='bad_channels'
+# mode='manual' spw='25:0~3;122~127' reason='stage8_2'
+# mode='manual' antenna='DV07' timerange='2013/01/31/08:09:55.248~2013/01/31/08:10:01.296' reason='quack'
+#
+# uid://A002/Xc55c89/X36b5    Flag template file from QA0-aoscheck 
+# 
+# QA0-aoscheck: completely flagged antenna: 
+mode='manual' antenna='CM05' reason='flagged 8/8 phaseCal scans, Phase: 100% of spws flagged on 77% of phase cals :  Phase noise 10.8x sigma on most baselines'

@@ -1,7 +1,4 @@
-## README for PHANGS Pipeline Version 2.0
-
-Email leroy.42@osu.edu or otherwise get in touch with questions or
-suggestions.
+## README for PHANGS Data Reduction
 
 ### EXECUTIVE SUMMARY
 
@@ -23,7 +20,7 @@ It runs in five steps right now:
 
    (a) `IDL build_cubes.pro`
 
-   (b) `process_cubes.py`
+   (b) [under development] `process_cubes.py`
 
    These steps convolve to a round beam, primary beam correct,
 feather, combine multi-part galaxies, and then export final FITS
@@ -36,14 +33,16 @@ now the IDL pipeline is most complete.
 masks, create fixed resolution cubes, and build moment maps and
 similar products.
 
-6) compile cubes into a release using the IDL build_release.
+Then potentially compile cubes into a release using the IDL
+build_release.
 
 Parts 1-3 and 4b run in CASA. Parts 2-4 depend on `phangsPipeline.py`
 and use the `analysisUtils` available from [here](ftp://ftp.cv.nrao.edu/pub/casaguides/analysis_scripts.tar).
 
-Part 4 has been shifted to prefer CASA.
+Parts 4a and 5 run in IDL with a stop during 4a in CASA to feather.
 
-Parts 5 and 6 currently run in IDL.
+Email leroy.42@osu.edu or otherwise get in touch with questions or
+suggestions.
 
 ### SETUP
 
