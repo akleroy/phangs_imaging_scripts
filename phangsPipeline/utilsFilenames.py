@@ -105,7 +105,8 @@ def get_vis_filename(target=None, config=None, product=None,
         if type(ext) is not type(''):
             logging.error("Ext needs to be a string or None.", ext)
             return(None)
-        filename += '_'+ext
+        if len(ext) > 0:
+            filename += '_'+ext
         
     filename += '.ms'
 
@@ -164,7 +165,8 @@ def get_staged_msname(target=None, project=None, array_tag=None,
         if type(ext) is not type(''):
             logging.error("Ext needs to be a string or None.", ext)
             return(None)
-        filename += '_'+ext
+        if len(ext) > 0:
+            filename += '_'+ext
         
     filename += '.ms'
 

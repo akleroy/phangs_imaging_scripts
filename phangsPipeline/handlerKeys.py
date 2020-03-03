@@ -1299,6 +1299,11 @@ class KeyHandler:
                 raise Exception("Expected list or string.")
         
             # Allow linear mosaics
+
+            # Missing the case where the target is BOTH in the ms_dict
+            # and the linmos list. We could change to reflect this
+            # ... I'm not sure if this causes problems or not.
+
             for this_target in input_targets:
                 if target in self._ms_dict.keys():
                     just_targets.append(this_target)
