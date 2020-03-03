@@ -94,11 +94,12 @@ def simple_mask(data, noise, hi_thresh=5, hi_nchan=2,
     if lo_thresh is None:
         lo_thresh = hi_thresh
     
-    # The following 2 lines were replaced by the next 2 lines to avoid the "Invalid value encountered" issue. 
-    #hi_mask = signif >= hi_thresh
-    #lo_mask = signif >= lo_thresh
-    hi_mask = np.greater_equal(signif, hi_thresh, where=(~np.isnan(signif)), out=np.full(signif.shape, False, dtype=bool))
-    lo_mask = np.greater_equal(signif, lo_thresh, where=(~np.isnan(signif)), out=np.full(signif.shape, False, dtype=bool))
+    hi_mask = np.greater_equal(signif, hi_thresh,
+                               where=(~np.isnan(signif)),
+                               out=np.full(signif.shape, False, dtype=bool))
+    lo_mask = np.greater_equal(signif, lo_thresh,
+                               where=(~np.isnan(signif)),
+                               out=np.full(signif.shape, False, dtype=bool))
     
     histr = np.ones(hi_nchan, dtype=np.bool)
     lostr = np.ones(lo_nchan, dtype=np.bool)
