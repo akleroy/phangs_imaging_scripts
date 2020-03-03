@@ -10,6 +10,7 @@ product_dict = {'mom0': None}
 
 
 def moment_generator(cubefile,
+                     root_name='',
                      mask_file=None,
                      rms_file=None,
                      products=['mom0','mom1','mom2',
@@ -25,23 +26,24 @@ def moment_generator(cubefile,
     cube = SpectralCube.read(cubefile)
     cube = cube.to(u.K)
     
+    angres_name = None
     if angular_resolution is not None:
         beam = Beam(major=angular_resolution,
                     minor=angular_resolution,
                     pa=0 * u.deg)
         cube = cube.convolve_to(beam)
-        angres_name = str(angular_resolution).replace(
+        angres_name = '_' + str(angular_resolution).replace(
             ' ', '').replace('.', 'p').replace('/', '')
-        
+
+    velres_name = None
     if velocity_resolution is not None:
         from astropy.convolution import Box1DKernel
         dv = scpr.channel_width(cube)
         nChan = (velocity_resolution / dv).to(u.dimensionless_unscaled).value
         if nChan > 1:
             cube = cube.spectral_smooth(Box1DKernel(nChan))
-        velres_name = str(velocity_resolution).replace(
+        velres_name = '_' + str(velocity_resolution).replace(
             ' ', '').replace('.', 'p').replace('/', '')
-        
         
     if mask_file is not None:
         mask_hdu = fits.open(mask_file)
