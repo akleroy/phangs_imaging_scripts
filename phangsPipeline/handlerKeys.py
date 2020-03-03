@@ -830,7 +830,7 @@ class KeyHandler:
         
         return()
 
-    def check_dir_existence(self, imaging=True, postprocess=True, product=True):
+    def check_dir_existence(self, imaging=True, postprocess=True, product=True, release=True):
         """
         Check the existence of the directories for imaging and post-processing.
         """
@@ -866,6 +866,13 @@ class KeyHandler:
                     logging.warning("Missing product directory :"+self._product_root+this_dir)
                     missing_dirs.append(self._product_root+this_dir)
         
+            if release:
+                if os.path.isdir(self._release_root+this_dir):
+                    found_dirs += 1
+                else:
+                    logging.warning("Missing release directory :"+self._release_root+this_dir)
+                    missing_dirs.append(self._release_root+this_dir)
+
         logging.info("Found "+str(found_dirs)+" directories.")
 
         missing_count = (len(missing_dirs))
@@ -881,7 +888,7 @@ class KeyHandler:
 #region Access data and lists
     
     def _get_dir_for_target(self, target=None, changeto=False, 
-                            imaging=False, postprocess=False, product=False):
+                            imaging=False, postprocess=False, product=False, release=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -900,12 +907,19 @@ class KeyHandler:
             logging.error("Multiple flags set, pick only one type of directory.")
             return(None)
             
+        if (release and imaging) or (release and product) or \
+                (release and postprocess):
+            logging.error("Multiple flags set, pick only one type of directory.")
+            return(None)
+
         if imaging:
             this_dir = self._imaging_root + self._dir_for_target[target]+'/'
         elif postprocess:
             this_dir = self._postprocess_root + self._dir_for_target[target]+'/'
         elif product:
             this_dir = self._product_root + self._dir_for_target[target]+'/'
+        elif release:
+            this_dir = self._release_root + self._dir_for_target[target]+'/'
         else:
             logging.error("Pick a type of directory. None found.")
             return(None)
@@ -938,6 +952,13 @@ class KeyHandler:
         changeto is true, then change directory to that location.
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, product=True))
+
+    def get_release_dir_for_target(self, target=None, changeto=False):
+        """
+        Return the release working directory given a target name. If
+        changeto is true, then change directory to that location.
+        """
+        return(self._get_dir_for_target(target=target, changeto=changeto, release=True))
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1857,13 +1878,13 @@ class KeyHandler:
     
 #region Manipulate files and file structure
 
-    def make_missing_directories(self, imaging=False, postprocess=False, product=False):
+    def make_missing_directories(self, imaging=False, postprocess=False, product=False, release=False):
         """
         Make any missing imaging or postprocessing directories.
         """
         
-        if not imaging and not postprocess and not product:
-            logging.error("Set either imaging or postprocess or product to True. Returning.")
+        if not imaging and not postprocess and not product and not release:
+            logging.error("Set either imaging or postprocess or product or release to True. Returning.")
             return(False)
 
         if imaging:
@@ -1887,13 +1908,20 @@ class KeyHandler:
                 #return(False)
                 os.makedirs(self._product_root)
 
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product)
+        if release:
+            if not os.path.isdir(self._release_root):
+                logging.info("Missing release root directory.")
+                logging.info("Create: "+self._release_root)
+                #return(False)
+                os.makedirs(self._release_root)
+
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product, release=release)
         made_directories = 0
         for this_missing_dir in missing_dirs:
             made_directories += 1
             os.makedirs(this_missing_dir)
         
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product)
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product, release=release)
 
         logging.info("Made "+str(made_directories)+" directories. Now "+str(len(missing_dirs))+" missing.")
 
