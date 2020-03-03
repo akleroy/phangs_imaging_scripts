@@ -1276,6 +1276,7 @@ class KeyHandler:
         self, 
         target=None,
         config=None,
+        project=None,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1286,34 +1287,86 @@ class KeyHandler:
         contribute to that configuration.
         """
     
-        # if user has input a target, match to it
+        # if user has input a target or target list, match to it
+        just_targets = []
         if target is not None:
-            if target in self._ms_dict.keys():
-                targets = [target]
+            if type(target) == type(''):
+                input_targets = [target]
+            elif type(target) == type([]):
+                input_targets = target
             else:
-                targets = self.get_parts_for_linmos(target=target)
+                logger.error("Expected list or string.")
+                raise Exception("Expected list or string.")
         
-        # if user has input a config, match to it
+            # Allow linear mosaics
+            for this_target in input_targets:
+                if target in self._ms_dict.keys():
+                    just_targets.append(this_target)
+                else:
+                    parts = self.get_parts_for_linmos(target=this_target)
+                    if parts is None:
+                        continue
+                    for this_part in parts:
+                        just_targets.append(this_part)
+                
+                        
+        # if the user has input a project list, match to that
+        just_projects = []
+        if project is not None:
+            if type(project) == type(''):
+                just_projects = [project]
+            elif type(target) == type([]):
+                just_projects = project
+            else:
+                logger.error("Expected list or string.")
+                raise Exception("Expected list or string.")        
+
+        # if user has input a config or config list, only loop over
+        # array tags included in those configurations.
+        just_arraytags = []
         if config is not None:
-            matching_arraytags = self.get_array_tags_for_config(config)
-        else:
-            matching_arraytags = []
-        
+            if type(config) == type(''):
+                input_configs = [target]
+            elif type(config) == type([]):
+                input_configs = config
+            else:
+                logger.error("Expected list or string.")
+                raise Exception("Expected list or string.")
+                return(None)
+ 
+            for this_config in input_configs:
+                this_array_tags = self.get_array_tags_for_config(this_config)
+                if this_array_tags is None:
+                    continue
+                for this_tag in this_array_tags:
+                    if this_tag not in just_arraytags:
+                        just_arraytags.append(this_tag)
+
+        # Loop over targets
         for this_target in self._ms_dict.keys():
 
             # if user has input targets, match it
-            if target is not None:
-                if this_target not in targets:
+            if len(just_targets) > 0:
+                if not (this_target in just_targets):
                     continue
 
+            # loop over projects
             for this_project in self._ms_dict[this_target].keys():
+
+                if len(just_projects) > 0:
+                    if not (this_project in just_projects):
+                        continue
+
+                # loop over array tags
                 for this_arraytag in self._ms_dict[this_target][this_project].keys():
 
-                    # if user has input a config, match it
-                    if config is not None:
-                        if not (this_arraytag in matching_arraytags):
+                    if len(just_arraytags) > 0:
+                        if not (this_arraytag in just_targets):
                             continue
+
+                    # loop over obs nums
                     for this_obsnum in self._ms_dict[this_target][this_project][this_arraytag].keys():
+                        
                         yield this_target, this_project, this_arraytag, this_obsnum
 
     def get_file_for_input_ms(
