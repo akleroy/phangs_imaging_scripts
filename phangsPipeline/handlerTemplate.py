@@ -232,7 +232,7 @@ class HandlerTemplate:
 
     def set_no_feather_configs(
         self,
-        no_interf = False):
+        no_feather = False):
         """
         Toggle the program to skip all feathered configurations when a
         loop is run.
