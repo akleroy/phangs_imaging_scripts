@@ -153,9 +153,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # redundant with the concatenated data and original
         # data. Saves 33% on disk space.
 
-        for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
+        for this_target, this_project, this_array_tag, this_obsnum in \
+                self._kh.loop_over_input_ms(target=target_list,
+                                            config=config_list,
+                                            project=just_projects):
 
                 for this_product in product_list:
                     
@@ -504,7 +505,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not self._dry_run and casa_enabled:
 
             cvr.contsub(infile = infile, 
-                        lines_to_flag = lines_to_exclude, 
+                        lines_to_exclude = lines_to_exclude, 
                         vsys = vsys, 
                         vwidth = vwidth, 
                         overwrite = overwrite, 

@@ -331,6 +331,7 @@ def contsub(
     lines_to_exclude = None, 
     vsys = None, 
     vwidth = None, 
+    dry_run = False,
     overwrite = False, 
     ):
     """
@@ -362,23 +363,27 @@ def contsub(
 
     # Figure out which channels to exclude from the fit.
 
-    # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(infile = infile, 
-                                                              lines_to_flag = lines_to_flag, 
-                                                              vsys = vsys, 
-                                                              vwidth = vwidth)
-    # 
-    # uvcontsub, this outputs infile+'.contsub'
-    os.mkdir(infile+'.contsub'+'.touch')
-    casaStuff.uvcontsub(vis = infile,
-                        fitspw = spw_flagging_string,
-                        excludechans = True,
-                        combine='spw',
-                        )
-                        # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
+    # find_spw_channels_for_lines
 
-    os.rmdir(infile+'.contsub'+'.touch')
+    spw_flagging_string = find_spw_channels_for_lines(
+        infile = infile, 
+        lines_to_flag = lines_to_exclude, 
+        vsys = vsys, 
+        vwidth = vwidth)
+    
+    # uvcontsub, this outputs infile+'.contsub'
+
+    if not dry_run:
+        os.mkdir(infile+'.contsub'+'.touch')
+        casaStuff.uvcontsub(vis = infile,
+                            fitspw = spw_flagging_string,
+                            excludechans = True,
+                            combine='spw',
+                            )
+    # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
+        os.rmdir(infile+'.contsub'+'.touch')
     # 
+
     return
 
 ##########################################################
@@ -457,36 +462,43 @@ def find_spws_for_line(
      
     return(spw_list_string)
 
-def find_spw_channels_for_lines_to_flag(
-    infile, 
-    lines_to_flag, 
+def find_spw_channels_for_lines(
+    infile = None, 
+    lines_to_flag = [], 
     vsys = None, 
     vwidth = None, 
     ):
+
     """
-    List the spectral window and channels corresponding to the input lines in the input ms data. 
-    Galaxy system velocity (vsys) and velocity width (vwidth) in units of km/s are needed. 
+    Given an input measurement set, return the spectral 
+    List the spectral window and channels corresponding to the input
+    lines in the input ms data.  Galaxy system velocity (vsys) and
+    velocity width (vwidth) in units of km/s are needed.
     """
     
-    # 
-    # check input ms data dir
+    if infile is None:
+        logging.error("Please specify an input file.")
+        raise Exception("Please specify an input file.")
+
     if not os.path.isdir(infile):
-        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
-    # 
+        logger.error('The input measurement set "'+infile+'"does not exist.')
+        raise Exception('The input measurement set "'+infile+'"does not exist.')
+
     # check vsys
     if vsys is None:
         logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
         raise Exception('Error! Please input vsys.')
-    # 
+    
     # check vwidth
     if vwidth is None:
         logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
         raise Exception('Error! Please input vwidth.')
-    # 
-    # set the list of lines to flag
+     
+    # set the list of lines to flag - propose to move this to another routine.
+
     if lines_to_flag is None:
         lines_to_flag = line_list.line_families['co'] + line_list.line_families['13co'] + line_list.line_families['c18o']
+
     else:
         lines_to_flag_copied = copy.copy(lines_to_flag)
         lines_to_flag = []
@@ -498,13 +510,15 @@ def find_spw_channels_for_lines_to_flag(
                 matched_line_name, matched_line_freq = line_list.get_line_name_and_frequency(line_to_flag_copied, exit_on_error = False)
                 if matched_line_name is not None:
                     lines_to_flag.append(matched_line_name)
+
     # 
     if len(lines_to_flag) == 0:
         logger.debug('No line to flag for the continuum .')
     else:
         logger.debug('Lines to flag for the continuum: '+str(lines_to_flag))
-    # 
-    # Figure out the line channels and flag them
+        # 
+
+    
     vm = au.ValueMapping(infile)
     # 
     spw_flagging_string = ''
@@ -914,11 +928,11 @@ def extract_continuum(
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
     # 
-    # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(infile = infile, 
-                                                              lines_to_flag = lines_to_flag, 
-                                                              vsys = vsys, 
-                                                              vwidth = vwidth)
+    # find_spw_channels_for_lines
+    spw_flagging_string = find_spw_channels_for_lines(infile = infile, 
+                                                      lines_to_flag = lines_to_flag, 
+                                                      vsys = vsys, 
+                                                      vwidth = vwidth)
     # 
     # make a continuum copy of the data
     os.mkdir(outfile+'.touch')
