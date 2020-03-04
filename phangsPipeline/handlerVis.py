@@ -83,8 +83,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
     def loop_stage_uvdata(
         self,
         do_copy = True,
-        do_concat_line = True,
-        do_concat_cont = True,
+        do_concat = True,
         do_custom = False,
         do_contsub = False, 
         do_extract_line = True,
