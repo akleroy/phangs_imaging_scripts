@@ -175,7 +175,7 @@ class KeyHandler:
         self._key_dir = None
         self._imaging_root = os.getcwd()+'/../imaging/'
         self._postprocess_root = os.getcwd()+'/../postprocess/'
-        self._product_root = os.getcwd()+'/../product/'
+        self._derived_root = os.getcwd()+'/../derived/'
         self._release_root = os.getcwd()+'/../release/'
 
         self._ms_roots = []
@@ -196,7 +196,7 @@ class KeyHandler:
         first_key_dir = True
         first_imaging_root = True
         first_postprocess_root = True
-        first_product_root = True
+        first_derived_root = True
         first_release_root = True
 
         lines_read = 0
@@ -231,12 +231,12 @@ class KeyHandler:
                     logger.warning("Multiple postprocess_root definitions. Using the last one.")
                 lines_read += 1
 
-            if this_key == 'product_root':
-                self._product_root = this_value
-                if first_product_root:
-                    first_product_root = False
+            if this_key == 'derived_root':
+                self._derived_root = this_value
+                if first_derived_root:
+                    first_derived_root = False
                 else:
-                    logger.warning("Multiple product_root definitions. Using the last one.")
+                    logger.warning("Multiple derived_root definitions. Using the last one.")
                 lines_read += 1
 
             if this_key == 'release_root':
@@ -883,11 +883,11 @@ class KeyHandler:
                     missing_dirs.append(self._postprocess_root+this_dir)
 
             if product:
-                if os.path.isdir(self._product_root+this_dir):
+                if os.path.isdir(self._derived_root+this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing product directory :"+self._product_root+this_dir)
-                    missing_dirs.append(self._product_root+this_dir)
+                    logging.warning("Missing product directory :"+self._derived_root+this_dir)
+                    missing_dirs.append(self._derived_root+this_dir)
         
             if release:
                 if os.path.isdir(self._release_root+this_dir):
@@ -940,7 +940,7 @@ class KeyHandler:
         elif postprocess:
             this_dir = self._postprocess_root + self._dir_for_target[target]+'/'
         elif product:
-            this_dir = self._product_root + self._dir_for_target[target]+'/'
+            this_dir = self._derived_root + self._dir_for_target[target]+'/'
         elif release:
             this_dir = self._release_root + self._dir_for_target[target]+'/'
         else:
@@ -1970,11 +1970,11 @@ class KeyHandler:
                 os.makedirs(self._postprocess_root)
 
         if product:
-            if not os.path.isdir(self._product_root):
+            if not os.path.isdir(self._derived_root):
                 logging.info("Missing product root directory.")
-                logging.info("Create: "+self._product_root)
+                logging.info("Create: "+self._derived_root)
                 #return(False)
-                os.makedirs(self._product_root)
+                os.makedirs(self._derived_root)
 
         if release:
             if not os.path.isdir(self._release_root):

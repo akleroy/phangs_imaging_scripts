@@ -185,3 +185,8 @@ def get_staged_msname(target=None, project=None, array_tag=None,
         filename += '.'+suffix        
 
     return(filename)
+
+
+def get_derived_root(target=None, config=None, product=None,
+                     res_tag=None, ext=None):
+    pass
