@@ -2,7 +2,7 @@
 Utilities for reading our pipeline-specific keys.
 """
 
-import os, ast
+import os, re, ast
 
 # There's room to further reduce code and redundancy here. For now,
 # this may not be worth the time.
@@ -302,11 +302,16 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
     lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim)==4))]
     lines_read = 0
     for t in lines:
-        out_dict[t.split(delim)[0]] = {}
-        out_dict[t.split(delim)[0]]['distance'] = t.split(delim)[1]
-        lines_read += 1
+        if re.match(r'^[0-9eE.+-]+$', t.split(delim)[1]):
+            out_dict[t.split(delim)[0]] = {}
+            out_dict[t.split(delim)[0]]['distance'] = float(t.split(delim)[1])
+            #logger.debug('distance of '+t.split(delim)[0]+' is '+t.split(delim)[1]+' Mpc')
+            lines_read += 1
         # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
     logger.info("Read "+str(lines_read)+" lines into a target/distance dictionary.")
+    # 
+    # return out_dict
+    return out_dict
 
 def read_nametoname_key(fname='', existing_dict=None, delim=None, as_list=False):
     """
@@ -503,6 +508,7 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
                 'res_step_factor':1.0,
+                'res_list':[],
                 'clean_scales_arcsec':[]}
 
         if this_type == "feather_config":
@@ -510,7 +516,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'interf_config':'',
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
-                'res_step_factor':1.0}
+                'res_step_factor':1.0,
+                'res_list':[]}
             
         if this_type == "line_product":
             expected_params = {

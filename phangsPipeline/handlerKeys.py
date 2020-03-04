@@ -1191,9 +1191,12 @@ class KeyHandler:
             raise Exception("Please specify a target.")
         
         distance = None
-        if target in self._distance_dict:
-            if 'distance' in self._distance_dict[target]:
-                distance = self._distance_dict[target]['distance']
+        #logger.debug('*******self._distance_dict*******'+': '+str(self._distance_dict))
+        if self._distance_dict is not None:
+            #logger.debug('*******self._distance_dict.keys()*******'+': '+str(self._distance_dict.keys()))
+            if target in self._distance_dict:
+                if 'distance' in self._distance_dict[target]:
+                    distance = self._distance_dict[target]['distance']
         
         #if distance is None:
         #    logging.error('No distance value is set for the target '+target+'. Please check your "distance_key.txt".')
