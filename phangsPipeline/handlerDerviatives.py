@@ -7,7 +7,7 @@ spatial scales.
 Example:
     $ ipython
     from phangsPipeline import handlerKeys as kh
-    from phangsPipeline import productHandler as prh
+    from phangsPipeline import handlerProducts as prh
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
     this_prh = prh.ProductHandler(key_handler = this_kh)
     this_prh.set_targets(only = ['ngc0628', 'ngc2997', 'ngc4321'])
@@ -41,7 +41,7 @@ else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import utils
+# import utils
 import utilsResolutions
 import utilsFilenames
 import line_list
@@ -50,7 +50,7 @@ import scMaskingRoutines as scmasking
 import scProductRoutines as scproduct
 from scMoments import moment_generator
 
-class ProductHandler(handlerTemplate.HandlerTemplate):
+class DerivativeHandler(handlerTemplate.HandlerTemplate):
     """
     Class to create signal masks based on image cubes, and then apply
     the masks to make moment maps. This is done for each galaxy at
@@ -231,9 +231,15 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                 # 
                 image_basename = re.sub('_pbcorr_trimmed_k_res'+res_tag+r'\.fits$', '', os.path.basename(cube_filename)) # remove suffix
                 for tag in ['hybridmask', 'signalmask']:
-                    fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag+'_res'+res_tag+'.fits')
+                    fname_dict[res_tag][tag] = os.path.join(outdir, 
+                                                            image_basename
+                                                            + '_' + tag
+                                                            + '_res'+res_tag
+                                                            + '.fits')
                 for tag in ['broad', 'strict']:
-                    fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag) # we will append mom0 mom1 then res_tag
+                    fname_dict[res_tag][tag] = os.path.join(
+                        outdir, image_basename
+                        + '_' + tag + '_res' + res_tag)
             else:
                 # file not found
                 this_res_in_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res)
@@ -341,6 +347,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                              root_name=root_name,
                              products=products)
 
+    
         # # AKL - You could consider to change the format to a string
         # # list ['moment0','vmax, ...] if we want to avoid doing
         # # everything with hardcoded kwargs. Makes it easier to select
@@ -417,6 +424,38 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
     # AKL - I would deprecate this in favor of building ALL strict
     # maps first then JUST writing a routine to select the appropriate
     # low resolution mask.
+    
+    def recipe_build_strict_moments(
+        self,
+        target=None,
+        product=None,
+        config=None,
+    ):
+        if target is None:
+            logger.error('Please input a target.')
+            raise Exception('Please input a target.')
+        if product is None:
+            logger.error('Please input a product.')
+            raise Exception('Please input a product.')
+        if config is None:
+            logger.error('Please input a config.')
+            raise Exception('Please input a config.')
+        
+        # get fname dict for this target and config
+        fname_dict = self._fname_dict(target=target,
+                                      config=config,
+                                      product=product)
+
+        res_list = self._kh.get_res_for_config(config)
+        for this_res in res_list:
+            res_tag = utilsResolutions.get_tag_for_res(this_res)
+            if res_tag in fname_dict:
+                cube = SpectralCube.read(
+                    fname_dict[res_tag]['pbcorr_trimmed_k'])
+                root_name = fname_dict[res_tag]['strict']
+                moment_generator(cube,
+                                 root_name=root_name, 
+                                 generate_mask=True)
 
     def recipe_building_low_resolution_mask(
         self,

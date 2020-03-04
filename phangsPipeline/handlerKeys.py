@@ -523,7 +523,7 @@ class KeyHandler:
         self._config_dict = key_readers.batch_read(
             key_list=self._config_keys, reader_function=key_readers.read_config_key,
             key_dir=self._key_dir)
-
+        import pdb; pdb.set_trace()
         self._target_dict = key_readers.batch_read(
             key_list=self._target_keys, reader_function=key_readers.read_target_key,
             key_dir=self._key_dir)

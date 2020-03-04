@@ -2,7 +2,7 @@ from spectral_cube import SpectralCube, Projection
 import astropy.units as u
 # from pipelineVersion import version as pipeVer
 from scMaskingRoutines import noise_cube, simple_mask
-from scMaskingRecipes import hybridize_mask
+from scMaskingRoutines import recipe_hybridize_mask as hybridize_mask
 import numpy as np
 from astropy.io import fits
 

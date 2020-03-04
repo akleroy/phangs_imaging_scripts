@@ -1,10 +1,12 @@
-import scProductRoutines as scpr
+import scDerivativeRoutines as scdr
 from spectral_cube import SpectralCube
 import astropy.units as u
 from astropy.io import fits
 import numpy as np
 from radio_beam import Beam
-from scMaskingRecipes import phangs_mask, phangs_noise
+from scMaskingRoutines import recipe_phangs_mask as phangs_mask
+from scMaskingRoutines import recipe_phangs_noise as phangs_noise
+
 
 def _nicestr(quantity):
     if quantity.value == int(quantity.value):
@@ -12,37 +14,37 @@ def _nicestr(quantity):
     else:
         return(str(quantity))
 
-def _func_n_kwargs(productname):
-    if productname == 'mom0':
-        func = scpr.write_moment0
+def _func_n_kwargs(derivative_name):
+    if derivative_name == 'mom0':
+        func = scdr.write_moment0
         kwargs ={'unit': u.K * u.km / u.s}
         return(func, kwargs)
-    elif productname == 'mom1':
-        func = scpr.write_moment1
+    elif derivative_name == 'mom1':
+        func = scdr.write_moment1
         kwargs = {'unit': u.km / u.s}
         return(func, kwargs)
-    elif productname == 'mom2':
-        func = scpr.write_moment2
+    elif derivative_name == 'mom2':
+        func = scdr.write_moment2
         kwargs = {'unit': u.km / u.s}
         return(func, kwargs)
-    elif productname == 'ew':
-        func = scpr.write_ew
+    elif derivative_name == 'ew':
+        func = scdr.write_ew
         kwargs = {'unit': u.km / u.s}
         return(func, kwargs)
-    elif productname == 'vquad':
-        func = scpr.write_vquad
+    elif derivative_name == 'vquad':
+        func = scdr.write_vquad
         kwargs = {'unit': u.km / u.s}
         return(func, kwargs)
-    elif productname == 'vpeak':
-        func = scpr.write_vmax
+    elif derivative_name == 'vpeak':
+        func = scdr.write_vmax
         kwargs = {'unit': u.km / u.s}
         return(func, kwargs)
-    elif productname == 'tpeak':
-        func = scpr.write_tmax
+    elif derivative_name == 'tpeak':
+        func = scdr.write_tmax
         kwargs = {'unit': u.K}
         return(func, kwargs)
-    elif productname == 'mom1hybrid':
-        func = scpr.write_moment1_hybrid
+    elif derivative_name == 'mom1hybrid':
+        func = scdr.write_moment1_hybrid
         kwargs = {'unit': u.K}
         return(func, kwargs)
     
@@ -51,9 +53,9 @@ def moment_generator(cubefile,
                      root_name='',
                      mask=None,
                      rms=None,
-                     products=['mom0','mom1','mom2',
-                               'ew','vquad',
-                               'tpeak', 'vpeak'],
+                     derivatives=['mom0','mom1','mom2',
+                                  'ew','vquad',
+                                  'tpeak', 'vpeak'],
                      angular_resolution=None,
                      velocity_resolution=None,
                      linear_resolution=None,
@@ -106,7 +108,7 @@ def moment_generator(cubefile,
         if type(velocity_resolution) is str:
             velocity_resolution = u.Quantity(velocity_resolution)
         from astropy.convolution import Box1DKernel
-        dv = scpr.channel_width(cube)
+        dv = scdr.channel_width(cube)
         nChan = (velocity_resolution / dv).to(u.dimensionless_unscaled).value
         if nChan > 1:
             cube = cube.spectral_smooth(Box1DKernel(nChan))
@@ -150,18 +152,18 @@ def moment_generator(cubefile,
                   + linres_name
                   + velres_name 
                   + '.fits', overwrite=True)
-    for thisproduct in products:
-        func, prodkwargs = _func_n_kwargs(thisproduct)
-        productfile = (root_name + '_' + thisproduct 
+    for thisderivative in derivatives:
+        func, prodkwargs = _func_n_kwargs(thisderivative)
+        derivativefile = (root_name + '_' + thisderivative 
                        + angres_name 
                        + linres_name
                        + velres_name
                        + '.fits')
         if rms is not None:
-            errorfile = productfile.replace('.fits', '_error.fits')
+            errorfile = derivativefile.replace('.fits', '_error.fits')
         else:
             errorfile = None
-        func(cube, outfile=productfile,
+        func(cube, outfile=derivativefile,
              errorfile=errorfile,
              rms=rms,
              channel_correlation=channel_correlation,
