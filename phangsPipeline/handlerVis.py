@@ -26,6 +26,8 @@ Example:
 
 """
 
+# 20200303: "get_ms_filenames_and_filepaths" --> "get_all_input_ms"
+
 import os, sys, re, shutil
 import glob
 import numpy as np
@@ -151,7 +153,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         
         if all_ms_data:
-            this_ms_filenames, this_ms_filepaths = self._kh.get_ms_filenames_and_filepaths(target = target, config = config)
+            this_ms_filenames, this_ms_filepaths = self._kh.get_all_input_ms(target = target, config = config)
             fname_dict['ms_filepaths'] = this_ms_filepaths
             fname_dict['ms_filenames'] = [t+extra_ext+'.ms' for t in this_ms_filenames]
             if product is not None:
