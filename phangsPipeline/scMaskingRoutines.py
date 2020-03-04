@@ -8,7 +8,8 @@ from astropy.convolution import convolve, Gaussian2DKernel
 import scipy.stats as ss
 
 from spectral_cube import SpectralCube
-from astropy.wcs import wcs
+import astropy.wcs as wcs
+import astropy.units as u
 # from pipelineVersion import version as pipeVer
 
 np.seterr(divide='ignore', invalid='ignore')
@@ -330,7 +331,7 @@ def recipe_phangs_mask(cube,
                        noise_kwargs=None,
                        return_rms=False):
 
-    rms = phangs_noise(cube, noise_kwargs=noise_kwargs)
+    rms = recipe_phangs_noise(cube, noise_kwargs=noise_kwargs)
 
     if mask_kwargs is None:
         mask = simple_mask(cube.filled_data[:].value,
