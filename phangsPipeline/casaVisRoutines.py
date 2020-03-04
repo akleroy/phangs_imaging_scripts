@@ -157,20 +157,20 @@ def split_science_targets(
 
         else:
 
-            # Check copied data
+            # Check existing output data
 
-            has_existing_copied_data = False
-            if os.path.isdir(copied_file) and not os.path.isdir(copied_file+'.touch'):
+            has_existing_outfile = False
+            if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
                 if not overwrite:
-                    has_existing_copied_data = True
+                    has_existing_outfile = True
 
             # delete existing copied data if not overwriting
 
-            if not has_existing_copied_data:
+            if not has_existing_outfile:
                 for suffix in ['', '.flagversions', '.touch']:
-                    if os.path.isdir(copied_file+suffix):
-                        shutil.rmtree(copied_file+suffix)
-                        logger.debug('shutil.rmtree "'+copied_file+suffix+'"')
+                    if os.path.isdir(outfile+suffix):
+                        shutil.rmtree(outfile+suffix)
+                        logger.debug('shutil.rmtree "'+outfile+suffix+'"')
                         
             # copy the data (.touch directory is a temporary flagpost)
 
@@ -213,7 +213,7 @@ def split_science_targets(
         # Verify the column to use. If present, we use the corrected
         # column. If not, then we use the data column.
 
-        casaStuff.tb.open(copied_file, nomodify = True)
+        casaStuff.tb.open(infile, nomodify = True)
         colnames = casaStuff.tb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("Data has a CORRECTED column. Will use that.")
