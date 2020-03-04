@@ -2,7 +2,7 @@
 Standalone routines to analyze and manipulate visibilities.
 """
 
-# 20200226: introduced os.mkdir(out_file+'.touch') os.rmdir(out_file+'.touch') to make sure we can handle sudden system break.
+# 20200226: introduced os.mkdir(outfile+'.touch') os.rmdir(outfile+'.touch') to make sure we can handle sudden system break.
 
 #region Imports and definitions
 
@@ -83,7 +83,7 @@ def split_science_targets(
     
     Outputs:
 
-    out_file: ALMA measurement set data folder.
+    outfile: ALMA measurement set data folder.
     
     """
         
@@ -226,24 +226,24 @@ def split_science_targets(
         logger.debug('field='+split_intent)
         logger.debug('intent='+split_field)
 
-        os.mkdir(out_file+'.touch')
+        os.mkdir(outfile+'.touch')
         casaStuff.split(vis = infile, 
                         intent = split_intent, 
                         field = split_field,
                         spw = split_spw,
                         datacolumn = use_column, 
                         outputvis = outfile)
-        os.rmdir(out_file+'.touch')
+        os.rmdir(outfile+'.touch')
 
         # Re-weight the data if desired.
 
         if do_statwt:
             logger.info("Using statwt to re-weight the data.")
             logger.debug('casa statwt vis="'+outfile+'"')
-            os.mkdir(out_file+'.touch')
+            os.mkdir(outfile+'.touch')
             casaStuff.statwt(vis = outfile, 
                              datacolumn = 'DATA')
-            os.rmdir(out_file+'.touch')
+            os.rmdir(outfile+'.touch')
             
         return()
 
@@ -268,7 +268,7 @@ def concat_ms(
         infile: ALMA measurement set data folder.
     
     Outputs:
-        out_file: ALMA measurement set data folder.
+        outfile: ALMA measurement set data folder.
     
     """
     # Check inputs
@@ -293,11 +293,11 @@ def concat_ms(
     
     # PROPOSE TO DEPRECATE THIS (e.g., .contsub violates this rule)
     # check output suffix
-    #if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-    #    out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+    #if re.match(r'^(.*)\.ms$', outfile, re.IGNORECASE):
+    #    out_name = re.sub(r'^(.*)\.ms$', r'\1', outfile, re.IGNORECASE)
     #    outfile = out_name + '.ms'
     #else:
-    #    out_name = out_file
+    #    out_name = outfile
     #    outfile = out_name + '.ms'
     
     # Quit if output data are present and overwrite is off.
@@ -312,12 +312,12 @@ def concat_ms(
             shutil.rmtree(outfile+suffix)
 
     # Concatenate all of the relevant files
-    os.mkdir(out_file+'.touch')
+    os.mkdir(outfile+'.touch')
     casaStuff.concat(vis = infile_list, 
                      concatvis = outfile,
                      freqtol=freqtol, dirtol=dirtol)
                      #<TODO># what about freqtol? set as an input? dirtol?
-    os.rmdir(out_file+'.touch')
+    os.rmdir(outfile+'.touch')
 
     return()
 
@@ -592,7 +592,7 @@ def compute_chanwidth_for_line(
 
 def extract_line(
     infile, 
-    out_file, 
+    outfile, 
     line = 'co21', 
     vsys = None, 
     vwidth = None, 
@@ -636,7 +636,7 @@ def extract_line(
     
     Args:
         infile (str): The input measurement set data with suffix ".ms".
-        out_file (str): The output measurement set data with suffix ".ms".
+        outfile (str): The output measurement set data with suffix ".ms".
         line (str): Line name. 
         chan_fine (float): Channel width in units of km/s to regrid to. 
                            If it is -1 then we will keep the original channel width.
@@ -655,7 +655,7 @@ def extract_line(
         infile: ALMA measurement set data folder.
     
     Outputs:
-        out_file: ALMA measurement set data folder.
+        outfile: ALMA measurement set data folder.
     
     """
     
@@ -670,22 +670,22 @@ def extract_line(
         raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
     # 
     # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
+    if re.match(r'^(.*)\.ms$', outfile, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', outfile, re.IGNORECASE)
+        outfile = out_name + '.ms'
     else:
-        out_name = out_file
-        out_file = out_name + '.ms'
+        out_name = outfile
+        outfile = out_name + '.ms'
     # 
     # check existing output data
-    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
-            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
+            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
             return
     # if overwrite, then delete existing output data.
     for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', '.temp2', '.temp2.flagversions', '.touch', '.temp.touch', '.temp2.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
+        if os.path.isdir(outfile+suffix):
+            shutil.rmtree(outfile+suffix)
     # 
     # check vsys
     if vsys is None:
@@ -801,13 +801,13 @@ def extract_line(
     for k, mstransform_params in enumerate(mstransform_call_list):
         if k == 0:
             mstransform_params['vis'] = infile
-            mstransform_params['outputvis'] = out_file+'.temp%d'%(k+1)
+            mstransform_params['outputvis'] = outfile+'.temp%d'%(k+1)
         elif k == len(mstransform_call_list)-1:
-            mstransform_params['vis'] = out_file+'.temp%d'%(k)
-            mstransform_params['outputvis'] = out_file
+            mstransform_params['vis'] = outfile+'.temp%d'%(k)
+            mstransform_params['outputvis'] = outfile
         else:
-            mstransform_params['vis'] = out_file+'.temp%d'%(k)
-            mstransform_params['outputvis'] = out_file+'.temp%d'%(k+1)
+            mstransform_params['vis'] = outfile+'.temp%d'%(k)
+            mstransform_params['outputvis'] = outfile+'.temp%d'%(k+1)
         # 
         logger.info("... "+mstransform_call_message_list[k])
         logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, mstransform_params[t]) for t in mstransform_params.keys())+')')
@@ -816,12 +816,12 @@ def extract_line(
         os.rmdir(mstransform_params['outputvis']+'.touch')
     # 
     # Clean up
-    if os.path.isdir(out_file):
+    if os.path.isdir(outfile):
         logger.info("... deleting temporary files")
         for k in range(len(mstransform_call_list)):
             for suffix in ['.temp%d'%(k), '.temp%d.flagversions'%(k), '.temp%d.touch'%(k)]:
-                if os.path.isdir(out_file+suffix):
-                    shutil.rmtree(out_file+suffix)
+                if os.path.isdir(outfile+suffix):
+                    shutil.rmtree(outfile+suffix)
     
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # STEP 4. Re-weight the data using statwt
@@ -841,18 +841,18 @@ def extract_line(
         # 
         if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
             # CASA version somewhat >= 5.5.0
-            statwt_params = {'vis': out_file, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+            statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                              'statalg': 'classic', 'datacolumn': 'data', 
                              'fitspw': exclude_str, 'excludechans': True}
         else:
             # CASA version <= 5.4.1
-            statwt_params = {'vis': out_file, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+            statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                              'statalg': 'classic', 'datacolumn': 'data', 
                              'excludechans': exclude_str}
         # 
-        os.mkdir(out_file+'.touch')
+        os.mkdir(outfile+'.touch')
         test = casaStuff.statwt(**statwt_params)
-        os.rmdir(out_file+'.touch')
+        os.rmdir(outfile+'.touch')
     
     logger.info("---")
     
@@ -861,7 +861,7 @@ def extract_line(
 
 def extract_continuum(
     infile, 
-    out_file, 
+    outfile, 
     lines_to_flag = None, 
     vsys = None, 
     vwidth = None, 
@@ -877,7 +877,7 @@ def extract_continuum(
     
     Args:
         infile (str): The input measurement set data with suffix ".ms".
-        out_file (str): The output measurement set data with suffix ".ms".
+        outfile (str): The output measurement set data with suffix ".ms".
         lines_to_flag (list): A list of line names to flag. Lines names must be in our line_list module. If it is None, then we use all 12co, 13co and c18o lines.
         do_statwt (bool): 
         do_collapse (bool): Always True to produce the single-channel continuum data.
@@ -886,7 +886,7 @@ def extract_continuum(
         infile: ALMA measurement set data folder.
     
     Outputs:
-        out_file: ALMA measurement set data folder.
+        outfile: ALMA measurement set data folder.
     
     """
     
@@ -897,22 +897,22 @@ def extract_continuum(
         raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
     # 
     # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
+    if re.match(r'^(.*)\.ms$', outfile, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', outfile, re.IGNORECASE)
+        outfile = out_name + '.ms'
     else:
-        out_name = out_file
-        out_file = out_name + '.ms'
+        out_name = outfile
+        outfile = out_name + '.ms'
     # 
     # check existing output data
-    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
-            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
+            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
             return
     # if overwrite, then delete existing output data.
     for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', '.temp_copy', '.temp_copy.flagversions', '.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
+        if os.path.isdir(outfile+suffix):
+            shutil.rmtree(outfile+suffix)
     # 
     # find_spw_channels_for_lines_to_flag
     spw_flagging_string = find_spw_channels_for_lines_to_flag(infile = infile, 
@@ -921,17 +921,17 @@ def extract_continuum(
                                                               vwidth = vwidth)
     # 
     # make a continuum copy of the data
-    os.mkdir(out_file+'.touch')
-    shutil.copytree(infile, out_file)
-    os.rmdir(out_file+'.touch')
+    os.mkdir(outfile+'.touch')
+    shutil.copytree(infile, outfile)
+    os.rmdir(outfile+'.touch')
     # 
     # flagdata
     if spw_flagging_string != '':
-        os.mkdir(out_file+'.touch')
-        casaStuff.flagdata(vis=out_file,
+        os.mkdir(outfile+'.touch')
+        casaStuff.flagdata(vis=outfile,
                            spw=spw_flagging_string,
                            )
-        os.rmdir(out_file+'.touch')
+        os.rmdir(outfile+'.touch')
     # 
     # statwt
     # Here - this comman needs to be examined and refined in CASA
@@ -939,39 +939,39 @@ def extract_continuum(
     # devastatingly slow.
     if do_statwt:
         logger.info("... deriving empirical weights using STATWT.")
-        os.mkdir(out_file+'.touch')
-        casaStuff.statwt(vis=out_file,
+        os.mkdir(outfile+'.touch')
+        casaStuff.statwt(vis=outfile,
                          timebin='0.001s',
                          slidetimebin=False,
                          chanbin='spw',
                          statalg='classic',
                          datacolumn='data',
                          )
-        os.rmdir(out_file+'.touch')
+        os.rmdir(outfile+'.touch')
     # 
     # collapse
     if do_collapse:
         logger.info("... Collapsing the continuum to a single channel.")
         
-        if os.path.isdir(out_file):
-            shutil.move(out_file, out_file+'.temp_copy')
-        if os.path.isdir(out_file+'.flagversions'):
-            shutil.move(out_file+'.flagversions', out_file+'.temp_copy'+'.flagversions')
+        if os.path.isdir(outfile):
+            shutil.move(outfile, outfile+'.temp_copy')
+        if os.path.isdir(outfile+'.flagversions'):
+            shutil.move(outfile+'.flagversions', outfile+'.temp_copy'+'.flagversions')
         
-        os.mkdir(out_file+'.touch')
-        casaStuff.split(vis=out_file+'.temp_copy',
-                        outputvis=out_file,
+        os.mkdir(outfile+'.touch')
+        casaStuff.split(vis=outfile+'.temp_copy',
+                        outputvis=outfile,
                         width=10000,
                         datacolumn='DATA',
                         keepflags=False)
                         #<TODO><20200210># num_chan or width
-        os.rmdir(out_file+'.touch')
+        os.rmdir(outfile+'.touch')
         # 
         # clean up
-        if os.path.isdir(out_file+'.temp_copy'):
-            shutil.rmtree(out_file+'.temp_copy')
-        if os.path.isdir(out_file+'.temp_copy.flagversions'):
-            shutil.rmtree(out_file+'.temp_copy.flagversions')
+        if os.path.isdir(outfile+'.temp_copy'):
+            shutil.rmtree(outfile+'.temp_copy')
+        if os.path.isdir(outfile+'.temp_copy.flagversions'):
+            shutil.rmtree(outfile+'.temp_copy.flagversions')
     # 
     return
 
