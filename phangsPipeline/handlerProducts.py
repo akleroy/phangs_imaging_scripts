@@ -42,11 +42,12 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import utils
+import utilsResolutions
+import utilsFilenames
 import line_list
 import handlerTemplate
 import scMaskingRoutines as scmasking
 import scProductRoutines as scproduct
-
 
 class ProductHandler(handlerTemplate.HandlerTemplate):
     """
@@ -207,13 +208,14 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         
         for this_res in res_list:
             
-            res_tag = self._kh.get_tag_for_res(this_res)
+            #res_tag = self._kh.get_tag_for_res(this_res)
+            res_tag = utilsResolutions.get_tag_for_res(this_res) # this will be like either '5p00' or '80pc'
 
-            cube_filename = self._kh.get_cube_filename(target = target, 
-                                                       config = config, 
-                                                       product = product,
-                                                       ext = 'pbcorr_trimmed_k'+'_res'+res_tag,
-                                                       casa = False)
+            cube_filename = utilsFilenames.get_cube_filename(target = target, 
+                                                             config = config, 
+                                                             product = product,
+                                                             ext = 'pbcorr_trimmed_k'+'_res'+res_tag,
+                                                             casa = False)
             
             if os.path.isfile(os.path.join(indir, cube_filename)):
                 fname_dict[res_tag] = {}
@@ -222,7 +224,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                 if lowest_res is None:
                     lowest_res = this_res
                     lowest_res_tag = res_tag
-                elif this_res > lowest_res:
+                elif utilsResolutions.get_angular_resolution_for_res(this_res) > utilsResolutions.get_angular_resolution_for_res(lowest_res):
                     lowest_res = this_res
                     lowest_res_tag = res_tag
                 # 
@@ -233,7 +235,8 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                     fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag) # we will append mom0 mom1 then res_tag
             else:
                 # file not found
-                logger.warning('Cube with tag '+res_tag+' at '+str(np.round(this_res,2))+' arcsec resolution was not found: "'+os.path.join(indir, cube_filename)+'"')
+                this_res_in_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res)
+                logger.warning('Cube with tag '+res_tag+' at '+str(np.round(this_res_in_arcsec,2))+' arcsec resolution was not found: "'+os.path.join(indir, cube_filename)+'"')
         
         # if user has input a res_lowresmask, and the file exist, use it, otherwise use the lowest res data
 
@@ -518,7 +521,8 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         # build masks holding bright signal at each resolution
         for this_res in res_list:
             # 
-            res_tag = self._kh.get_tag_for_res(this_res)
+            #res_tag = self._kh.get_tag_for_res(this_res)
+            res_tag = utilsResolutions.get_tag_for_res(this_res) # this will be like either '5p00' or '80pc'
             # 
             if res_tag in fname_dict:
                 # 
