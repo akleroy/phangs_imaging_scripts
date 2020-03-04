@@ -265,9 +265,6 @@ def export_imaging_to_fits(
         '.weight.tt0':'_weight.fits',
         '.weight.tt1':'_weight_tt1.fits',
         '.weight.tt2':'_weight_tt2.fits',
-        '.sumwt.tt0':'_sumwt.fits',
-        '.sumwt.tt1':'_sumwt_tt1.fits',
-        '.sumwt.tt2':'_sumwt_tt2.fits',
         '.image':'.fits',
         '.model':'_model.fits',
         '.residual':'_residual.fits',
@@ -275,7 +272,6 @@ def export_imaging_to_fits(
         '.pb':'_pb.fits',
         '.psf':'_psf.fits',
         '.weight':'_weight.fits',
-        '.sumwt':'_sumwt.fits',
         }
 
     for this_ext in ext_map.keys():

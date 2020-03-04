@@ -25,6 +25,11 @@ try:
 except ImportError:
     from phangsPipeline import utilsKeyReaders as key_readers
 
+try:
+    import utilsFilenames as fnames
+except ImportError:
+    from phangsPipeline import utilsFilenames as fnames
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -825,7 +830,7 @@ class KeyHandler:
         
         return()
 
-    def check_dir_existence(self, imaging=True, postprocess=True, product=True):
+    def check_dir_existence(self, imaging=True, postprocess=True, product=True, release=True):
         """
         Check the existence of the directories for imaging and post-processing.
         """
@@ -861,6 +866,13 @@ class KeyHandler:
                     logging.warning("Missing product directory :"+self._product_root+this_dir)
                     missing_dirs.append(self._product_root+this_dir)
         
+            if release:
+                if os.path.isdir(self._release_root+this_dir):
+                    found_dirs += 1
+                else:
+                    logging.warning("Missing release directory :"+self._release_root+this_dir)
+                    missing_dirs.append(self._release_root+this_dir)
+
         logging.info("Found "+str(found_dirs)+" directories.")
 
         missing_count = (len(missing_dirs))
@@ -876,7 +888,7 @@ class KeyHandler:
 #region Access data and lists
     
     def _get_dir_for_target(self, target=None, changeto=False, 
-                            imaging=False, postprocess=False, product=False):
+                            imaging=False, postprocess=False, product=False, release=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -895,12 +907,19 @@ class KeyHandler:
             logging.error("Multiple flags set, pick only one type of directory.")
             return(None)
             
+        if (release and imaging) or (release and product) or \
+                (release and postprocess):
+            logging.error("Multiple flags set, pick only one type of directory.")
+            return(None)
+
         if imaging:
             this_dir = self._imaging_root + self._dir_for_target[target]+'/'
         elif postprocess:
             this_dir = self._postprocess_root + self._dir_for_target[target]+'/'
         elif product:
             this_dir = self._product_root + self._dir_for_target[target]+'/'
+        elif release:
+            this_dir = self._release_root + self._dir_for_target[target]+'/'
         else:
             logging.error("Pick a type of directory. None found.")
             return(None)
@@ -933,6 +952,13 @@ class KeyHandler:
         changeto is true, then change directory to that location.
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, product=True))
+
+    def get_release_dir_for_target(self, target=None, changeto=False):
+        """
+        Return the release working directory given a target name. If
+        changeto is true, then change directory to that location.
+        """
+        return(self._get_dir_for_target(target=target, changeto=changeto, release=True))
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1267,235 +1293,217 @@ class KeyHandler:
         
         return None
         
-    def get_ms_projects_and_multiobs_for_target(
+    def loop_over_input_ms(
         self, 
-        target=None, 
-        config=None, 
+        target=None,
+        config=None,
+        project=None,
         ):
         """
-        List the target name, project tag, array tag and multiobs number for each ms data of the input target and config.
-        
-        The target name, project tag, array tag and multiobs number are specified in "ms_file_key.txt". 
-        
-        For example, `get_ms_for_target(target='ngc3621')` returns 
-        `target = ['ngc3621_1', 'ngc3621_1', 'ngc3621_2', 'ngc3621_2']`, 
-        `project = ['886', '886', '886', '886']`, 
-        `arraytag = ['7m', '7m', '7m', '7m']`
-        `multiobs = ['1', '2', '1', '2']`
+        Loop over the the target name, project tag, array tag, and
+        obsnum for each input visibility file. If a target is supplied
+        then restrict to that target, trying to match to a linear
+        mosaic if the target is not represented in the dictionary. If
+        a configuration is supplied, then only include array_tags that
+        contribute to that configuration.
         """
+    
+        # if user has input a target or target list, match to it
+        just_targets = []
+        if target is not None:
+            if type(target) == type(''):
+                input_targets = [target]
+            elif type(target) == type([]):
+                input_targets = target
+            else:
+                logger.error("Expected list or string.")
+                raise Exception("Expected list or string.")
         
-        if target in self._ms_dict.keys():
-            targets = [target]
-        else:
-            targets = self.get_parts_for_linmos(target=target)
-        
-        # if user has input a config, match to it
-        if config is not None:
-            matching_arraytags = self.get_array_tags_for_config(config)
-        else:
-            matching_arraytags = []
-        
-        for this_target in targets:
-            for this_project in self._ms_dict[this_target].keys():
-                for this_arraytag in self._ms_dict[this_target][this_project].keys():
-                    # if user has input a config, match it
-                    if config is not None:
-                        if not (this_arraytag in matching_arraytags):
-                            continue
-                    for this_multiobs in self._ms_dict[this_target][this_project][this_arraytag].keys():
-                        yield this_target, this_project, this_arraytag, this_multiobs
+            # Allow linear mosaics
 
-    def get_ms_filepath_for_ms_project(
+            # Missing the case where the target is BOTH in the ms_dict
+            # and the linmos list. We could change to reflect this
+            # ... I'm not sure if this causes problems or not.
+
+            for this_target in input_targets:
+                if target in self._ms_dict.keys():
+                    just_targets.append(this_target)
+                else:
+                    parts = self.get_parts_for_linmos(target=this_target)
+                    if parts is None:
+                        continue
+                    for this_part in parts:
+                        just_targets.append(this_part)
+                
+                        
+        # if the user has input a project list, match to that
+        just_projects = []
+        if project is not None:
+            if type(project) == type(''):
+                just_projects = [project]
+            elif type(target) == type([]):
+                just_projects = project
+            else:
+                logger.error("Expected list or string.")
+                raise Exception("Expected list or string.")        
+
+        # if user has input a config or config list, only loop over
+        # array tags included in those configurations.
+        just_arraytags = []
+        if config is not None:
+            if type(config) == type(''):
+                input_configs = [config]
+            elif type(config) == type([]):
+                input_configs = config
+            else:
+                logger.error("Expected list or string.")
+                raise Exception("Expected list or string.")
+ 
+            for this_config in input_configs:
+                this_array_tags = self.get_array_tags_for_config(this_config)
+                if this_array_tags is None:
+                    continue
+                for this_tag in this_array_tags:
+                    if this_tag not in just_arraytags:
+                        just_arraytags.append(this_tag)
+
+        # Loop over targets
+        for this_target in self._ms_dict.keys():
+
+            # if user has input targets, match it
+            if len(just_targets) > 0:
+                if not (this_target in just_targets):
+                    continue
+
+            # loop over projects
+            for this_project in self._ms_dict[this_target].keys():
+
+                if len(just_projects) > 0:
+                    if not (this_project in just_projects):
+                        continue
+
+                # loop over array tags
+                for this_arraytag in self._ms_dict[this_target][this_project].keys():
+
+                    if len(just_arraytags) > 0:
+                        if not (this_arraytag in just_arraytags):
+                            continue
+
+                    # loop over obs nums
+                    for this_obsnum in self._ms_dict[this_target][this_project][this_arraytag].keys():
+                        
+                        yield this_target, this_project, this_arraytag, this_obsnum
+
+    def get_file_for_input_ms(
         self, 
         target=None, 
         project=None, 
-        arraytag=None, 
-        multiobs=None, 
+        array_tag=None, 
+        obsnum=None,
         ):
         """
-        Find the absolute file path of a ms project.
+        Return the full file path to of an input measurement set given
+        a target, project, array_tag, obsnum combination.
         """
+
+        # Verify input
+
         if target is None:
             logging.error("Please specify a target.")
             return None
         if project is None:
             logging.error("Please specify a project.")
             return None
-        if arraytag is None:
-            logging.error("Please specify a arraytag.")
+        if array_tag is None:
+            logging.error("Please specify an array_tag.")
             return None
-        if multiobs is None:
-            logging.error("Please specify a multiobs.")
+        if obsnum is None:
+            logging.error("Please specify an obsnum.")
             return None
         
+        # Check that the provided input is in the ms_dict 
+
         check_valid = False
         if target in self._ms_dict.keys():
             if project in self._ms_dict[target].keys():
-                if arraytag in self._ms_dict[target][project].keys():
-                    if multiobs in self._ms_dict[target][project][arraytag].keys():
-                        if 'file' in self._ms_dict[target][project][arraytag][multiobs]:
-                            check_valid = True
+                if array_tag in self._ms_dict[target][project].keys():
+                    if obsnum in self._ms_dict[target][project][array_tag].keys():
+                        check_valid = True
+
         if not check_valid:
-            logger.error('No target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+' defined in "ms_file_key.txt"!')
-            raise Exception('No target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+' defined in "ms_file_key.txt"!')
-        
+            logger.error('No target '+target+' project '+project+' array_tag '+ \
+                             array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
+            raise Exception('No target '+target+' project '+project+' array_tag '+ \
+                                array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
+
+        # Else locate the full path to the file
+
         ms_file_path = ''
         file_paths = []
         for ms_root in self._ms_roots:
-            file_path = ms_root + self._ms_dict[target][project][arraytag][multiobs]['file']
+            file_path = ms_root + self._ms_dict[target][project][array_tag][obsnum]['file']
             if os.path.isdir(file_path):
                 file_paths.append(file_path)
-        # make sure there is only one ms data for each 'target_project_config_multiobs.ms'
+
+        # Error check the results (redundant with read-in checks but good to have)
+                
         if len(file_paths) == 0:
-            logging.warning('Could not find any ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+'!')
+            logging.warning('Could not find measurement set for target '+ \
+                                target+' project '+project+' array_tag '+ \
+                                array_tag+' obsnum '+str(obsnum)+'!')
         else:
             if len(file_paths) > 1:
-                logging.warning('Found multiple ms data for target '+target+' project '+project+' arraytag '+arraytag+' multiobs '+str(multiobs)+':\n'+'\n'.join(file_paths)+'\n'+'Returning the first one.')
-            ms_file_path = file_paths[0]
+                logging.warning('Found multiple measurement sets for target '+ \
+                                    target+' project '+project+' array_tag '+ \
+                                    array_tag+' obsnum '+str(obsnum)+ \
+                                    ':\n'+'\n'.join(file_paths)+'\n'+'Returning the first one.')
+                
+        ms_file_path = file_paths[0]
+        return(ms_file_path)
         
-        return ms_file_path
-        
-    def get_ms_filenames_and_filepaths(
+    def get_field_for_input_ms(
         self, 
         target=None, 
-        config=None, 
+        project=None, 
+        array_tag=None, 
+        obsnum=None,
         ):
         """
-        Get the ms data names and absolute file path(s) for the input target and config.
-        
-        Here we need to input target, config and project tag. These should be specified in "ms_file_key.txt". 
-        
-        For example, `get_ms_filepaths(target='ngc3621_1', config='7m')` returns 
-        `filenames = ['ngc3621_1_886_7m_1.ms', 'ngc3621_1_886_7m_2.ms', ...]` and 
-        `filepaths = ['/path/to/*886*/sci*/group*/mem*/calibrated/uid*.ms.split.cal', ..., ...]`
+        Return the science field given a target, project, array_tag,
+        obsnum combination.
         """
-        
-        ms_filenames = []
-        ms_filepaths = []
-        for this_target, this_project, this_arraytag, this_multiobs in \
-            self.get_ms_projects_and_multiobs_for_target(target=target, config=config):
-            # 
-            ms_filepath = self.get_ms_filepath_for_ms_project(target=this_target, 
-                                                              project=this_project, 
-                                                              arraytag=this_arraytag, 
-                                                              multiobs=this_multiobs)
-            # 
-            if str(this_multiobs) == '':
-                ms_filename = this_target+'_'+this_project+'_'+this_arraytag
-            else:
-                ms_filename = this_target+'_'+this_project+'_'+this_arraytag+'_'+str(this_multiobs)
-            # append to output lists
-            ms_filenames.append(ms_filename) # without '.ms' suffix
-            ms_filepaths.append(ms_filepath)
-        # output
-        return ms_filenames, ms_filepaths
 
-    def get_vis_filename(
-        self, 
-        target=None, 
-        config=None,
-        product=None,
-        ext=None,
-        suffix=None,
-        ):
-        """
-        Get the file name for a target, config, product visibility
-        combination. Optionally include an extension and a suffix. 
-        Convention is:
-        {target}_{config}_{product}_{ext}.ms{.suffix}
-        """
+        # Verify input
 
         if target is None:
-            logging.error("Need a target.")            
-            return(None)
-
-        if config is None:
-            logging.error("Need a configuration.")            
-            return(None)
-
-        if product is None:
-            logging.error("Need a product.")            
-            return(None)
+            logging.error("Please specify a target.")
+            return None
+        if project is None:
+            logging.error("Please specify a project.")
+            return None
+        if array_tag is None:
+            logging.error("Please specify an array_tag.")
+            return None
+        if obsnum is None:
+            logging.error("Please specify an obsnum.")
+            return None
         
-        if type(target) is not type(''):
-            logging.error("Target needs to be a string.", target)
-            return(None)
+        # Check that the provided input is in the ms_dict 
 
-        if type(product) is not type(''):
-            logging.error("Product needs to be a string.", product)
-            return(None)
+        check_valid = False
+        if target in self._ms_dict.keys():
+            if project in self._ms_dict[target].keys():
+                if array_tag in self._ms_dict[target][project].keys():
+                    if obsnum in self._ms_dict[target][project][array_tag].keys():
+                        check_valid = True
 
-        if type(config) is not type(''):
-            logging.error("Config needs to be a string.", config)
-            return(None)
-        
-        filename = target+'_'+config+'_'+product
-        if ext is not None:
-            if type(ext) is not type(''):
-                logging.error("Ext needs to be a string or None.", ext)
-                return(None)
-            filename += '_'+ext
+        if not check_valid:
+            logger.error('No target '+target+' project '+project+' array_tag '+ \
+                             array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
+            raise Exception('No target '+target+' project '+project+' array_tag '+ \
+                                array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
 
-        filename += '.ms'
-
-        if suffix is not None:
-            if type(suffix) is not type(''):
-                logging.error("Suffix needs to be a string or None.", suffix)
-                return(None)
-            filename += '.'+suffix        
-
-        return(filename)
-
-    def get_cube_filename(
-        self, 
-        target=None, 
-        config=None,
-        product=None,
-        ext=None,
-        casa=False,
-        casaext='.image',
-        ):
-        """
-        Get the file name for a data cube using the pipeline convention.
-        """
-
-        if target is None:
-            logging.error("Need a target.")            
-            return(None)
-
-        if config is None:
-            logging.error("Need a configuration.")            
-            return(None)
-
-        if product is None:
-            logging.error("Need a product.")            
-            return(None)
-        
-        if type(target) is not type(''):
-            logging.error("Target needs to be a string.", target)
-            return(None)
-
-        if type(product) is not type(''):
-            logging.error("Product needs to be a string.", product)
-            return(None)
-
-        if type(config) is not type(''):
-            logging.error("Config needs to be a string.", config)
-            return(None)
-        
-        filename = target+'_'+config+'_'+product
-        if ext is not None:
-            if type(ext) is not type(''):
-                logging.error("Ext needs to be a string or None.", ext)
-                return(None)
-            filename += '_'+ext
-
-        if not casa:
-            filename += '.fits'
-        else:
-            filename += casaext
-
-        return(filename)
+        return(self._ms_dict[target][project][array_tag][obsnum]['field'])
 
     def has_singledish(
         self,
@@ -1528,7 +1536,6 @@ class KeyHandler:
             return(False)
 
         return(True)
-
         
     def get_sd_filename(
         self, 
@@ -1870,13 +1877,13 @@ class KeyHandler:
     
 #region Manipulate files and file structure
 
-    def make_missing_directories(self, imaging=False, postprocess=False, product=False):
+    def make_missing_directories(self, imaging=False, postprocess=False, product=False, release=False):
         """
         Make any missing imaging or postprocessing directories.
         """
         
-        if not imaging and not postprocess and not product:
-            logging.error("Set either imaging or postprocess or product to True. Returning.")
+        if not imaging and not postprocess and not product and not release:
+            logging.error("Set either imaging or postprocess or product or release to True. Returning.")
             return(False)
 
         if imaging:
@@ -1900,13 +1907,20 @@ class KeyHandler:
                 #return(False)
                 os.makedirs(self._product_root)
 
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product)
+        if release:
+            if not os.path.isdir(self._release_root):
+                logging.info("Missing release root directory.")
+                logging.info("Create: "+self._release_root)
+                #return(False)
+                os.makedirs(self._release_root)
+
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product, release=release)
         made_directories = 0
         for this_missing_dir in missing_dirs:
             made_directories += 1
             os.makedirs(this_missing_dir)
         
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product)
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product, release=release)
 
         logging.info("Made "+str(made_directories)+" directories. Now "+str(len(missing_dirs))+" missing.")
 

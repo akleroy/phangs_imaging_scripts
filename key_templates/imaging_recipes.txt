@@ -44,7 +44,7 @@ all      co21        all           cube_mosaic.clean
 12m+7m   co21        all           cube_mosaic.clean
 12m      co21        all           cube_mosaic.clean
 7m       co21        all           cube_mosaic.clean
-7m       co21        singlescale   cube_mosaic.clean
+all      co21        singlescale   cube_mosaic.clean
 
 all      c18o21      all           cube_mosaic.clean
 

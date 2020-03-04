@@ -38,145 +38,181 @@ from pipelineVersion import version as pipeVer
 # Physical constants
 sol_kms = 2.9979246e5
 
-
-
+#######################################
+# Split and combine measurement sets. #
+#######################################
+    
 def split_science_targets(
-    in_file, 
-    out_file, 
-    do_split = True, 
+    infile = None, 
+    outfile = None, 
+    do_split = True,
+    split_field = '', 
+    split_intent = 'OBSERVE_TARGET#ON_SOURCE', 
+    split_spw = '',
     do_statwt = False, 
     use_symlink = True, 
     overwrite = False, 
     ):
-    """Split science targets from the input ALMA measurement set to a new measurement set.
+    """
+    Split science targets from the input ALMA measurement set to form
+    a new, science-only measurement set. Optionally reweight the data
+    using statwt. If only a copy is requested, use a symlink.
     
     Args:
-        in_file (str): The input measurement set data with suffix ".ms".
+
+    infile (str): The input measurement set data.
+    
+    outfile (str): The output measurement set data.
+
+    field (str): The field used for selection.
         
-        out_file (str): The output measurement set data with suffix ".ms".
+    do_split (bool): Set to False to only make a copy of the original
+    measurement set without splitting science targets data. The
+    default is True, splitting science targets data.
         
-        do_split (bool): Set to False to only make a copy of the original measurement set without 
-        splitting science targets data. The default is True, splitting science targets data. 
+    use_symlink (bool): Set to True to use a symlink instead of making
+    an actual copy of the original measurement set. Only works with
+    do_split=False
         
-        use_symlink (bool): Set to False to make a copy of the original measurement set so as to 
-        absolutely avoid any touching of the original data. The default is True, to trust 
-        CASA to not modify our original data.
-        
-        overwrite (bool): Set to True to overwrite existing output data. The default is False, not 
-        overwriting anything. 
+    overwrite (bool): Set to True to overwrite existing output
+    data. The default is False, not overwriting anything.
     
     Inputs:
-        in_file: ALMA measurement set data folder.
+
+    in_file: ALMA measurement set data folder.
     
     Outputs:
-        out_file: ALMA measurement set data folder.
+
+    out_file: ALMA measurement set data folder.
     
     """
+        
+    # Check inputs
+
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
     
-    # 
-    # This funcion was part of the copy_data() function in older version phangsPipeline.py.
-    # 
+    if outfile is None:
+        logging.error("Please specify outfile.")
+        raise Exception("Please specify outfile.")
     
-    # 
-    # check input ms data dir
-    if os.path.isdir(in_file):
-        in_file = in_file
-    else:
+    if not os.path.isdir(infile):
         logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    
-    # 
-    # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
-    else:
-        out_name = out_file
-        out_file = out_name + '.ms'
-    # 
-    # check existing output data
-    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
+        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')    
+     
+    if do_statwt and not do_split:
+        logging.warning("Stat weight option (do_statwt) only enabled with do_split.")
+
+    # Check for presence of existing outfile and abort if it is found
+    # without overwrite permission.
+
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
-            logger.warning('Found existing data "'+out_file+'", will not overwrite.')
-            return
-    # if overwrite, then delete existing output data.
+            logger.warning('Found existing data "'+outfile+'", will not overwrite.')
+            return()
+
+    # Delete existing output data.
+
     for suffix in ['', '.flagversions', '.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
-    # 
-    # prepare the copied data folder name (copied_file is a data folder).
-    # if we are going to do some additional processing, make this an intermediate file ("_copied"). 
+        if os.path.islink(outfile+suffix):
+            os.unlink(outfile+suffix)
+            logger.debug('os.unlink "'+outfile+'"')
+            
+        if os.path.isdir(outfile+suffix):
+            shutil.rmtree(outfile+suffix)
+
+    ###########################################################################
+    # COPY: If split is turned off, we are just making a copy.
+    ###########################################################################
+
+    if do_split == False:
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("I will just copy or link the data.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        if use_symlink:
+            
+            # Make links
+
+            if os.path.isdir(infile):
+                os.symlink(infile, outfile)
+                logger.debug('os.symlink "'+infile+'", "'+outfile+'"')
+
+            if os.path.isdir(infile+'.flagversions'):
+                os.symlink(infile+'.flagversions', outfile+'.flagversions')
+                logger.debug('os.symlink "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
+
+            # Check
+
+            if not os.path.islink(outfile):
+                logger.error('Failed to link the uv data to '+os.path.abspath(outfile)+'!')
+                logger.error('Please check your file system writing permission or system breaks.')
+                raise Exception('Failed to link the uv data to the imaging directory.')
+
+            return()
+
+        else:
+
+            # Check copied data
+
+            has_existing_copied_data = False
+            if os.path.isdir(copied_file) and not os.path.isdir(copied_file+'.touch'):
+                if not overwrite:
+                    has_existing_copied_data = True
+
+            # delete existing copied data if not overwriting
+
+            if not has_existing_copied_data:
+                for suffix in ['', '.flagversions', '.touch']:
+                    if os.path.isdir(copied_file+suffix):
+                        shutil.rmtree(copied_file+suffix)
+                        logger.debug('shutil.rmtree "'+copied_file+suffix+'"')
+                        
+            # copy the data (.touch directory is a temporary flagpost)
+
+            os.mkdir(outfile+'.touch')
+
+            if os.path.isdir(infile):
+                shutil.copytree(infile, outfile)
+                logger.debug('shutil.copytree "'+infile+'", "'+outfile+'"')
+
+            if os.path.isdir(infile+'.flagversions'):
+                shutil.copytree(infile+'.flagversions', outfile+'.flagversions')
+                logger.debug('shutil.copytree "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
+
+            os.rmdir(outfile+'.touch')            
+             
+            # check copied_file, make sure copying was done
+
+            if not os.path.isdir(outfile) or \
+                    os.path.isdir(outfile+'.touch'):
+                logger.error('Failed to copy the uv data to '+os.path.abspath(oufile)+'!')
+                logger.error('Please check your file system writing permission or system breaks.')
+                raise Exception('Failed to copy the uv data to the imaging directory.')
+
+            return()
+
+    ###########################################################################
+    # SPLIT: If split is turned on, split and extract the science target
+    ###########################################################################
+
     if do_split:
-        copied_file = re.sub(r'^(.*)\.ms$', r'\1_copied.ms', out_file, re.IGNORECASE)
-    else:
-        copied_file = out_file
-        use_symlink = False
-    # 
-    # Copy. We could place a symbolic link here using ln -s
-    # instead, but instead I think the right move is to make
-    # the intermediate files and then clean them up. This
-    # avoids "touching" the original data at all.
-    if use_symlink:
-        # 
-        # check existing copied data
-        if os.path.islink(copied_file):
-            os.unlink(copied_file)
-            logger.debug('os.unlink "'+copied_file+'"')
-        if os.path.islink(copied_file+'.flagversions'):
-            os.unlink(copied_file+'.flagversions')
-            logger.debug('os.unlink "'+copied_file+'.flagversions'+'"')
-        # 
-        # link the data
-        if os.path.isdir(in_file):
-            os.symlink(in_file, copied_file)
-            logger.debug('os.symlink "'+in_file+'", "'+copied_file+'"')
-        if os.path.isdir(in_file+'.flagversions'):
-            os.symlink(in_file+'.flagversions', copied_file+'.flagversions')
-            logger.debug('os.symlink "'+in_file+'.flagversions'+'", "'+copied_file+'.flagversions'+'"')
-        # 
-        # check copied_file, make sure copying was done
-        if not os.path.islink(copied_file):
-            logger.error('Failed to link the uv data to '+os.path.abspath(copied_file)+'! Please check your file system writing permission or system breaks!')
-            raise Exception('Failed to link the uv data to the imaging directory! Please check your file system writing permission or system breaks!')
-    else:
-        # 
-        # check existing copied data
-        has_existing_copied_data = False
-        if os.path.isdir(copied_file) and not os.path.isdir(copied_file+'.touch'):
-            if not overwrite:
-                has_existing_copied_data = True
-        # delete existing copied data if not overwriting
-        if not has_existing_copied_data:
-            for suffix in ['', '.flagversions', '.touch']:
-                if os.path.isdir(copied_file+suffix):
-                    shutil.rmtree(copied_file+suffix)
-                    logger.debug('shutil.rmtree "'+copied_file+suffix+'"')
-        # 
-        # copy the data
-        os.mkdir(copied_file+'.touch')
-        if os.path.isdir(in_file):
-            shutil.copytree(in_file, copied_file)
-            logger.debug('shutil.copytree "'+in_file+'", "'+copied_file+'"')
-        if os.path.isdir(in_file+'.flagversions'):
-            shutil.copytree(in_file+'.flagversions', copied_file+'.flagversions')
-            logger.debug('shutil.copytree "'+in_file+'.flagversions'+'", "'+copied_file+'.flagversions'+'"')
-        os.rmdir(copied_file+'.touch')
-        # 
-        # check copied_file, make sure copying was done
-        if not os.path.isdir(copied_file) or os.path.isdir(copied_file+'.touch'):
-            logger.error('Failed to copy the uv data to '+os.path.abspath(copied_file)+'! Please check your file system writing permission or system breaks!')
-            raise Exception('Failed to copy the uv data to the imaging directory! Please check your file system writing permission or system breaks!')
-    # 
-    # call CASA split
-    if do_split:
-        # 
-        logger.info('Splitting out science target data in "'+os.path.basename(copied_file)+'"')
-        # 
-        # If present, we use the corrected column. If not,
-        # then we use the data column.
-        #mytb = au.createCasaTool(tbtool)
-        #mytb.open(copied_file)
-        #colnames = mytb.colnames()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("I will split out the data.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+        
+        logger.info('Splitting from '+infile+' to '+outfile)
+
+        # Verify the column to use. If present, we use the corrected
+        # column. If not, then we use the data column.
+
         casaStuff.tb.open(copied_file, nomodify = True)
         colnames = casaStuff.tb.colnames()
         if 'CORRECTED_DATA' in colnames:
@@ -186,101 +222,240 @@ def split_science_targets(
             logger.info("Data lacks a CORRECTED column. Will use DATA column.")
             use_column = 'DATA'
         casaStuff.tb.close()
-        # 
-        logger.debug('casa split vis="'+copied_file+'", outputvis="'+out_file+'", intent="OBSERVE_TARGET#ON_SOURCE"')
+
+        logger.debug('field='+split_intent)
+        logger.debug('intent='+split_field)
+
         os.mkdir(out_file+'.touch')
-        casaStuff.split(vis = copied_file, 
-                        intent = 'OBSERVE_TARGET#ON_SOURCE', 
+        casaStuff.split(vis = infile, 
+                        intent = split_intent, 
+                        field = split_field,
+                        spw = split_spw,
                         datacolumn = use_column, 
-                        outputvis = out_file)
+                        outputvis = outfile)
         os.rmdir(out_file+'.touch')
-        # 
-        # clean up
-        if use_symlink:
-            if os.path.islink(copied_file):
-                os.unlink(copied_file)
-                logger.debug('os.unlink "'+copied_file+'"')
-            if os.path.islink(copied_file+'.flagversions'):
-                os.unlink(copied_file+'.flagversions')
-                logger.debug('os.unlink "'+copied_file+'.flagversions'+'"')
-        else:
-            for suffix in ['', '.flagversions']:
-                if os.path.isdir(copied_file+suffix):
-                    shutil.rmtree(copied_file+suffix)
-                    logger.debug('shutil.rmtree "'+copied_file+suffix+'"')
-    # 
-    # call CASA statwt
-    if do_statwt:
-        logger.info("Using statwt to re-weight the data.")
-        logger.debug('casa statwt vis="'+out_file+'"')
-        os.mkdir(out_file+'.touch')
-        casaStuff.statwt(vis = out_file, 
-                         datacolumn = 'DATA')
-        os.rmdir(out_file+'.touch')
-    # 
-    # end of split_science_targets()
 
+        # Re-weight the data if desired.
 
+        if do_statwt:
+            logger.info("Using statwt to re-weight the data.")
+            logger.debug('casa statwt vis="'+outfile+'"')
+            os.mkdir(out_file+'.touch')
+            casaStuff.statwt(vis = outfile, 
+                             datacolumn = 'DATA')
+            os.rmdir(out_file+'.touch')
+            
+        return()
 
-def find_spws_for_line(
-    in_file, 
-    line, 
+    return()
+
+def concat_ms(
+    infile_list=None,  
+    outfile=None,  
+    freqtol='',
+    dirtol='',
+    overwrite = False, 
+    ):
+    """
+    Concatenate a list of measurement sets into one measurement set. A
+    thin wrapper to concat.
+    
+    Args:
+        infile_list (list or str): The input list of measurement sets. 
+        outfile (str): The output measurement set data with suffix ".ms".
+    
+    Inputs:
+        in_file: ALMA measurement set data folder.
+    
+    Outputs:
+        out_file: ALMA measurement set data folder.
+    
+    """
+    # Check inputs
+
+    if infile_list is None:
+        logging.error("Please specify infile_list.")
+        raise Exception("Please specify infile_list.")
+    
+    if outfile is None:
+        logging.error("Please specify outfile.")
+        raise Exception("Please specify outfile.")
+
+    # make sure the input infile_list is a list
+    if np.isscalar(infile_list):
+        infile_list = [infile_list]
+    
+    # check file existence
+    for this_infile in infile_list:
+        if not os.path.isdir(this_infile):
+            logger.error('Error! The input measurement set "'+this_infile+'" not found')
+            raise Exception('Error! The input measurement set "'+this_infile+'" not found')
+    
+    # PROPOSE TO DEPRECATE THIS (e.g., .contsub violates this rule)
+    # check output suffix
+    #if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+    #    out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+    #    outfile = out_name + '.ms'
+    #else:
+    #    out_name = out_file
+    #    outfile = out_name + '.ms'
+    
+    # Quit if output data are present and overwrite is off.
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
+            return()
+
+    # if overwrite or no file present, then delete existing output data.
+    for suffix in ['', '.flagversions', '.touch']:
+        if os.path.isdir(outfile+suffix):
+            shutil.rmtree(outfile+suffix)
+
+    # Concatenate all of the relevant files
+    os.mkdir(out_file+'.touch')
+    casaStuff.concat(vis = infile_list, 
+                     concatvis = outfile,
+                     freqtol=freqtol, dirtol=dirtol)
+                     #<TODO># what about freqtol? set as an input? dirtol?
+    os.rmdir(out_file+'.touch')
+
+    return()
+
+##########################
+# Continuum subtraction. #
+##########################
+
+def contsub(
+    infile = None, 
+    outfile = None,
+    lines_to_exclude = None, 
     vsys = None, 
     vwidth = None, 
+    overwrite = False, 
+    ):
+    """
+    Carry out uv continuum subtraction on a measurement set. First
+    figures out channels corresponding to spectral lines for a
+    provided suite of bright lines.
+    """
+    
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
+    
+    if outfile is None:
+        outfile = infile+'.contsub'
+
+    if not os.path.isdir(infile):
+        logger.error('The input uv data measurement set "'+in_file+'"does not exist.')
+        raise Exception('The input uv data measurement set "'+in_file+'"does not exist.')
+
+    # check existing output data in the imaging directory
+    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
+            return
+    if os.path.isdir(in_file+'.contsub'):
+        shutil.rmtree(in_file+'.contsub')
+    if os.path.isdir(in_file+'.contsub'+'.touch'):
+        shutil.rmtree(in_file+'.contsub'+'.touch')
+
+    # Figure out which channels to exclude from the fit.
+
+    # find_spw_channels_for_lines_to_flag
+    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
+                                                              lines_to_flag = lines_to_flag, 
+                                                              vsys = vsys, 
+                                                              vwidth = vwidth)
+    # 
+    # uvcontsub, this outputs in_file+'.contsub'
+    os.mkdir(in_file+'.contsub'+'.touch')
+    casaStuff.uvcontsub(vis = in_file,
+                        fitspw = spw_flagging_string,
+                        excludechans = True,
+                        combine='spw',
+                        )
+                        # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
+
+    os.rmdir(in_file+'.contsub'+'.touch')
+    # 
+    return
+
+##########################################################
+# Interface between spectral lines and spectral windows. #
+##########################################################
+
+def find_spws_for_line(
+    infile = None, 
+    line = None, 
+    vsys = 0.0, 
+    vwidth = 0.0, 
     exit_on_error = True, 
     ):
     """
-    List the spectral windows in the input ms data that contains the input line, 
-    given the line velocity (vsys) and line width (vwidth), which are in units of km/s.
+    List the spectral windows in the input ms data that contains the
+    input line, given the line velocity (vsys) and line width
+    (vwidth), which are in units of km/s. Defaults to rest frequency
+    (with vsys = 0.0 and vwidth = 0.0).
     """
+
+    # Check inputs
     
-    # 
-    # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    # 
-    # check vsys
-    if vsys is None:
-        logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys.')
-    # 
-    # check vwidth
-    if vwidth is None:
-        logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vwidth.')
-    # 
-    # get the line name and line center rest-frame frequency in the line_list module for the input line
-    line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=exit_on_error) # exit_on_error = True
-    # 
-    # Work out which spectral windows contain the line contain
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
+
+    if line is None:
+        logging.error("Please specify an input line.")
+        raise Exception("Please specify an input line.")
+        
+    # Verify file existence
+
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
+ 
+    # Get the line name and rest-frame frequency in the line_list
+    # module for the input line
+
+    line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=exit_on_error)
+
+    # Work out the frequencies at the line edes.
+
     target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
     target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
     target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
-    # 
+
+    # Work out which spectral windows contain the line contain
+
     spw_list = []
-    # 
-    # loop over line left wing, center and right wing frequencies to match the spectral window (spw)
+    
+    # Loop over line edges and center frequencies and find the match
+    # to the spectral window (spw) for each. In theory, this could be
+    # improved to deal with the case where an intermediate spectral
+    # window is TOTALLY encompassed between the low/high and center.
+
     for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
+
         # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
         this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq*1e9)    
         spw_list.extend(this_spw_list)
-    # 
-    # if no line found in this ms data, print a warning and return
+
+    # If we don't find the line in this data set, issue a warning and
+    # return.
+
     if len(spw_list) == 0:
-        logger.warning('No spectral windows contain the input line "'+line+'", vsys '+str(vsys)+' km/s, vwidth '+str(vwidth)+' km/s. The ms data is "'+in_file+'".')
-        spw_list_string = ''
+        logger.warning('No spectral windows contain the input line.')
+        spw_list_string = None
     else:
-        # 
+        
         # sort and remove duplicates
         spw_list = sorted(list(set(spw_list)))
-        # 
-        # make spw_list_string
+
+        # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
-    # 
-    return spw_list_string
-
-
+     
+    return(spw_list_string)
 
 def find_spw_channels_for_lines_to_flag(
     in_file, 
@@ -373,8 +548,6 @@ def find_spw_channels_for_lines_to_flag(
     
     return spw_flagging_string
 
-
-
 def compute_chanwidth_for_line(
     in_file, 
     line, 
@@ -408,12 +581,14 @@ def compute_chanwidth_for_line(
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     # 
     # Convert to km/s and return
-    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities
+    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities - Agree we need to fix this.
     # 
     # Return
     return chan_width_kms
 
-
+#################################################################
+# Extract single-line or continuum data from a measurement set. #
+#################################################################
 
 def extract_line(
     in_file, 
@@ -684,56 +859,6 @@ def extract_line(
     return
 
 
-
-def contsub(
-    in_file, 
-    lines_to_flag = None, 
-    vsys = None, 
-    vwidth = None, 
-    overwrite = False, 
-    ):
-    """
-    Carry out uv continuum subtraction on a measurement set. First
-    figures out channels corresponding to spectral lines for a suite
-    of bright lines.
-    """
-    
-    # 
-    # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    # 
-    # check existing output data in the imaging directory
-    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
-            return
-    if os.path.isdir(in_file+'.contsub'):
-        shutil.rmtree(in_file+'.contsub')
-    if os.path.isdir(in_file+'.contsub'+'.touch'):
-        shutil.rmtree(in_file+'.contsub'+'.touch')
-    # 
-    # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
-                                                              lines_to_flag = lines_to_flag, 
-                                                              vsys = vsys, 
-                                                              vwidth = vwidth)
-    # 
-    # uvcontsub, this outputs in_file+'.contsub'
-    os.mkdir(in_file+'.contsub'+'.touch')
-    casaStuff.uvcontsub(vis = in_file,
-                        fitspw = spw_flagging_string,
-                        excludechans = True,
-                        combine='spw',
-                        )
-                        # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
-    os.rmdir(in_file+'.contsub'+'.touch')
-    # 
-    return
-
-
-
 def extract_continuum(
     in_file, 
     out_file, 
@@ -850,104 +975,9 @@ def extract_continuum(
     # 
     return
 
-
-
-def concat_ms(
-    in_file_list,  
-    out_file,  
-    quiet = False, 
-    overwrite = False, 
-    ):
-    """Concatenate a list of measurement sets into one measurement set, and collapse channel0 if required. 
-    
-    Args:
-        in_file_list (list or str): The input list of measurement sets. 
-        out_file (str): The output measurement set data with suffix ".ms".
-        quiet (bool): True for quiet and False for verbose. Default is False. 
-    
-    Inputs:
-        in_file: ALMA measurement set data folder.
-    
-    Outputs:
-        out_file: ALMA measurement set data folder.
-    
-    """
-    
-    # 
-    # This funcion is paritially replacing the call of concat() in the concat_line_for_one_gal() and concat_cont_for_one_gal() functions in older version phangsPipeline.py.
-    # 
-    
-    # 
-    # make sure the input in_file_list is a list
-    if np.isscalar(in_file_list):
-        in_file_list = [in_file_list]
-    
-    # 
-    # check input ms data dir
-    for in_file in in_file_list:
-        if not os.path.isdir(in_file):
-            logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-            raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    
-    # 
-    # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
-    else:
-        out_name = out_file
-        out_file = out_name + '.ms'
-    # 
-    # check existing output data
-    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
-            return
-    # if overwrite, then delete existing output data.
-    for suffix in ['', '.flagversions', '_chan0', '_chan0.flagversions', '.temp2', '.temp2.flagversions', '.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
-    # 
-    # Concatenate all of the relevant files
-    os.mkdir(out_file+'.touch')
-    casaStuff.concat(vis = in_file_list, 
-                     concatvis = out_file)
-                     #<TODO># what about freqtol?
-    os.rmdir(out_file+'.touch')
-    # 
-    # Collapse to form a "channel 0" measurement set (20200226: deprecated because we will use product like "co21_chan0" with channel_width like +inf in the future for this purpose)
-    #if do_chan0:
-    #    # 
-    #    chan0_vis = out_name + '_chan0.ms'
-    #    if os.path.isdir(chan0_vis):
-    #        logger.info('Found existing output data "'+chan0_vis+'". Overwriting it.')
-    #        shutil.rmtree(chan0_vis)
-    #    if os.path.isdir(chan0_vis+'.flagversions'):
-    #        shutil.rmtree(chan0_vis+'.flagversions')
-    #    # 
-    #    # find out the channel number
-    #    casaStuff.tb.open(out_file+os.sep+'SPECTRAL_WINDOW', nomodify = True)
-    #    chan_width_list = casaStuff.tb.getcell('CHAN_WIDTH', 0)
-    #    num_chan = len(chan_width_list)
-    #    logger.info('Collapsing '+str(num_chan)+' channels in "'+os.path.basename(out_file)+'" to make "'+os.path.basename(chan0_vis)+'"')
-    #    casaStuff.tb.close()
-    #    # 
-    #    if num_chan < 1:
-    #        logger.error('Error! Could not get channel number from "'+out_file+os.sep+'SPECTRAL_WINDOW'+'"!')
-    #        raise Exception('Error! Could not get channel number from "'+out_file+os.sep+'SPECTRAL_WINDOW'+'"!')
-    #    # 
-    #    casaStuff.split(vis = out_file, 
-    #                    datacolumn = 'DATA', 
-    #                    spw = '', 
-    #                    outputvis = chan0_vis, 
-    #                    width = num_chan)
-    #
-
-
-
-
-
-
+##################
+# Analysis tasks #
+##################
 
 def noise_spectrum(
     vis=None,
