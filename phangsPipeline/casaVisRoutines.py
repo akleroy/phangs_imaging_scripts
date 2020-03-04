@@ -79,7 +79,7 @@ def split_science_targets(
     
     Inputs:
 
-    in_file: ALMA measurement set data folder.
+    infile: ALMA measurement set data folder.
     
     Outputs:
 
@@ -98,8 +98,8 @@ def split_science_targets(
         raise Exception("Please specify outfile.")
     
     if not os.path.isdir(infile):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')    
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')    
      
     if do_statwt and not do_split:
         logging.warning("Stat weight option (do_statwt) only enabled with do_split.")
@@ -265,7 +265,7 @@ def concat_ms(
         outfile (str): The output measurement set data with suffix ".ms".
     
     Inputs:
-        in_file: ALMA measurement set data folder.
+        infile: ALMA measurement set data folder.
     
     Outputs:
         out_file: ALMA measurement set data folder.
@@ -347,37 +347,37 @@ def contsub(
         outfile = infile+'.contsub'
 
     if not os.path.isdir(infile):
-        logger.error('The input uv data measurement set "'+in_file+'"does not exist.')
-        raise Exception('The input uv data measurement set "'+in_file+'"does not exist.')
+        logger.error('The input uv data measurement set "'+infile+'"does not exist.')
+        raise Exception('The input uv data measurement set "'+infile+'"does not exist.')
 
     # check existing output data in the imaging directory
-    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
+    if os.path.isdir(infile+'.contsub') and not os.path.isdir(infile+'.contsub'+'.touch'):
         if not overwrite:
-            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
+            logger.warning('Found existing output data "'+infile+'.contsub'+'", will not overwrite it.')
             return
-    if os.path.isdir(in_file+'.contsub'):
-        shutil.rmtree(in_file+'.contsub')
-    if os.path.isdir(in_file+'.contsub'+'.touch'):
-        shutil.rmtree(in_file+'.contsub'+'.touch')
+    if os.path.isdir(infile+'.contsub'):
+        shutil.rmtree(infile+'.contsub')
+    if os.path.isdir(infile+'.contsub'+'.touch'):
+        shutil.rmtree(infile+'.contsub'+'.touch')
 
     # Figure out which channels to exclude from the fit.
 
     # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
+    spw_flagging_string = find_spw_channels_for_lines_to_flag(infile = infile, 
                                                               lines_to_flag = lines_to_flag, 
                                                               vsys = vsys, 
                                                               vwidth = vwidth)
     # 
-    # uvcontsub, this outputs in_file+'.contsub'
-    os.mkdir(in_file+'.contsub'+'.touch')
-    casaStuff.uvcontsub(vis = in_file,
+    # uvcontsub, this outputs infile+'.contsub'
+    os.mkdir(infile+'.contsub'+'.touch')
+    casaStuff.uvcontsub(vis = infile,
                         fitspw = spw_flagging_string,
                         excludechans = True,
                         combine='spw',
                         )
                         # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
 
-    os.rmdir(in_file+'.contsub'+'.touch')
+    os.rmdir(infile+'.contsub'+'.touch')
     # 
     return
 
@@ -438,7 +438,7 @@ def find_spws_for_line(
     for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
 
         # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
-        this_spw_list = au.getScienceSpwsForFrequency(in_file, target_freq*1e9)    
+        this_spw_list = au.getScienceSpwsForFrequency(infile, target_freq*1e9)    
         spw_list.extend(this_spw_list)
 
     # If we don't find the line in this data set, issue a warning and
@@ -458,7 +458,7 @@ def find_spws_for_line(
     return(spw_list_string)
 
 def find_spw_channels_for_lines_to_flag(
-    in_file, 
+    infile, 
     lines_to_flag, 
     vsys = None, 
     vwidth = None, 
@@ -470,9 +470,9 @@ def find_spw_channels_for_lines_to_flag(
     
     # 
     # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
     # 
     # check vsys
     if vsys is None:
@@ -505,7 +505,7 @@ def find_spw_channels_for_lines_to_flag(
         logger.debug('Lines to flag for the continuum: '+str(lines_to_flag))
     # 
     # Figure out the line channels and flag them
-    vm = au.ValueMapping(in_file)
+    vm = au.ValueMapping(infile)
     # 
     spw_flagging_string = ''
     first = True
@@ -524,7 +524,7 @@ def find_spw_channels_for_lines_to_flag(
         hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
         lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
         
-        spw_list = au.getScienceSpwsForFrequency(in_file,
+        spw_list = au.getScienceSpwsForFrequency(infile,
                                                  shifted_linefreq_hz)
         if len(spw_list) == 0:
             continue
@@ -549,7 +549,7 @@ def find_spw_channels_for_lines_to_flag(
     return spw_flagging_string
 
 def compute_chanwidth_for_line(
-    in_file, 
+    infile, 
     line, 
     vsys = None, 
     vwidth = None, 
@@ -557,7 +557,7 @@ def compute_chanwidth_for_line(
     """Calculates the coarsest channel width among all spectral windows in the input measurement set that contain the input line.
     
     Args:
-        in_file (str): The input measurement set data with suffix ".ms".
+        infile (str): The input measurement set data with suffix ".ms".
         line (str): Line name. 
         output_spw (bool): Set to True to output not only found line names but also corresponding spectral window (spw) number. 
     
@@ -575,10 +575,10 @@ def compute_chanwidth_for_line(
     line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=True) # exit_on_error = True
     # 
     # Find spws for line
-    spw_list_string = find_spws_for_line(in_file, line, vsys = vsys, vwidth = vwidth)
+    spw_list_string = find_spws_for_line(infile, line, vsys = vsys, vwidth = vwidth)
     # 
     # Figure out how much averaging is needed to reach the target resolution
-    chan_width_hz = au.getChanWidths(in_file, spw_list_string)
+    chan_width_hz = au.getChanWidths(infile, spw_list_string)
     # 
     # Convert to km/s and return
     chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities - Agree we need to fix this.
@@ -591,7 +591,7 @@ def compute_chanwidth_for_line(
 #################################################################
 
 def extract_line(
-    in_file, 
+    infile, 
     out_file, 
     line = 'co21', 
     vsys = None, 
@@ -635,7 +635,7 @@ def extract_line(
            Combine spws
     
     Args:
-        in_file (str): The input measurement set data with suffix ".ms".
+        infile (str): The input measurement set data with suffix ".ms".
         out_file (str): The output measurement set data with suffix ".ms".
         line (str): Line name. 
         chan_fine (float): Channel width in units of km/s to regrid to. 
@@ -652,7 +652,7 @@ def extract_line(
         edge_for_statwt (int): 
     
     Inputs:
-        in_file: ALMA measurement set data folder.
+        infile: ALMA measurement set data folder.
     
     Outputs:
         out_file: ALMA measurement set data folder.
@@ -665,9 +665,9 @@ def extract_line(
     
     # 
     # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
     # 
     # check output suffix
     if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
@@ -698,7 +698,7 @@ def extract_line(
         raise Exception('Error! Please input vwidth.')
     # 
     # find spws for line
-    spw_list_string = find_spws_for_line(in_file, line, vsys = vsys, vwidth = vwidth)
+    spw_list_string = find_spws_for_line(infile, line, vsys = vsys, vwidth = vwidth)
     # 
     # exit if no line found
     if spw_list_string == '':
@@ -714,7 +714,7 @@ def extract_line(
     logger.info("... spectral windows to consider: "+spw_list_string)
     # 
     start_vel_kms = (vsys - vwidth/2.0)
-    chan_width_hz = au.getChanWidths(in_file, spw_list_string)
+    chan_width_hz = au.getChanWidths(infile, spw_list_string)
     if not np.isscalar(chan_width_hz): chan_width_hz = chan_width_hz[0]
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
     restfreq_string = "{:12.8f}".format(restfreq_ghz)+'GHz'
@@ -800,7 +800,7 @@ def extract_line(
     logger.info('... we will have '+str(len(mstransform_call_list))+' mstransform calls')
     for k, mstransform_params in enumerate(mstransform_call_list):
         if k == 0:
-            mstransform_params['vis'] = in_file
+            mstransform_params['vis'] = infile
             mstransform_params['outputvis'] = out_file+'.temp%d'%(k+1)
         elif k == len(mstransform_call_list)-1:
             mstransform_params['vis'] = out_file+'.temp%d'%(k)
@@ -860,7 +860,7 @@ def extract_line(
 
 
 def extract_continuum(
-    in_file, 
+    infile, 
     out_file, 
     lines_to_flag = None, 
     vsys = None, 
@@ -876,14 +876,14 @@ def extract_continuum(
     0" measurement.
     
     Args:
-        in_file (str): The input measurement set data with suffix ".ms".
+        infile (str): The input measurement set data with suffix ".ms".
         out_file (str): The output measurement set data with suffix ".ms".
         lines_to_flag (list): A list of line names to flag. Lines names must be in our line_list module. If it is None, then we use all 12co, 13co and c18o lines.
         do_statwt (bool): 
         do_collapse (bool): Always True to produce the single-channel continuum data.
     
     Inputs:
-        in_file: ALMA measurement set data folder.
+        infile: ALMA measurement set data folder.
     
     Outputs:
         out_file: ALMA measurement set data folder.
@@ -892,9 +892,9 @@ def extract_continuum(
     
     # 
     # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
     # 
     # check output suffix
     if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
@@ -915,14 +915,14 @@ def extract_continuum(
             shutil.rmtree(out_file+suffix)
     # 
     # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
+    spw_flagging_string = find_spw_channels_for_lines_to_flag(infile = infile, 
                                                               lines_to_flag = lines_to_flag, 
                                                               vsys = vsys, 
                                                               vwidth = vwidth)
     # 
     # make a continuum copy of the data
     os.mkdir(out_file+'.touch')
-    shutil.copytree(in_file, out_file)
+    shutil.copytree(infile, out_file)
     os.rmdir(out_file+'.touch')
     # 
     # flagdata
