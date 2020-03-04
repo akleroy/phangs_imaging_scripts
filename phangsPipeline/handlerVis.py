@@ -105,7 +105,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         
                 
         target_list = self.get_targets()
-        product_list = self.get_products()
+        product_list = self.get_all_products()
         config_list = self.get_interf_configs()
 
         # Our first step uses CASA's split to extract the relevant
