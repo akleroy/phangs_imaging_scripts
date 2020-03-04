@@ -192,6 +192,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         
                 
         target_list = self.get_targets()
+        product_list = self.get_products()
         config_list = self.get_interf_configs()
 
         # This loop goes over target, array, observation number, and
@@ -202,18 +203,21 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                 self._kh.loop_over_input_ms(targets=target_list,
                                             configs=config_list,
                                             projects=just_projects):
-        
-                if do_copy:
 
-                    self.task_copy_and_split(
-                        target = this_target, 
-                        project = this_project, 
-                        array_tag = this_array_tag, 
-                        obsnum = this_obsnum, 
-                        extra_ext = extra_ext, 
-                        # could add algorithm flags here
-                        overwrite = overwrite, 
-                        )
+                for this_product in product_list:
+                    
+                    if do_copy:
+
+                        self.task_copy_and_split(
+                            target = this_target, 
+                            project = this_project, 
+                            array_tag = this_array_tag, 
+                            obsnum = this_obsnum, 
+                            product = this_product,
+                            extra_ext = extra_ext, 
+                            # could add algorithm flags here
+                            overwrite = overwrite, 
+                            )
 
         # This loop goes over target, product, and configuration and
         # combines all data for each target + product + config
@@ -225,7 +229,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
 
                 if do_concat_line:
 
-                    self.task_concat_uvdata(
+                    self.task_split_and_concat(
                         target = this_target, 
                         config = this_config, 
                         product = this_product, 
@@ -235,7 +239,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                 
                 if do_concat_cont:
 
-                    self.task_concat_uvdata(
+                    self.task_split_and_concat(
                         target = this_target, 
                         config = this_config, 
                         product = this_product, 
@@ -308,6 +312,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             project = None,
             array_tag = None,
             obsnum = None,
+            product = None,
             extra_ext_out = '',
             do_split = True, 
             do_statwt = False, 
@@ -347,7 +352,20 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
 
         outfile = fnames.get_staged_msname(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
-            ext=extra_ext_out)
+            product=product, ext=extra_ext_out)
+
+        # If requested, select on SPW for the product
+
+        spw = ''
+        if product is not None:
+
+            if product is in self._kh.get_line_products:
+
+                vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
+
+                spw = cvr.find_spws_for_line(infile = infile, 
+                                             line = this_line, 
+                                             vsys = vsys, vwidth = vwidth)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -364,7 +382,8 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             cvr.split_science_targets(
                 infile = infile, 
                 outfile = outfile,  
-                field = field,
+                split_field = field,
+                split_spw = spw,
                 do_split = do_split, 
                 do_statwt = do_statwt, 
                 use_symlink = use_symlink, 
@@ -400,20 +419,11 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             logging.error("Please specify a config.")
             raise Exception("Please specify a config.")
         
-        logger.info("")
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Concatenating u-v data for:")
-        logger.info("... product "+product '+product+' for target '+target+' and config '+config+'.')                    
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("")
-            
-
-        logger.info('START: Concatenating 
-        # 
-        # get imaging dir and change directory
-        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-        # 
+         
         # get the fname dict for the input target and config
+
+        # Come back to this list generation part.
+
         fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
         ms_concatenated = fname_dict['ms_concatenated']
         ms_list_to_concatenate = fname_dict['ms_extracted']
@@ -421,17 +431,35 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         str_of_ms_list_to_concatenate = ', '.join(['"'+t+'"' for t in ms_list_to_concatenate]) # for printing
         logger.debug('Current directory: "'+os.getcwd()+'"')
         logger.debug('Concatenating: "'+ms_concatenated+'" <-- ['+str_of_ms_list_to_concatenate+']')
-        if not self._dry_run:
-            # concat_ms
+
+        # Revise here
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Splitting (by spw) then concatenating u-v data for:")
+        logger.info("... target: "+target)
+        logger.info("... product: "+product)
+        logger.info("... config: "+config)
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
+        # Change to the imaging directory for the target
+
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+        
+        if not self._dry_run and casa_enabled:         
+
+            # Add a for loop over ms to make temporary files with only
+            # relevant spws (because concat includes no selection)
+            
             cvr.concat_ms(in_file_list = ms_list_to_concatenate, 
                           out_file = ms_concatenated, 
                           overwrite = overwrite, 
                           )
-        # 
-        logger.info('END: Concatenating product '+product+' for target '+target+' and config '+config+'.')
-        
-    
 
+            # Clean up those temporary measurement sets.
+
+        return()
     
     def task_contsub(
             self, 
@@ -746,7 +774,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
     ###################################
     # Recipes - combinations of tasks #
     ###################################
-     
+
     ########################################
     # 20200226: DEPRECATED FUNCTIONS BELOW #
     ########################################

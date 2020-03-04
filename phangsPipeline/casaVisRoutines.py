@@ -44,6 +44,7 @@ def split_science_targets(
     do_split = True,
     split_field = '', 
     split_intent = 'OBSERVE_TARGET#ON_SOURCE', 
+    split_spw = '',
     do_statwt = False, 
     use_symlink = True, 
     overwrite = False, 
@@ -120,13 +121,6 @@ def split_science_targets(
     ###########################################################################
     # COPY: If split is turned off, we are just making a copy.
     ###########################################################################
-
-        copied_file = re.sub(r'^(.*)\.ms$', r'\1_copied.ms', out_file, re.IGNORECASE)
-
-    else:
-        copied_file = out_file
-        use_symlink = False
-
 
     if do_split == False:
 
@@ -232,6 +226,7 @@ def split_science_targets(
         casaStuff.split(vis = infile, 
                         intent = split_intent, 
                         field = split_field,
+                        spw = split_spw,
                         datacolumn = use_column, 
                         outputvis = outfile)
         os.rmdir(out_file+'.touch')
@@ -247,6 +242,66 @@ def split_science_targets(
             os.rmdir(out_file+'.touch')
             
         return()
+
+    return()
+
+def concat_ms(
+    infile_list,  
+    outfile,  
+    quiet = False, 
+    overwrite = False, 
+    ):
+    """Concatenate a list of measurement sets into one measurement set, and collapse channel0 if required. 
+    
+    Args:
+        in_file_list (list or str): The input list of measurement sets. 
+        out_file (str): The output measurement set data with suffix ".ms".
+        quiet (bool): True for quiet and False for verbose. Default is False. 
+    
+    Inputs:
+        in_file: ALMA measurement set data folder.
+    
+    Outputs:
+        out_file: ALMA measurement set data folder.
+    
+    """
+        
+    # make sure the input infile_list is a list
+    if np.isscalar(infile_list):
+        infile_list = [infile_list]
+    
+    # check file existence
+    for this_infile in infile_list:
+        if not os.path.isdir(this_infile):
+            logger.error('Error! The input measurement set "'+this_infile+'" not found')
+            raise Exception('Error! The input measurement set "'+this_infile+'" not found')
+    
+    # PROPOSE TO DEPRECATE THIS (e.g., .contsub violates this rule)
+    # check output suffix
+    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+        out_file = out_name + '.ms'
+    else:
+        out_name = out_file
+        out_file = out_name + '.ms'
+    
+    # Quit if output data are present and overwrite is off.
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
+            return
+
+    # if overwrite, then delete existing output data.
+    for suffix in ['', '.flagversions', '.touch']:
+        if os.path.isdir(outfile+suffix):
+            shutil.rmtree(outfile+suffix)
+
+    # Concatenate all of the relevant files
+    os.mkdir(out_file+'.touch')
+    casaStuff.concat(vis = infile_list, 
+                     concatvis = outfile)
+                     #<TODO># what about freqtol? set as an input? dirtol?
+    os.rmdir(out_file+'.touch')
 
     return()
 
@@ -314,7 +369,7 @@ def find_spws_for_line(
 
     if len(spw_list) == 0:
         logger.warning('No spectral windows contain the input line.')
-        spw_list_string = ''
+        spw_list_string = None
     else:
         
         # sort and remove duplicates
@@ -324,8 +379,6 @@ def find_spws_for_line(
         spw_list_string = ','.join(np.array(spw_list).astype(str))
      
     return(spw_list_string)
-
-
 
 def find_spw_channels_for_lines_to_flag(
     in_file, 
@@ -453,7 +506,7 @@ def compute_chanwidth_for_line(
     chan_width_hz = au.getChanWidths(in_file, spw_list_string)
     # 
     # Convert to km/s and return
-    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities
+    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities - Agree we need to fix this.
     # 
     # Return
     return chan_width_kms
@@ -894,105 +947,6 @@ def extract_continuum(
             shutil.rmtree(out_file+'.temp_copy.flagversions')
     # 
     return
-
-
-
-def concat_ms(
-    in_file_list,  
-    out_file,  
-    quiet = False, 
-    overwrite = False, 
-    ):
-    """Concatenate a list of measurement sets into one measurement set, and collapse channel0 if required. 
-    
-    Args:
-        in_file_list (list or str): The input list of measurement sets. 
-        out_file (str): The output measurement set data with suffix ".ms".
-        quiet (bool): True for quiet and False for verbose. Default is False. 
-    
-    Inputs:
-        in_file: ALMA measurement set data folder.
-    
-    Outputs:
-        out_file: ALMA measurement set data folder.
-    
-    """
-    
-    # 
-    # This funcion is paritially replacing the call of concat() in the concat_line_for_one_gal() and concat_cont_for_one_gal() functions in older version phangsPipeline.py.
-    # 
-    
-    # 
-    # make sure the input in_file_list is a list
-    if np.isscalar(in_file_list):
-        in_file_list = [in_file_list]
-    
-    # 
-    # check input ms data dir
-    for in_file in in_file_list:
-        if not os.path.isdir(in_file):
-            logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-            raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    
-    # 
-    # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
-    else:
-        out_name = out_file
-        out_file = out_name + '.ms'
-    # 
-    # check existing output data
-    if os.path.isdir(out_file) and not os.path.isdir(out_file+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+out_file+'", will not overwrite it.')
-            return
-    # if overwrite, then delete existing output data.
-    for suffix in ['', '.flagversions', '_chan0', '_chan0.flagversions', '.temp2', '.temp2.flagversions', '.touch']:
-        if os.path.isdir(out_file+suffix):
-            shutil.rmtree(out_file+suffix)
-    # 
-    # Concatenate all of the relevant files
-    os.mkdir(out_file+'.touch')
-    casaStuff.concat(vis = in_file_list, 
-                     concatvis = out_file)
-                     #<TODO># what about freqtol?
-    os.rmdir(out_file+'.touch')
-    # 
-    # Collapse to form a "channel 0" measurement set (20200226: deprecated because we will use product like "co21_chan0" with channel_width like +inf in the future for this purpose)
-    #if do_chan0:
-    #    # 
-    #    chan0_vis = out_name + '_chan0.ms'
-    #    if os.path.isdir(chan0_vis):
-    #        logger.info('Found existing output data "'+chan0_vis+'". Overwriting it.')
-    #        shutil.rmtree(chan0_vis)
-    #    if os.path.isdir(chan0_vis+'.flagversions'):
-    #        shutil.rmtree(chan0_vis+'.flagversions')
-    #    # 
-    #    # find out the channel number
-    #    casaStuff.tb.open(out_file+os.sep+'SPECTRAL_WINDOW', nomodify = True)
-    #    chan_width_list = casaStuff.tb.getcell('CHAN_WIDTH', 0)
-    #    num_chan = len(chan_width_list)
-    #    logger.info('Collapsing '+str(num_chan)+' channels in "'+os.path.basename(out_file)+'" to make "'+os.path.basename(chan0_vis)+'"')
-    #    casaStuff.tb.close()
-    #    # 
-    #    if num_chan < 1:
-    #        logger.error('Error! Could not get channel number from "'+out_file+os.sep+'SPECTRAL_WINDOW'+'"!')
-    #        raise Exception('Error! Could not get channel number from "'+out_file+os.sep+'SPECTRAL_WINDOW'+'"!')
-    #    # 
-    #    casaStuff.split(vis = out_file, 
-    #                    datacolumn = 'DATA', 
-    #                    spw = '', 
-    #                    outputvis = chan0_vis, 
-    #                    width = num_chan)
-    #
-
-
-
-
-
-
 
 def noise_spectrum(
     vis=None,
