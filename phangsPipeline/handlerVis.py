@@ -112,9 +112,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # fields and spectral windows from each input data set.
 
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(targets=target_list,
-                                            configs=config_list,
-                                            projects=just_projects):
+                self._kh.loop_over_input_ms(target=target_list,
+                                            config=config_list,
+                                            project=just_projects):
 
                 for this_product in product_list:
                     
@@ -330,8 +330,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         
         staged_ms_list = []        
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(targets=target, configs=config,
-                                            projects=just_projects):
+                self._kh.loop_over_input_ms(target=target, config=config,
+                                            project=just_projects):
                 
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag, 
