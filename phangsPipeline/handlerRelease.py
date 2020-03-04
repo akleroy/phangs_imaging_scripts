@@ -34,9 +34,10 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import utils
+import utilsResolutions
+import utilsFilenames
 import line_list
 import handlerTemplate
-from phangsPipeline import utilsFilenames as uf
 
 
 class ReleaseHandler(handlerTemplate.HandlerTemplate):
@@ -104,29 +105,29 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
 	        logger.error('No target resolutions found for target '+target+' and config'+config)
 	        raise Exception('No target resolutions found for target '+target+' and config'+config)
 	    
-	    cube_filename = uf.get_cube_filename(target = target, 
-	                                         config = config, 
-	                                         product = product,
-	                                         ext = 'pbcorr_trimmed_k',
-	                                         casa = False)
+	    cube_filename = utilsFilenames.get_cube_filename(target = target, 
+	                                                     config = config, 
+	                                                     product = product,
+	                                                     ext = 'pbcorr_trimmed_k',
+	                                                     casa = False)
 
             #
 	    fname_dict['native'] = {}
 	    if os.path.isfile(os.path.join(indir_postprocess, cube_filename)):
 	        fname_dict['native']['pbcorr_trimmed_k'] = os.path.join(indir_postprocess, cube_filename)
-	        hybridmask_filename = uf.get_cube_filename(target = target,
-                                                           config = config,
-                                                           product = product,
-                                                           ext = 'hybridmask',
-                                                           casa = False)
+	        hybridmask_filename = utilsFilenames.get_cube_filename(target = target,
+                                                                       config = config,
+                                                                       product = product,
+                                                                       ext = 'hybridmask',
+                                                                       casa = False)
 	        if os.path.isfile(os.path.join(indir_product, hybridmask_filename)):
 	            fname_dict['native']['hybridmask'] = os.path.join(indir_product, hybridmask_filename)
 
-	        signalmask_filename = uf.get_cube_filename(target = target,
-                                                           config = config,
-                                                           product = product,
-                                                           ext = 'signalmask',
-                                                           casa = False)
+	        signalmask_filename = utilsFilenames.get_cube_filename(target = target,
+                                                                       config = config,
+                                                                       product = product,
+                                                                       ext = 'signalmask',
+                                                                       casa = False)
 	        if os.path.isfile(os.path.join(indir_product, signalmask_filename)):
 	            fname_dict['native']['signalmask'] = os.path.join(indir_product, signalmask_filename)
 
@@ -134,35 +135,38 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
                     fname_dict['native'][this_mask] = {}
                     for this_mom in ["mom0", "mom1", "mom2", "ew", "tmax", "vmax", "vquad"]:
                         for this_prefix in ["","e"]:
-                            mom_filename = uf.get_cube_filename(target = target, config = config, product = product,
-	                                                        ext = this_mask+"_"+this_prefix+this_mom,
-	                                                        casa = False)
+                            mom_filename = utilsFilenames.get_cube_filename(target = target,
+                                                                            config = config,
+                                                                            product = product,
+	                                                                    ext = this_mask+"_"+this_prefix+this_mom,
+	                                                                    casa = False)
                             if os.path.isfile(os.path.join(indir_product, mom_filename)):
                                 fname_dict['native'][this_mask][this_prefix+this_mom] = os.path.join(indir_product, mom_filename)
 
             for this_res in res_list:
-                res_tag = self._kh.get_tag_for_res(this_res)
-	        cube_filename = uf.get_cube_filename(target = target, 
-	                                             config = config, 
-	                                             product = product,
-	                                             ext = 'pbcorr_trimmed_k'+'_res'+res_tag,
-	                                             casa = False)
+                #res_tag = self._kh.get_tag_for_res(this_res)
+                res_tag = utilsResolutions.get_tag_for_res(this_res)
+	        cube_filename = utilsFilenames.get_cube_filename(target = target, 
+	                                                         config = config, 
+	                                                         product = product,
+	                                                         ext = 'pbcorr_trimmed_k'+'_res'+res_tag,
+	                                                         casa = False)
         	if os.path.isfile(os.path.join(indir_postprocess, cube_filename)):
                     fname_dict[res_tag] = {}
 	            fname_dict[res_tag]['pbcorr_trimmed_k'] = os.path.join(indir_postprocess, cube_filename)
-	            hybridmask_filename = uf.get_cube_filename(target = target,
-                                                               config = config,
-                                                               product = product,
-                                                               ext = 'hybridmask'+'_res'+res_tag,
-                                                               casa = False)
+	            hybridmask_filename = utilsFilenames.get_cube_filename(target = target,
+                                                                           config = config,
+                                                                           product = product,
+                                                                           ext = 'hybridmask'+'_res'+res_tag,
+                                                                           casa = False)
 	            if os.path.isfile(os.path.join(indir_product, hybridmask_filename)):
 	                fname_dict[res_tag]['hybridmask'] = os.path.join(indir_product, hybridmask_filename)
 
-	            signalmask_filename = uf.get_cube_filename(target = target,
-                                                               config = config,
-                                                               product = product,
-                                                               ext = 'signalmask'+'_res'+res_tag,
-                                                               casa = False)
+	            signalmask_filename = utilsFilenames.get_cube_filename(target = target,
+                                                                           config = config,
+                                                                           product = product,
+                                                                           ext = 'signalmask'+'_res'+res_tag,
+                                                                           casa = False)
 	            if os.path.isfile(os.path.join(indir_product, signalmask_filename)):
 	                fname_dict[res_tag]['signalmask'] = os.path.join(indir_product, signalmask_filename)
 
@@ -170,9 +174,11 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
                         fname_dict[res_tag][this_mask] = {}
                         for this_mom in ["mom0", "mom1", "mom2", "ew", "tmax", "vmax", "vquad"]:
                             for this_prefix in ["","e"]:
-                                mom_filename = uf.get_cube_filename(target = target, config = config, product = product,
-	                                                            ext = this_mask+"_"+this_prefix+this_mom+"_res"+res_tag,
-	                                                            casa = False)
+                                mom_filename = utilsFilenames.get_cube_filename(target = target,
+                                                                                config = config,
+                                                                                product = product,
+	                                                                        ext = this_mask+"_"+this_prefix+this_mom+"_res"+res_tag,
+	                                                                        casa = False)
                                 if os.path.isfile(os.path.join(indir_product, mom_filename)):
                                     fname_dict[res_tag][this_mask][this_prefix+this_mom] = os.path.join(indir_product, mom_filename)
 
@@ -233,50 +239,55 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
             for res_tag in fname_dict:
                 if do_cube==True:
                     inputname = fname_dict[res_tag]['pbcorr_trimmed_k']
-                    if os.path.isfile(os.path.join(outdir,inputname.split("/")[-1])):
-                        os.remove(os.path.join(outdir,inputname.split("/")[-1]))
-                        logger.debug('Deleting old file "'+os.path.join(outdir,inputname)+'"')
+                    outputname = inputname.split("/")[-1]
+                    if os.path.isfile(os.path.join(outdir,outputname)):
+                        os.remove(os.path.join(outdir,outputname))
+                        logger.debug('Deleting old file "'+os.path.join(outdir,outputname)+'"')
                     #
                     shutil.copy(inputname,outdir)
-                    logger.debug('building release "'+(inputname.split("/")[-1])+'"')
+                    logger.debug('building release "'+outputname+'"')
 
                 if do_hybridmask==True:
                     inputname = fname_dict[res_tag]['hybridmask']
-                    if os.path.isfile(os.path.join(outdir,inputname.split("/")[-1])):
-                        os.remove(os.path.join(outdir,inputname.split("/")[-1]))
-                        logger.debug('Deleting old file "'+os.path.join(outdir,inputname)+'"')
+                    outputname = inputname.split("/")[-1]
+                    if os.path.isfile(os.path.join(outdir,outputname)):
+                        os.remove(os.path.join(outdir,outputname))
+                        logger.debug('Deleting old file "'+os.path.join(outdir,outputname)+'"')
                     #
                     shutil.copy(inputname,outdir)
-                    logger.debug('building release "'+(inputname.split("/")[-1])+'"')
+                    logger.debug('building release "'+outputname+'"')
 
                 if do_signalmask==True:
                     inputname = fname_dict[res_tag]['signalmask']
-                    if os.path.isfile(os.path.join(outdir,inputname.split("/")[-1])):
-                        os.remove(os.path.join(outdir,inputname.split("/")[-1]))
-                        logger.debug('Deleting old file "'+os.path.join(outdir,inputname)+'"')
+                    outputname = inputname.split("/")[-1]
+                    if os.path.isfile(os.path.join(outdir,outputname)):
+                        os.remove(os.path.join(outdir,outputname))
+                        logger.debug('Deleting old file "'+os.path.join(outdir,outputname)+'"')
                     #
                     shutil.copy(inputname,outdir)
-                    logger.debug('building release "'+(inputname.split("/")[-1])+'"')
+                    logger.debug('building release "'+outputname+'"')
 
                 if do_broad==True:
                     inputkeys = fname_dict[res_tag]['broad']
                     for inputkey in inputkeys:
                         inputname = fname_dict[res_tag]['broad'][inputkey]
-                        if os.path.isfile(os.path.join(outdir,inputname.split("/")[-1])):
-                            os.remove(os.path.join(outdir,inputname.split("/")[-1]))
-                            logger.debug('Deleting old file "'+os.path.join(outdir,inputname)+'"')
+                        outputname = inputname.split("/")[-1]
+                        if os.path.isfile(os.path.join(outdir,outputname)):
+                            os.remove(os.path.join(outdir,outputname))
+                            logger.debug('Deleting old file "'+os.path.join(outdir,outputname)+'"')
                         #
                         shutil.copy(inputname,outdir)
-                        logger.debug('building release "'+(inputname.split("/")[-1])+'"')
+                        logger.debug('building release "'+outputname+'"')
 
                 if do_strict==True:
                     inputkeys = fname_dict[res_tag]['strict']
                     for inputkey in inputkeys:
                         inputname = fname_dict[res_tag]['strict'][inputkey]
-                        if os.path.isfile(os.path.join(outdir,inputname.split("/")[-1])):
-                            os.remove(os.path.join(outdir,inputname.split("/")[-1]))
-                            logger.debug('Deleting old file "'+os.path.join(outdir,inputname)+'"')
+                        outputname = inputname.split("/")[-1]
+                        if os.path.isfile(os.path.join(outdir,outputname)):
+                            os.remove(os.path.join(outdir,outputname))
+                            logger.debug('Deleting old file "'+os.path.join(outdir,outputname)+'"')
                         #
                         shutil.copy(inputname,outdir)
-                        logger.debug('building release "'+(inputname.split("/")[-1])+'"')
+                        logger.debug('building release "'+outputname+'"')
 
