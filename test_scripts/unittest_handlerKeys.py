@@ -9,6 +9,12 @@ from __future__ import print_function
 import os, sys, unittest
 sys.path.append('.')
 from phangsPipeline import handlerKeys
+from phangsPipeline import utilsFilenames
+from phangsPipeline import utilsResolutions
+if sys.version_info.major <= 2:
+    reload(handlerKeys)
+    reload(utilsFilenames)
+    reload(utilsResolutions)
 
 
 
@@ -22,7 +28,12 @@ class test_handlerKeys(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # requires Python >= 2.7
-        cls.key_handler = handlerKeys.KeyHandler(master_key = 'test_keys/master_key.txt')
+        #cls.key_handler = handlerKeys.KeyHandler(master_key = 'test_keys/master_key.txt', dochecks = False)
+        cls.key_handler = handlerKeys.KeyHandler(master_key = 'test_keys/master_key.txt', dochecks = False)
+        
+    def tearDown(self):
+        if self.current_dir is not None:
+            os.chdir(self.current_dir)
     
     def test_initialize_key_handler(self):
         assert self.key_handler is not None
@@ -54,6 +65,19 @@ class test_handlerKeys(unittest.TestCase):
     def test_get_system_velocity_and_velocity_width_for_target(self):
         assert self.key_handler.get_system_velocity_and_velocity_width_for_target(self.key_handler.get_targets()[0]) is not None
         #assert self.key_handler.get_system_velocity_and_velocity_width_for_target('nono') is not None
+    
+    def test_get_distance(self):
+        target = 'ngc3621'
+        config = '7m'
+        assert self.key_handler.get_res_for_config(config) is not None
+        res_list = self._kh.get_res_for_config(config)
+        for this_res in res_list:
+            res_tag = utilsResolutions.get_tag_for_res(this_res)
+            assert self._kh.get_distance_for_target(target) is not None
+            distance = self._kh.get_distance_for_target(target)
+            res_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res, distance = distance)
+            print('this_res', this_res, 'res_arcsec', res_arcsec)
+            assert res_arcsec is not None
 
 
 if __name__ == '__main__':

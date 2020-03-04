@@ -213,6 +213,7 @@ singledish_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/singledish/
 ms_key			ms_file_key.txt
 singledish_key		singledish_key.txt
 cleanmask_key		cleanmask_key.txt
+distance_key		distance_key.txt
 
 # Definitions and mapping
 

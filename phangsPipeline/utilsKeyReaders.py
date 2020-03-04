@@ -32,6 +32,8 @@ def test_readers(root=''):
     test = read_config_key(root+'key_templates/config_definitions.txt')
 
     test = read_override_key(root+'key_templates/overrides.txt')
+    
+    test = read_distance_key(root+'key_templates/distance_key.txt')
 
 
 ##############################################################
@@ -275,6 +277,36 @@ def read_linmos_key(fname='', existing_dict=None, delim=None):
     out_dict = read_nametoname_key(fname=fname, existing_dict=existing_dict, delim=delim,
                                    as_list=True)
     return(out_dict)
+
+def read_distance_key(fname='', existing_dict=None, delim=None):
+    """
+    Read a distance key.
+    """
+    # 
+    # Initialize the dictionary
+    if existing_dict is None:
+        out_dict = {}
+    else:
+        out_dict = existing_dict
+    # 
+    # Check file existence
+    if not os.path.isfile(fname):
+        logger.error("I tried to read key "+fname+" but it does not exist.")
+        #raise Exception('Error! File not found: "'+fname+'"') #<TODO><DL># should we throw a exception
+        return(out_dict)
+    # 
+    # Read file
+    logger.info("Reading: "+fname)
+    delim = ',' if delim is None else delim
+    lines = [re.sub('['+delim+']+', delim, t) for t in open(fname, 'r').readlines()] # compress multiple delim
+    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim)==4))]
+    lines_read = 0
+    for t in lines:
+        out_dict[t.split(delim)[0]] = {}
+        out_dict[t.split(delim)[0]]['distance'] = t.split(delim)[1]
+        lines_read += 1
+        # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
+    logger.info("Read "+str(lines_read)+" lines into a target/distance dictionary.")
 
 def read_nametoname_key(fname='', existing_dict=None, delim=None, as_list=False):
     """

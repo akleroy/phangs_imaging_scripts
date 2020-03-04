@@ -15,7 +15,6 @@ calls to CASA from this class.
 import os, sys, re, shutil
 import glob
 import numpy as np
-import handlerTemplate
 
 import logging
 logger = logging.getLogger(__name__)
@@ -23,9 +22,20 @@ logger.setLevel(logging.DEBUG)
 
 casa_enabled = (sys.argv[0].endswith('start_casa.py'))
 if casa_enabled:
+    logger.debug('casa_enabled = True')
     import casaCubeRoutines as ccr
     import casaMosaicRoutines as cmr
     import casaFeatherRoutines as cfr
+    reload(ccr)
+    reload(cmr)
+    reload(cfr)
+else:
+    logger.debug('casa_enabled = False')
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import handlerTemplate
+import utilsFilenames
+import utilsResolutions
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):
     """
@@ -1531,7 +1541,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         for this_res in res_list:
             
-            res_tag = self._kh.get_tag_for_res(this_res)
+            #res_tag = self._kh.get_tag_for_res(this_res)
+            res_tag = utilsResolutions.get_tag_for_res(this_res)
+            res_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res, distance = self._kh.get_distance_for_target(target))
             
             # Check if the requested beam is smaller than the current one
 
@@ -1539,7 +1551,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 target=target, config=config, product=product,
                 in_tag = 'pbcorr_trimmed_k', out_tag = 'pbcorr_trimmed_k',
                 extra_ext_in=ext_ext, extra_ext_out=ext_ext+'_res'+res_tag,
-                force_beam_as=this_res,
+                force_beam_as=res_arcsec,
                 check_files=check_files
                 )
 
