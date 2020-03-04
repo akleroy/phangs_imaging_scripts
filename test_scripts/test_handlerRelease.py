@@ -1,5 +1,3 @@
-sys.path.insert(1,"/home/saito.50/phangs/phangs_imaging_scripts/")
-sys.path.insert(1,"/home/saito.50/phangs/phangs_imaging_scripts/phangsPipeline/")
 # Imports
 from phangsPipeline import handlerKeys as hk
 from phangsPipeline import utilsFilenames as uf
