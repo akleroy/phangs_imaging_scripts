@@ -126,7 +126,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             array_tag = this_array_tag, 
                             obsnum = this_obsnum, 
                             product = this_product,
-                            extra_ext = extra_ext, 
                             # could add algorithm flags here
                             overwrite = overwrite, 
                             )
