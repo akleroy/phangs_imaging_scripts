@@ -1089,9 +1089,9 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
-            return(None)
+            return([])
         if 'line_product' not in self._config_dict.keys():
-            return(None)
+            return([])
         line_products = self._config_dict['line_product'].keys()
         this_list = \
             list_utils.select_from_list(line_products, skip=skip, only=only, loose=True)
@@ -1105,9 +1105,9 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
-            return(None)
+            return([])
         if 'cont_product' not in self._config_dict.keys():
-            return(None)
+            return([])
         cont_products = self._config_dict['cont_product'].keys()
         this_list = \
             list_utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
