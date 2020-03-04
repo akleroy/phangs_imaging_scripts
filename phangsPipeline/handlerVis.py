@@ -76,93 +76,6 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
 
         
 #region 
-
-    ###########################################
-    # Define file names for various products. #
-    ###########################################
-        
-    def get_all_input_ms(
-        self, 
-        target=None, 
-        just_for_configs=None
-        ):
-        """
-
-        Get all the absolute file path(s) to the input measurement
-        sets for the input target. Optionally, restrict to array_tags
-        that overlap the configurations provided in
-        just_for_configs. This is used
-        
-        Here we need to input target, config and project tag. These should be specified in "ms_file_key.txt". 
-        
-        For example, `get_ms_filepaths(target='ngc3621_1', config='7m')` returns 
-        `filenames = ['ngc3621_1_886_7m_1.ms', 'ngc3621_1_886_7m_2.ms', ...]` and 
-        `filepaths = ['/path/to/*886*/sci*/group*/mem*/calibrated/uid*.ms.split.cal', ..., ...]`
-        """
-        
-        ms_filenames = []
-        ms_filepaths = []
-        for this_target, this_project, this_arraytag, this_obsnum in \
-            self.get_ms_projects_and_obsnum_for_target(target=target, config=config):
-            # 
-            ms_filepath = self.get_input_ms_file(
-                target=this_target, 
-                project=this_project, 
-                arraytag=this_arraytag, 
-                obsnum=this_obsnum)
-
-            # append to output lists
-            ms_filenames.append(ms_filename) # without '.ms' suffix
-            ms_filepaths.append(ms_filepath)
-        # output
-        return ms_filenames, ms_filepaths
-
-
-    def _fname_dict(
-            self, 
-            target=None,
-            config=None,
-            product=None,
-            all_ms_data=False,
-            extra_ext='',
-            ):
-        """
-        Internal function to provide file names for the input target, config and product. 
-        """
-        
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        # Error checking
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-        if target is None:
-            logger.error("Need a target.")
-            return()
-
-        if config is None:
-            logger.error("Need a config.")
-            return()
-
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        # Initialize
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-        fname_dict = {}
-
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        # Set data file/dir names
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        
-        if all_ms_data:
-            this_ms_filenames, this_ms_filepaths = self._kh.get_all_input_ms(target = target, config = config)
-            fname_dict['ms_filepaths'] = this_ms_filepaths
-            fname_dict['ms_filenames'] = [t+extra_ext+'.ms' for t in this_ms_filenames]
-            if product is not None:
-                fname_dict['ms_extracted'] = [t+'_'+product+extra_ext+'.ms' for t in this_ms_filenames]
-        
-        if product is not None:
-            fname_dict['ms_concatenated'] = target+'_'+config+'_'+product+extra_ext
-        
-        return fname_dict
         
     ######################################
     # Loop through all steps and targets #
@@ -197,9 +110,8 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         product_list = self.get_products()
         config_list = self.get_interf_configs()
 
-        # This loop goes over target, array, observation number, and
-        # project and prepares each observation for imaging and
-        # analysis.
+        # Our first step uses CASA's split to extract the relevant
+        # fields and spectral windows from each input data set.
 
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(targets=target_list,
@@ -221,35 +133,28 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                             overwrite = overwrite, 
                             )
 
-        # This loop goes over target, product, and configuration and
-        # combines all data for each target + product + config
-        # combination.
+        # Next we concatenate linked data sets (sharing a
+        # target+config+product ) into unified measurement sets.
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_line=True,just_interf=True):
 
-                if do_concat_line:
+                if do_concat:
 
-                    self.task_split_and_concat(
+                    self.task_concat_uvdata(
                         target = this_target, 
                         config = this_config, 
                         product = this_product, 
-                        extra_ext = extra_ext,                         
-                        overwrite = overwrite, 
-                        )
-                
-                if do_concat_cont:
-
-                    self.task_split_and_concat(
-                        target = this_target, 
-                        config = this_config, 
-                        product = this_product, 
-                        extra_ext = extra_ext, 
+                        extra_ext_out = "noregrid",                         
                         overwrite = overwrite, 
                         )
         
-        # This loop processes the concatenated data
+        # Next we apply uv continuum subtraction. We may later offer
+        # an algorithm choice to do this before or after
+        # regridding. The correct choice depends on some details of
+        # the observation setup. This one assumes one SPW maps to one
+        # line and so may be more common.
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
@@ -259,22 +164,24 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                     
                     self.task_contsub(
                         target = this_target, 
-                        project = this_project, 
-                        array_tag = this_array_tag, 
-                        obsnum = this_obsnum, 
-                        extra_ext = extra_ext, 
+                        config = this_config, 
+                        product = this_product, 
+                        extra_ext_in = "noregrid", 
                         # could add algorithm flags here
                         overwrite = overwrite, 
                         )
         
+        # Now we reprocess the data to have the desired spectral
+        # setup. This involves rebinning and regridding for line
+        # products and flagging and integration for continuum
+        # products.
 
-        if do_extract_line:
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_line=True,just_interf=True):
 
-            for this_product in self.get_line_products():
-            
-                common_chan_width = self.task_compute_common_channel(
-                    product = this_product, extra_ext = extra_ext
-                    )
+                if this_product in self._kh.get_line_products():
+                    if do_extract_line:
 
                         self.task_extract_line(
                             target = this_target, 
@@ -282,14 +189,13 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                             array_tag = this_array_tag, 
                             obsnum = this_obsnum, 
                             product = this_product, 
-                            extra_ext = extra_ext,
+                            extra_ext_in = "noregrid",
                             # could add algorithm flags here
                             overwrite = overwrite, 
                             )
 
-                if do_extract_cont:
-
-                    for this_product in self.get_cont_products():
+                if this_product in self._kh.get_continuum_products():
+                    if do_extract_cont:
 
                         self.task_extract_continuum(
                             target = this_target, 
@@ -297,7 +203,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
                             array_tag = this_array_tag, 
                             obsnum = this_obsnum, 
                             product = this_product, 
-                            extra_ext = extra_ext,
+                            extra_ext_in = "noregrid",
                             # could add algorithm flags here
                             overwrite = overwrite, 
                             )                
@@ -361,7 +267,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         spw = ''
         if product is not None:
 
-            if product is in self._kh.get_line_products:
+            if product in self._kh.get_line_products:
 
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
@@ -399,6 +305,7 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             target = None, 
             product = None, 
             config = None, 
+            just_projects = None,
             extra_ext_in = '', 
             extra_ext_out = '', 
             overwrite = False, 
@@ -421,19 +328,24 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
             logging.error("Please specify a config.")
             raise Exception("Please specify a config.")
         
-         
-        # get the fname dict for the input target and config
+        # Generate the list of staged measurement sets to combine
+        
+        staged_ms_list = []        
+        for this_target, this_project, this_array_tag, this_obsnum in \
+                self._kh.loop_over_input_ms(targets=target, configs=config,
+                                            projects=just_projects):
+                
+                this_staged_ms = fnames.get_staged_msname(
+                    target=this_target, project=this_project, array_tag=this_array_tag, 
+                    this_obsnum=obsnum, product=product, ext=extra_ext_in)
+                staged_ms_list.append(this_staged_ms)
 
-        # Come back to this list generation part.
+        # Generate the outfile name
 
-        fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
-        ms_concatenated = fname_dict['ms_concatenated']
-        ms_list_to_concatenate = fname_dict['ms_extracted']
-        ms_list_to_concatenate = sorted(ms_list_to_concatenate)
-        str_of_ms_list_to_concatenate = ', '.join(['"'+t+'"' for t in ms_list_to_concatenate]) # for printing
-        logger.debug('Current directory: "'+os.getcwd()+'"')
-        logger.debug('Concatenating: "'+ms_concatenated+'" <-- ['+str_of_ms_list_to_concatenate+']')
-
+        outfile = fnames.get_vis_filename(
+            target=target, config=config, product=product, 
+            ext=extra_ext_out, suffix=None)
+                
         # Revise here
 
         logger.info("")
@@ -442,67 +354,66 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         logger.info("... target: "+target)
         logger.info("... product: "+product)
         logger.info("... config: "+config)
+        logger.info("... files: "+str(staged_ms_list))
+        logger.info("... output: "+str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
         # Change to the imaging directory for the target
-
+        
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
         
-        if not self._dry_run and casa_enabled:         
+        # Concatenate the measurement sets
 
-            # Add a for loop over ms to make temporary files with only
-            # relevant spws (because concat includes no selection)
+        if not self._dry_run and casa_enabled:         
             
-            cvr.concat_ms(in_file_list = ms_list_to_concatenate, 
-                          out_file = ms_concatenated, 
+            cvr.concat_ms(infile_list = staged_ms_list, 
+                          outfile = outfile, 
                           overwrite = overwrite, 
                           )
-
-            # Clean up those temporary measurement sets.
 
         return()
     
     def task_contsub(
             self, 
             target = None, 
-            project = None, 
-            array_tag = None, 
-            obsnum = None, 
-            product = None,
-            extra_ext = '', 
+            config = None, 
+            product = None, 
+            extra_ext_in = '', 
             overwrite = False, 
             ):
         """
-        Run u-v plane continuum subtraction on individual input measurement sets.
+        Run u-v plane continuum subtraction on an individual input
+        measurement set.
         """
 
         if target is None:
             logging.error("Please specify a target.")
             raise Exception("Please specify a target.")
 
-        if project is None:
-            logging.error("Please specify a project.")
-            raise Exception("Please specify a project.")
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
 
-        if array_tag is None:
-            logging.error("Please specify an array_tag.")
-            raise Exception("Please specify an array_tag.")
-
-        if obsnum is None:
-            logging.error("Please specify an obsnum.")
-            raise Exception("Please specify an obsnum.")
+        if config is None:
+            logging.error("Please specify an config.")
+            raise Exception("Please specify an config.")
         
-        infile = fnames.get_staged_msname(
-            target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
-            product=product, ext=extra_ext)
-
+        infile = fnames.get_vis_filename(
+            target=target, config=config, product=product, 
+            ext=extra_ext_in, suffix=None)
+        
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
-        # get lines to flag as defined in keys
-        lines_to_flag = self._kh.get_lines_to_flag_for_continuum_product(product=product)
+        # get lines to exclude from the continuum fit ... this is
+        # tricky because those lines are defined for the
+        # continuum. Need to examine conventions
+
+        # lines_to_exclude = self._kh.get_lines_to_flag_for_continuum_product(product=product)
         
+        lines_to_exclude = self._kh.get_line_tag_for_line_product(product)
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("u-v continuum subtraction for "+infile)
@@ -515,8 +426,8 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         
         if not self._dry_run and casa_enabled:
 
-            cvr.contsub(in_file = infile, 
-                        lines_to_flag = lines_to_flag, 
+            cvr.contsub(infile = infile, 
+                        lines_to_flag = lines_to_exclude, 
                         vsys = vsys, 
                         vwidth = vwidth, 
                         overwrite = overwrite, 
@@ -772,79 +683,3 @@ class UVDataHandler(handlerTemplate.HandlerTemplate):
         # 
         # 
         logger.info('END: Extracting continuum '+product+' for target '+target+' and config '+config+'.')
-    
-    ###################################
-    # Recipes - combinations of tasks #
-    ###################################
-
-    ########################################
-    # 20200226: DEPRECATED FUNCTIONS BELOW #
-    ########################################
-    
-    
-    
-    ##################
-    # custom_scripts #
-    ##################
-    
-    def custom_scripts(
-        self, 
-        gal, 
-        quiet = False, 
-        ): 
-        """
-        Optionally, run custom scripts at this stage. This could, for
-        example, flag data or carry out uv continuum subtraction. The
-        line and continuum extensions defined here point the subsequent
-        programs at the processed data.
-        """
-        
-        # 
-        # check multipart names for the input galaxy
-        this_target_multipart_names = self._kh.get_parts_for_linmos(gal)
-        if this_target_multipart_names is None:
-            this_target_multipart_names = [gal]
-        # 
-        # loop each multipart name of each galaxy. If this galaxy has no multipart, it is just its galaxy name.
-        for this_target_ms_name in this_target_multipart_names:
-            # 
-            # get imaging dir
-            this_imaging_dir = self._kh.get_imaging_dir_for_target(this_target_ms_name)
-            # 
-            # find custom staging scripts under config key directory
-            scripts_for_this_gal = glob.glob(os.path.join(self._kh._key_dir, 'custom_staging_scripts', this_target_ms_name+'_staging_script.py'))
-            # 
-            # print starting message
-            if not quiet:
-                logger.info("--------------------------------------------------------")
-                logger.info("START: Running custom staging scripts.")
-                logger.info("--------------------------------------------------------")
-                logger.info("Custom staging scripts: "+str(scripts_for_this_gal))
-                logger.info("Imaging directory: "+str(this_imaging_dir))
-            # 
-            # change directory
-            current_dir = os.getcwd()
-            os.chdir(this_imaging_dir)
-            # 
-            # run custom staging scripts
-            for this_script in scripts_for_this_gal:
-                execfile(this_script) #<TODO># 
-            # 
-            # change dir back
-            os.chdir(current_dir)
-            # 
-            # print ending message
-            if not quiet:
-                logger.info("--------------------------------------------------------")
-                logger.info("END: Running custom staging scripts.")
-                logger.info("--------------------------------------------------------")
-    
-    
-
-
-
-
-
-
-
-

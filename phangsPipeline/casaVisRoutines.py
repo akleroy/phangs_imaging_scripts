@@ -38,6 +38,10 @@ from pipelineVersion import version as pipeVer
 # Physical constants
 sol_kms = 2.9979246e5
 
+#######################################
+# Split and combine measurement sets. #
+#######################################
+    
 def split_science_targets(
     infile = None, 
     outfile = None, 
@@ -246,17 +250,19 @@ def split_science_targets(
     return()
 
 def concat_ms(
-    infile_list,  
-    outfile,  
-    quiet = False, 
+    infile_list=None,  
+    outfile=None,  
+    freqtol='',
+    dirtol='',
     overwrite = False, 
     ):
-    """Concatenate a list of measurement sets into one measurement set, and collapse channel0 if required. 
+    """
+    Concatenate a list of measurement sets into one measurement set. A
+    thin wrapper to concat.
     
     Args:
-        in_file_list (list or str): The input list of measurement sets. 
-        out_file (str): The output measurement set data with suffix ".ms".
-        quiet (bool): True for quiet and False for verbose. Default is False. 
+        infile_list (list or str): The input list of measurement sets. 
+        outfile (str): The output measurement set data with suffix ".ms".
     
     Inputs:
         in_file: ALMA measurement set data folder.
@@ -265,7 +271,16 @@ def concat_ms(
         out_file: ALMA measurement set data folder.
     
     """
-        
+    # Check inputs
+
+    if infile_list is None:
+        logging.error("Please specify infile_list.")
+        raise Exception("Please specify infile_list.")
+    
+    if outfile is None:
+        logging.error("Please specify outfile.")
+        raise Exception("Please specify outfile.")
+
     # make sure the input infile_list is a list
     if np.isscalar(infile_list):
         infile_list = [infile_list]
@@ -278,20 +293,20 @@ def concat_ms(
     
     # PROPOSE TO DEPRECATE THIS (e.g., .contsub violates this rule)
     # check output suffix
-    if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
-        out_file = out_name + '.ms'
-    else:
-        out_name = out_file
-        out_file = out_name + '.ms'
+    #if re.match(r'^(.*)\.ms$', out_file, re.IGNORECASE):
+    #    out_name = re.sub(r'^(.*)\.ms$', r'\1', out_file, re.IGNORECASE)
+    #    outfile = out_name + '.ms'
+    #else:
+    #    out_name = out_file
+    #    outfile = out_name + '.ms'
     
     # Quit if output data are present and overwrite is off.
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
-            return
+            return()
 
-    # if overwrite, then delete existing output data.
+    # if overwrite or no file present, then delete existing output data.
     for suffix in ['', '.flagversions', '.touch']:
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
@@ -299,23 +314,89 @@ def concat_ms(
     # Concatenate all of the relevant files
     os.mkdir(out_file+'.touch')
     casaStuff.concat(vis = infile_list, 
-                     concatvis = outfile)
+                     concatvis = outfile,
+                     freqtol=freqtol, dirtol=dirtol)
                      #<TODO># what about freqtol? set as an input? dirtol?
     os.rmdir(out_file+'.touch')
 
     return()
 
-def find_spws_for_line(
+##########################
+# Continuum subtraction. #
+##########################
+
+def contsub(
     infile = None, 
-    line, 
+    outfile = None,
+    lines_to_exclude = None, 
     vsys = None, 
     vwidth = None, 
+    overwrite = False, 
+    ):
+    """
+    Carry out uv continuum subtraction on a measurement set. First
+    figures out channels corresponding to spectral lines for a
+    provided suite of bright lines.
+    """
+    
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
+    
+    if outfile is None:
+        outfile = infile+'.contsub'
+
+    if not os.path.isdir(infile):
+        logger.error('The input uv data measurement set "'+in_file+'"does not exist.')
+        raise Exception('The input uv data measurement set "'+in_file+'"does not exist.')
+
+    # check existing output data in the imaging directory
+    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
+            return
+    if os.path.isdir(in_file+'.contsub'):
+        shutil.rmtree(in_file+'.contsub')
+    if os.path.isdir(in_file+'.contsub'+'.touch'):
+        shutil.rmtree(in_file+'.contsub'+'.touch')
+
+    # Figure out which channels to exclude from the fit.
+
+    # find_spw_channels_for_lines_to_flag
+    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
+                                                              lines_to_flag = lines_to_flag, 
+                                                              vsys = vsys, 
+                                                              vwidth = vwidth)
+    # 
+    # uvcontsub, this outputs in_file+'.contsub'
+    os.mkdir(in_file+'.contsub'+'.touch')
+    casaStuff.uvcontsub(vis = in_file,
+                        fitspw = spw_flagging_string,
+                        excludechans = True,
+                        combine='spw',
+                        )
+                        # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
+
+    os.rmdir(in_file+'.contsub'+'.touch')
+    # 
+    return
+
+##########################################################
+# Interface between spectral lines and spectral windows. #
+##########################################################
+
+def find_spws_for_line(
+    infile = None, 
+    line = None, 
+    vsys = 0.0, 
+    vwidth = 0.0, 
     exit_on_error = True, 
     ):
     """
     List the spectral windows in the input ms data that contains the
     input line, given the line velocity (vsys) and line width
-    (vwidth), which are in units of km/s.
+    (vwidth), which are in units of km/s. Defaults to rest frequency
+    (with vsys = 0.0 and vwidth = 0.0).
     """
 
     # Check inputs
@@ -323,15 +404,11 @@ def find_spws_for_line(
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
-    
-    if vsys is None:
-        logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys.')
 
-    if vwidth is None:
-        logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vwidth.')
-    
+    if line is None:
+        logging.error("Please specify an input line.")
+        raise Exception("Please specify an input line.")
+        
     # Verify file existence
 
     if not os.path.isdir(infile):
@@ -471,8 +548,6 @@ def find_spw_channels_for_lines_to_flag(
     
     return spw_flagging_string
 
-
-
 def compute_chanwidth_for_line(
     in_file, 
     line, 
@@ -511,7 +586,9 @@ def compute_chanwidth_for_line(
     # Return
     return chan_width_kms
 
-
+#################################################################
+# Extract single-line or continuum data from a measurement set. #
+#################################################################
 
 def extract_line(
     in_file, 
@@ -782,56 +859,6 @@ def extract_line(
     return
 
 
-
-def contsub(
-    in_file, 
-    lines_to_flag = None, 
-    vsys = None, 
-    vwidth = None, 
-    overwrite = False, 
-    ):
-    """
-    Carry out uv continuum subtraction on a measurement set. First
-    figures out channels corresponding to spectral lines for a suite
-    of bright lines.
-    """
-    
-    # 
-    # check input ms data dir
-    if not os.path.isdir(in_file):
-        logger.error('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+in_file+'"does not exist!')
-    # 
-    # check existing output data in the imaging directory
-    if os.path.isdir(in_file+'.contsub') and not os.path.isdir(in_file+'.contsub'+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+in_file+'.contsub'+'", will not overwrite it.')
-            return
-    if os.path.isdir(in_file+'.contsub'):
-        shutil.rmtree(in_file+'.contsub')
-    if os.path.isdir(in_file+'.contsub'+'.touch'):
-        shutil.rmtree(in_file+'.contsub'+'.touch')
-    # 
-    # find_spw_channels_for_lines_to_flag
-    spw_flagging_string = find_spw_channels_for_lines_to_flag(in_file = in_file, 
-                                                              lines_to_flag = lines_to_flag, 
-                                                              vsys = vsys, 
-                                                              vwidth = vwidth)
-    # 
-    # uvcontsub, this outputs in_file+'.contsub'
-    os.mkdir(in_file+'.contsub'+'.touch')
-    casaStuff.uvcontsub(vis = in_file,
-                        fitspw = spw_flagging_string,
-                        excludechans = True,
-                        combine='spw',
-                        )
-                        # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
-    os.rmdir(in_file+'.contsub'+'.touch')
-    # 
-    return
-
-
-
 def extract_continuum(
     in_file, 
     out_file, 
@@ -947,6 +974,10 @@ def extract_continuum(
             shutil.rmtree(out_file+'.temp_copy.flagversions')
     # 
     return
+
+##################
+# Analysis tasks #
+##################
 
 def noise_spectrum(
     vis=None,
