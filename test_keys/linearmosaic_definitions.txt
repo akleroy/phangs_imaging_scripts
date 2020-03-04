@@ -1,0 +1,89 @@
+##########################################################################
+# LINEAR MOSAIC DEFINITIONS
+##########################################################################
+
+# Define the mapping of imaging targets to linear mosaics. Imaging
+# targets (column 2) will be separately cleaned and deconvolved and
+# then combined into a single data product via linear mosaic in the
+# postprocessing.
+
+# This file links target name of each mosaic observation to galaxy name. 
+
+# Column 1: Name of the target for the full linear mosaic
+# Column 2: Name of the imaging target that belongs to that mosaic
+
+# So each entry in Column 1 will share several entries in Column 2,
+# e.g.,
+
+#circinus  circinus_1
+#circinus  circinus_2
+ 
+# would merge together circinus_1 and circinus_2 into circinus during
+# linear mosaicking.
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
+circinus  circinus_1
+circinus  circinus_2
+ngc0247	  ngc0247_1
+ngc0247	  ngc0247_2
+ngc0247	  ngc0247_3
+ngc0247	  ngc0247_4
+ngc0253	  ngc0253_1
+ngc0253	  ngc0253_2
+ngc0253	  ngc0253_3
+ngc0253	  ngc0253_4
+ngc0253	  ngc0253_5
+ngc0300	  ngc0300_1
+ngc0300	  ngc0300_2
+ngc0300	  ngc0300_3
+ngc1097   ngc1097_1
+ngc1097   ngc1097_2
+ngc1300	  ngc1300_1
+ngc1300	  ngc1300_2
+ngc1313	  ngc1313_1
+ngc1313	  ngc1313_2
+ngc1313	  ngc1313_3
+ngc1433	  ngc1433_1
+ngc1433	  ngc1433_2
+ngc1566	  ngc1566_1
+ngc1566	  ngc1566_2
+ngc1792   ngc1792_1
+ngc1792   ngc1792_2
+ngc2903   ngc2903_1
+ngc2903   ngc2903_2
+ngc2903   ngc2903_3
+ngc2997   ngc2997_1
+ngc2997   ngc2997_2
+ngc2997   ngc2997_3
+ngc3521   ngc3521_1
+ngc3521   ngc3521_2
+ngc3621   ngc3621_1
+ngc3621   ngc3621_2
+ngc3627	  ngc3627_1
+ngc3627	  ngc3627_2
+ngc4254	  ngc4254_1
+ngc4254	  ngc4254_2
+ngc4536	  ngc4536_1
+ngc4536	  ngc4536_2
+ngc4321	  ngc4321_1
+ngc4321	  ngc4321_2
+ngc4945	  ngc4945_1
+ngc4945	  ngc4945_2
+ngc4945	  ngc4945_3
+ngc5068	  ngc5068_1
+ngc5068	  ngc5068_2
+ngc5128	  ngc5128_1
+ngc5128	  ngc5128_2
+ngc5128	  ngc5128_3
+ngc5248	  ngc5248_1
+ngc5248	  ngc5248_2
+ngc5248	  ngc5248_3
+ngc5643	  ngc5643_1
+ngc5643	  ngc5643_2
+ngc6744	  ngc6744_1
+ngc6744	  ngc6744_2
+ngc7793	  ngc7793_1
+ngc7793	  ngc7793_2
