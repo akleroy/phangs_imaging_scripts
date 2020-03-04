@@ -1358,7 +1358,6 @@ class KeyHandler:
             else:
                 logger.error("Expected list or string.")
                 raise Exception("Expected list or string.")
-                return(None)
  
             for this_config in input_configs:
                 this_array_tags = self.get_array_tags_for_config(this_config)

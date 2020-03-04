@@ -74,6 +74,7 @@ from clean_call import CleanCall, CleanCallFunctionDecorator
 
 import line_list
 import handlerTemplate
+import utilsFilenames
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
@@ -147,6 +148,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_revert_to_multiscale = True,
         do_singlescale_mask = True,
         do_singlescale_clean = True,
+        do_revert_to_singlescale = True,
         do_export_to_fits = True, 
         extra_ext_in = None,
         suffix_in = None,
@@ -211,6 +213,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                     do_revert_to_multiscale = do_revert_to_multiscale, 
                     do_singlescale_mask = do_singlescale_mask, 
                     do_singlescale_clean = do_singlescale_clean, 
+                    do_revert_to_singlescale = do_revert_to_singlescale, 
                     do_export_to_fits = do_export_to_fits, 
                     dynamic_sizing = dynamic_sizing, 
                     force_square = force_square, 
@@ -267,9 +270,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         clean_call = CleanCall(recipe_list)
 
         # Get the visibility name
-        vis_file = self._kh.get_vis_filename(
+        vis_file = utilsFilenames.get_vis_filename(
             target=target, product=product, config=config,
-            ext=extra_ext_in, suffix=suffix_in) #<TODO><DL># modified: suffix_in=None --> suffix=suffix_in
+            ext=extra_ext_in, suffix=suffix_in)
 
         # Test existence
         full_vis_file = self._kh.get_imaging_dir_for_target(target=target)+vis_file
@@ -283,7 +286,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Set the output image file name (note no suffix for imaging root)
          
-        image_root = self._kh.get_cube_filename(
+        image_root = utilsFilenames.get_cube_filename(
             target=target, product=product, config=config,
             ext=extra_ext_out, casa=True, casaext='')
 
@@ -302,10 +305,22 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             if clean_call.get_param('specmode') != 'cube':
                 logger.error('Line product detected but specmode is not cube.')
                 raise Exception('Malformed clean call.')
+            if stage == 'dirty':
+                clean_call.set_param('deconvolver', 'hogbom')
+            elif stage == 'multiscale':
+                clean_call.set_param('deconvolver', 'multiscale')
+            elif stage == 'singlescale':
+                clean_call.set_param('deconvolver', 'hogbom')
         else:
             if clean_call.get_param('specmode') != 'mfs':
                 logger.error('Continuum product detected but specmode is not msf.')
                 raise Exception('Malformed clean call.')
+            if stage == 'dirty':
+                clean_call.set_param('deconvolver', 'mtmfs')
+            elif stage == 'multiscale':
+                clean_call.set_param('deconvolver', 'mtmfs')
+            elif stage == 'singlescale':
+                clean_call.set_param('deconvolver', 'mtmfs')
 
         if is_line_product:
             this_line_tag = self._kh.get_line_tag_for_line_product(product=product)
@@ -526,7 +541,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         """
         
         if clean_call.get_param('deconvolver') not in ['multiscale','mtmfs']:
-            logger.warning("I expected a multiscale or mtmfs deconvolver.")
+            logger.warning("I expected a multiscale or mtmfs deconvolver but got "+str(clean_call.get_param('deconvolver'))+".")
             raise Exception("Incorrect clean call! Should have a multiscale or mtmfs deconvolver.")
 
         logger.info("")
@@ -635,15 +650,16 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         Set backup to True will make a copy of the singlescale cleaned 
         image as {imagename}_singlescale.image
         """
-                
-        if clean_call.get_param('deconvolver') != 'hogbom':
-            logger.warning("I expected a singlescale deconvolver.")
+        
+        if not (clean_call.get_param('deconvolver') in ['hogbom','mtmfs']):
+            logger.warning("I expected a singlescale or mtmfs deconvolver but got "+str(clean_call.get_param('deconvolver'))+".")
+            raise Exception("Incorrect clean call! Should have a hogbom or mtmfs deconvolver.")
             return()
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Running clean call to convergence for:")
-        logger.info(target, product)
+        logger.info(clean_call.get_param('imagename'))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
@@ -730,7 +746,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_multiscale_clean = True,
         do_revert_to_multiscale = True,
         do_singlescale_mask = True,
-        do_singlescale_clean = True,      
+        do_singlescale_clean = True,
+        do_revert_to_singlescale = True,
         do_export_to_fits = True, 
         dynamic_sizing = True,
         force_square = False,
@@ -863,6 +880,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         if do_singlescale_clean:
 
             self.task_singlescale_clean(clean_call=clean_call)
+
+        # Reset the current imaging to the results of the singlescale clean.
+
+        if do_revert_to_singlescale:
+                        
+            self.task_revert_to_imaging(clean_call=clean_call, tag='singlescale')
 
         # Export the products of the current clean to FITS files.
 
