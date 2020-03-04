@@ -1,4 +1,4 @@
-"""productHandler
+"""DerivativeHandler
 
 This module creates signal masks based on image cubes, and then applies
 the masks to make moment maps. This is done for each galaxy at multiple
@@ -47,7 +47,7 @@ import utilsFilenames
 import line_list
 import handlerTemplate
 import scMaskingRoutines as scmasking
-import scProductRoutines as scproduct
+import scDerivativeRoutines as scderiv
 from scMoments import moment_generator
 
 class DerivativeHandler(handlerTemplate.HandlerTemplate):
@@ -358,37 +358,37 @@ class DerivativeHandler(handlerTemplate.HandlerTemplate):
         # if do_moment0:   
         #     process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
         #                          'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
-        #                          'func': scproduct.write_moment0, 
+        #                          'func': scderiv.write_moment0, 
         #                          'unit': u.K * u.km/u.s })
         # if do_moment1:   
         #     process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
         #                          'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
-        #                          'func': scproduct.write_moment1, 
+        #                          'func': scderiv.write_moment1, 
         #                          'unit': u.km/u.s })
         # if do_moment2:   
         #     process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
         #                          'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
-        #                          'func': scproduct.write_moment2, 
+        #                          'func': scderiv.write_moment2, 
         #                          'unit': u.km/u.s })
         # if do_ew:        
         #     process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
         #                          'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
-        #                          'func': scproduct.write_ew,      
+        #                          'func': scderiv.write_ew,      
         #                          'unit': u.km/u.s })
         # if do_tmax:      
         #     process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
         #                          'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
-        #                          'func': scproduct.write_tmax,    
+        #                          'func': scderiv.write_tmax,    
         #                          'unit': u.K })
         # if do_vmax:      
         #     process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
         #                          'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
-        #                          'func': scproduct.write_vmax,    
+        #                          'func': scderiv.write_vmax,    
         #                          'unit': u.km/u.s })
         # if do_vquad:     
         #     process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
         #                          'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
-        #                          'func': scproduct.write_vquad,   
+        #                          'func': scderiv.write_vquad,   
         #                          'unit': u.km/u.s })
         # # 
         # # delete old files
@@ -405,7 +405,7 @@ class DerivativeHandler(handlerTemplate.HandlerTemplate):
         #         os.remove(errorfile)
         #         logger.debug('Deleting old file "'+errorfile+'"')
         # 
-        # make moment maps and other products using scProductRoutines functions.
+        # make moment maps and other products using scderivRoutines functions.
 
         # for process_dict in process_list:
         #     processfunction = process_dict['func']
