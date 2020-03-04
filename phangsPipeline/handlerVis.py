@@ -83,8 +83,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
     def loop_stage_uvdata(
         self,
         do_copy = True,
-        do_concat_line = True,
-        do_concat_cont = True,
+        do_concat = True,
         do_custom = False,
         do_contsub = False, 
         do_extract_line = True,
@@ -106,16 +105,16 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         
                 
         target_list = self.get_targets()
-        product_list = self.get_products()
+        product_list = self.get_all_products()
         config_list = self.get_interf_configs()
 
         # Our first step uses CASA's split to extract the relevant
         # fields and spectral windows from each input data set.
 
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(targets=target_list,
-                                            configs=config_list,
-                                            projects=just_projects):
+                self._kh.loop_over_input_ms(target=target_list,
+                                            config=config_list,
+                                            project=just_projects):
 
                 for this_product in product_list:
                     
@@ -127,7 +126,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             array_tag = this_array_tag, 
                             obsnum = this_obsnum, 
                             product = this_product,
-                            extra_ext = extra_ext, 
                             # could add algorithm flags here
                             overwrite = overwrite, 
                             )
@@ -266,8 +264,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         spw = ''
         if product is not None:
 
-            if product in self._kh.get_line_products:
+            if product in self._kh.get_line_products():
 
+                this_line = self._kh.get_line_tag_for_line_product(product)
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
                 spw = cvr.find_spws_for_line(infile = infile, 
@@ -331,8 +330,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         
         staged_ms_list = []        
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(targets=target, configs=config,
-                                            projects=just_projects):
+                self._kh.loop_over_input_ms(target=target, config=config,
+                                            project=just_projects):
                 
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag, 
