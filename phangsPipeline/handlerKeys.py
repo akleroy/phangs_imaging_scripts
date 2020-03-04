@@ -1149,11 +1149,20 @@ class KeyHandler:
         
         return(self._linmos_dict[target])
 
-    def is_target_in_mosaic(self, target):
+    def is_target_in_mosaic(self, target, return_target_name=False):
         """
         Return true or false depending on whether the target is in a linear mosaic.
         """
-        return(target in self._mosaic_assign_dict.keys())
+        if target in self._mosaic_assign_dict.keys():
+            if return_target_name:
+                return True, self._mosaic_assign_dict[target]
+            else:
+                return True
+        else:
+            if return_target_name:
+                return False, target
+            else:
+                return False
 
     def get_imaging_recipes(self, config=None, product=None, stage=None):
         """

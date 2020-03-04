@@ -111,7 +111,7 @@ def get_tag_for_physical_resolution(res):
     if check_flag:
         sigfigs = 0
         fmt_str = '{:.%df}'%(sigfigs)
-        res_str = fmt_str.format(np.round(res_value, decimals=sigfigs)).replace('.','p')
+        res_str = fmt_str.format(np.round(res_value, decimals=sigfigs)).replace('.','p') + "pc"
         return res_str
     else:
         raise Exception('The input resolution string "'+str(res)+'" is not a physical resolution!')

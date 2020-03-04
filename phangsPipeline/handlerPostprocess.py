@@ -103,7 +103,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Original cube
                     
         tag = 'orig'
-        orig_file = self._kh.get_cube_filename(
+        orig_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = None,
             casa = True,
@@ -113,7 +113,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Original primary beam file
 
         tag = 'pb'
-        pb_file = self._kh.get_cube_filename(
+        pb_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = None,
             casa = True,
@@ -139,7 +139,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Primary beam corrected file
 
         tag = 'pbcorr'
-        pbcorr_file = self._kh.get_cube_filename(
+        pbcorr_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'pbcorr'+extra_ext,
             casa = True,
@@ -149,7 +149,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Files with round beams
 
         tag = 'round'
-        round_file = self._kh.get_cube_filename(
+        round_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'round'+extra_ext,
             casa = True,
@@ -157,7 +157,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = round_file
 
         tag = 'pbcorr_round'
-        pbcorr_round_file = self._kh.get_cube_filename(
+        pbcorr_round_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'pbcorr_round'+extra_ext,
             casa = True,
@@ -167,7 +167,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Weight file for use in linear mosaicking
 
         tag = 'weight'
-        weight_file = self._kh.get_cube_filename(
+        weight_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'weight'+extra_ext,
             casa = True,
@@ -175,7 +175,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = weight_file
 
         tag = 'weight_aligned'
-        weight_file = self._kh.get_cube_filename(
+        weight_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'weight_aligned'+extra_ext,
             casa = True,
@@ -185,7 +185,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Common resolution parts for mosaic
 
         tag = 'linmos_commonres'
-        commonres_file = self._kh.get_cube_filename(
+        commonres_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'linmos_commonres'+extra_ext,
             casa = True,
@@ -195,7 +195,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Aligned parts for mosaic
 
         tag = 'linmos_aligned'
-        aligned_file = self._kh.get_cube_filename(
+        aligned_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'linmos_aligned'+extra_ext,
             casa = True,
@@ -205,7 +205,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Imported single dish file aligned to the interfometer data
 
         tag = 'prepped_sd'
-        prepped_sd_file = self._kh.get_cube_filename(
+        prepped_sd_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'singledish'+extra_ext,
             casa = True,
@@ -215,7 +215,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Singledish weight for use in linear mosaicking
 
         tag = 'sd_weight'
-        sd_weight_file = self._kh.get_cube_filename(
+        sd_weight_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'singledish_weight'+extra_ext,
             casa = True,
@@ -225,7 +225,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Singledish data aliged to a common grid for mosaicking
 
         tag = 'sd_aligned'
-        sd_align_file = self._kh.get_cube_filename(
+        sd_align_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'singledish_aligned'+extra_ext,
             casa = True,
@@ -236,7 +236,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # common astrometric grid
 
         tag = 'sd_weight_aligned'
-        sd_weight_aligned_file = self._kh.get_cube_filename(
+        sd_weight_aligned_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'singledish_weight_aligned'+extra_ext,
             casa = True,
@@ -247,7 +247,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # reasonable pixel size.
 
         tag = 'trimmed'
-        trimmed_file = self._kh.get_cube_filename(
+        trimmed_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'trimmed'+extra_ext,
             casa = True,
@@ -255,7 +255,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = trimmed_file
         
         tag = 'pbcorr_trimmed'
-        pbcorr_trimmed_file = self._kh.get_cube_filename(
+        pbcorr_trimmed_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'pbcorr_trimmed'+extra_ext,
             casa = True,
@@ -263,7 +263,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = pbcorr_trimmed_file
         
         tag = 'trimmed_pb'
-        trimmed_pb_file = self._kh.get_cube_filename(
+        trimmed_pb_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'trimmed'+extra_ext,
             casa = True,
@@ -273,7 +273,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Files converted to Kelvin, including FITS output files
 
         tag = 'trimmed_k'
-        trimmed_k_file = self._kh.get_cube_filename(
+        trimmed_k_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'trimmed_k'+extra_ext,
             casa = True,
@@ -281,14 +281,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = trimmed_k_file
 
         tag = 'trimmed_k_fits'
-        trimmed_k_fits = self._kh.get_cube_filename(
+        trimmed_k_fits = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'trimmed_k'+extra_ext,
             casa = False)
         fname_dict[tag] = trimmed_k_fits
         
         tag = 'pbcorr_trimmed_k'
-        pbcorr_trimmed_k_file = self._kh.get_cube_filename(
+        pbcorr_trimmed_k_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'pbcorr_trimmed_k'+extra_ext,
             casa = True,
@@ -296,14 +296,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = pbcorr_trimmed_k_file
 
         tag = 'pbcorr_trimmed_k_fits'
-        pbcorr_trimmed_k_fits = self._kh.get_cube_filename(
+        pbcorr_trimmed_k_fits = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'pbcorr_trimmed_k'+extra_ext,
             casa = False)
         fname_dict[tag] = pbcorr_trimmed_k_fits
 
         tag = 'trimmed_pb_fits'
-        trimmed_pb_fits = self._kh.get_cube_filename(
+        trimmed_pb_fits = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = 'trimmed_pb'+extra_ext,
             casa = False)
@@ -1540,10 +1540,11 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             return()
 
         for this_res in res_list:
-            
+            check_target_is_part, target_name = self._kh.is_target_in_mosaic(target, return_target_name=True)
+
             #res_tag = self._kh.get_tag_for_res(this_res)
             res_tag = utilsResolutions.get_tag_for_res(this_res)
-            res_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res, distance = self._kh.get_distance_for_target(target))
+            res_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res, distance = self._kh.get_distance_for_target(target_name))
             
             # Check if the requested beam is smaller than the current one
 
