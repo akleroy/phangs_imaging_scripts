@@ -74,6 +74,7 @@ from clean_call import CleanCall, CleanCallFunctionDecorator
 
 import line_list
 import handlerTemplate
+import utilsFilenames
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
@@ -269,9 +270,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         clean_call = CleanCall(recipe_list)
 
         # Get the visibility name
-        vis_file = self._kh.get_vis_filename(
+        vis_file = utilsFilenames.get_vis_filename(
             target=target, product=product, config=config,
-            ext=extra_ext_in, suffix=suffix_in) #<TODO><DL># modified: suffix_in=None --> suffix=suffix_in
+            ext=extra_ext_in, suffix=suffix_in)
 
         # Test existence
         full_vis_file = self._kh.get_imaging_dir_for_target(target=target)+vis_file
@@ -285,7 +286,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         # Set the output image file name (note no suffix for imaging root)
          
-        image_root = self._kh.get_cube_filename(
+        image_root = utilsFilenames.get_cube_filename(
             target=target, product=product, config=config,
             ext=extra_ext_out, casa=True, casaext='')
 
