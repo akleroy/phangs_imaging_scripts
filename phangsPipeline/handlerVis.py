@@ -264,7 +264,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         spw = ''
         if product is not None:
 
-            if product in self._kh.get_line_products:
+            if product in self._kh.get_line_products():
 
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
