@@ -1,0 +1,26 @@
+
+
+key_dir             /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_keys/
+cleanmask_root      /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/cleanmasks/
+singledish_root     /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/singledish/
+imaging_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/imaging/
+postprocess_root    /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/postprocess/
+product_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/product/
+release_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/release/
+ms_root             /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/uvdata/
+
+
+ms_key              ms_file_key.txt
+singledish_key      singledish_key.txt
+cleanmask_key       cleanmask_key.txt
+
+
+config_key          config_definitions.txt
+target_key          target_definitions.txt
+imaging_key         imaging_recipes.txt
+linmos_key          linearmosaic_definitions.txt
+override_key        overrides.txt
+dir_key             dir_key.txt
+distance_key        distance_key.txt
+
+

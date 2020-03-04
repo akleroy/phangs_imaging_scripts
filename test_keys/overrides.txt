@@ -1,0 +1,161 @@
+##########################################################################
+# ALGORITHMIC OVERRIDE KEY
+##########################################################################
+
+# The intention here is to give the user the ability to override
+# certain algorithmic choices made by the pipeline for individual
+# targets or files.
+
+# The two major uses in the previous pipeline incarnation were to
+# tweak tclean to avoid divergence in challenging cases and to
+# manually specify the extent of linear mosaics. It's unclear that
+# either is needed any more.
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: keyword - image name or other file name
+# Column 2: parameter to override
+# Column 3: new value
+
+# NOTE - THIS IS NOT IMPLEMENTED IN MOST OF THE PIPELINE RIGHT NOW!
+# COME BACK AND DOCUMENT CORRECTLY WHEN IMPLEMENTATION IS IN PLACE. OR
+# DEPRECATE THIS FUNCTIONALITY.
+
+# Examples from the previous version of the pipeline:
+
+# -----------------------------------------------------------
+# Imaging parameters
+# -----------------------------------------------------------
+
+#ngc1365_12m+7m_co21        pblimit             0.75
+#ngc1365_12m+7m_co21        smallscalebias      0.9
+#ngc1365_12m_co21           smallscalebias      0.9
+#ngc1365_7m_co21            smallscalebias      0.7
+
+#ngc2903_1_12m+7m_co21      pblimit             0.5
+#ngc2903_2_12m+7m_co21      pblimit             0.5
+
+#ngc5128_12m+7m_co21        pblimit             0.5
+#ngc5128_12m+7m_co21        pblimit             0.5
+
+#ngc6744north_12m+7m_co21   pblimit             0.5
+#ngc6744south_12m+7m_co21   pblimit             0.5
+
+# -----------------------------------------------------------
+# Linear mosaic extents
+# -----------------------------------------------------------
+
+#circinus    linearmosaic_deltara    600
+#circinus    linearmosaic_deltadec   600
+
+#ngc3621     linearmosaic_deltara    300
+#ngc3621     linearmosaic_deltadec   380
+ 
+# Examples are given below as the commented lines. 
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
+# column 1: keyword - image name or other file name
+# column 2: parameter to override
+# column 3: new value
+#
+ngc1365_12m+7m_co21		pblimit			0.75
+ngc1365_12m+7m_co21		smallscalebias		0.9
+ngc1365_12m_co21		smallscalebias		0.9
+ngc1365_7m_co21			smallscalebias		0.7
+#
+ngc2903_1_12m+7m_co21		pblimit			0.5
+ngc2903_2_12m+7m_co21		pblimit			0.5
+#
+ngc4321north_12m+7m_co21	pblimit			0.5
+#
+ngc5068north_12m+7m_co21	pblimit			0.5
+ngc5068south_12m+7m_co21	pblimit			0.5
+#
+ngc5128_12m+7m_co21		pblimit			0.5
+ngc5128_12m+7m_co21		pblimit			0.5
+#
+ngc6744north_12m+7m_co21	pblimit			0.5
+ngc6744south_12m+7m_co21	pblimit			0.5
+#
+# -----------------------------------------------------------
+# Linear mosaic extents temporarily moved here
+# -----------------------------------------------------------
+#
+circinus			linearmosaic_deltara	600
+circinus			linearmosaic_deltadec	600
+#
+ngc0247				linearmosaic_deltara	600
+ngc0247				linearmosaic_deltadec	1200
+#
+ngc0253				linearmosaic_deltara	1800
+ngc0253				linearmosaic_deltadec	1200
+#
+ngc0300				linearmosaic_deltara	900
+ngc0300				linearmosaic_deltadec	600
+#
+ngc1097				linearmosaic_deltara	320
+ngc1097				linearmosaic_deltadec	360
+#
+ngc1300				linearmosaic_deltara	300
+ngc1300				linearmosaic_deltadec	300
+#
+ngc1313				linearmosaic_deltara	600
+ngc1313				linearmosaic_deltadec	600
+#
+ngc1433				linearmosaic_deltara	300
+ngc1433				linearmosaic_deltadec	300
+#
+ngc1566				linearmosaic_deltara	300
+ngc1566				linearmosaic_deltadec	300
+#
+ngc1792				linearmosaic_deltara	300
+ngc1792				linearmosaic_deltadec	300
+#
+ngc2903				linearmosaic_deltara	300
+ngc2903				linearmosaic_deltadec	380
+#
+ngc2997				linearmosaic_deltara	380
+ngc2997				linearmosaic_deltadec	380
+#
+ngc3521				linearmosaic_deltara	300
+ngc3521				linearmosaic_deltadec	380
+#
+ngc3621				linearmosaic_deltara	300
+ngc3621				linearmosaic_deltadec	380
+#
+ngc3627				linearmosaic_deltara	240
+ngc3627				linearmosaic_deltadec	380
+#
+ngc4254				linearmosaic_deltara	320
+ngc4254				linearmosaic_deltadec	320
+#
+ngc4321				linearmosaic_deltara	320
+ngc4321				linearmosaic_deltadec	320
+#
+ngc4536				linearmosaic_deltara	400
+ngc4536				linearmosaic_deltadec	400
+#
+ngc4945				linearmosaic_deltara	1000
+ngc4945				linearmosaic_deltadec	1000
+#
+ngc5068				linearmosaic_deltara	380
+ngc5068				linearmosaic_deltadec	320
+#
+ngc5128				linearmosaic_deltara	800
+ngc5128				linearmosaic_deltadec	600
+#
+ngc5248				linearmosaic_deltara	400
+ngc5248				linearmosaic_deltadec	400
+#
+ngc5643				linearmosaic_deltara	260
+ngc5643				linearmosaic_deltadec	280
+#
+ngc6744				linearmosaic_deltara	300
+ngc6744				linearmosaic_deltadec	400
+#
+ngc7793				linearmosaic_deltara	600
+ngc7793				linearmosaic_deltadec	400
+

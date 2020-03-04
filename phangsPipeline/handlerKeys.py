@@ -30,6 +30,11 @@ try:
 except ImportError:
     from phangsPipeline import utilsFilenames as fnames
 
+try:
+    import utilsResolutions
+except ImportError:
+    from phangsPipeline import utilsResolutions
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -60,6 +65,7 @@ class KeyHandler:
         self._sd_dict = None
         self._cleanmask_dict = None
         self._linmos_dict = None
+        self._distance_dict = None
 
         self._dir_for_target = None
         self._override_dict = None
@@ -185,6 +191,7 @@ class KeyHandler:
         self._dir_keys = []
         self._imaging_keys = []
         self._override_keys = []
+        self._distance_keys = []
 
         first_key_dir = True
         first_imaging_root = True
@@ -296,6 +303,10 @@ class KeyHandler:
                 self._sd_keys.append(this_value)
                 lines_read += 1
 
+            if this_key == 'distance_key':
+                self._distance_keys.append(this_value)
+                lines_read += 1
+
         logger.info("Successfully imported "+str(lines_read)+" key/value pairs.")
         
         infile.close()
@@ -335,14 +346,14 @@ class KeyHandler:
 
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
-             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys]
+             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir+this_key)
                 if not this_key_exists:
                     all_valid = False
                     errors += 1
-                    logger.error("key "+ this_key+ " is defined but does not exist in "+self._key_dir)
+                    logger.error("key "+ this_key+ " is defined but does not exist in "+self._key_dir) #<TODO><DL># should we throw an exception
 
         if all_valid:
             logger.info("Checked file existence and all files found.")
@@ -534,6 +545,10 @@ class KeyHandler:
             key_list=self._override_keys, reader_function=key_readers.read_override_key,
             key_dir=self._key_dir)
 
+        self._distance_dict = key_readers.batch_read(
+            key_list=self._distance_keys, reader_function=key_readers.read_distance_key,
+            key_dir=self._key_dir)
+
 #endregion
 
 ##############################################################
@@ -590,6 +605,14 @@ class KeyHandler:
             for target in linmos_targets:
                 if target not in self._target_list:
                     logger.error(target+ " is in the linear mosaic key but not the target list.")
+                    if target not in missing_targets:
+                        missing_targets.append(target)
+
+        if self._distance_dict is not None:
+            distance_targets = self._distance_dict.keys()
+            for target in distance_targets:
+                if target not in self._target_list:
+                    logger.error(target+ " is in the distance key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
             
@@ -1156,6 +1179,31 @@ class KeyHandler:
         """
         self._dochecks = dochecks
         return
+
+    def get_distance_for_target(
+        self, 
+        target=None,
+        ):
+        """
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+        
+        distance = None
+        #logger.debug('*******self._distance_dict*******'+': '+str(self._distance_dict))
+        if self._distance_dict is not None:
+            #logger.debug('*******self._distance_dict.keys()*******'+': '+str(self._distance_dict.keys()))
+            if target in self._distance_dict:
+                if 'distance' in self._distance_dict[target]:
+                    distance = self._distance_dict[target]['distance']
+        
+        #if distance is None:
+        #    logging.error('No distance value is set for the target '+target+'. Please check your "distance_key.txt".')
+        #    raise Exception('No distance value is set for the target '+target) 
+        # -- We will not throw an exception here. distance is used by utilsResolutions which will throw an exception when distance is really needed and not found.
+        
+        return distance
 
     def get_system_velocity_and_velocity_width_for_target(
         self, 
@@ -1733,29 +1781,42 @@ class KeyHandler:
         else:
             return(None)
         
-        min_res = this_dict['res_min_arcsec']
-        max_res = this_dict['res_max_arcsec']
-        step = this_dict['res_step_factor']
-
-        max_steps = np.log10(max_res/min_res)/np.log10(step)+1
-        res_array = min_res*step**(np.arange(0.,max_steps,1))
-        res_array = res_array[res_array <= max_res]
-
-        return(res_array)
-
-    def get_tag_for_res(
-        self,
-        res=None,
-        ):
-        """
-        Return a string in the format we use for filenames given a float resolution in arcseconds.
-        """
-
-        sigfigs = 2
-
-        res_str = str(int(floor(res)))+'p'+str(int(round((res-floor(res))*10**sigfigs))).zfill(sigfigs)
+        res_array = [] # a string array
         
-        return(res_str)
+        if 'res_min_arcsec' in this_dict and 'res_max_arcsec' in this_dict and 'res_step_factor' in this_dict:
+            min_res = this_dict['res_min_arcsec']
+            max_res = this_dict['res_max_arcsec']
+            step = this_dict['res_step_factor']
+            #max_steps = np.log10(max_res/min_res)/np.log10(step)+1
+            #res_array = min_res*step**(np.arange(0.,max_steps,1))
+            #res_array = res_array[res_array <= max_res]
+            res_list = 10**np.arange(np.log10(min_res), np.log10(max_res)+0.5*np.log10(step), np.log10(step))
+            res_array.extend([str(t)+'arcsec' for t in res_list])
+        
+        if 'res_list' in this_dict:
+            if np.isscalar(this_dict['res_list']):
+                res_array.append(this_dict['res_list'])
+            else:
+                res_array.extend([str(t) for t in this_dict['res_list']]) # if res_list item has no unit, then it will be parsed as arcsec unit in utilsResolutions
+
+        return res_array
+
+    # 
+    # 20200304: 'get_tag_for_res' is replaced by 'utilsResolutions.get_tag_for_res'
+    # 
+    #def get_tag_for_res(
+    #    self,
+    #    res=None,
+    #    ):
+    #    """
+    #    Return a string in the format we use for filenames given a float resolution in arcseconds.
+    #    """
+    # 
+    #    sigfigs = 2
+    # 
+    #    res_str = str(int(floor(res)))+'p'+str(int(round((res-floor(res))*10**sigfigs))).zfill(sigfigs)
+    #    
+    #    return(res_str)
 
     def print_configs(
         self

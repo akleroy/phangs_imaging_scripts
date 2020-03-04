@@ -1,0 +1,12 @@
+
+ngc3621_1      2017.1.00886	all 7m 1	ngc3621_1/uid___A002_Xc6e968_X29a3.ms
+ngc3621_1      2017.1.00886	all 7m 6	ngc3621_1/uid___A002_Xc7111c_X7e68.ms
+ngc3621_1      2017.1.00886	all 12m 1	ngc3621_1/uid___A002_Xcef406_X855b.ms.split.cal
+ngc3621_1      2017.1.00886	all 12m 4	ngc3621_1/uid___A002_Xd0c6e8_X490d.ms.split.cal
+
+ngc3621_2      2017.1.00886	all 7m 1	ngc3621_2/uid___A002_Xc6fa08_X1b71.ms
+ngc3621_2      2017.1.00886	all 7m 6	ngc3621_2/uid___A002_Xc74b5b_X82e9.ms
+ngc3621_2      2017.1.00886	all 12m 1	ngc3621_2/uid___A002_Xcee8a2_X19bc.ms.split.cal
+ngc3621_2      2017.1.00886	all 12m 5	ngc3621_2/uid___A002_Xcfae6a_X94f1.ms.split.cal
+
+
