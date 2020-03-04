@@ -266,6 +266,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
             if product in self._kh.get_line_products():
 
+                this_line = self._kh.get_line_tag_for_line_product(product)
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
                 spw = cvr.find_spws_for_line(infile = infile, 
