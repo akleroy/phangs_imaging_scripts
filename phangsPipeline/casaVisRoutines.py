@@ -47,7 +47,7 @@ def split_science_targets(
     outfile = None, 
     do_split = True,
     split_field = '', 
-    split_intent = 'OBSERVE_TARGET#ON_SOURCE,OBSERVE_TARGET#UNSPECIFIED', 
+    split_intent = 'OBSERVE_TARGET*', 
     split_spw = '',
     do_statwt = False, 
     use_symlink = True, 
@@ -223,8 +223,8 @@ def split_science_targets(
             use_column = 'DATA'
         casaStuff.tb.close()
 
-        logger.debug('field='+split_intent)
-        logger.debug('intent='+split_field)
+        logger.debug('intent='+split_intent)
+        logger.debug('field='+split_field)
 
         os.mkdir(outfile+'.touch')
         casaStuff.split(vis = infile, 
