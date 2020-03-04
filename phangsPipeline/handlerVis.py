@@ -269,9 +269,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 this_line = self._kh.get_line_tag_for_line_product(product)
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
-                spw = cvr.find_spws_for_line(infile = infile, 
-                                             line = this_line, 
-                                             vsys = vsys, vwidth = vwidth)
+                if not self._dry_run and casa_enabled:
+                    spw = cvr.find_spws_for_line(infile = infile, 
+                                                 line = this_line, 
+                                                 vsys = vsys, vwidth = vwidth)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -335,7 +336,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag, 
-                    this_obsnum=obsnum, product=product, ext=extra_ext_in)
+                    obsnum=this_obsnum, product=product, ext=extra_ext_in)
                 staged_ms_list.append(this_staged_ms)
 
         # Generate the outfile name

@@ -1346,6 +1346,7 @@ class KeyHandler:
         target=None,
         config=None,
         project=None,
+        check_linmos=True,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1369,21 +1370,19 @@ class KeyHandler:
         
             # Allow linear mosaics
 
-            # Missing the case where the target is BOTH in the ms_dict
-            # and the linmos list. We could change to reflect this
-            # ... I'm not sure if this causes problems or not.
-
             for this_target in input_targets:
-                if target in self._ms_dict.keys():
-                    just_targets.append(this_target)
+                if this_target in self._ms_dict.keys():
+                    if this_target not in just_targets:
+                        just_targets.append(this_target)
                 else:
-                    parts = self.get_parts_for_linmos(target=this_target)
-                    if parts is None:
-                        continue
-                    for this_part in parts:
-                        just_targets.append(this_part)
-                
-                        
+                    if self.is_target_linmos(target=this_target) and check_linmos:
+                        parts = self.get_parts_for_linmos(target=this_target)
+                        if parts is None:
+                            continue
+                        for this_part in parts:
+                            if this_part not in just_targets:
+                                just_targets.append(this_part)
+                                
         # if the user has input a project list, match to that
         just_projects = []
         if project is not None:
