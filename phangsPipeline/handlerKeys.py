@@ -1868,13 +1868,13 @@ class KeyHandler:
             return()
 
         logger.info("Continuum data products")
-        for this_product in self._config_dict['cont_product'].keys():
+        for this_product in self.get_continuum_products():
             logger.info("... "+this_product)
             lines_to_flag = self._config_dict['cont_product'][this_product]['lines_to_flag']
             logger.info("... ... lines to flag "+str(lines_to_flag))
 
         logger.info("Line data products")
-        for this_product in self._config_dict['line_product'].keys():
+        for this_product in self.get_line_products():
             logger.info("... "+this_product)
             channel_width = self._config_dict['line_product'][this_product]['channel_kms']
             line_name = self._config_dict['line_product'][this_product]['line_tag']
