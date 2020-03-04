@@ -1089,9 +1089,9 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
-            return(None)
+            return([])
         if 'line_product' not in self._config_dict.keys():
-            return(None)
+            return([])
         line_products = self._config_dict['line_product'].keys()
         this_list = \
             list_utils.select_from_list(line_products, skip=skip, only=only, loose=True)
@@ -1105,9 +1105,9 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if type(self._config_dict) != type({}):
-            return(None)
+            return([])
         if 'cont_product' not in self._config_dict.keys():
-            return(None)
+            return([])
         cont_products = self._config_dict['cont_product'].keys()
         this_list = \
             list_utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
@@ -1149,11 +1149,20 @@ class KeyHandler:
         
         return(self._linmos_dict[target])
 
-    def is_target_in_mosaic(self, target):
+    def is_target_in_mosaic(self, target, return_target_name=False):
         """
         Return true or false depending on whether the target is in a linear mosaic.
         """
-        return(target in self._mosaic_assign_dict.keys())
+        if target in self._mosaic_assign_dict.keys():
+            if return_target_name:
+                return True, self._mosaic_assign_dict[target]
+            else:
+                return True
+        else:
+            if return_target_name:
+                return False, target
+            else:
+                return False
 
     def get_imaging_recipes(self, config=None, product=None, stage=None):
         """
@@ -1346,6 +1355,7 @@ class KeyHandler:
         target=None,
         config=None,
         project=None,
+        check_linmos=True,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1369,21 +1379,19 @@ class KeyHandler:
         
             # Allow linear mosaics
 
-            # Missing the case where the target is BOTH in the ms_dict
-            # and the linmos list. We could change to reflect this
-            # ... I'm not sure if this causes problems or not.
-
             for this_target in input_targets:
-                if target in self._ms_dict.keys():
-                    just_targets.append(this_target)
+                if this_target in self._ms_dict.keys():
+                    if this_target not in just_targets:
+                        just_targets.append(this_target)
                 else:
-                    parts = self.get_parts_for_linmos(target=this_target)
-                    if parts is None:
-                        continue
-                    for this_part in parts:
-                        just_targets.append(this_part)
-                
-                        
+                    if self.is_target_linmos(target=this_target) and check_linmos:
+                        parts = self.get_parts_for_linmos(target=this_target)
+                        if parts is None:
+                            continue
+                        for this_part in parts:
+                            if this_part not in just_targets:
+                                just_targets.append(this_part)
+                                
         # if the user has input a project list, match to that
         just_projects = []
         if project is not None:
@@ -1868,13 +1876,13 @@ class KeyHandler:
             return()
 
         logger.info("Continuum data products")
-        for this_product in self._config_dict['cont_product'].keys():
+        for this_product in self.get_continuum_products():
             logger.info("... "+this_product)
             lines_to_flag = self._config_dict['cont_product'][this_product]['lines_to_flag']
             logger.info("... ... lines to flag "+str(lines_to_flag))
 
         logger.info("Line data products")
-        for this_product in self._config_dict['line_product'].keys():
+        for this_product in self.get_line_products():
             logger.info("... "+this_product)
             channel_width = self._config_dict['line_product'][this_product]['channel_kms']
             line_name = self._config_dict['line_product'][this_product]['line_tag']

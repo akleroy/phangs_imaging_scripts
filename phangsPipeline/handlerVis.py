@@ -74,7 +74,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
 
         
-#region 
+#region Loops
         
     ######################################
     # Loop through all steps and targets #
@@ -84,6 +84,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         self,
         do_copy = True,
         do_concat = True,
+        do_remove_staging = False,
         do_custom = False,
         do_contsub = False, 
         do_extract_line = True,
@@ -147,6 +148,27 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         overwrite = overwrite, 
                         )
         
+        # Clean up the staged measurement sets. They cost time to
+        # re-split but have a huge disk imprint and are totally
+        # redundant with the concatenated data and original
+        # data. Saves 33% on disk space.
+
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_line=True,just_interf=True):
+
+                for this_product in product_list:
+                    
+                    if do_remove_staging:
+
+                        self.remove_staged_products(
+                            target = this_target, 
+                            project = this_project, 
+                            array_tag = this_array_tag, 
+                            obsnum = this_obsnum, 
+                            product = this_product,
+                            )
+
         # Next we apply uv continuum subtraction. We may later offer
         # an algorithm choice to do this before or after
         # regridding. The correct choice depends on some details of
@@ -206,6 +228,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             )                
                 
         return()
+
+#endregion
+
+#region Tasks
         
     ##########################################
     # Tasks - individual operations on data. #
@@ -269,9 +295,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 this_line = self._kh.get_line_tag_for_line_product(product)
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
-                spw = cvr.find_spws_for_line(infile = infile, 
-                                             line = this_line, 
-                                             vsys = vsys, vwidth = vwidth)
+                if not self._dry_run and casa_enabled:
+                    spw = cvr.find_spws_for_line(infile = infile, 
+                                                 line = this_line, 
+                                                 vsys = vsys, vwidth = vwidth)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -295,6 +322,58 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 use_symlink = use_symlink, 
                 overwrite = overwrite, 
                 )
+
+        return()
+
+    def remove_staged_products(
+        self,
+        target = None,
+        project = None,
+        array_tag = None,
+        obsnum = None,
+        product = None,
+        extra_ext = '',
+        ):
+        """
+        Remove 'staged' visibility products, which are intermediate
+        between the calibrated data and the concated measurement sets
+        that we begin processing on. Run this step after concat to
+        reduct the disk footprint of the pipeline.
+        """
+        
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if project is None:
+            logging.error("Please specify a project.")
+            raise Exception("Please specify a project.")
+
+        if array_tag is None:
+            logging.error("Please specify an array_tag.")
+            raise Exception("Please specify an array_tag.")
+
+        if obsnum is None:
+            logging.error("Please specify an obsnum.")
+            raise Exception("Please specify an obsnum.")
+        
+        infile = fnames.get_staged_msname(
+            target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
+            product=product, ext=extra_ext)
+            
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Clearing intermediate staged u-v data for "+infile)
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+       
+        # Change to the imaging directory for the target
+
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
+        if not self._dry_run:
+            
+            os.system('rm -rf '+infile)
 
         return()
 
@@ -335,7 +414,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag, 
-                    this_obsnum=obsnum, product=product, ext=extra_ext_in)
+                    obsnum=this_obsnum, product=product, ext=extra_ext_in)
                 staged_ms_list.append(this_staged_ms)
 
         # Generate the outfile name
@@ -681,3 +760,5 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # 
         # 
         logger.info('END: Extracting continuum '+product+' for target '+target+' and config '+config+'.')
+
+#endregion

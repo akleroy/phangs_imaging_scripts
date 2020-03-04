@@ -53,11 +53,11 @@ def select_from_list(
             if len(skip) > 0:
                 match = False
                 if loose:
-                    for this_only in only:
-                        if element.lower() == this_only.lower():
+                    for this_skip in skip:
+                        if element.lower() == this_skip.lower():
                             match = True                        
                 else:
-                    if element in only:
+                    if element in skip:
                         match = True
                 if match:
                     continue

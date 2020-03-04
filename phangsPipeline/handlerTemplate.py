@@ -7,6 +7,7 @@ handlers and includes basic list and shared functionality.
 
 import os
 import glob
+import numpy as np
 
 import logging
 logger = logging.getLogger(__name__)
@@ -122,8 +123,16 @@ class HandlerTemplate:
         """
         self._targets_first = first
         self._targets_last = last
-        self._targets_skip = skip
-        self._targets_only = only
+
+        if np.isscalar(skip):
+            self._targets_skip = [skip]
+        else:
+            self._targets_skip = skip
+
+        if np.isscalar(only):
+            self._targets_only = [only]
+        else:
+            self._targets_only = only
 
         if not nobuild:
             self._build_lists()
@@ -139,8 +148,15 @@ class HandlerTemplate:
         Set conditions on the list of line products to be considered
         when a loop is run. By default, consider all products.
         """
-        self._lines_skip = skip
-        self._lines_only = only
+        if np.isscalar(skip):
+            self._lines_skip = [skip]
+        else:
+            self._lines_skip = skip
+
+        if np.isscalar(only):
+            self._lines_only = [only]
+        else:
+            self._lines_only = only
 
         if not nobuild:
             self._build_lists()
@@ -157,8 +173,15 @@ class HandlerTemplate:
         considered when a loop is run. By default, consider all
         products.
         """
-        self._cont_skip = skip
-        self._cont_only = only
+        if np.isscalar(skip):
+            self._cont_skip = [skip]
+        else:
+            self._cont_skip = skip
+
+        if np.isscalar(only):
+            self._cont_only = [only]
+        else:
+            self._cont_only = only
 
         if not nobuild:
             self._build_lists()
@@ -175,8 +198,15 @@ class HandlerTemplate:
         configurations to be considered when a loop is run. By
         default, consider all configurations.
         """
-        self._interf_configs_skip = skip
-        self._interf_configs_only = only
+        if np.isscalar(skip):
+            self._interf_configs_skip = [skip]
+        else:
+            self._interf_configs_skip = skip
+
+        if np.isscalar(only):
+            self._interf_configs_only = [only]
+        else:
+            self._inerf_configs_only = only
 
         if not nobuild:
             self._build_lists()
@@ -193,8 +223,15 @@ class HandlerTemplate:
         to be considered when a loop is run. By default, consider
         all configurations.
         """
-        self._feather_configs_skip = skip
-        self._feather_configs_only = only
+        if np.isscalar(skip):
+            self._feather_configs_skip = [skip]
+        else:
+            self._feather_configs_skip = skip
+
+        if np.isscalar(only):
+            self._feather_configs_only = [only]
+        else:
+            self._feather_configs_only = only
 
         if not nobuild:
             self._build_lists()
