@@ -46,7 +46,7 @@ import line_list
 import handlerTemplate
 import scMaskingRoutines as scmasking
 import scProductRoutines as scproduct
-
+from scMoments import moment_generator
 
 class ProductHandler(handlerTemplate.HandlerTemplate):
     """
@@ -301,24 +301,6 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             mask_spectralcube = SpectralCube(data=mask.astype(int), wcs=wcs, header=header_to_write)
             mask_spectralcube.write(outfile, format="fits")
 
-    def task_generate_products(
-        target = None, 
-        config = None, 
-        product = None, 
-        res_tag = None,
-        do_moment0 = True,
-        do_moment1 = True,
-        do_moment2 = True,
-        do_ew = True,
-        do_tmax = True,
-        do_vmax = True,
-        do_vquad = True,
-        do_errormaps = True,
-        ):
-        """
-        Placeholder for a task to wrap product generation.
-        """
-        pass
 
     def task_write_products(
         self,
@@ -326,13 +308,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         rms,
         outfile, 
         res_tag=None,
-        do_moment0 = True,
-        do_moment1 = True,
-        do_moment2 = True,
-        do_ew = True,
-        do_tmax = True,
-        do_vmax = True,
-        do_vquad = True,
+        products = ['mom0', 'mom1', 'mom2', 'ew', 'vmax', 'tmax', 'vquad'],
         do_errormaps = True,
         ):
         """
@@ -347,84 +323,88 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         # about the context and file names from our generall useful
         # things and this is generally useful.
 
-        # 
-        if re.match(r'\.fits$', outfile):
-            outfile = re.sub(r'\.fits$', r'', outfile) # remove suffix
-        # 
+        root_name = outfile.replace('.fits', '')
+
         if res_tag is not None:
-            res_tag_ext = '_res'+res_tag
+            root_name += '_res'+res_tag
+
+        if do_errormaps:
+            moment_generator(cube, rms=rms, 
+                            root_name=root_name, 
+                            products=products)
         else:
-            res_tag_ext = ''
-        # 
+            moment_generator(cube,
+                             root_name=root_name,
+                             products=products)
 
-        # AKL - You could consider to change the format to a string
-        # list ['moment0','vmax, ...] if we want to avoid doing
-        # everything with hardcoded kwargs. Makes it easier to select
-        # a suite of products in the future, though the strings are a
-        # bit inelegant.
+        # # AKL - You could consider to change the format to a string
+        # # list ['moment0','vmax, ...] if we want to avoid doing
+        # # everything with hardcoded kwargs. Makes it easier to select
+        # # a suite of products in the future, though the strings are a
+        # # bit inelegant.
 
-        process_list = []
-        if do_moment0:   
-            process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment0, 
-                                 'unit': u.K * u.km/u.s })
-        if do_moment1:   
-            process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment1, 
-                                 'unit': u.km/u.s })
-        if do_moment2:   
-            process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment2, 
-                                 'unit': u.km/u.s })
-        if do_ew:        
-            process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
-                                 'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
-                                 'func': scproduct.write_ew,      
-                                 'unit': u.km/u.s })
-        if do_tmax:      
-            process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_tmax,    
-                                 'unit': u.K })
-        if do_vmax:      
-            process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_vmax,    
-                                 'unit': u.km/u.s })
-        if do_vquad:     
-            process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
-                                 'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
-                                 'func': scproduct.write_vquad,   
-                                 'unit': u.km/u.s })
-        # 
-        # delete old files
+        # process_list = []
+        # if do_moment0:   
+        #     process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
+        #                          'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
+        #                          'func': scproduct.write_moment0, 
+        #                          'unit': u.K * u.km/u.s })
+        # if do_moment1:   
+        #     process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
+        #                          'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
+        #                          'func': scproduct.write_moment1, 
+        #                          'unit': u.km/u.s })
+        # if do_moment2:   
+        #     process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
+        #                          'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
+        #                          'func': scproduct.write_moment2, 
+        #                          'unit': u.km/u.s })
+        # if do_ew:        
+        #     process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
+        #                          'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
+        #                          'func': scproduct.write_ew,      
+        #                          'unit': u.km/u.s })
+        # if do_tmax:      
+        #     process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
+        #                          'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
+        #                          'func': scproduct.write_tmax,    
+        #                          'unit': u.K })
+        # if do_vmax:      
+        #     process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
+        #                          'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
+        #                          'func': scproduct.write_vmax,    
+        #                          'unit': u.km/u.s })
+        # if do_vquad:     
+        #     process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
+        #                          'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
+        #                          'func': scproduct.write_vquad,   
+        #                          'unit': u.km/u.s })
+        # # 
+        # # delete old files
 
         # AKL - not a big deal, but do you want an overwrite flag?
 
-        for process_dict in process_list:
-            outfile = process_dict['outfile']
-            errorfile = process_dict['errorfile'] if do_errormaps else None
-            if os.path.isfile(outfile):
-                os.remove(outfile)
-                logger.debug('Deleting old file "'+outfile+'"')
-            if os.path.isfile(errorfile):
-                os.remove(errorfile)
-                logger.debug('Deleting old file "'+errorfile+'"')
+        # for process_dict in process_list:
+        #     outfile = process_dict['outfile']
+        #     errorfile = process_dict['errorfile'] if do_errormaps else None
+        #     if os.path.isfile(outfile):
+        #         os.remove(outfile)
+        #         logger.debug('Deleting old file "'+outfile+'"')
+        #     if os.path.isfile(errorfile):
+        #         os.remove(errorfile)
+        #         logger.debug('Deleting old file "'+errorfile+'"')
         # 
         # make moment maps and other products using scProductRoutines functions.
 
-        for process_dict in process_list:
-            processfunction = process_dict['func']
-            outfile = process_dict['outfile']
-            errorfile = process_dict['errorfile'] if do_errormaps else None
-            logger.info('Producing "'+outfile+'"')
-            processfunction(cube,
-                            rms = rms, 
-                            outfile = outfile, 
-                            errorfile = errorfile)
+        # for process_dict in process_list:
+        #     processfunction = process_dict['func']
+        #     outfile = process_dict['outfile']
+        #     errorfile = process_dict['errorfile'] if do_errormaps else None
+        #     logger.info('Producing "'+outfile+'"')
+        #     processfunction(cube,
+        #                     rms = rms, 
+        #                     outfile = outfile, 
+        #                     errorfile = errorfile)
 
     ###############################################
     # Recipes - larger combinations of many steps #

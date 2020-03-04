@@ -660,6 +660,7 @@ def write_vquad(cubein,
                          spaxis)
     maxmap = cube.max(axis=0)
     argmaxmap = cube.argmax(axis=0)
+    argmaxmap = np.clip(argmaxmap, 1, cube.shape[0]-2)
     Tup = np.take_along_axis(cube.filled_data[:],
                              argmaxmap[np.newaxis, :, :]+1, 0).value
     Tdown = np.take_along_axis(cube.filled_data[:],
@@ -912,7 +913,6 @@ def write_moment1_hybrid(cube,
         mom1hybrid_error[~np.isfinite(mom1hybrid.value)] = np.nan
         strictvals = np.isfinite(mom1strict_error.value)
         mom1hybrid_error[strictvals] = mom1strict_error[strictvals]
-        import pdb; pdb.set_trace()
         if unit is not None:
             mom1hybrid_error = mom1hybrid_error.to(unit)
         mom1hybrid_error_proj = Projection(mom1hybrid_error,

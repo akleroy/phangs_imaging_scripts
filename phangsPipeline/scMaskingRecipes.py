@@ -59,18 +59,18 @@ def phangs_noise(cube, noise_kwargs=None,
         spectral_smooth = np.ceil(cube.shape[0] / 5)
         # This looks for a non-trivial signal mask.
         if (np.sum(cube.mask.include()) 
-            < np.sum(np.isfinite(cube.unmasked_data[:].value))):
+            < np.sum(np.isfinite(cube.filled_data[:].value))):
             m = cube.mask.include()
         else:   
             m = None
-        rms = noise_cube(cube.unmasked_data[:].value,
+        rms = noise_cube(cube.filled_data[:].value,
                          mask=m,
                          box=box,
                          bandpass_smooth_window=spectral_smooth,
                          spec_box=5,
                          iterations=3)
     else:
-        rms = noise_cube(cube.unmasked_data[:].value,
+        rms = noise_cube(cube.filled_data[:].value,
                          mask=cube.mask.include(),
                          **noise_kwargs)
     if return_spectral_cube:
@@ -86,11 +86,11 @@ def phangs_mask(cube,
     rms = phangs_noise(cube, noise_kwargs=noise_kwargs)
     
     if mask_kwargs is None:
-        mask = simple_mask(cube.unmasked_data[:].value,
+        mask = simple_mask(cube.filled_data[:].value,
                            rms, hi_thresh=4, hi_nchan=2,
                            lo_thresh=2, lo_nchan=2)
     else:
-        mask = simple_mask(cube.unmasked_data[:].value,
+        mask = simple_mask(cube.filled_data[:].value,
                            rms, **mask_kwargs)
         
     if return_rms:
