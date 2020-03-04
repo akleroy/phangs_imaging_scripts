@@ -1,11 +1,10 @@
 """
-UVDataHandler
+handlerVis (VisHandler object)
     
 The PHANGS pipeline to handle staging and pre-processing of uv data
 before imaging. Works through a single big class (the
-UVDataHandler). This needs to be attached to a keyHandler to access
-the target, product, and configuration keys and locations of the uv
-data.
+VisHandler). This needs to be attached to a keyHandler to access the
+target, product, and configuration keys and locations of the uv data.
 
 To run the individual routines, this code needs to be run inside
 CASA. See an example application inside stage_7m_co21.py .
@@ -16,7 +15,7 @@ Example:
     from phangsPipeline import handlerKeys as kh
     from phangsPipeline import uvdataHandler as uvh
     this_kh = kh.KeyHandler(master_key = 'config_keys/master_key.txt')
-    this_uvh = uvh.UVDataHandler(key_handler = this_kh, dry_run = False)
+    this_uvh = uvh.VisHandler(key_handler = this_kh, dry_run = False)
     # Set which data to process
     this_uvh.set_line_products(only=['co21'])
     this_uvh.set_interf_configs(only=['12m+7m'])
@@ -54,7 +53,7 @@ except ImportError:
     from phangsPipeline import utilsFilenames as fnames
 
 
-class UVDataHandler(handlerTemplate.HandlerTemplate):
+class VisHandler(handlerTemplate.HandlerTemplate):
     """
     Class to manipulate calibrated ALMA visibility data (measurement
     sets), extracting lines, combining multiple data sets, and
