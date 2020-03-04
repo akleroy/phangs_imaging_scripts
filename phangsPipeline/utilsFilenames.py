@@ -167,7 +167,7 @@ def get_staged_msname(target=None, project=None, array_tag=None,
             logging.error("Product needs to be a string or None.", product)
             return(None)
         if len(product) > 0:
-            filename += '_'+ext
+            filename += '_'+product
 
     if ext is not None:
         if type(ext) is not type(''):
