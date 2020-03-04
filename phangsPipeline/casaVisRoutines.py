@@ -47,7 +47,7 @@ def split_science_targets(
     outfile = None, 
     do_split = True,
     split_field = '', 
-    split_intent = 'OBSERVE_TARGET#ON_SOURCE', 
+    split_intent = 'OBSERVE_TARGET#ON_SOURCE,OBSERVE_TARGET#UNSPECIFIED', 
     split_spw = '',
     do_statwt = False, 
     use_symlink = True, 
