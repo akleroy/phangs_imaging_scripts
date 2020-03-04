@@ -11,7 +11,6 @@ this_hr = hr.ReleaseHandler(key_handler = this_hk)
 this_hr.set_interf_configs(only=['7m'])
 this_hr.set_feather_configs(only=['7m+tp'])
 this_hr.set_line_products(only=['co21'])
-#this_hr.set_no_feather_configs(True)
 this_hr.set_no_cont_products(True)
 this_hr.set_targets(only=['ngc4321'])
 

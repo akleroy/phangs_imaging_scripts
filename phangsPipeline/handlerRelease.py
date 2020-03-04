@@ -211,7 +211,6 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
 
                 self.task_building_release(fname_dict = fname_dict,
                                            outdir = outdir)
-
 	        # 
 	        # end of loop
 
