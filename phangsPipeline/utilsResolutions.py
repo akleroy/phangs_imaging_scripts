@@ -172,6 +172,12 @@ def get_angular_resolution_for_res(res, distance=None):
 
 
 
+#def get_angular_resolution_for_config(config):
+#    """Return the rough angular resolution range for a given config like '12m+7m', '12m', '7m'.
+#    """
+#    WIP
+
+
 
 
 
