@@ -757,7 +757,7 @@ location_keys['cleanmask_root'] = work_dir_path+'cleanmasks'+os.sep
 location_keys['singledish_root'] = work_dir_path+'singledish'+os.sep
 location_keys['imaging_root'] = work_dir_path+'imaging'+os.sep
 location_keys['postprocess_root'] = work_dir_path+'postprocess'+os.sep
-location_keys['product_root'] = work_dir_path+'product'+os.sep
+location_keys['derived_root'] = work_dir_path+'derived'+os.sep
 location_keys['release_root'] = work_dir_path+'release'+os.sep
 
 data_file_keys = OrderedDict() # = {}
