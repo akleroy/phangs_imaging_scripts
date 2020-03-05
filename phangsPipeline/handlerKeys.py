@@ -175,7 +175,7 @@ class KeyHandler:
         self._key_dir = None
         self._imaging_root = os.getcwd()+'/../imaging/'
         self._postprocess_root = os.getcwd()+'/../postprocess/'
-        self._product_root = os.getcwd()+'/../product/'
+        self._derived_root = os.getcwd()+'/../derived/'
         self._release_root = os.getcwd()+'/../release/'
 
         self._ms_roots = []
@@ -196,7 +196,7 @@ class KeyHandler:
         first_key_dir = True
         first_imaging_root = True
         first_postprocess_root = True
-        first_product_root = True
+        first_derived_root = True
         first_release_root = True
 
         lines_read = 0
@@ -231,12 +231,12 @@ class KeyHandler:
                     logger.warning("Multiple postprocess_root definitions. Using the last one.")
                 lines_read += 1
 
-            if this_key == 'product_root':
-                self._product_root = this_value
-                if first_product_root:
-                    first_product_root = False
+            if this_key == 'derived_root':
+                self._derived_root = this_value
+                if first_derived_root:
+                    first_derived_root = False
                 else:
-                    logger.warning("Multiple product_root definitions. Using the last one.")
+                    logger.warning("Multiple derived_root definitions. Using the last one.")
                 lines_read += 1
 
             if this_key == 'release_root':
@@ -853,7 +853,7 @@ class KeyHandler:
         
         return()
 
-    def check_dir_existence(self, imaging=True, postprocess=True, product=True, release=True):
+    def check_dir_existence(self, imaging=True, postprocess=True, derived=True, release=True):
         """
         Check the existence of the directories for imaging and post-processing.
         """
@@ -882,12 +882,12 @@ class KeyHandler:
                     logging.warning("Missing post-processing directory :"+self._postprocess_root+this_dir)
                     missing_dirs.append(self._postprocess_root+this_dir)
 
-            if product:
-                if os.path.isdir(self._product_root+this_dir):
+            if derived:
+                if os.path.isdir(self._derived_root+this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing product directory :"+self._product_root+this_dir)
-                    missing_dirs.append(self._product_root+this_dir)
+                    logging.warning("Missing derived directory :"+self._derived_root+this_dir)
+                    missing_dirs.append(self._derived_root+this_dir)
         
             if release:
                 if os.path.isdir(self._release_root+this_dir):
@@ -911,7 +911,7 @@ class KeyHandler:
 #region Access data and lists
     
     def _get_dir_for_target(self, target=None, changeto=False, 
-                            imaging=False, postprocess=False, product=False, release=False):
+                            imaging=False, postprocess=False, derived=False, release=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -925,12 +925,12 @@ class KeyHandler:
             logging.error("Target "+target+" is not in the list of targets.")
             return(None)
 
-        if (imaging and postprocess) or (imaging and product) or \
-                (product and postprocess):
+        if (imaging and postprocess) or (imaging and derived) or \
+                (derived and postprocess):
             logging.error("Multiple flags set, pick only one type of directory.")
             return(None)
             
-        if (release and imaging) or (release and product) or \
+        if (release and imaging) or (release and derived) or \
                 (release and postprocess):
             logging.error("Multiple flags set, pick only one type of directory.")
             return(None)
@@ -939,8 +939,8 @@ class KeyHandler:
             this_dir = self._imaging_root + self._dir_for_target[target]+'/'
         elif postprocess:
             this_dir = self._postprocess_root + self._dir_for_target[target]+'/'
-        elif product:
-            this_dir = self._product_root + self._dir_for_target[target]+'/'
+        elif derived:
+            this_dir = self._derived_root + self._dir_for_target[target]+'/'
         elif release:
             this_dir = self._release_root + self._dir_for_target[target]+'/'
         else:
@@ -969,12 +969,12 @@ class KeyHandler:
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, postprocess=True))
 
-    def get_product_dir_for_target(self, target=None, changeto=False):
+    def get_derived_dir_for_target(self, target=None, changeto=False):
         """
-        Return the product working directory given a target name. If
+        Return the derived working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, product=True))
+        return(self._get_dir_for_target(target=target, changeto=changeto, derived=True))
 
     def get_release_dir_for_target(self, target=None, changeto=False):
         """
@@ -1946,12 +1946,12 @@ class KeyHandler:
     
 #region Manipulate files and file structure
 
-    def make_missing_directories(self, imaging=False, postprocess=False, product=False, release=False):
+    def make_missing_directories(self, imaging=False, postprocess=False, derived=False, release=False):
         """
         Make any missing imaging or postprocessing directories.
         """
         
-        if not imaging and not postprocess and not product and not release:
+        if not imaging and not postprocess and not derived and not release:
             logging.error("Set either imaging or postprocess or product or release to True. Returning.")
             return(False)
 
@@ -1969,12 +1969,12 @@ class KeyHandler:
                 #return(False)
                 os.makedirs(self._postprocess_root)
 
-        if product:
-            if not os.path.isdir(self._product_root):
-                logging.info("Missing product root directory.")
-                logging.info("Create: "+self._product_root)
+        if derived:
+            if not os.path.isdir(self._derived_root):
+                logging.info("Missing derived root directory.")
+                logging.info("Create: "+self._derived_root)
                 #return(False)
-                os.makedirs(self._product_root)
+                os.makedirs(self._derived_root)
 
         if release:
             if not os.path.isdir(self._release_root):
@@ -1983,13 +1983,13 @@ class KeyHandler:
                 #return(False)
                 os.makedirs(self._release_root)
 
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product, release=release)
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, derived=derived, release=release)
         made_directories = 0
         for this_missing_dir in missing_dirs:
             made_directories += 1
             os.makedirs(this_missing_dir)
         
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, product=product, release=release)
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, derived=derived, release=release)
 
         logging.info("Made "+str(made_directories)+" directories. Now "+str(len(missing_dirs))+" missing.")
 

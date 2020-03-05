@@ -1,7 +1,8 @@
 from spectral_cube import SpectralCube, Projection
 import astropy.units as u
 # from pipelineVersion import version as pipeVer
-from scMaskingRoutines import noise_cube, simple_mask, hybridize_mask
+from scMaskingRoutines import noise_cube, simple_mask
+from scMaskingRoutines import recipe_hybridize_mask as hybridize_mask
 import numpy as np
 from astropy.io import fits
 
@@ -54,10 +55,6 @@ def write_moment0(cube,
 
     mom0 = cube.moment0()
     mom0err_proj = None
-    if unit is not None:
-        mom0 = mom0.to(unit)
-    if outfile is not None:
-        mom0.write(outfile, overwrite=overwrite)
 
     if errorfile is not None and rms is None:
         logger.error("Moment 0 error requested but no RMS provided")
@@ -93,7 +90,12 @@ def write_moment0(cube,
                                   header=mom0.header)
         if errorfile is not None:
             mom0err_proj.write(errorfile, overwrite=overwrite)
-            
+    
+    if unit is not None:
+        mom0 = mom0.to(unit)
+    if outfile is not None:
+        mom0.write(outfile, overwrite=overwrite)
+
     if return_products and mom0err_proj is not None:
         return(mom0, mom0err_proj)
     elif return_products and mom0err_proj is None:
@@ -144,11 +146,6 @@ def write_moment1(cube,
     mom1 = cube.moment1()
     mom1err_proj = None
     spaxis = cube.spectral_axis.value
-    if unit is not None:
-        mom1 = mom1.to(unit)
-
-    if outfile is not None:
-        mom1.write(outfile, overwrite=True)
 
     if errorfile is not None and rms is None:
         logger.error("Moment 1 error requested but no RMS provided")
@@ -191,7 +188,12 @@ def write_moment1(cube,
                                     header=mom1.header)
         if errorfile is not None:
             mom1err_proj.write(errorfile, overwrite=overwrite)
-            
+    
+    if unit is not None:
+        mom1 = mom1.to(unit)
+    if outfile is not None:
+        mom1.write(outfile, overwrite=True)
+
     if return_products and mom1err_proj is not None:
         return(mom1, mom1err_proj)
     elif return_products and mom1err_proj is None:
@@ -244,11 +246,6 @@ def write_moment2(cube,
     mom2 = cube.linewidth_sigma()
     spaxis = cube.spectral_axis.value
 
-    if unit is not None:
-        mom2 = mom2.to(unit)
-    if outfile is not None:
-        mom2.write(outfile, overwrite=True)
-
     if errorfile is not None and rms is None:
         logger.error("Moment 2 error requested but no RMS provided")
     
@@ -285,9 +282,8 @@ def write_moment2(cube,
                         - wtvdisp / sum_T**2)
             mom2err[x, y] = np.dot(
                 np.dot(jacobian[np.newaxis, :], covar),
-                jacobian[:, np.newaxis])**0.5
+                jacobian[:, np.newaxis])**0.25
         mom2err = u.Quantity(mom2err, cube.spectral_axis.unit, copy=False)
-        
         if unit is not None:
             mom2err = mom2err.to(unit)
         mom2err_proj = Projection(mom2err,
@@ -295,6 +291,11 @@ def write_moment2(cube,
                                   header=mom2.header)
         if errorfile is not None:
             mom2err_proj.write(errorfile, overwrite=overwrite)
+
+    if unit is not None:
+        mom2 = mom2.to(unit)
+    if outfile is not None:
+        mom2.write(outfile, overwrite=True)
 
     if return_products and mom2err_proj is not None:
         return(mom2, mom2err_proj)
@@ -349,11 +350,6 @@ def write_ew(cube,
     sigma_ew = mom0 / maxmap / np.sqrt(2 * np.pi)
     spaxis = cube.spectral_axis.value
 
-    if unit is not None:
-        sigma_ew = sigma_ew.to(unit)
-
-    sigma_ew.write(outfile, overwrite=True)
-
     if errorfile is not None and rms is None:
         logger.error("Equivalent width error requested but no RMS provided")
 
@@ -389,7 +385,6 @@ def write_ew(cube,
         sigma_ew_err / np.sqrt(2 * np.pi)
         sigma_ew_err = u.Quantity(sigma_ew_err, 
                                   cube.spectral_axis.unit, copy=False)
-        
         if unit is not None:
             sigma_ew_err = sigma_ew_err.to(unit)
             
@@ -398,6 +393,12 @@ def write_ew(cube,
                                             header=sigma_ew.header)
         if outfile is not None:
             sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
+
+    # Do the conversion here to not mess up errors in units.
+    if unit is not None:
+        sigma_ew = sigma_ew.to(unit)
+
+    sigma_ew.write(outfile, overwrite=True)
 
     if return_products and sigma_ewerr_projection is not None:
         return(sigma_ew, sigma_ewerr_projection)
@@ -463,9 +464,6 @@ def write_tmax(cubein,
         cube = cubein
     maxmap = cube.max(axis=0)
 
-    if outfile is not None:
-        maxmap.write(outfile, overwrite=True)
-
     if errorfile is not None and rms is None:
         logger.error("Tmax error requested but no RMS provided")
 
@@ -485,6 +483,11 @@ def write_tmax(cubein,
                                         header=maxmap.header)
         if errorfile is not None:
             tmaxerr_projection.write(errorfile, overwrite=overwrite)
+
+    if unit is not None:
+        maxmap = maxmap.to(unit)
+    if outfile is not None:
+        maxmap.write(outfile, overwrite=True)
 
     if return_products and tmaxerr_projection is not None:
         return(maxmap, tmaxerr_projection)
@@ -552,14 +555,9 @@ def write_vmax(cubein,
     vmaxmap = np.take_along_axis(cube.spectral_axis[:, np.newaxis, np.newaxis],
                                  argmaxmap[np.newaxis, :, :], 0)
     vmaxmap = np.squeeze(vmaxmap)
-    if unit is not None:
-        vmaxmap = vmaxmap.to(unit)
-    vmaxmap[~np.isfinite(maxmap)] = np.nan
-    vmaxmap_projection = Projection(vmaxmap,
-                                    wcs=maxmap.wcs,
-                                    header=maxmap.header)
-    vmaxmap_projection.write(outfile, overwrite=True)
 
+    vmaxmap[~np.isfinite(maxmap)] = np.nan
+ 
     if errorfile is not None and rms is None:
         logger.error("Moment 2 error requested but no RMS provided")
 
@@ -577,6 +575,15 @@ def write_vmax(cubein,
         if errorfile is not None:
             vmaxerr_projection.write(errorfile, overwrite=overwrite)
 
+    vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)        
+    if unit is not None:
+        vmaxmap = vmaxmap.to(unit)
+    vmaxmap_projection = Projection(vmaxmap,
+                                    wcs=maxmap.wcs,
+                                    header=maxmap.header)
+    if outfile is not None:        
+        vmaxmap_projection.write(outfile, overwrite=True)
+        
     if return_products and vmaxerr_projection is not None:
         return(vmaxmap_projection, vmaxerr_projection)
     elif return_products and vmaxerr_projection is None:
@@ -653,6 +660,7 @@ def write_vquad(cubein,
                          spaxis)
     maxmap = cube.max(axis=0)
     argmaxmap = cube.argmax(axis=0)
+    argmaxmap = np.clip(argmaxmap, 1, cube.shape[0]-2)
     Tup = np.take_along_axis(cube.filled_data[:],
                              argmaxmap[np.newaxis, :, :]+1, 0).value
     Tdown = np.take_along_axis(cube.filled_data[:],
@@ -674,14 +682,6 @@ def write_vquad(cubein,
                                unit)
 
     vmaxmap[~np.isfinite(maxmap)] = np.nan
-    vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)
-    if unit is not None:
-        vmaxmap = vmaxmap.to(unit)
-    vmaxmap_projection = Projection(vmaxmap,
-                                    wcs=maxmap.wcs,
-                                    header=maxmap.header)
-    if outfile is not None:
-        vmaxmap_projection.write(outfile, overwrite=overwrite)
 
     if errorfile is not None and rms is None:
         logger.error("Vquad error requested but no RMS provided")
@@ -741,6 +741,15 @@ def write_vquad(cubein,
                                         header=maxmap.header)
         if errorfile is not None:
             vquaderr_projection.write(errorfile, overwrite=overwrite)
+
+    vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)
+    if unit is not None:
+        vmaxmap = vmaxmap.to(unit)
+    vmaxmap_projection = Projection(vmaxmap,
+                                    wcs=maxmap.wcs,
+                                    header=maxmap.header)
+    if outfile is not None:
+        vmaxmap_projection.write(outfile, overwrite=overwrite)
 
     if return_products and vquaderr_projection is not None:
         return(vmaxmap_projection, vquaderr_projection)
@@ -904,7 +913,6 @@ def write_moment1_hybrid(cube,
         mom1hybrid_error[~np.isfinite(mom1hybrid.value)] = np.nan
         strictvals = np.isfinite(mom1strict_error.value)
         mom1hybrid_error[strictvals] = mom1strict_error[strictvals]
-        import pdb; pdb.set_trace()
         if unit is not None:
             mom1hybrid_error = mom1hybrid_error.to(unit)
         mom1hybrid_error_proj = Projection(mom1hybrid_error,

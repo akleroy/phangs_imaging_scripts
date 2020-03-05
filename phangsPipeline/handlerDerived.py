@@ -1,4 +1,4 @@
-"""productHandler
+"""DerivativeHandler
 
 This module creates signal masks based on image cubes, and then applies
 the masks to make moment maps. This is done for each galaxy at multiple
@@ -7,16 +7,16 @@ spatial scales.
 Example:
     $ ipython
     from phangsPipeline import handlerKeys as kh
-    from phangsPipeline import productHandler as prh
+    from phangsPipeline import handlerDerived as dh
     this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
-    this_prh = prh.ProductHandler(key_handler = this_kh)
-    this_prh.set_targets(only = ['ngc0628', 'ngc2997', 'ngc4321'])
-    this_prh.set_no_interf_configs(no_interf = False)
-    this_prh.set_interf_configs(only = ['7m'])
-    this_prh.set_feather_configs(only = ['7m+tp'])
-    this_prh.set_line_products(only = ['co21'])
-    this_prh.set_no_cont_products(no_cont = True)
-    this_prh.loop_product()
+    this_dh = dh.ProductHandler(key_handler = this_kh)
+    this_dh.set_targets(only = ['ngc0628', 'ngc2997', 'ngc4321'])
+    this_dh.set_no_interf_configs(no_interf = False)
+    this_dh.set_interf_configs(only = ['7m'])
+    this_dh.set_feather_configs(only = ['7m+tp'])
+    this_dh.set_line_products(only = ['co21'])
+    this_dh.set_no_cont_products(no_cont = True)
+    this_dh.loop_product()
 
  """
 
@@ -41,15 +41,16 @@ else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import utils
+# import utils
 import utilsResolutions
 import utilsFilenames
 import line_list
 import handlerTemplate
 import scMaskingRoutines as scmasking
-import scProductRoutines as scproduct
+import scDerivativeRoutines as scderiv
+from scMoments import moment_generator
 
-class ProductHandler(handlerTemplate.HandlerTemplate):
+class DerivedHandler(handlerTemplate.HandlerTemplate):
     """
     Class to create signal masks based on image cubes, and then apply
     the masks to make moment maps. This is done for each galaxy at
@@ -191,7 +192,7 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
         indir = os.path.abspath(indir)
         logger.debug('indir: '+indir)
         
-        outdir = self._kh.get_product_dir_for_target(target=target, changeto=False)
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
         outdir = os.path.abspath(outdir)
         logger.debug('outdir: '+outdir)
         
@@ -227,12 +228,24 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
                 elif utilsResolutions.get_angular_resolution_for_res(this_res) > utilsResolutions.get_angular_resolution_for_res(lowest_res):
                     lowest_res = this_res
                     lowest_res_tag = res_tag
-                # 
-                image_basename = re.sub('_pbcorr_trimmed_k_res'+res_tag+r'\.fits$', '', os.path.basename(cube_filename)) # remove suffix
-                for tag in ['hybridmask', 'signalmask']:
-                    fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag+'_res'+res_tag+'.fits')
+
+                # for tag in ['hybridmask', 'signalmask']:
+                #     derived_name = utilsFilenames.get_derived_rootname(target=target,
+                #                                                        config=config,
+                #                                                        product=product,
+                #                                                        ext='pbcorr_trimmed_k',
+                #                                                        res_tag=res_tag,
+                #                                                        derived=tag)
+                #     fname_dict[res_tag][tag] = os.path.join(outdir, derived_name)
                 for tag in ['broad', 'strict']:
-                    fname_dict[res_tag][tag] = os.path.join(outdir, image_basename+'_'+tag) # we will append mom0 mom1 then res_tag
+                    derived_name = utilsFilenames.get_derived_rootname(target=target,
+                                                                       config=config,
+                                                                       product=product,
+                                                                       ext='pbcorr_trimmed_k',
+                                                                       res_tag=res_tag,
+                                                                       derived=tag)
+                    fname_dict[res_tag][tag] = os.path.join(
+                        outdir, derived_name)
             else:
                 # file not found
                 this_res_in_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res)
@@ -304,138 +317,80 @@ class ProductHandler(handlerTemplate.HandlerTemplate):
             mask_spectralcube = SpectralCube(data=mask.astype(int), wcs=wcs, header=header_to_write)
             mask_spectralcube.write(outfile, format="fits")
 
-    def task_generate_products(
-        target = None, 
-        config = None, 
-        product = None, 
-        res_tag = None,
-        do_moment0 = True,
-        do_moment1 = True,
-        do_moment2 = True,
-        do_ew = True,
-        do_tmax = True,
-        do_vmax = True,
-        do_vquad = True,
-        do_errormaps = True,
-        ):
-        """
-        Placeholder for a task to wrap product generation.
-        """
-        pass
+    def recipe_build_strict_moments(self,
+                                    target=None,
+                                    product=None,
+                                    config=None,
+                                    ):
 
-    def task_write_products(
-        self,
-        cube,
-        rms,
-        outfile, 
-        res_tag=None,
-        do_moment0 = True,
-        do_moment1 = True,
-        do_moment2 = True,
-        do_ew = True,
-        do_tmax = True,
-        do_vmax = True,
-        do_vquad = True,
-        do_errormaps = True,
-        ):
-        """
-        Collapse masked cube as our products and write to disk. 
-        """
+        if target is None:
+            logger.error('Please input a target.')
+            raise Exception('Please input a target.')
+        if product is None:
+            logger.error('Please input a product.')
+            raise Exception('Please input a product.')
+        if config is None:
+            logger.error('Please input a config.')
+            raise Exception('Please input a config.')
+        
+        # get fname dict for this target and config
+        fname_dict = self._fname_dict(target=target,
+                                      config=config,
+                                      product=product)
 
-        # AKL - suggest to move this out of here. Do ALL the file
-        # naming in another task and make this one a generally useful
-        # task to make all the products for a cube+rms+outfile . That
-        # might even migrate out to the scRoutines as a general
-        # purpose utility. Minor, but I think we want to separate code
-        # about the context and file names from our generall useful
-        # things and this is generally useful.
+        res_list = self._kh.get_res_for_config(config)
+        for this_res in res_list:
+            res_tag = utilsResolutions.get_tag_for_res(this_res)
+            if res_tag in fname_dict:
+                cube = SpectralCube.read(
+                    fname_dict[res_tag]['pbcorr_trimmed_k'])
+                root_name = fname_dict[res_tag]['strict']
+                moment_generator(cube,
+                                 root_name=root_name, 
+                                 generate_mask=True)
 
-        # 
-        if re.match(r'\.fits$', outfile):
-            outfile = re.sub(r'\.fits$', r'', outfile) # remove suffix
-        # 
-        if res_tag is not None:
-            res_tag_ext = '_res'+res_tag
-        else:
-            res_tag_ext = ''
-        # 
+    def recipe_build_broad_moments(self,
+                                   target=None,
+                                   product=None,
+                                   config=None,
+                                   ):
+        if target is None:
+            logger.error('Please input a target.')
+            raise Exception('Please input a target.')
+        if product is None:
+            logger.error('Please input a product.')
+            raise Exception('Please input a product.')
+        if config is None:
+            logger.error('Please input a config.')
+            raise Exception('Please input a config.')
 
-        # AKL - You could consider to change the format to a string
-        # list ['moment0','vmax, ...] if we want to avoid doing
-        # everything with hardcoded kwargs. Makes it easier to select
-        # a suite of products in the future, though the strings are a
-        # bit inelegant.
+        fname_dict = self._fname_dict(target=target,
+                                      config=config,
+                                      product=product)
+        res_list = self._kh.get_res_for_config(config)
+        for this_res in res_list:
+            res_tag = utilsResolutions.get_tag_for_res(this_res)
+            if res_tag in fname_dict:
+                hires_root_name = fname_dict[res_tag]['strict']
+                lores_cube_tag = fname_dict['res_lowresmask']
+                if lores_cube_tag == res_tag:
+                    continue
+                lores_root_name = fname_dict[lores_cube_tag]['strict']
 
-        process_list = []
-        if do_moment0:   
-            process_list.append({'outfile': outfile+'_mom0'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom0'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment0, 
-                                 'unit': u.K * u.km/u.s })
-        if do_moment1:   
-            process_list.append({'outfile': outfile+'_mom1'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom1'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment1, 
-                                 'unit': u.km/u.s })
-        if do_moment2:   
-            process_list.append({'outfile': outfile+'_mom2'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_emom2'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_moment2, 
-                                 'unit': u.km/u.s })
-        if do_ew:        
-            process_list.append({'outfile': outfile+'_ew'+res_tag_ext+'.fits',    
-                                 'errorfile': outfile+'_eew'+res_tag_ext+'.fits',    
-                                 'func': scproduct.write_ew,      
-                                 'unit': u.km/u.s })
-        if do_tmax:      
-            process_list.append({'outfile': outfile+'_tmax'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_etmax'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_tmax,    
-                                 'unit': u.K })
-        if do_vmax:      
-            process_list.append({'outfile': outfile+'_vmax'+res_tag_ext+'.fits',  
-                                 'errorfile': outfile+'_evmax'+res_tag_ext+'.fits',  
-                                 'func': scproduct.write_vmax,    
-                                 'unit': u.km/u.s })
-        if do_vquad:     
-            process_list.append({'outfile': outfile+'_vquad'+res_tag_ext+'.fits', 
-                                 'errorfile': outfile+'_evquad'+res_tag_ext+'.fits', 
-                                 'func': scproduct.write_vquad,   
-                                 'unit': u.km/u.s })
-        # 
-        # delete old files
-
-        # AKL - not a big deal, but do you want an overwrite flag?
-
-        for process_dict in process_list:
-            outfile = process_dict['outfile']
-            errorfile = process_dict['errorfile'] if do_errormaps else None
-            if os.path.isfile(outfile):
-                os.remove(outfile)
-                logger.debug('Deleting old file "'+outfile+'"')
-            if os.path.isfile(errorfile):
-                os.remove(errorfile)
-                logger.debug('Deleting old file "'+errorfile+'"')
-        # 
-        # make moment maps and other products using scProductRoutines functions.
-
-        for process_dict in process_list:
-            processfunction = process_dict['func']
-            outfile = process_dict['outfile']
-            errorfile = process_dict['errorfile'] if do_errormaps else None
-            logger.info('Producing "'+outfile+'"')
-            processfunction(cube,
-                            rms = rms, 
-                            outfile = outfile, 
-                            errorfile = errorfile)
-
-    ###############################################
-    # Recipes - larger combinations of many steps #
-    ###############################################
-
-    # AKL - I would deprecate this in favor of building ALL strict
-    # maps first then JUST writing a routine to select the appropriate
-    # low resolution mask.
+                cube = SpectralCube.read(
+                    fname_dict[res_tag]['pbcorr_trimmed_k'])
+                broad_mask = scmasking.recipe_hybridize_mask(hires_root_name
+                                                             + '_signalmask.fits',
+                                                             lores_root_name
+                                                             + '_signalmask.fits')
+                root_name = fname_dict[res_tag]['broad']
+                rms = SpectralCube.read(hires_root_name + '_noise.fits')
+                moment_generator(cube,
+                                 rms=rms,
+                                 mask=broad_mask,
+                                 root_name=root_name,
+                                 generate_mask=False,
+                                 generate_noise=False)
 
     def recipe_building_low_resolution_mask(
         self,

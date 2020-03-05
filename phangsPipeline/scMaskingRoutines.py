@@ -8,8 +8,12 @@ from astropy.convolution import convolve, Gaussian2DKernel
 import scipy.stats as ss
 
 from spectral_cube import SpectralCube
-from astropy.wcs import wcs
+import astropy.wcs as wcs
+import astropy.units as u
 # from pipelineVersion import version as pipeVer
+from astropy.io import fits
+
+np.seterr(divide='ignore', invalid='ignore')
 
 mad_to_std_fac = 1.482602218505602
 
@@ -21,33 +25,30 @@ def mad_zero_centered(data, mask=None):
     where_data_valid = np.logical_and(~np.isnan(data), np.isfinite(data))
     if mask is None:
         sig_false = ss.norm.isf(0.5 / data.size)
-        # 
-        # The following 3 lines were replaced by the next 5 lines to avoid the "Invalid value encountered in less" issue. 
-        #mad1 = mad_to_std_fac * np.abs(np.median(data[data < 0]))
-        #mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data <
-        #                                                (sig_false * mad1)])))
-        # 
-        where_data_less_than_zero = np.less(data, 0, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool))
-        mad1 = mad_to_std_fac * np.abs(np.median(data[where_data_less_than_zero]))
-        # 
-        where_data_less_than_mad1 = np.less(data, sig_false * mad1, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool))
-        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[where_data_less_than_mad1])))
+        data_lt_zero = np.less(data, 0,
+                               where=where_data_valid,
+                               out=np.full(where_data_valid.shape,
+                                           False, dtype=bool))
+        mad1 = mad_to_std_fac * np.abs(np.median(data[data_lt_zero]))
+    
+        data_lt_mad1 = np.less(data, sig_false * mad1,
+                               where=where_data_valid,
+                               out=np.full(where_data_valid.shape,
+                                           False, dtype=bool))
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data_lt_mad1])))
     else:
         nData = mask.sum()
         sig_false = ss.norm.isf(0.5 / nData)
-        # 
-        # The following 4 lines were replaced by the next 5 lines to avoid the "Invalid value encountered in less" issue. 
-        #mad1 = mad_to_std_fac * np.abs(np.median(data[(data < 0) * mask]))
-        #mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[(data <
-        #                                                (sig_false * mad1)) 
-        #                                                * mask])))
-        # 
-        where_data_less_than_zero = np.logical_and(np.less(data, 0, where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool)), mask)
-        mad1 = mad_to_std_fac * np.abs(np.median(data[where_data_less_than_zero]))
-        # 
-        where_data_less_than_mad1 = np.logical_and(np.less(data, (sig_false * mad1), where=where_data_valid, out=np.full(where_data_valid.shape, False, dtype=bool)), mask)
-        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[where_data_less_than_mad1])))
-    
+        data_lt_zero = np.logical_and(np.less(data, 0, 
+                                      where=where_data_valid,
+                                      out=np.full(where_data_valid.shape,
+                                                  False, dtype=bool)), mask)
+        mad1 = mad_to_std_fac * np.abs(np.median(data[data_lt_zero]))
+        data_lt_mad1 = np.logical_and(np.less(data, (sig_false * mad1),
+                                      where=where_data_valid,
+                                      out=np.full(where_data_valid.shape,
+                                                  False, dtype=bool)), mask)
+        mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data_lt_mad1])))
     return(mad2)
 
 
@@ -97,11 +98,12 @@ def simple_mask(data, noise, hi_thresh=5, hi_nchan=2,
     if lo_thresh is None:
         lo_thresh = hi_thresh
     
-    # The following 2 lines were replaced by the next 2 lines to avoid the "Invalid value encountered" issue. 
-    #hi_mask = signif >= hi_thresh
-    #lo_mask = signif >= lo_thresh
-    hi_mask = np.greater_equal(signif, hi_thresh, where=(~np.isnan(signif)), out=np.full(signif.shape, False, dtype=bool))
-    lo_mask = np.greater_equal(signif, lo_thresh, where=(~np.isnan(signif)), out=np.full(signif.shape, False, dtype=bool))
+    hi_mask = np.greater_equal(signif, hi_thresh,
+                               where=(~np.isnan(signif)),
+                               out=np.full(signif.shape, False, dtype=bool))
+    lo_mask = np.greater_equal(signif, lo_thresh,
+                               where=(~np.isnan(signif)),
+                               out=np.full(signif.shape, False, dtype=bool))
     
     histr = np.ones(hi_nchan, dtype=np.bool)
     lostr = np.ones(lo_nchan, dtype=np.bool)
@@ -198,10 +200,10 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
     boxr = step // 2
     if box is not None:
         step = np.floor(box/2.5).astype(np.int)
-        boxr = step // 2
+        boxr = int(box // 2)
     if spec_box is not None:
         spec_step = np.floor(box/2).astype(np.int)
-        boxv = spec_step // 2
+        boxv = int(spec_box // 2)
     else:
         boxv = 0
 
@@ -244,8 +246,8 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
         # Smooth spectral shape
         if bandpass_smooth_window > 0:
             noise_spec = savgol_filter(noise_spec,
-                                       bandpass_smooth_window,
-                                       bandpass_smooth_order)
+                                       int(bandpass_smooth_window),
+                                       int(bandpass_smooth_order))
         noise_spec /= np.nanmedian(noise_spec)
         noise_cube = np.ones_like(data)
         noise_cube *= (noise_map[np.newaxis, :]
@@ -258,9 +260,9 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
     return(noise_cube_out)
 
 
-def hybridize_mask(hires_in, lores_in, order='bilinear',
-                   return_cube=False):
-    
+def recipe_hybridize_mask(hires_in, lores_in, order='bilinear',
+                          return_cube=False):
+
     if type(hires_in) is str:
         hires_hdulist = fits.open(hires_in)
         hires = SpectralCube(np.array(hires_hdulist[0].data,
@@ -270,11 +272,11 @@ def hybridize_mask(hires_in, lores_in, order='bilinear',
     elif type(hires_in) is SpectralCube:
         hires = hires_in
     else:
-        logging.log('Unrecognized input type')
+        logging.error('Unrecognized input type')
         raise NotImplementedError
 
     if type(lores_in) is str:
-        lores_hdulist = fits.open(lores_filename)
+        lores_hdulist = fits.open(lores_in)
         lores = SpectralCube(np.array(lores_hdulist[0].data,
                                       dtype=np.bool),
                              wcs=wcs.WCS(lores_hdulist[0].header),
@@ -282,7 +284,7 @@ def hybridize_mask(hires_in, lores_in, order='bilinear',
     elif type(lores_in) is SpectralCube:
         lores = lores_in
     else:
-        logging.log('Unrecognized input type')
+        logging.error('Unrecognized input type')
         raise NotImplementedError
 
     lores = lores.reproject(hires.header, order=order)
@@ -290,7 +292,58 @@ def hybridize_mask(hires_in, lores_in, order='bilinear',
     mask = np.logical_or(np.array(hires.filled_data[:].value, dtype=np.bool),
                          np.array(lores.filled_data[:].value, dtype=np.bool))
     if return_cube:
-        mask = SpectralCube(mask, wcs=wcs.WCS(hires.header),
-                            header=hires.header,
+        mask = SpectralCube(mask, wcs=wcs.WCS(hires_hdulist[0].header),
+                            header=hires_hdulist[0].header,
                             meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
     return(mask)
+
+
+def recipe_phangs_noise(cube, noise_kwargs=None,
+                        return_spectral_cube=False):
+    if noise_kwargs is None:
+        pixels_per_beam = (cube.beam.sr
+                           / wcs.utils.proj_plane_pixel_area(cube.wcs)
+                           / u.deg**2).to(u.dimensionless_unscaled).value
+        box = np.ceil(2.5 * pixels_per_beam**0.5)
+        spectral_smooth = np.ceil(cube.shape[0] / 5)
+        # This looks for a non-trivial signal mask.
+        if (np.sum(cube.mask.include())
+                < np.sum(np.isfinite(cube.filled_data[:].value))):
+            m = cube.mask.include()
+        else:
+            m = None
+        rms = noise_cube(cube.filled_data[:].value,
+                         mask=m,
+                         box=box,
+                         bandpass_smooth_window=spectral_smooth,
+                         spec_box=5,
+                         iterations=3)
+    else:
+        rms = noise_cube(cube.filled_data[:].value,
+                         mask=cube.mask.include(),
+                         **noise_kwargs)
+    if return_spectral_cube:
+        rms = SpectralCube(rms, wcs=cube.wcs, header=cube.header)
+    return(rms)
+
+
+def recipe_phangs_mask(cube,
+                       mask_kwargs=None,
+                       noise_kwargs=None,
+                       return_rms=False):
+
+    rms = recipe_phangs_noise(cube, noise_kwargs=noise_kwargs)
+
+    if mask_kwargs is None:
+        mask = simple_mask(cube.filled_data[:].value,
+                           rms, hi_thresh=4, hi_nchan=2,
+                           lo_thresh=2, lo_nchan=2)
+    else:
+        mask = simple_mask(cube.filled_data[:].value,
+                           rms, **mask_kwargs)
+
+    if return_rms:
+        return(cube.with_mask(mask, inherit_mask=False),
+               SpectralCube(rms, wcs=cube.wcs, header=cube.header))
+    else:
+        return(cube.with_mask(mask, inherit_mask=False))
