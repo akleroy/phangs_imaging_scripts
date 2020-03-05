@@ -250,7 +250,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                         lowest_res_tag = res_tag
             else:
                 # file not found
-                logger.warning('Cube with tag '+res_tag+' at '+str(np.round(this_res,2))+' arcsec resolution was not found: "'+os.path.join(indir, cube_filename)+'"')
+                logger.warning('Cube with resolution tag '+res_tag+' was not found: "'+os.path.join(indir, cube_filename)+'"')
         
         if closeto is not None:
             return closest_res, closest_res_tag
