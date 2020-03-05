@@ -93,8 +93,8 @@ class KeyHandler:
             logger.error("Master key "+master_key+" not found. Aborting.")
             raise Exception("Master key "+master_key+" not found. Aborting.")
             return(False)
-        pwd = os.getcwd()
-        self._master_key = pwd + '/' + master_key
+        
+        self._master_key = os.path.abspath(master_key)
         self._read_master_key()
 
         logger.info("")
@@ -172,11 +172,11 @@ class KeyHandler:
         
         # Initialize
 
-        self._key_dir = None
-        self._imaging_root = os.getcwd()+'/../imaging/'
-        self._postprocess_root = os.getcwd()+'/../postprocess/'
-        self._derived_root = os.getcwd()+'/../derived/'
-        self._release_root = os.getcwd()+'/../release/'
+        self._key_dir = os.path.dirname(self._master_key)+os.sep # None #<20200305><DL># We do not have to set a 'key_dir' in "master_key.txt", just use its directory. If set, then we still use the one in the 'key_dir' in "master_key.txt".
+        self._imaging_root = '' # os.getcwd()+'/../imaging/'
+        self._postprocess_root = '' # os.getcwd()+'/../postprocess/'
+        self._derived_root = '' # os.getcwd()+'/../derived/'
+        self._release_root = '' # os.getcwd()+'/../release/'
 
         self._ms_roots = []
         self._sd_roots = []
@@ -330,35 +330,49 @@ class KeyHandler:
 
         self._key_dir_exists = os.path.isdir(self._key_dir)
         if not self._key_dir_exists:
-            logger.error("Missing the key directory. Currently set to "+ self._key_dir)
+            logger.error("Missing the key directory. Currentloy set to "+ self._key_dir)
             logger.error("I need the key directory to proceed. Set key_dir in your master_key file.")
             all_valid = False
             errors += 1
-            return(all_valid)
+            #return(all_valid)
 
-        self._imaging_root_exists = os.path.isdir(self._imaging_root)
-        if not self._imaging_root_exists:
-            logger.error("The imaging root directory does not exist. Currently set to "+ self._imaging_root)
-            logger.error("I need the imaging root to proceed. Set imaging_root in your master_key file.")
+        for keyname in ['imaging', 'postprocess', 'derived', 'release']:
+            keypath = getattr(self, '_%s_root'%(keyname))
+            if keypath is None or keypath == '':
+                logger.error("The %s root directory has not been set."%(keyname))
+                logger.error("Please set a valid %s_root in your master_key file."%(keyname))
+                all_valid = False
+                errors += 1
+
+        if len(self._ms_roots) == 0:
+            logger.error("The ms root directory has not been set.")
+            logger.error("Please set one or more ms_root in your master_key file.")
             all_valid = False
             errors += 1
-            return(all_valid)
+        
+        for keypath in self._ms_roots:
+            if not os.path.isdir(keypath):
+                logger.error("The ms root directory does not exist: %r"%(keypath))
+                logger.error("Please set the correct ms_root in your master_key file.")
+                all_valid = False
+                errors += 1
 
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
              self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
-                this_key_exists = os.path.isfile(self._key_dir+this_key)
+                this_key_exists = os.path.isfile(self._key_dir + this_key)
                 if not this_key_exists:
                     all_valid = False
                     errors += 1
-                    logger.error("key "+ this_key+ " is defined but does not exist in "+self._key_dir) #<TODO><DL># should we throw an exception
+                    logger.error("key "+ this_key + " is defined but does not exist in "+self._key_dir)
 
         if all_valid:
-            logger.info("Checked file existence and all files found.")
+            logger.info("Checked key file existence and all files found.")
         else:
-            logger.error("Checked file existence. Found "+str(errors)+"errors.")
+            logger.error("Checked key file existence. Found "+str(errors)+" errors.")
+            raise Exception("Checked key file existence. Found "+str(errors)+" errors.")
         
         return(all_valid)
 
@@ -580,7 +594,7 @@ class KeyHandler:
             ms_targets = self._ms_dict.keys()
             for target in ms_targets:
                 if target not in self._target_list:
-                    logger.error(target+ " is in the measurement set key but not the target list.")
+                    #logger.error(target+ " is in the measurement set key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -588,7 +602,7 @@ class KeyHandler:
             dir_targets = self._dir_for_target.keys()
             for target in dir_targets:
                 if target not in self._target_list:
-                    logger.error(target+ " is in the directory key but not the target list.")
+                    #logger.error(target+ " is in the directory key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -596,7 +610,7 @@ class KeyHandler:
             sd_targets = self._sd_dict.keys()
             for target in sd_targets:
                 if target not in self._target_list:
-                    logger.error(target+ " is in the single dish key but not the target list.")
+                    #logger.error(target+ " is in the single dish key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -604,7 +618,7 @@ class KeyHandler:
             linmos_targets = self._linmos_dict.keys()
             for target in linmos_targets:
                 if target not in self._target_list:
-                    logger.error(target+ " is in the linear mosaic key but not the target list.")
+                    #logger.error(target+ " is in the linear mosaic key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -612,10 +626,10 @@ class KeyHandler:
             distance_targets = self._distance_dict.keys()
             for target in distance_targets:
                 if target not in self._target_list:
-                    logger.error(target+ " is in the distance key but not the target list.")
+                    #logger.error(target+ " is in the distance key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
-            
+        
         self._missing_targets = missing_targets
 
         logger.info("Total of "+str(len(self._target_list))+" targets.")
@@ -623,7 +637,7 @@ class KeyHandler:
         if n_missing == 0:
             logger.info("No cases found where I expect a target but lack a definition.")
         else:
-            logger.error(str(n_missing)+" cases where I expected a target definition but didn't find one.")
+            logger.warning(str(n_missing)+" cases where I expected a target definition but didn't find one.")
 
         return()
         
@@ -736,9 +750,9 @@ class KeyHandler:
             logger.info("No missing targets.")
             return(None)
             
-        logger.error("Missing a total of "+str(len(self._missing_targets))+" target definitions.")
-        for target in self._missing_targets:
-            logger.error("missing: "+target)
+        logger.warning("Missing a total of "+str(len(self._missing_targets))+" target definitions.") # missing sources in the target_definitions.txt 
+        #for target in self._missing_targets:
+        #    logger.error("missing: "+target)
             
         return()
     
@@ -814,13 +828,13 @@ class KeyHandler:
                 if found:
                     continue
                 missing_count += 1
-                logger.error("Missing singledish data for "+target+" "+product)
+                logger.warning("Missing singledish data for "+target+" "+product)
         
         logger.info("Verified the existence of "+str(found_count)+" single dish data sets.")
         if missing_count == 0:
             logger.info("No single dish data found to be missing.")
         else:
-            logger.error("Missing "+str(missing_count)+" single dish key entries.")
+            logger.warning("Missing "+str(missing_count)+" single dish key entries.")
 
         return()
 
@@ -1079,7 +1093,22 @@ class KeyHandler:
         this_list = \
             list_utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
         return(this_list)
-
+    
+    def get_all_configs(self):
+        """
+        Get a list of all interf and feather configs.
+        """
+        interf_config = self.get_interf_configs()
+        feather_config = self.get_feather_configs()
+        all_configs = []
+        if interf_config is not None:
+            all_configs.extend(interf_config)
+        if feather_config is not None:
+            all_configs.extend(feather_config)
+        if len(all_configs) == 0:
+            all_configs = None
+        return all_configs
+    
     def get_line_products(self, only=None, skip=None):
         """
         Get a list of line 'products,' i.e., line plus velocity
@@ -1113,6 +1142,50 @@ class KeyHandler:
             list_utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
         return(this_list)
 
+    def get_all_mosaic_targets(self):
+        """Get all mosaic targets defined in "linearmosaic_definitions.txt" which have parts.
+        """
+        if self._linmos_dict is not None:
+            if len(self._linmos_dict) > 0:
+                return sorted(self._linmos_dict.keys())
+        return None
+
+    def get_all_targets(self):
+        """Get all targets defined in "target_definitions.txt", including mosaic targets and their parts and non mosaic targets.
+        """
+        if self._target_list is not None:
+            if len(self._target_list) > 0:
+                return sorted(list(set(self._target_list)))
+        return None
+
+    def get_all_non_mosaic_targets(self):
+        """Get all targets which are not mosaic targets.
+        """
+        all_mosaic_targets = self.get_all_mosaic_targets()
+        all_targets = self.get_all_targets()
+        if all_targets is not None:
+            if all_mosaic_targets is not None:
+                return [t for t in all_targets if (t not in all_mosaic_targets)]
+            else:
+                return all_targets
+        return None
+    
+    def get_mosaic_target_for_parts(self, target_part_name=None):
+        """Get mosaic target name "ngc4321" given a part name like "ngc4321_1". This is the inverted operation of `get_parts_for_linmos`.
+        
+        This is also the same as `is_target_in_mosaic(target_part_name, return_target_name=True)`.
+        """
+        if target_part_name is None:
+            return None
+        if self._linmos_dict is not None:
+            if len(self._linmos_dict) > 0:
+                if self._mosaic_assign_dict is None or len(self._mosaic_assign_dict) == 0:
+                    self._map_targets_to_mosaics()
+                if len(self._mosaic_assign_dict) > 0:
+                    if target_part_name in self._mosaic_assign_dict.keys():
+                        return self._mosaic_assign_dict[target_part_name]
+        return None
+    
     def is_target_linmos(self, target=None):
         """
         Return True or False based on whether the target is a linear
@@ -1199,13 +1272,15 @@ class KeyHandler:
             logging.error("Please specify a target.")
             raise Exception("Please specify a target.")
         
+        _, target_name = self.is_target_in_mosaic(target, return_target_name=True)
+        
         distance = None
         #logger.debug('*******self._distance_dict*******'+': '+str(self._distance_dict))
         if self._distance_dict is not None:
             #logger.debug('*******self._distance_dict.keys()*******'+': '+str(self._distance_dict.keys()))
-            if target in self._distance_dict:
-                if 'distance' in self._distance_dict[target]:
-                    distance = self._distance_dict[target]['distance']
+            if target_name in self._distance_dict:
+                if 'distance' in self._distance_dict[target_name]:
+                    distance = self._distance_dict[target_name]['distance']
         
         #if distance is None:
         #    logging.error('No distance value is set for the target '+target+'. Please check your "distance_key.txt".')
@@ -1258,8 +1333,8 @@ class KeyHandler:
                 decstring = self._target_dict[target]['decstring']
         
         if rastring is None or decstring is None:
-            logging.error('Missing phase center for target ', target)
-            raise Exception('Missing phase center for target ', target)
+            logging.error('Missing phase center for target '+target)
+            raise Exception('Missing phase center for target '+target)
         
         return(rastring, decstring)
 
@@ -1957,29 +2032,29 @@ class KeyHandler:
 
         if imaging:
             if not os.path.isdir(self._imaging_root):
-                logging.info("Missing imaging root directory.")
-                logging.info("Create: "+self._imaging_root)
+                #logging.info("Missing imaging root directory.")
+                logging.info("Creating imaging root directory: "+self._imaging_root)
                 #return(False)
                 os.makedirs(self._imaging_root)
 
         if postprocess:
             if not os.path.isdir(self._postprocess_root):
-                logging.info("Missing postprocess root directory.")
-                logging.info("Create: "+self._postprocess_root)
+                #logging.info("Missing postprocess root directory.")
+                logging.info("Creating postprocess root directory: "+self._postprocess_root)
                 #return(False)
                 os.makedirs(self._postprocess_root)
 
         if derived:
             if not os.path.isdir(self._derived_root):
-                logging.info("Missing derived root directory.")
-                logging.info("Create: "+self._derived_root)
+                #logging.info("Missing derived root directory.")
+                logging.info("Creating derived root directory: "+self._derived_root)
                 #return(False)
                 os.makedirs(self._derived_root)
 
         if release:
             if not os.path.isdir(self._release_root):
-                logging.info("Missing release root directory.")
-                logging.info("Create: "+self._release_root)
+                #logging.info("Missing release root directory.")
+                logging.info("Creating release root directory: "+self._release_root)
                 #return(False)
                 os.makedirs(self._release_root)
 
