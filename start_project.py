@@ -133,8 +133,8 @@ multipart_num_var_dict = {  'name': 'multipart_num',
 phase_center_var_dict = {   'name': 'phase_center', 
                             'prompt': '\nPlease input R.A. and Dec. of the phase center of {} (J2000 epoch, FK5 frame)\n Optimal formats: 00h00m00s +01d00m00s (HMS dms) or 0.0 0.0 (decimal degrees):\n', 
                             'prompt_fields': ['this mosaic observation'], 
-                            'regex': r'^([0-9hms:.+-]+) +([0-9dms:.+-]+)$', 
-                            'func': lambda x: SkyCoord(re.sub(r'^([0-9hms:.+-]+) +([0-9dms:.+-]+)$', r'\1 \2', x), unit='deg'), 
+                            'regex': r'^([0-9hms:.+-]+)[ \t]+([0-9dms:.+-]+)$', 
+                            'func': lambda x: SkyCoord(re.sub(r'^([0-9hms:.+-]+)[ \t]+([0-9dms:.+-]+)$', r'\1 \2', x), unit='deg'), 
                             'type': SkyCoord, 
                             'value': None, 
                             }
@@ -878,8 +878,8 @@ key_contents = read_key_file_contents(key_filepath)
 # for ms_root, we need all previous contents.
 ms_root_list = []
 for line_content in key_contents:
-    if re.match(r'^([^ ]+) +([^ ]+).*', line_content):
-        key, value = re.sub(r'^([^ ]+) +([^ ]+).*', r'\1 \2', line_content).split()
+    if re.match(r'^([^ ]+)[ \t]+([^ ]+).*', line_content):
+        key, value = re.sub(r'^([^ ]+)[ \t]+([^ ]+).*', r'\1 \2', line_content).split()
         if key == 'ms_root':
             if value != location_keys['ms_root']:
                 ms_root_list.append(value)
