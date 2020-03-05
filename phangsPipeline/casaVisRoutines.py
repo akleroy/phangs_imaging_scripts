@@ -38,19 +38,125 @@ from pipelineVersion import version as pipeVer
 # Physical constants
 sol_kms = 2.9979246e5
 
-#######################################
-# Split and combine measurement sets. #
-#######################################
+##########################################
+# Split, copy, combine measurement sets. #
+##########################################
     
+def copy_ms(
+    infile = None, 
+    outfile = None, 
+    use_symlink = True, 
+    overwrite = False, 
+    ):
+    """
+    Copy a measurement set, optionally using symlink instead of
+    actually copying.
+    """
+        
+    # Check inputs
+
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
+    
+    if outfile is None:
+        logging.error("Please specify outfile.")
+        raise Exception("Please specify outfile.")
+    
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')    
+     
+    # Check for presence of existing outfile and abort if it is found
+    # without overwrite permission.
+
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing data "'+outfile+'", will not overwrite.')
+            return()
+
+    # Delete existing output data.
+
+    for suffix in ['', '.flagversions', '.touch']:
+        if os.path.islink(outfile+suffix):
+            os.unlink(outfile+suffix)
+            logger.debug('os.unlink "'+outfile+'"')
+            
+        if os.path.isdir(outfile+suffix):
+            shutil.rmtree(outfile+suffix)
+
+    if use_symlink:
+        
+        # Make links
+        
+        if os.path.isdir(infile):
+            os.symlink(infile, outfile)
+            logger.debug('os.symlink "'+infile+'", "'+outfile+'"')
+            
+        if os.path.isdir(infile+'.flagversions'):
+            os.symlink(infile+'.flagversions', outfile+'.flagversions')
+            logger.debug('os.symlink "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
+            
+        # Check
+            
+        if not os.path.islink(outfile):
+            logger.error('Failed to link the uv data to '+os.path.abspath(outfile)+'!')
+            logger.error('Please check your file system writing permission or system breaks.')
+            raise Exception('Failed to link the uv data to the imaging directory.')
+        
+        return()
+
+    else:
+
+        # Check existing output data
+
+        has_existing_outfile = False
+        if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
+            if not overwrite:
+                has_existing_outfile = True
+
+        # delete existing copied data if not overwriting
+
+        if not has_existing_outfile:
+            for suffix in ['', '.flagversions', '.touch']:
+                if os.path.isdir(outfile+suffix):
+                    shutil.rmtree(outfile+suffix)
+                    logger.debug('shutil.rmtree "'+outfile+suffix+'"')
+                        
+        # copy the data (.touch directory is a temporary flagpost)
+
+        os.mkdir(outfile+'.touch')
+
+        if os.path.isdir(infile):
+            shutil.copytree(infile, outfile)
+            logger.debug('shutil.copytree "'+infile+'", "'+outfile+'"')
+
+        if os.path.isdir(infile+'.flagversions'):
+            shutil.copytree(infile+'.flagversions', outfile+'.flagversions')
+            logger.debug('shutil.copytree "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
+
+        os.rmdir(outfile+'.touch')            
+             
+        # check copied_file, make sure copying was done
+        
+        if not os.path.isdir(outfile) or \
+                os.path.isdir(outfile+'.touch'):
+            logger.error('Failed to copy the uv data to '+os.path.abspath(oufile)+'!')
+            logger.error('Please check your file system writing permission or system breaks.')
+            raise Exception('Failed to copy the uv data to the imaging directory.')
+
+        return()
+
+    return()
+
 def split_science_targets(
     infile = None, 
     outfile = None, 
-    do_split = True,
-    split_field = '', 
-    split_intent = 'OBSERVE_TARGET*', 
-    split_spw = '',
+    field = '', 
+    intent = 'OBSERVE_TARGET*', 
+    spw = '',
+    timebin = '0s',
     do_statwt = False, 
-    use_symlink = True, 
     overwrite = False, 
     ):
     """
@@ -65,15 +171,7 @@ def split_science_targets(
     outfile (str): The output measurement set data.
 
     field (str): The field used for selection.
-        
-    do_split (bool): Set to False to only make a copy of the original
-    measurement set without splitting science targets data. The
-    default is True, splitting science targets data.
-        
-    use_symlink (bool): Set to True to use a symlink instead of making
-    an actual copy of the original measurement set. Only works with
-    do_split=False
-        
+                
     overwrite (bool): Set to True to overwrite existing output
     data. The default is False, not overwriting anything.
     
@@ -101,9 +199,6 @@ def split_science_targets(
         logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
         raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')    
      
-    if do_statwt and not do_split:
-        logging.warning("Stat weight option (do_statwt) only enabled with do_split.")
-
     # Check for presence of existing outfile and abort if it is found
     # without overwrite permission.
 
@@ -123,127 +218,53 @@ def split_science_targets(
             shutil.rmtree(outfile+suffix)
 
     ###########################################################################
-    # COPY: If split is turned off, we are just making a copy.
-    ###########################################################################
-
-    if do_split == False:
-
-        logger.info("")
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("I will just copy or link the data.")
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("")
-
-        if use_symlink:
-            
-            # Make links
-
-            if os.path.isdir(infile):
-                os.symlink(infile, outfile)
-                logger.debug('os.symlink "'+infile+'", "'+outfile+'"')
-
-            if os.path.isdir(infile+'.flagversions'):
-                os.symlink(infile+'.flagversions', outfile+'.flagversions')
-                logger.debug('os.symlink "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
-
-            # Check
-
-            if not os.path.islink(outfile):
-                logger.error('Failed to link the uv data to '+os.path.abspath(outfile)+'!')
-                logger.error('Please check your file system writing permission or system breaks.')
-                raise Exception('Failed to link the uv data to the imaging directory.')
-
-            return()
-
-        else:
-
-            # Check existing output data
-
-            has_existing_outfile = False
-            if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
-                if not overwrite:
-                    has_existing_outfile = True
-
-            # delete existing copied data if not overwriting
-
-            if not has_existing_outfile:
-                for suffix in ['', '.flagversions', '.touch']:
-                    if os.path.isdir(outfile+suffix):
-                        shutil.rmtree(outfile+suffix)
-                        logger.debug('shutil.rmtree "'+outfile+suffix+'"')
-                        
-            # copy the data (.touch directory is a temporary flagpost)
-
-            os.mkdir(outfile+'.touch')
-
-            if os.path.isdir(infile):
-                shutil.copytree(infile, outfile)
-                logger.debug('shutil.copytree "'+infile+'", "'+outfile+'"')
-
-            if os.path.isdir(infile+'.flagversions'):
-                shutil.copytree(infile+'.flagversions', outfile+'.flagversions')
-                logger.debug('shutil.copytree "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
-
-            os.rmdir(outfile+'.touch')            
-             
-            # check copied_file, make sure copying was done
-
-            if not os.path.isdir(outfile) or \
-                    os.path.isdir(outfile+'.touch'):
-                logger.error('Failed to copy the uv data to '+os.path.abspath(oufile)+'!')
-                logger.error('Please check your file system writing permission or system breaks.')
-                raise Exception('Failed to copy the uv data to the imaging directory.')
-
-            return()
-
-    ###########################################################################
     # SPLIT: If split is turned on, split and extract the science target
     ###########################################################################
 
-    if do_split:
-
-        logger.info("")
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("I will split out the data.")
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("")
+    logger.info("")
+    logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+    logger.info("I will split out the data.")
+    logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+    logger.info("")
         
-        logger.info('Splitting from '+infile+' to '+outfile)
+    logger.info('Splitting from '+infile+' to '+outfile)
 
-        # Verify the column to use. If present, we use the corrected
-        # column. If not, then we use the data column.
+    # Verify the column to use. If present, we use the corrected
+    # column. If not, then we use the data column.
 
-        casaStuff.tb.open(infile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
-        if 'CORRECTED_DATA' in colnames:
-            logger.info("Data has a CORRECTED column. Will use that.")
-            use_column = 'CORRECTED'
-        else:
-            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
-            use_column = 'DATA'
-        casaStuff.tb.close()
+    casaStuff.tb.open(infile, nomodify = True)
+    colnames = casaStuff.tb.colnames()
+    if 'CORRECTED_DATA' in colnames:
+        logger.info("Data has a CORRECTED column. Will use that.")
+        use_column = 'CORRECTED'
+    else:
+        logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+        use_column = 'DATA'
+    casaStuff.tb.close()
+        
+    logger.debug('intent='+intent)
+    logger.debug('field='+field)
 
-        logger.debug('intent='+split_intent)
-        logger.debug('field='+split_field)
+    os.mkdir(outfile+'.touch')
+    casaStuff.split(vis = infile, 
+                    intent = intent, 
+                    field = field,
+                    spw = spw,
+                    datacolumn = use_column, 
+                    outputvis = outfile, 
+                    keepflags = False,
+                    timebin = timebin)
+    os.rmdir(outfile+'.touch')
 
+    # Re-weight the data if desired.
+
+    if do_statwt:
+        logger.info("Using statwt to re-weight the data.")
+        logger.debug('casa statwt vis="'+outfile+'"')
         os.mkdir(outfile+'.touch')
-        casaStuff.split(vis = infile, 
-                        intent = split_intent, 
-                        field = split_field,
-                        spw = split_spw,
-                        datacolumn = use_column, 
-                        outputvis = outfile)
+        casaStuff.statwt(vis = outfile, 
+                         datacolumn = 'DATA')
         os.rmdir(outfile+'.touch')
-
-        # Re-weight the data if desired.
-
-        if do_statwt:
-            logger.info("Using statwt to re-weight the data.")
-            logger.debug('casa statwt vis="'+outfile+'"')
-            os.mkdir(outfile+'.touch')
-            casaStuff.statwt(vis = outfile, 
-                             datacolumn = 'DATA')
-            os.rmdir(outfile+'.touch')
             
         return()
 
@@ -395,6 +416,7 @@ def find_spws_for_line(
     line = None, 
     vsys = 0.0, 
     vwidth = 0.0, 
+    max_chanwidth_kms = None,
     exit_on_error = True, 
     ):
     """
@@ -431,6 +453,14 @@ def find_spws_for_line(
     target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
     target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
 
+    # If channel width restrictions are in place, calculate the
+    # implied channel width requirement in GHz.
+
+    if max_chanwidth_kms is not None:
+        max_chanwidth_ghz = target_freq_ghz*max_chanwidth_kms/sol_kms
+    else:
+        max_chanwidth_ghz = None
+
     # Work out which spectral windows contain the line contain
 
     spw_list = []
@@ -444,6 +474,13 @@ def find_spws_for_line(
 
         # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
         this_spw_list = au.getScienceSpwsForFrequency(infile, target_freq*1e9)    
+
+        if max_chanwidth_ghz is not None:
+            for this_spw in this_spw_list:
+                this_chanwidth_ghz = (au.getChanWidths(infile,[this_spw])/1e9)[0]
+                if this_chanwidth_ghz > max_chanwidth_ghz:
+                    this_spw_list.remove(this_spw)
+
         spw_list.extend(this_spw_list)
 
     # If we don't find the line in this data set, issue a warning and

@@ -25,8 +25,6 @@ Example:
 
 """
 
-# 20200303: "get_ms_filenames_and_filepaths" --> "get_all_input_ms"
-
 import os, sys, re, shutil
 import glob
 import numpy as np
@@ -90,7 +88,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         do_extract_line = True,
         do_extract_cont = True,
         make_directories = True,
-        extra_ext = '',         
+        extra_ext = '',       
+        timebin = '0s',
         just_projects=None,        
         overwrite = False, 
         ):
@@ -121,13 +120,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                     
                     if do_copy:
 
-                        self.task_copy_and_split(
+                        self.task_split(
                             target = this_target, 
                             project = this_project, 
                             array_tag = this_array_tag, 
                             obsnum = this_obsnum, 
                             product = this_product,
-                            # could add algorithm flags here
+                            timebin = timebin,
                             overwrite = overwrite, 
                             )
 
@@ -238,7 +237,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
     # Tasks - individual operations on data. #
     ##########################################
     
-    def task_copy_and_split(
+    def task_split(
             self, 
             target = None,
             project = None,
@@ -246,8 +245,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             obsnum = None,
             product = None,
             extra_ext_out = '',
-            do_split = True, 
             do_statwt = False, 
+            timebin = '0s',
             use_symlink = True, 
             overwrite = False, 
             ):
@@ -295,11 +294,17 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                 this_line = self._kh.get_line_tag_for_line_product(product)
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
+                max_chanwidth_kms = self._kh.get_channel_width_for_line_product(product)
 
                 if not self._dry_run and casa_enabled:
                     spw = cvr.find_spws_for_line(infile = infile, 
                                                  line = this_line, 
+                                                 max_chanwidth_kms = max_chanwidth_kms,
                                                  vsys = vsys, vwidth = vwidth)
+
+        # TBD - Work out time binning using some logic once we
+        # generate some context from the keyhandler. For now, just
+        # pass along the parameter below.
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -316,11 +321,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             cvr.split_science_targets(
                 infile = infile, 
                 outfile = outfile,  
-                split_field = field,
-                split_spw = spw,
-                do_split = do_split, 
+                field = field,
+                spw = spw,             
+                timebin = timebin,   
                 do_statwt = do_statwt, 
-                use_symlink = use_symlink, 
                 overwrite = overwrite, 
                 )
 
