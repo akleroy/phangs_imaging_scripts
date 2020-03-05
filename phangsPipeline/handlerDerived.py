@@ -119,7 +119,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             if do_hybridmask_moment_maps:
                 lowres, lowres_tag = self._find_lowest_res(target=this_target, config=this_config, product=this_product, closeto='10.72arcsec')
                 for this_res in self._kh.get_res_for_config(this_config):
-                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
+                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, res=this_res, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
             
             # end of loop
 
@@ -153,23 +153,27 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             raise Exception("Need a product.")
         if config is None:
             raise Exception("Need a config.")
+        if res is None:
+            raise Exception("Need a res.")
         
         # The output is a nested dictionary structure, for each cube
         # resolution (res_tag)
         fname_dict = {}
         indir = self._kh.get_postprocess_dir_for_target(target=target, changeto=False)
         indir = os.path.abspath(indir)
-        logger.debug('indir: '+indir)
+        #logger.debug('indir: '+indir)
         outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
         outdir = os.path.abspath(outdir)
-        logger.debug('outdir: '+outdir)
+        #logger.debug('outdir: '+outdir)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         
-        res_tag = utilsResolutions.get_tag_for_res(res) # this will be like either '5p00' or '80pc'
+        res_tag = None
         if type(res) is str:
             if res == 'lowres':
                 res, res_tag = self._find_lowest_res(target=target, config=config, product=product, closeto=res_lowresmask)
+        if res_tag is None:
+            res_tag = utilsResolutions.get_tag_for_res(res) # this will be like either '5p00' or '80pc'
         
         fname_dict['res'] = res
         fname_dict['res_tag'] = res_tag
@@ -224,6 +228,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             lowest_res_tag = '' # we will find the lowest-resolution cube for the given 'closeto' resolution.
             lowest_res = None
         # 
+        if utilsResolutions.is_physical_resolution(this_res):
+            distance = self._kh.get_distance_for_target(target=target)
+        elif closest_res is not None and utilsResolutions.is_physical_resolution(closest_res):
+            distance = self._kh.get_distance_for_target(target=target)
+        else:
+            distance = None
+        # 
         for this_res in res_list:
             res_tag = utilsResolutions.get_tag_for_res(this_res) # this will be like either '5p00' or '80pc'
             cube_filename = utilsFilenames.get_cube_filename(target = target, 
@@ -237,8 +248,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     if closest_res is None:
                         closest_res = this_res
                         closest_res_tag = res_tag
-                    elif np.abs(utilsResolutions.get_angular_resolution_for_res(this_res) - utilsResolutions.get_angular_resolution_for_res(closeto)) < \
-                         np.abs(utilsResolutions.get_angular_resolution_for_res(closest_res) - utilsResolutions.get_angular_resolution_for_res(closeto)):
+                    elif np.abs(utilsResolutions.get_angular_resolution_for_res(this_res, distance=distance) - utilsResolutions.get_angular_resolution_for_res(closeto, distance=distance)) < \
+                         np.abs(utilsResolutions.get_angular_resolution_for_res(closest_res, distance=distance) - utilsResolutions.get_angular_resolution_for_res(closeto, distance=distance)):
                         closest_res = this_res
                         closest_res_tag = res_tag
                 else:
@@ -278,6 +289,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         if not os.path.isfile(fname_dict['in_cube']):
             logger.warning('Input cube file not found: "'+fname_dict['in_cube']+'"')
             return
+        logger.info('Generate moment maps: "'+fname_dict['derived_strict_map']+'*"')
         moment_generator(fname_dict['in_cube'], 
                          root_name = fname_dict['derived_strict_map'], 
                          generate_mask = True, 
