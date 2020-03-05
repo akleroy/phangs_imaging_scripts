@@ -100,8 +100,8 @@ class test_productcreation_handler(unittest.TestCase):
                 res_tag = utilsResolutions.get_tag_for_res(res)
                 productcreation_root = self.key_handler.get_derived_dir_for_target(target=target, changeto=False)
                 for tag in ['mom0']:
-                    assert utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_'+tag, casa = False) is not None
-                    this_cube_filename = utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_'+tag, casa = False)
+                    assert utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_for_unittest_broad_'+tag, casa = False) is not None
+                    this_cube_filename = utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_for_unittest_broad_'+tag, casa = False)
                     logger.debug('%r %s %s'%(productcreation_root+this_cube_filename, 'isfile?', os.path.isfile(productcreation_root+this_cube_filename) ) )
                     #assert os.path.isfile(productcreation_root+this_cube_filename)
     
