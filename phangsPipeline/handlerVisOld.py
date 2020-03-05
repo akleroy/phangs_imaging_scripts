@@ -470,7 +470,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 # extract_continuum
                 cvr.extract_continuum(this_ms_filename, 
                                       this_ms_extracted, 
-                                      lines_to_exclude = lines_to_flag, 
+                                      lines_to_flag = lines_to_flag, 
                                       vsys = vsys, 
                                       vwidth = vwidth, 
                                       do_statwt = do_statwt, 
