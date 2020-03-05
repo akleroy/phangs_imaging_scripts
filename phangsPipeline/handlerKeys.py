@@ -177,6 +177,7 @@ class KeyHandler:
         self._postprocess_root = '' # os.getcwd()+'/../postprocess/'
         self._derived_root = '' # os.getcwd()+'/../derived/'
         self._release_root = '' # os.getcwd()+'/../release/'
+        self._cleanmask_root = '' # os.getcwd() + '/../cleanmask/'
 
         self._ms_roots = []
         self._sd_roots = []
@@ -264,6 +265,7 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'cleanmask_root':
+                self._cleanmask_root = this_value
                 self._cleanmask_roots.append(this_value)
                 lines_read += 1
             
@@ -356,6 +358,13 @@ class KeyHandler:
                 logger.error("Please set the correct ms_root in your master_key file.")
                 all_valid = False
                 errors += 1
+        if len(self._cleanmask_roots)>0:
+            for keypath in self._cleanmask_roots:
+                if not os.path.isdir(keypath):
+                    logger.error("The cleanmask root directory does not exist: %r"%(keypath))
+                    logger.error("Please set the correct cleanmask_root in your master_key file.")
+                    all_valid = False
+                    errors += 1
 
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
@@ -925,7 +934,9 @@ class KeyHandler:
 #region Access data and lists
     
     def _get_dir_for_target(self, target=None, changeto=False, 
-                            imaging=False, postprocess=False, derived=False, release=False):
+                            imaging=False, postprocess=False,
+                            derived=False, release=False,
+                            cleanmask=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -957,6 +968,8 @@ class KeyHandler:
             this_dir = self._derived_root + self._dir_for_target[target]+'/'
         elif release:
             this_dir = self._release_root + self._dir_for_target[target]+'/'
+        elif cleanmask:
+            this_dir = self._cleanmask_roots[-1] + self._dir_for_target[target]+'/'
         else:
             logging.error("Pick a type of directory. None found.")
             return(None)
@@ -996,6 +1009,13 @@ class KeyHandler:
         changeto is true, then change directory to that location.
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, release=True))
+
+    def get_cleanmask_dir_for_target(self, target=None, changeto=False):
+        """
+        Return the release working directory given a target name. If
+        changeto is true, then change directory to that location.
+        """
+        return(self._get_dir_for_target(target=target, changeto=changeto, cleanmask=True))
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
