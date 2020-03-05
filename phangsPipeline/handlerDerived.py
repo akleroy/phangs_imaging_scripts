@@ -350,8 +350,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         check_existence = True
         if not os.path.isfile(fname_dict['hybridmask']):
             check_existence = False
-        if not os.path.isfile(fname_dict['derived_broad_map']+'_noise'+'.fits'):
-            check_existence = False
+        #if not os.path.isfile(fname_dict['derived_broad_map']+'_noise'+'.fits'):
+        #    check_existence = False
         else:
             for tag in ['mom0','mom1','mom2','tpeak','vpeak','ew','vquad']:
                 for etag in ['','_error']:
