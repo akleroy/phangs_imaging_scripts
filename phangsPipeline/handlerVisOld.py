@@ -45,6 +45,7 @@ else:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import handlerTemplate
+import utilsFilenames
 
 
 class VisHandler(handlerTemplate.HandlerTemplate):
@@ -109,14 +110,25 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         
         if all_ms_data:
-            this_ms_filenames, this_ms_filepaths = self._kh.get_ms_filenames_and_filepaths(target = target, config = config)
-            fname_dict['ms_filepaths'] = this_ms_filepaths
-            fname_dict['ms_filenames'] = [t+extra_ext+'.ms' for t in this_ms_filenames]
+            fname_dict['ms_filepaths'] = []
+            fname_dict['ms_filenames'] = []
             if product is not None:
-                fname_dict['ms_extracted'] = [t+'_'+product+extra_ext+'.ms' for t in this_ms_filenames]
+                fname_dict['ms_extracted'] = []
+            for this_target, this_project, this_arraytag, this_obsnum in self._kh.loop_over_input_ms(target = target, config = config):
+                fname_dict['ms_filepaths'].append(self._kh.get_file_for_input_ms(target=this_target, project=this_project, array_tag=this_arraytag, obsnum=this_obsnum)) # original calibrated.ms path
+                fname_dict['ms_filenames'].append(utilsFilenames.get_staged_msname(target=this_target, project=this_project, array_tag=this_arraytag, obsnum=this_obsnum, product='all', ext=extra_ext)) # {target}_{project}_{array_tag}_{ext}.ms{.suffix}
+                if product is not None:
+                    fname_dict['ms_extracted'].append(utilsFilenames.get_staged_msname(target=this_target, project=this_project, array_tag=this_arraytag, obsnum=this_obsnum, product=product, ext=extra_ext)) # {target}_{project}_{array_tag}_{product}_{ext}.ms{.suffix}
+            
+            #this_ms_filenames, this_ms_filepaths = self._kh.get_ms_filenames_and_filepaths(target = target, config = config)
+            #fname_dict['ms_filepaths'] = this_ms_filepaths
+            #fname_dict['ms_filenames'] = [t+extra_ext+'.ms' for t in this_ms_filenames]
+            #if product is not None:
+            #    fname_dict['ms_extracted'] = [t+'_'+product+extra_ext+'.ms' for t in this_ms_filenames]
         
         if product is not None:
-            fname_dict['ms_concatenated'] = target+'_'+config+'_'+product+extra_ext
+            fname_dict['ms_concatenated'] = utilsFilenames.get_vis_filename(target=target, config=config, product=product, ext=extra_ext) # {target}_{config}_{product}_{ext}.ms{.suffix}
+            #fname_dict['ms_concatenated'] = target+'_'+config+'_'+product+extra_ext # {target}_{config}_{product}_{ext}.ms{.suffix}
         
         return fname_dict
         
@@ -164,14 +176,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.debug('Copying and splitting: "'+this_ms_filename+'" <-- "'+this_ms_filepath+'"')
             if not self._dry_run:
                 # copy ms data into imaging dir (or make symlink) and split science targets in one function
-                cvr.split_science_targets(in_file = this_ms_filepath, 
-                                          out_file = this_ms_filename,  
+                cvr.split_science_targets(infile = this_ms_filepath, 
+                                          outfile = this_ms_filename,  
                                           do_split = do_split, 
                                           do_statwt = do_statwt, 
-                                          casa_split_params = casa_split_params, 
                                           use_symlink = use_symlink, 
                                           overwrite = overwrite, 
                                           )
+                                          #casa_split_params = casa_split_params, 
         # 
         logger.info('END: Copying ms data from original location to imaging directory for target '+target+' and config '+config+'.')
         # 
@@ -211,12 +223,15 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.debug('Running contsub: "'+this_ms_filename+'.contsub'+'" <-- "'+this_ms_filename+'"')
             if not self._dry_run:
                 # copy ms data into imaging dir (or make symlink) and split science targets in one function
-                cvr.contsub(in_file = this_ms_filename, 
-                            lines_to_flag = lines_to_flag, 
+                cvr.contsub(infile = this_ms_filename, 
+                            lines_to_exclude = lines_to_flag, 
                             vsys = vsys, 
                             vwidth = vwidth, 
                             overwrite = overwrite, 
                             )
+                # move
+            logger.debug('Renaming contsub: "'+this_ms_filename+'.contsub'+'" --> "'+re.sub(r'(.*)\.ms$', r'\1', this_ms_filename)+'_contsub.ms'+'"')
+            shutil.move(this_ms_filename+'.contsub', re.sub(r'(.*)\.ms$', r'\1', this_ms_filename)+'_contsub.ms')
         # 
         logger.info('END: Running continuum subtraction for all ms data of target '+target+' and config '+config+'.')
         # 
@@ -268,7 +283,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             this_ms_filename = this_ms_filenames[i]
             logger.debug('Computing channel width in "'+this_ms_filename+'" for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
             if not self._dry_run:
-                this_chanwidth = cvr.compute_chanwidth_for_line(in_file = this_ms_filename, 
+                this_chanwidth = cvr.compute_chanwidth_for_line(infile = this_ms_filename, 
                                                                 line = line_tag, 
                                                                 vsys = vsys, 
                                                                 vwidth = vwidth, 
@@ -361,8 +376,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 # this includes regridding and rebinning the velocity axis
                 if method_for_channel_regridding == 1:
                     # first regridding then rebinning
-                    cvr.extract_line(in_file = this_ms_filename, 
-                                     out_file = this_ms_extracted, 
+                    cvr.extract_line(this_ms_filename, 
+                                     this_ms_extracted, 
                                      line = line_tag, 
                                      vsys = vsys, 
                                      vwidth = vwidth, 
@@ -377,8 +392,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 # 
                 elif method_for_channel_regridding == 2:
                     # first rebinning then regridding
-                    cvr.extract_line(in_file = this_ms_filename, 
-                                     out_file = this_ms_extracted, 
+                    cvr.extract_line(this_ms_filename, 
+                                     this_ms_extracted, 
                                      line = line_tag, 
                                      vsys = vsys, 
                                      vwidth = vwidth, 
@@ -395,8 +410,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                     # do only one regridding step
                     # this is not recommended because this creates non-uniform noise due to non-integer binning, 
                     # i.e., the spectral sawtooth issue
-                    cvr.extract_line(in_file = this_ms_filename, 
-                                     out_file = this_ms_extracted, 
+                    cvr.extract_line(this_ms_filename, 
+                                     this_ms_extracted, 
                                      line = line_tag, 
                                      vsys = vsys, 
                                      vwidth = vwidth, 
@@ -453,9 +468,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.debug('Extracting continuum: "'+this_ms_extracted+'" <-- "'+this_ms_filename+'"')
             if not self._dry_run:
                 # extract_continuum
-                cvr.extract_continuum(in_file = this_ms_filename, 
-                                      out_file = this_ms_extracted, 
-                                      lines_to_flag = lines_to_flag, 
+                cvr.extract_continuum(this_ms_filename, 
+                                      this_ms_extracted, 
+                                      lines_to_exclude = lines_to_flag, 
                                       vsys = vsys, 
                                       vwidth = vwidth, 
                                       do_statwt = do_statwt, 
@@ -494,8 +509,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.debug('Concatenating: "'+ms_concatenated+'" <-- ['+str_of_ms_list_to_concatenate+']')
         if not self._dry_run:
             # concat_ms
-            cvr.concat_ms(in_file_list = ms_list_to_concatenate, 
-                          out_file = ms_concatenated, 
+            cvr.concat_ms(infile_list = ms_list_to_concatenate, 
+                          outfile = ms_concatenated, 
                           overwrite = overwrite, 
                           )
         # 
@@ -515,7 +530,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         self,
         do_copy = True,
         do_custom = False,
-        do_continuum_subtraction = False, 
+        do_continuum_subtraction = True, 
         do_extract_line = True,
         do_extract_cont = True,
         do_concat_line = True,
@@ -547,8 +562,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                     config = this_config, 
                     extra_ext = extra_ext, 
                     overwrite = overwrite, 
-                    casa_split_params = casa_split_params, 
                     )
+                    #casa_split_params = casa_split_params, 
         
         
         #if do_custom:

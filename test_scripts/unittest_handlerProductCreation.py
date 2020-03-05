@@ -1,9 +1,9 @@
 
 # Test under:
-#   CASA 5.4.0
+#   python2.7
 # 
 # How to run:
-#   casapy-5.4.0 -c "exec(open('test_scripts/unittest_handlerProductCreation.py','r').read())"
+#   python2.7 test_scripts/unittest_handlerProductCreation.py
 # 
 # TODO: 
 # 
@@ -20,11 +20,13 @@ from phangsPipeline import handlerTemplate
 from phangsPipeline import handlerKeys
 from phangsPipeline import handlerDerived
 from phangsPipeline import utilsFilenames
+from phangsPipeline import utilsResolutions
 if sys.version_info.major <= 2:
     reload(handlerTemplate)
     reload(handlerKeys)
     reload(handlerDerived)
     reload(utilsFilenames)
+    reload(utilsResolutions)
 
 
 
@@ -42,10 +44,11 @@ class test_productcreation_handler(unittest.TestCase):
     def setUpClass(cls):
         # requires Python >= 2.7
         cls.key_handler = handlerKeys.KeyHandler(master_key = 'test_keys/master_key.txt', dochecks = False)
-        for name, obj in inspect.getmembers(handlerDerived):
-            if inspect.isclass(obj):
-                cls.productcreation_handler = obj(key_handler = cls.key_handler)
-                break
+        cls.productcreation_handler = handlerDerived.DerivedHandler(key_handler = cls.key_handler)
+        #for name, obj in inspect.getmembers(handlerDerived):
+        #    if inspect.isclass(obj):
+        #        cls.productcreation_handler = obj(key_handler = cls.key_handler)
+        #        break
         cls.passed_steps = []
         #cls.passed_steps = ['step1','step2']
         
@@ -75,13 +78,16 @@ class test_productcreation_handler(unittest.TestCase):
         self.productcreation_handler.set_line_products(only=[product])
         self.productcreation_handler.set_no_cont_products(True)
         self.productcreation_handler.set_interf_configs(only=['7m'])
-        #self.productcreation_handler.set_no_feather_configs(True)
+        self.productcreation_handler.set_no_feather_configs(True)
         # 
-        for config in self.get_all_configs():
-            assert utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag, casa = False) is not None
-            this_cube_filename = utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag, casa = False)
-            logger.debug('%r %s %s'%(this_cube_filename, 'isfile?', os.path.isfile(this_cube_filename) ) )
-            assert os.path.isfile(this_cube_filename)
+        for config in self.productcreation_handler.get_all_configs():
+            for res in self.key_handler.get_res_for_config(config):
+                res_tag = utilsResolutions.get_tag_for_res(res)
+                postprocess_root = self.key_handler.get_postprocess_dir_for_target(target=target, changeto=False)
+                assert utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag, casa = False) is not None
+                this_cube_filename = utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag, casa = False)
+                logger.debug('%r %s %s'%(postprocess_root+this_cube_filename, 'isfile?', os.path.isfile(postprocess_root+this_cube_filename) ) )
+                #assert os.path.isfile(postprocess_root+this_cube_filename)
         # 
         self.productcreation_handler.loop_make_products(\
             do_signalmask_moment_maps=True,
@@ -89,12 +95,15 @@ class test_productcreation_handler(unittest.TestCase):
             extra_ext_out = '_for_unittest', 
             )
         # 
-        for config in self.get_all_configs():
-            for tag in ['mom0']:
-                assert utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_'+tag, casa = False) is not None
-                this_cube_filename = utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_'+tag, casa = False)
-                logger.debug('%r %s %s'%(this_cube_filename, 'isfile?', os.path.isfile(this_cube_filename) ) )
-                assert os.path.isfile(this_cube_filename)
+        for config in self.productcreation_handler.get_all_configs():
+            for res in self.key_handler.get_res_for_config(config):
+                res_tag = utilsResolutions.get_tag_for_res(res)
+                productcreation_root = self.key_handler.get_derived_dir_for_target(target=target, changeto=False)
+                for tag in ['mom0']:
+                    assert utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_'+tag, casa = False) is not None
+                    this_cube_filename = utilsFilenames.get_cube_filename(target = target, config = config, product = product, ext = 'pbcorr_trimmed_k_res'+res_tag+'_'+tag, casa = False)
+                    logger.debug('%r %s %s'%(productcreation_root+this_cube_filename, 'isfile?', os.path.isfile(productcreation_root+this_cube_filename) ) )
+                    #assert os.path.isfile(productcreation_root+this_cube_filename)
     
 
 

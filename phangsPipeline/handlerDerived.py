@@ -103,7 +103,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # If requested, make the directories
 
         if make_directories:
-            self._kh.make_missing_directories(product = True)
+            self._kh.make_missing_directories(derived = True)
 
         # Loop over target, product, config combinations
 
@@ -112,13 +112,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             
             # do signalmask moment maps for each resolution cube
             if do_signalmask_moment_maps:
-                for this_res in self._kh.get_res_for_config(config):
+                for this_res in self._kh.get_res_for_config(this_config):
                     self.task_generate_moment_maps(target=this_target, product=this_product, config=this_config, res=this_res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
             
             # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
             if do_hybridmask_moment_maps:
                 lowres, lowres_tag = self._find_lowest_res(target=target, config=config, product=product, closeto='10.72arcsec')
-                for this_res in self._kh.get_res_for_config(config):
+                for this_res in self._kh.get_res_for_config(this_config):
                     self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
             
             # end of loop
@@ -275,6 +275,9 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         Placeholder for a task to generate a noise cube.
         """
         fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
+        if not os.path.isfile(fname_dict['in_cube']):
+            logger.warning('Input cube file not found: "'+fname_dict['in_cube']+'"')
+            return
         moment_generator(fname_dict['in_cube'], 
                          root_name = fname_dict['derived_strict_map'], 
                          generate_mask = True, 
