@@ -117,7 +117,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             
             # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
             if do_hybridmask_moment_maps:
-                lowres, lowres_tag = self._find_lowest_res(this_target=target, config=this_config, product=this_product, closeto='10.72arcsec')
+                lowres, lowres_tag = self._find_lowest_res(this_target=this_target, config=this_config, product=this_product, closeto='10.72arcsec')
                 for this_res in self._kh.get_res_for_config(this_config):
                     self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
             
