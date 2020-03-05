@@ -180,22 +180,26 @@ def get_line_name_and_frequency(line, exit_on_error = True):
 
     matched_line_name = None
     matched_line_freq = None
+
     # try to find by input line name
     if matched_line_name is None:
         if line in line_list:
             matched_line_name = line
             matched_line_freq = line_list[matched_line_name]
+
     # if not found, try to find by input line name in lower case
     if matched_line_name is None:
         if line.lower() in line_list:
             matched_line_name = line.lower()
             matched_line_freq = line_list[matched_line_name]
+
     # if not found, try to find by input line name in lower case and removed non-letters
     if matched_line_name is None:
         line_name_cleaned = re.sub(r'[^0-9a-zA-Z]', r'', line.lower())
         if line_name_cleaned in line_list:
             matched_line_name = line_name_cleaned
             matched_line_freq = line_list[matched_line_name]
+
     # report error
     if matched_line_name is None:
         if exit_on_error:
@@ -203,6 +207,7 @@ def get_line_name_and_frequency(line, exit_on_error = True):
             raise Exception('Error! Could not find the input line "'+line+'" in our line_list module.')
         else:
             logger.warning('Could not find the input line "'+line+'" in our line_list module. ')
+
     # return
     return matched_line_name, matched_line_freq
 

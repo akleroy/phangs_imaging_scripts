@@ -217,10 +217,6 @@ def split_science_targets(
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
 
-    ###########################################################################
-    # SPLIT: If split is turned on, split and extract the science target
-    ###########################################################################
-
     logger.info("")
     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
     logger.info("I will split out the data.")
@@ -350,6 +346,7 @@ def contsub(
     infile = None, 
     outfile = None,
     lines_to_exclude = None, 
+    fitorder = 0,
     vsys = None, 
     vwidth = None, 
     dry_run = False,
@@ -395,13 +392,18 @@ def contsub(
     # uvcontsub, this outputs infile+'.contsub'
 
     if not dry_run:
+
+        # Exception: Error in uvcontsub: combine must include 'spw'
+        # when the fit is being applied to spws outside fitspw.
+
         os.mkdir(infile+'.contsub'+'.touch')
         casaStuff.uvcontsub(vis = infile,
                             fitspw = spw_flagging_string,
                             excludechans = True,
                             combine='spw',
+                            firorder=fitorder,
                             )
-    # Exception: Error in uvcontsub: combine must include 'spw' when the fit is being applied to spws outside fitspw.
+
         os.rmdir(infile+'.contsub'+'.touch')
     # 
 
@@ -449,39 +451,44 @@ def find_spws_for_line(
 
     # Work out the frequencies at the line edes.
 
-    target_freq_ghz = restfreq_ghz*(1.-vsys/sol_kms)
-    target_freq_high = restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms)
-    target_freq_low = restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)
+    line_freq_ghz = restfreq_ghz*(1.-(vsys)/sol_kms)
+    line_edge_ghz = [restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms),
+                     restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)]
+    line_high_ghz = np.max(line_edge_ghz)
+    line_low_ghz = np.min(line_edge_ghz)
 
     # If channel width restrictions are in place, calculate the
     # implied channel width requirement in GHz.
 
     if max_chanwidth_kms is not None:
-        max_chanwidth_ghz = target_freq_ghz*max_chanwidth_kms/sol_kms
+        max_chanwidth_ghz = line_freq_ghz*max_chanwidth_kms/sol_kms
     else:
         max_chanwidth_ghz = None
 
-    # Work out which spectral windows contain the line contain
+    # Work out which spectral windows contain the line by looping over
+    # SPWs one at a time.
 
     spw_list = []
     
-    # Loop over line edges and center frequencies and find the match
-    # to the spectral window (spw) for each. In theory, this could be
-    # improved to deal with the case where an intermediate spectral
-    # window is TOTALLY encompassed between the low/high and center.
+    vm = au.ValueMapping(infile)
 
-    for target_freq in [target_freq_high, target_freq_ghz, target_freq_low]:
+    for this_spw in vm.spwInfo.keys():
+        
+        spw_high_ghz = np.max(vm.spwInfo[this_spw]['edgeChannels'])/1e9
+        spw_low_ghz = np.min(vm.spwInfo[this_spw]['edgeChannels'])/1e9
 
-        # run analysisUtils.getScienceSpwsForFrequency() to get the corresponding spectral window (spw)
-        this_spw_list = au.getScienceSpwsForFrequency(infile, target_freq*1e9)    
+        if spw_high_ghz < line_low_ghz:
+            continue
 
+        if spw_low_ghz > line_high_ghz:
+            continue
+        
         if max_chanwidth_ghz is not None:
-            for this_spw in this_spw_list:
-                this_chanwidth_ghz = (au.getChanWidths(infile,[this_spw])/1e9)[0]
-                if this_chanwidth_ghz > max_chanwidth_ghz:
-                    this_spw_list.remove(this_spw)
+            spw_chanwidth_ghz = vm.spwInfo[this_spw]['chanWidth']/1e9
+            if spw_chanwidth_ghz > max_chanwidth_ghz:
+                continue
 
-        spw_list.extend(this_spw_list)
+        spw_list.append(this_spw)
 
     # If we don't find the line in this data set, issue a warning and
     # return.
