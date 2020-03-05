@@ -53,6 +53,8 @@ def moment_generator(cubefile,
                      root_name='',
                      mask=None,
                      rms=None,
+                     rms_name='noise',
+                     mask_name='signalmask',
                      derivatives=['mom0','mom1','mom2',
                                   'ew','vquad',
                                   'tpeak', 'vpeak'],
@@ -133,10 +135,10 @@ def moment_generator(cubefile,
         m = SpectralCube(cube.mask.include().astype(np.uint8),
                          wcs=cube.wcs,
                          header=cube.header)
-        m.write(root_name + '_signalmask' 
+        m.write(root_name + '_' + mask_name
                 + angres_name + linres_name + velres_name
                 + '.fits', overwrite=True)
-        rms.write(root_name + '_noise' +
+        rms.write(root_name + '_' + rms_name +
                   angres_name + linres_name + velres_name +
                   '.fits', overwrite=True)
 

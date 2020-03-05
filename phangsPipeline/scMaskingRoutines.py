@@ -11,6 +11,7 @@ from spectral_cube import SpectralCube
 import astropy.wcs as wcs
 import astropy.units as u
 # from pipelineVersion import version as pipeVer
+from astropy.io import fits
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -275,7 +276,7 @@ def recipe_hybridize_mask(hires_in, lores_in, order='bilinear',
         raise NotImplementedError
 
     if type(lores_in) is str:
-        lores_hdulist = fits.open(lores_filename)
+        lores_hdulist = fits.open(lores_in)
         lores = SpectralCube(np.array(lores_hdulist[0].data,
                                       dtype=np.bool),
                              wcs=wcs.WCS(lores_hdulist[0].header),
@@ -288,7 +289,7 @@ def recipe_hybridize_mask(hires_in, lores_in, order='bilinear',
 
     lores = lores.reproject(hires.header, order=order)
     lores = lores.spectral_interpolate(hires.spectral_axis)
-    mask = np.logical_or(np.array(hires_hdulist[0].data, dtype=np.bool),
+    mask = np.logical_or(np.array(hires.filled_data[:].value, dtype=np.bool),
                          np.array(lores.filled_data[:].value, dtype=np.bool))
     if return_cube:
         mask = SpectralCube(mask, wcs=wcs.WCS(hires_hdulist[0].header),

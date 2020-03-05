@@ -187,6 +187,19 @@ def get_staged_msname(target=None, project=None, array_tag=None,
     return(filename)
 
 
-def get_derived_root(target=None, config=None, product=None,
-                     res_tag=None, ext=None):
-    pass
+def get_derived_rootname(target=None, config=None, product=None,
+                         res_tag=None, ext=None, derived=None):
+
+    if res_tag is None:
+        resstr = ''
+    else:
+        resstr = '_res'+res_tag
+    cube_name = get_cube_filename(target=target,
+                                  config=config,
+                                  product=product,
+                                  ext='pbcorr_trimmed_k'+resstr,
+                                  casa=False)
+
+    derived_name = '_'.join([cube_name.replace('.fits',''),
+                             derived])
+    return(derived_name)
