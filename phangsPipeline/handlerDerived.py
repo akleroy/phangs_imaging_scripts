@@ -82,7 +82,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         make_directories=True, 
         extra_ext_in='', 
         extra_ext_out='', 
-        overwrite=False, 
+        overwrite=True, 
         ):
         """
         Loops over the full set of targets, spectral products (note
