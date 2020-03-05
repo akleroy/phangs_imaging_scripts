@@ -82,6 +82,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         make_directories=True, 
         extra_ext_in='', 
         extra_ext_out='', 
+        overwrite=False, 
         ):
         """
         Loops over the full set of targets, spectral products (note
@@ -113,13 +114,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             # do signalmask moment maps for each resolution cube
             if do_signalmask_moment_maps:
                 for this_res in self._kh.get_res_for_config(this_config):
-                    self.task_generate_moment_maps(target=this_target, product=this_product, config=this_config, res=this_res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
+                    self.task_generate_moment_maps(target=this_target, product=this_product, config=this_config, res=this_res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out, overwrite=overwrite)
             
             # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
             if do_hybridmask_moment_maps:
                 lowres, lowres_tag = self._find_lowest_res(target=this_target, config=this_config, product=this_product, closeto='10.72arcsec')
                 for this_res in self._kh.get_res_for_config(this_config):
-                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, res=this_res, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
+                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, res=this_res, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out, overwrite=overwrite)
             
             # end of loop
 
@@ -228,14 +229,15 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             lowest_res_tag = '' # we will find the lowest-resolution cube for the given 'closeto' resolution.
             lowest_res = None
         # 
-        if utilsResolutions.is_physical_resolution(this_res):
-            distance = self._kh.get_distance_for_target(target=target)
-        elif closest_res is not None and utilsResolutions.is_physical_resolution(closest_res):
-            distance = self._kh.get_distance_for_target(target=target)
-        else:
-            distance = None
-        # 
         for this_res in res_list:
+            # 
+            if utilsResolutions.is_physical_resolution(this_res):
+                distance = self._kh.get_distance_for_target(target=target)
+            elif closest_res is not None and utilsResolutions.is_physical_resolution(closest_res):
+                distance = self._kh.get_distance_for_target(target=target)
+            else:
+                distance = None
+            # 
             res_tag = utilsResolutions.get_tag_for_res(this_res) # this will be like either '5p00' or '80pc'
             cube_filename = utilsFilenames.get_cube_filename(target = target, 
                                                              config = config, 
@@ -281,14 +283,34 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         res = None, 
         extra_ext_in = '', 
         extra_ext_out = '', 
+        overwrite = False, 
         ):
         """
         Placeholder for a task to generate a noise cube.
         """
         fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
+        # 
+        check_existence = True
+        if not os.path.isfile(fname_dict['signalmask']):
+            check_existence = False
+        if not os.path.isfile(fname_dict['derived_strict_map']+'_noise'+'.fits'):
+            check_existence = False
+        else:
+            for tag in ['mom0','mom1','mom2','tpeak','vpeak','ew','vquad']:
+                for etag in ['','_error']:
+                    if not os.path.isfile(fname_dict['derived_strict_map']+'_'+tag+etag+'.fits'):
+                        check_existence = False
+                        break
+                if not check_existence: 
+                    break
+        if check_existence and not overwrite:
+            logger.info('Found existing moment maps: "'+fname_dict['derived_strict_map']+'*". Will not overwrite.')
+            return
+        # 
         if not os.path.isfile(fname_dict['in_cube']):
             logger.warning('Input cube file not found: "'+fname_dict['in_cube']+'"')
             return
+        # 
         logger.info('Generate moment maps: "'+fname_dict['derived_strict_map']+'*"')
         moment_generator(fname_dict['in_cube'], 
                          root_name = fname_dict['derived_strict_map'], 
@@ -316,28 +338,51 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         lowres = None, 
         extra_ext_in = '', 
         extra_ext_out = '', 
+        overwrite = False, 
         ):
         """
         Hybridize each res mask with lowres mask.
         """
+        # 
         lowres_fname_dict = self._fname_dict(target=target, config=config, product=product, res=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
-        lowres_mask = fits.getdata(lowres_fname_dict['signalmask'])
-        # 
         fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
-        mask, header = fits.getdata(fname_dict['signalmask'], header=True)
         # 
+        check_existence = True
+        if not os.path.isfile(fname_dict['hybridmask']):
+            check_existence = False
+        if not os.path.isfile(fname_dict['derived_broad_map']+'_noise'+'.fits'):
+            check_existence = False
+        else:
+            for tag in ['mom0','mom1','mom2','tpeak','vpeak','ew','vquad']:
+                for etag in ['','_error']:
+                    if not os.path.isfile(fname_dict['derived_broad_map']+'_'+tag+etag+'.fits'):
+                        check_existence = False
+                        break
+                if not check_existence: 
+                    break
+        if check_existence and not overwrite:
+            logger.info('Found existing moment maps: "'+fname_dict['derived_broad_map']+'*". Will not overwrite.')
+            return
+        # 
+        if not os.path.isfile(fname_dict['in_cube']):
+            logger.warning('Input cube file not found: "'+fname_dict['in_cube']+'"')
+            return
+        # 
+        logger.info('Generate hybridmask moment maps: "'+fname_dict['derived_broad_map']+'*"')
+        lowres_mask = fits.getdata(lowres_fname_dict['signalmask'])
+        mask, header = fits.getdata(fname_dict['signalmask'], header=True)
         hybridmask = np.logical_or(mask.astype(bool), lowres_mask.astype(bool))
         header['HISTORY'] = ''
         header['HISTORY'] = 'Hybridizing masks "%s" and "%s".'%(lowres_fname_dict['signalmask'], fname_dict['signalmask'])
         header['HISTORY'] = ''
         hybridmask_spectralcube = SpectralCube(data=mask.astype(int), wcs=WCS(header))
         hybridmask_spectralcube.write(fname_dict['hybridmask'], overwrite=True)
-        # 
         moment_generator(fname_dict['in_cube'], 
                          root_name = fname_dict['derived_broad_map'], 
                          generate_mask = False, 
                          mask = fname_dict['hybridmask'], 
-                         generate_noise = True, 
+                         generate_noise = False, 
+                         rms = fname_dict['derived_strict_map']+'_noise'+'.fits', 
                          )
                          # mask will have a file name: fname_dict['derived_strict_map']+'_signalmask.fits'
                          # noise will have a file name: fname_dict['derived_strict_map']+'_noise.fits'

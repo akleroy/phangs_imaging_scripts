@@ -144,7 +144,7 @@ def moment_generator(cubefile,
 
     if rms is not None:
         if type(rms) is str:
-            rms = SpectralCube.read(rms_file)
+            rms = SpectralCube.read(rms)
 
     elif generate_noise:
         rms = phangs_noise(cube, noise_kwargs=noise_kwargs,
