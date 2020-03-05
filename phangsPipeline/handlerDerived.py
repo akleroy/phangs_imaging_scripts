@@ -117,7 +117,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             
             # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
             if do_hybridmask_moment_maps:
-                lowres, lowres_tag = self._find_lowest_res(target=target, config=config, product=product, closeto='10.72arcsec')
+                lowres, lowres_tag = self._find_lowest_res(this_target=target, config=this_config, product=this_product, closeto='10.72arcsec')
                 for this_res in self._kh.get_res_for_config(this_config):
                     self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
             
@@ -184,7 +184,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             cube_filename = utilsFilenames.get_cube_filename(target = target, 
                                                              config = config, 
                                                              product = product,
-                                                             ext = 'pbcorr_trimmed_k'+extra_ext_in+'_'+tag+'_res'+res_tag+extra_ext_out,
+                                                             ext = 'pbcorr_trimmed_k'+extra_ext_in+'_res'+res_tag+extra_ext_out+'_'+tag,
                                                              casa = False)
             fname_dict[tag] = os.path.join(outdir, cube_filename)
         for tag in ['broad', 'strict']:
@@ -286,7 +286,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                          )
                          # mask will have a file name: fname_dict['derived_strict_map']+'_signalmask.fits'
                          # noise will have a file name: fname_dict['derived_strict_map']+'_noise.fits'
-        shutil.move(fname_dict['derived_strict_map']+'_signalmask.fits', fname_dict['signalmask'])
+        output_mask_file = fname_dict['derived_strict_map']+'_signalmask.fits' # according to moment_generator()
+        if not os.path.isfile(output_mask_file):
+            raise Exception('Error! Failed to run momemnt_generator and produce "'+output_mask_file+'"')
+        if output_mask_file != fname_dict['signalmask']:
+            shutil.move(output_mask_file, fname_dict['signalmask'])
+            if not os.path.isfile(fname_dict['signalmask']):
+                raise Exception('Error! Failed to run momemnt_generator and produce "'+fname_dict['signalmask']+'"')
     
     
     def task_hybridize_masks(
