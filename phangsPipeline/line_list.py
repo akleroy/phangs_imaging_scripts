@@ -143,6 +143,7 @@ line_list = {
 
 def run_checks():
     """
+    Some internal consistency checks.
     """
     all_okay = True
     
@@ -172,6 +173,11 @@ def run_checks():
 
 # Find line in line list
 def get_line_name_and_frequency(line, exit_on_error = True):
+    """
+    Access the line_dictionary and return the name and frequency
+    matched to some input line name.
+    """
+
     matched_line_name = None
     matched_line_freq = None
     # try to find by input line name
@@ -203,6 +209,10 @@ def get_line_name_and_frequency(line, exit_on_error = True):
 
 # Find line in line families
 def get_line_names_in_line_family(line, exit_on_error = True):
+    """
+    Return the list of line names in a line family.
+    """
+
     matched_line_family_name = None
     matched_line_names = []
     # 
