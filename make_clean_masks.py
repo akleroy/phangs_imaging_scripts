@@ -148,10 +148,8 @@ class MakeCleanMasksHandler(handlerTemplate.HandlerTemplate):
         #    all_configs.extend(feather_config)
         #all_config_resolutions = [utilsResolutions.get_angular_resolution_for_config(t) for t in all_configs]
         #loop_config_indices = np.array(all_config_resolutions).argsort().tolist()
-        all_configs = ['7m+tp','7m','12m']
-        loop_config_indices = [0, 1, 2]
-        for i in loop_config_indices:
-            config = all_configs[i]
+        all_configs = ['7m+tp','7m','12m','12m+7m+tp']
+        for config in all_configs:
             cube_fname = utilsFilenames.get_cube_filename(\
                             target = target, 
                             product = product, 
@@ -280,7 +278,11 @@ class MakeCleanMasksHandler(handlerTemplate.HandlerTemplate):
         
         # record masking history
         masking_history = [] if history is None else history
-        
+        noise_params = {\
+            'spec_box': 5,
+            'box':5,
+            'iterations':3
+            }
         # target specification
         if target in self.using_edge_channels:
             nchan_edge = self.using_edge_channels[target]
@@ -296,13 +298,14 @@ class MakeCleanMasksHandler(handlerTemplate.HandlerTemplate):
         
         if nchan_edge > 0:
             logger.info('Calculating rms noise cube using only %d edge channels.'%(nchan_edge))
-            rms_cube_1 = scmasking.noise_cube(cube_data[0:nchan_edge,:,:])
-            rms_cube_2 = scmasking.noise_cube(cube_data[cube.shape[0]-nchan_edge:cube.shape[0],:,:])
+            rms_cube_1 = scmasking.noise_cube(cube_data[0:nchan_edge, :, :], **noise_params)
+            rms_cube_2 = scmasking.noise_cube(
+                cube_data[cube.shape[0]-nchan_edge:cube.shape[0], :, :], **noise_params)
             rms_cube = 0.5 * (rms_cube_1 + rms_cube_2)
             masking_history.append('Calculating rms noise cube using only %d edge channels.'%(nchan_edge))
         else:
             logger.info('Calculating rms noise cube.')
-            rms_cube = scmasking.noise_cube(cube_data)
+            rms_cube = scmasking.noise_cube(cube_data, **noise_params)
             masking_history.append('Calculating rms noise cube.')
         
         return rms_cube, masking_history
@@ -332,7 +335,8 @@ class MakeCleanMasksHandler(handlerTemplate.HandlerTemplate):
             else:
                 raise Exception('The input fits header does not contain BMAJ, BMIN or BPA!')
         elif isinstance(cube, SpectralCube):
-            ppbeam = cube.pixels_per_beam() # calculate pixel per beam #<TODO># NOT TESTED!
+            ppbeam = cube.pixels_per_beam # calculate pixel per beam 
+            # tested: returns same as above.
         else:
             raise Exception('The input cube is not a SpectralCube! Type is %s'%(str(type(cube))))
         
@@ -549,10 +553,13 @@ class MakeCleanMasksHandler(handlerTemplate.HandlerTemplate):
         self, 
         target = None, 
         product = None, 
+        config = None,
         ):
         
         # read cube
-        cube, masking_history = self.task_read_cube(target=target, product=product)
+        cube, masking_history = self.task_read_cube(target=target,
+                                                    product=product,
+                                                    config=config)
         
         # make convolution
         lowres_cube, masking_history = self.task_make_convolution(target=target, cube=cube, history=masking_history)
@@ -573,21 +580,22 @@ class MakeCleanMasksHandler(handlerTemplate.HandlerTemplate):
         #cube_file_name = re.sub(r'^Reading spectral cube \"(.*)\"\.$', r'\1', masking_history[0])
         #cube_header = fits.getheader(cube_file_name)
         #clean_mask_fname = self._kh.get_cleanmask_filename(target=target, product=product) # target+'_'+product+'_clean_mask.fits'
-        clean_mask_fname = target+'_'+product+'_clean_mask.fits'
+        clean_mask_fname = (self._kh.get_cleanmask_dir_for_target(target)
+                            + target+'_'+product+'_clean_mask.fits')
         self.task_write_fits(mask=mask, wcs=lowres_cube.wcs, header=cube.header, outfile=clean_mask_fname, history=masking_history)
 
 
 
 # 
 # main
-# 
-if __name__ == '__main__':
-    this_key_handler = handlerKeys.KeyHandler(master_key = 'test_keys/master_key.txt')
-    this_handler = MakeCleanMasksHandler(key_handler = this_key_handler)
-    this_handler.set_no_interf_configs(True)
-    this_handler.set_line_products(only=['co21'])
-    this_handler.set_no_cont_products(True)
-    this_handler.main_loop()
+# # 
+# if __name__ == '__main__':
+#     this_key_handler = handlerKeys.KeyHandler()
+#     this_handler = MakeCleanMasksHandler(key_handler = this_key_handler)
+#     this_handler.set_no_interf_configs(True)
+#     this_handler.set_line_products(only=['co21'])
+#     this_handler.set_no_cont_products(True)
+#     this_handler.main_loop()
 
 
 
