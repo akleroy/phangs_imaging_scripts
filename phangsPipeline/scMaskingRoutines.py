@@ -1,7 +1,7 @@
 import logging
 import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
-from scipy.signal import savgol_filter
+from scipy.signal import savgol_coeffs
 import numpy as np
 from astropy.stats import mad_std
 from astropy.convolution import convolve, Gaussian2DKernel
@@ -245,9 +245,9 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
             noise_spec[z] = mad_zero_centered(plane, mask=plane_mask)
         # Smooth spectral shape
         if bandpass_smooth_window > 0:
-            noise_spec = savgol_filter(noise_spec,
-                                       int(bandpass_smooth_window),
-                                       int(bandpass_smooth_order))
+            kernel = savgol_coeffs(int(bandpass_smooth_window),
+                                   int(bandpass_smooth_order))
+            noise_spec = convolve(noise_spec, kernel, boundary='extend')
         noise_spec /= np.nanmedian(noise_spec)
         noise_cube = np.ones_like(data)
         noise_cube *= (noise_map[np.newaxis, :]
@@ -301,11 +301,12 @@ def recipe_hybridize_mask(hires_in, lores_in, order='bilinear',
 def recipe_phangs_noise(cube, noise_kwargs=None,
                         return_spectral_cube=False):
     if noise_kwargs is None:
-        pixels_per_beam = (cube.beam.sr
-                           / wcs.utils.proj_plane_pixel_area(cube.wcs)
-                           / u.deg**2).to(u.dimensionless_unscaled).value
+        pixels_per_beam = cube.pixels_per_beam
+        # pixels_per_beam = (cube.beam.sr
+        #                    / wcs.utils.proj_plane_pixel_area(cube.wcs)
+        #                    / u.deg**2).to(u.dimensionless_unscaled).value
         box = np.ceil(2.5 * pixels_per_beam**0.5)
-        spectral_smooth = np.ceil(cube.shape[0] / 5)
+        spectral_smooth = np.ceil(cube.shape[0] / 5) // 2 * 2 + 1
         # This looks for a non-trivial signal mask.
         if (np.sum(cube.mask.include())
                 < np.sum(np.isfinite(cube.filled_data[:].value))):

@@ -352,7 +352,7 @@ def write_ew(cube,
 
     if errorfile is not None and rms is None:
         logger.error("Equivalent width error requested but no RMS provided")
-
+    sigma_ewerr_projection = None
     if rms is not None:
         argmaxmap = cube.argmax(axis=0)
         rms_at_max = np.take_along_axis(
