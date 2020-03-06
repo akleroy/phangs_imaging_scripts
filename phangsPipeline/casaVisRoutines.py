@@ -375,7 +375,7 @@ def contsub(
 
     if not os.path.isdir(infile):
         logger.error('The input uv data measurement set "'+infile+'"does not exist.')
-        raise Exception('The input uv data measurement set "'+infile+'"does not exist.')
+        return()
 
     # check existing output data in the imaging directory
     if os.path.isdir(infile+'.contsub') and not os.path.isdir(infile+'.contsub'+'.touch'):
@@ -395,7 +395,7 @@ def contsub(
         infile = infile, 
         freq_ranges_ghz = ranges_to_exclude,
         )
-    
+
     os.mkdir(infile+'.contsub'+'.touch')
 
     # uvcontsub, this outputs infile+'.contsub'
