@@ -1,7 +1,7 @@
 # This is the line list.
 
 import re
-
+import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -237,6 +237,38 @@ def get_line_names_in_line_family(line, exit_on_error = True):
     # return
     return matched_line_names
 
+def get_ghz_range_for_line(line=None, vsys_kms=None, vwidth_kms=None, 
+                           vlow_kms=None, vhigh_kms=None):
+    """
+    Return a low, high frequency range for a line code and either vsys, vwidth or vlow, vhigh.
+    """
+
+    # Physical constants
+    sol_kms = 2.9979246e5
+
+    vsys_method = (vsys_kms is not None) and (vwidth_kms is not None)
+    vlow_method = (vlow_kms is not None) and (vhigh_kms is not None)
+    
+    if vsys_method:
+        use_vsys = True
+    if vlow_method:
+        use_vsys = False
+    if vsys_method and vlow_method:
+        logger.warning("Both vsys+vwidth and vlow+vhigh specified. Using vlow method.")
+        use_vsys = False
+    
+    if vsys_method:
+        vlow_kms = vsys_kms-vwidth_kms/2.0
+        vhigh_kms = vsys_kms+vwidth_kms/2.0
+
+    restfreq_ghz = (get_line_name_and_frequency(line, exit_on_error = True))[1]
+
+    line_edge_ghz = [restfreq_ghz*(1.-(vlow_kms)/sol_kms),
+                     restfreq_ghz*(1.-(vhigh_kms)/sol_kms)]
+    line_high_ghz = np.max(line_edge_ghz)
+    line_low_ghz = np.min(line_edge_ghz)
+
+    return(line_low_ghz,line_high_ghz)
 
 
-
+    

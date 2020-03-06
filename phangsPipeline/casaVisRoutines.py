@@ -22,7 +22,7 @@ import analysisUtils as au
 import casaStuff
 
 # Spectral lines
-import line_list
+import line_list as lines
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -347,8 +347,8 @@ def contsub(
     outfile = None,
     lines_to_exclude = None, 
     fitorder = 0,
-    vsys = None, 
-    vwidth = None, 
+    vsys_kms = None, 
+    vwidth_kms = None, 
     dry_run = False,
     overwrite = False, 
     ):
@@ -386,8 +386,8 @@ def contsub(
     spw_flagging_string = find_spw_channels_for_lines(
         infile = infile, 
         lines_to_flag = lines_to_exclude, 
-        vsys = vsys, 
-        vwidth = vwidth)
+        vsys_kms = vsys_kms, 
+        vwidth_kms = vwidth_kms)
     
     # uvcontsub, this outputs infile+'.contsub'
 
@@ -415,17 +415,16 @@ def contsub(
 
 def find_spws_for_line(
     infile = None, 
-    line = None, 
-    vsys = 0.0, 
-    vwidth = 0.0, 
+    line = None, vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     max_chanwidth_kms = None,
     exit_on_error = True, 
+    as_list = False,
     ):
     """
     List the spectral windows in the input ms data that contains the
-    input line, given the line velocity (vsys) and line width
-    (vwidth), which are in units of km/s. Defaults to rest frequency
-    (with vsys = 0.0 and vwidth = 0.0).
+    input line, given the line velocity (vsys_kms) and line width
+    (vwidth_kms), which are in units of km/s. Defaults to rest frequency
+    (with vsys_kms = 0.0 and vwidth_kms = 0.0).
     """
 
     # Check inputs
@@ -447,15 +446,13 @@ def find_spws_for_line(
     # Get the line name and rest-frame frequency in the line_list
     # module for the input line
 
-    line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=exit_on_error)
+    line_name, restfreq_ghz = lines.get_line_name_and_frequency(line, exit_on_error=exit_on_error)
 
     # Work out the frequencies at the line edes.
 
-    line_freq_ghz = restfreq_ghz*(1.-(vsys)/sol_kms)
-    line_edge_ghz = [restfreq_ghz*(1.-(vsys-0.5*vwidth)/sol_kms),
-                     restfreq_ghz*(1.-(vsys+0.5*vwidth)/sol_kms)]
-    line_high_ghz = np.max(line_edge_ghz)
-    line_low_ghz = np.min(line_edge_ghz)
+    line_low_ghz, line_high_ghz = \
+        lines.get_ghz_range_for_line(line=line_name, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms
+                                     , vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
 
     # If channel width restrictions are in place, calculate the
     # implied channel width requirement in GHz.
@@ -484,7 +481,7 @@ def find_spws_for_line(
             continue
         
         if max_chanwidth_ghz is not None:
-            spw_chanwidth_ghz = vm.spwInfo[this_spw]['chanWidth']/1e9
+            spw_chanwidth_ghz = abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
             if spw_chanwidth_ghz > max_chanwidth_ghz:
                 continue
 
@@ -495,7 +492,7 @@ def find_spws_for_line(
 
     if len(spw_list) == 0:
         logger.warning('No spectral windows contain the input line.')
-        spw_list_string = None
+        spw_list_string = None # can't be '', that selects all
     else:
         
         # sort and remove duplicates
@@ -504,13 +501,17 @@ def find_spws_for_line(
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
      
-    return(spw_list_string)
+    if as_list:
+        return(spw_list)
+    else:
+        return(spw_list_string)
 
 def find_spw_channels_for_lines(
     infile = None, 
     lines_to_flag = [], 
-    vsys = None, 
-    vwidth = None, 
+    vsys_kms = None, 
+    vwidth_kms = None, 
+    pad = True,
     ):
 
     """
@@ -529,29 +530,29 @@ def find_spw_channels_for_lines(
         raise Exception('The input measurement set "'+infile+'"does not exist.')
 
     # check vsys
-    if vsys is None:
-        logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys.')
+    if vsys_kms is None:
+        logger.error('Error! Please input vsys_kms for the galaxy systematic velocity in units of km/s.')
+        raise Exception('Error! Please input vsys_kms.')
     
     # check vwidth
-    if vwidth is None:
-        logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vwidth.')
+    if vwidth_kms is None:
+        logger.error('Error! Please input vwidth_kms for the galaxy systematic velocity in units of km/s.')
+        raise Exception('Error! Please input vwidth_kms.')
      
     # set the list of lines to flag - propose to move this to another routine.
 
     if lines_to_flag is None:
-        lines_to_flag = line_list.line_families['co'] + line_list.line_families['13co'] + line_list.line_families['c18o']
+        lines_to_flag = lines.line_families['co'] + lines.line_families['13co'] + lines.line_families['c18o']
 
     else:
         lines_to_flag_copied = copy.copy(lines_to_flag)
         lines_to_flag = []
         for line_to_flag_copied in lines_to_flag_copied:
-            matched_line_names = line_list.get_line_names_in_line_family(line_to_flag_copied, exit_on_error = False)
+            matched_line_names = lines.get_line_names_in_line_family(line_to_flag_copied, exit_on_error = False)
             if len(matched_line_names) > 0:
                 lines_to_flag.extend(matched_line_names)
             else:
-                matched_line_name, matched_line_freq = line_list.get_line_name_and_frequency(line_to_flag_copied, exit_on_error = False)
+                matched_line_name, matched_line_freq = lines.get_line_name_and_frequency(line_to_flag_copied, exit_on_error = False)
                 if matched_line_name is not None:
                     lines_to_flag.append(matched_line_name)
 
@@ -576,11 +577,11 @@ def find_spw_channels_for_lines(
             spw_flagging_string += ','+this_spw_string            
     
     for line in lines_to_flag:
-        rest_linefreq_ghz = line_list.line_list[line]
+        rest_linefreq_ghz = lines.line_list[line]
         
-        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys/sol_kms)*1e9
-        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys-vwidth/2.0)/sol_kms)*1e9
-        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys+vwidth/2.0)/sol_kms)*1e9
+        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys_kms/sol_kms)*1e9
+        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys_kms-vwidth_kms/2.0)/sol_kms)*1e9
+        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys_kms+vwidth_kms/2.0)/sol_kms)*1e9
         
         spw_list = au.getScienceSpwsForFrequency(infile,
                                                  shifted_linefreq_hz)
@@ -606,43 +607,57 @@ def find_spw_channels_for_lines(
     
     return spw_flagging_string
 
-def compute_chanwidth_for_line(
-    infile, 
-    line, 
-    vsys = None, 
-    vwidth = None, 
+def compute_common_chanwidth(
+    infile_list = None, 
+    line = None, 
+    vsys_kms = None, 
+    vwidth_kms = None, 
+    vlow_kms = None, 
+    vhigh_kms = None, 
     ): 
-    """Calculates the coarsest channel width among all spectral windows in the input measurement set that contain the input line.
+    """
+    Calculates the coarsest channel width among all spectral windows
+    in the input measurement set that contain the input line.
     
     Args:
-        infile (str): The input measurement set data with suffix ".ms".
-        line (str): Line name. 
-        output_spw (bool): Set to True to output not only found line names but also corresponding spectral window (spw) number. 
     
     Returns:
-        chan_width_kms (float): 
     
     """
-    
-    # 
-    # This funcion is modified from the chanwidth_for_line() function in older version phangsPipeline.py.
-    # 
-    
-    # 
+        
+    if infile_list is None:
+        logging.error("Please specify one or more input files via infile_list.")
+        Exception("Please specify one or more input files via infile_list.")
+
+    if np.isscalar(infile_list):
+        infile_list = [infile_list]
+
     # Get the line name and line center rest-frame frequency in the line_list module for the input line
-    line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=True) # exit_on_error = True
-    # 
-    # Find spws for line
-    spw_list_string = find_spws_for_line(infile, line, vsys = vsys, vwidth = vwidth)
-    # 
-    # Figure out how much averaging is needed to reach the target resolution
-    chan_width_hz = au.getChanWidths(infile, spw_list_string)
-    # 
-    # Convert to km/s and return
-    chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms) #<TODO># here we use the rest-frame frequency to compute velocities - Agree we need to fix this.
-    # 
-    # Return
-    return chan_width_kms
+    line_name, restfreq_ghz = lines.get_line_name_and_frequency(line, exit_on_error=True)
+
+    # Work out the frequencies at the line edes and central frequency
+    line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(line=line_name, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+                                                               vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+    
+    line_freq_ghz = (line_high_ghz+line_low_ghz)/2.0
+
+    coarsest_channel = None
+    for this_infile in infile_list:
+        # Find spws for line
+        spw_list_string = find_spws_for_line(this_infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms)
+        
+        chan_widths_hz = au.getChanWidths(this_infile, spw_list_string)
+
+        # Convert to km/s and return
+        for this_chan_width_hz in chan_widths_hz:
+            chan_width_kms = abs(this_chan_width_hz / (line_freq_ghz*1e9)*sol_kms)
+            if coarsest_channel is None:
+                coarsest_channel = chan_width_kms
+            else:
+                if chan_width_kms > coarsest_channel:
+                    coarsest_channel = chan_width_kms
+
+    return(coarsest_channel)
 
 #################################################################
 # Extract single-line or continuum data from a measurement set. #
@@ -652,8 +667,8 @@ def extract_line(
     infile, 
     outfile, 
     line = 'co21', 
-    vsys = None, 
-    vwidth = None, 
+    vsys_kms = None, 
+    vwidth_kms = None, 
     chan_fine = 0.0, 
     rebin_factor = 5, 
     do_regrid_first = True, 
@@ -746,17 +761,17 @@ def extract_line(
             shutil.rmtree(outfile+suffix)
     # 
     # check vsys
-    if vsys is None:
-        logger.error('Error! Please input vsys for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys.')
+    if vsys_kms is None:
+        logger.error('Error! Please input vsys_kms for the galaxy systematic velocity in units of km/s.')
+        raise Exception('Error! Please input vsys_kms.')
     # 
     # check vwidth
-    if vwidth is None:
+    if vwidth_kms is None:
         logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
         raise Exception('Error! Please input vwidth.')
     # 
     # find spws for line
-    spw_list_string = find_spws_for_line(infile, line, vsys = vsys, vwidth = vwidth)
+    spw_list_string = find_spws_for_line(infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms)
     # 
     # exit if no line found
     if spw_list_string == '':
@@ -764,14 +779,14 @@ def extract_line(
         return
     # 
     # get the line name and line center rest-frame frequency in the line_list module for the input line
-    line_name, restfreq_ghz = line_list.get_line_name_and_frequency(line, exit_on_error=True) # exit_on_error = True
+    line_name, restfreq_ghz = lines.get_line_name_and_frequency(line, exit_on_error=True) # exit_on_error = True
     # 
     # print starting message
     logger.info("EXTRACT_LINE begins:")
     logger.info("... line: "+line)
     logger.info("... spectral windows to consider: "+spw_list_string)
     # 
-    start_vel_kms = (vsys - vwidth/2.0)
+    start_vel_kms = (vsys_kms - vwidth_kms/2.0)
     chan_width_hz = au.getChanWidths(infile, spw_list_string)
     if not np.isscalar(chan_width_hz): chan_width_hz = chan_width_hz[0]
     current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
@@ -779,10 +794,10 @@ def extract_line(
     start_vel_string =  "{:12.8f}".format(start_vel_kms)+'km/s'
     current_chanwidth_string = "{:12.8f}".format(current_chan_width_kms)+'km/s'
     if chan_fine > 0:
-        nchan_for_recenter = int(np.max(np.ceil(vwidth / chan_fine)))
+        nchan_for_recenter = int(np.max(np.ceil(vwidth_kms / chan_fine)))
         chanwidth_string =  "{:12.8f}".format(chan_fine)+'km/s'
     else:
-        nchan_for_recenter = int(np.max(np.ceil(vwidth / current_chan_width_kms)))
+        nchan_for_recenter = int(np.max(np.ceil(vwidth_kms / current_chan_width_kms)))
         chanwidth_string =  "{:12.8f}".format(current_chan_width_kms)+'km/s'
     # 
     logger.info("... rest frequency: "+restfreq_string)
@@ -921,8 +936,8 @@ def extract_continuum(
     infile, 
     outfile, 
     lines_to_flag = None, 
-    vsys = None, 
-    vwidth = None, 
+    vsys_kms = None, 
+    vwidth_kms = None, 
     do_statwt = False, 
     do_collapse = True, 
     overwrite = False, 
@@ -975,8 +990,8 @@ def extract_continuum(
     # find_spw_channels_for_lines
     spw_flagging_string = find_spw_channels_for_lines(infile = infile, 
                                                       lines_to_flag = lines_to_flag, 
-                                                      vsys = vsys, 
-                                                      vwidth = vwidth)
+                                                      vsys_kms = vsys_kms, 
+                                                      vwidth_kms = vwidth_kms)
     # 
     # make a continuum copy of the data
     os.mkdir(outfile+'.touch')
