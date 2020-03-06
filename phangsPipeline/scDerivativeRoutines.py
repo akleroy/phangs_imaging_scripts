@@ -5,21 +5,48 @@ from scMaskingRoutines import noise_cube, simple_mask
 from scMaskingRoutines import recipe_hybridize_mask as hybridize_mask
 import numpy as np
 from astropy.io import fits
+import inspect
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def update_metadata(projection, cube):
-    keys = ['BMAJ', 'BMIN', 'BPA', 'JTOK', 'VELREF',
-            'TELESCOP', 'INSTRUME']
+def update_metadata(projection, cube, error=False):
+    keys = ['BMAJ', 'BMIN', 'BPA', 'JYTOK', 'VELREF',
+            'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT']
+    calling_name = inspect.getouterframes(inspect.currentframe())[1][3]
+    btype_dict = {'write_moment0':'Moment0',
+                  'write_moment1':'Moment1',
+                  'write_moment2':'Moment2',
+                  'write_ew':'VelDisp',
+                  'write_tmax':'Tmax',
+                  'write_vmax':'Vmax',
+                  'write_vquad':'Vmax',
+                  'write_moment1_hybrid':'Vmax'}
+    try:
+        btype = btype_dict[calling_name]
+        if error:
+            btype+'_Error'
+        hdr['BTYPE'] = btype
+    except KeyError:
+        pass
     hdr = projection.header
     for key in keys:
         try:
             hdr[key] = cube.header[key]
         except KeyError:
             pass
+    mx = np.nanmax(projection.filled_data[:].value)
+    mn = np.nanmin(projection.filled_data[:].value)
+    hdr['DATAMAX'] = mx
+    hdr['DATAMIN'] = mn
+    try:
+        for comment in cube.header['COMMENT']
+    except KeyError
+        pass
     projection._header = hdr
+    collapse_name = cube.wcs.axis_type_names[::-1][projection.meta['collapse_axis']]
+    import pdb; pdb.set_trace()
     return(projection)
 
 
