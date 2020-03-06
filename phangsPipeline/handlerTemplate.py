@@ -206,7 +206,8 @@ class HandlerTemplate:
         if np.isscalar(only):
             self._interf_configs_only = [only]
         else:
-            self._inerf_configs_only = only
+            #self._inerf_configs_only = only #BUG#
+            self._interf_configs_only = only
 
         if not nobuild:
             self._build_lists()
@@ -419,14 +420,19 @@ class HandlerTemplate:
         Get a combined list of feather and interferometric configs to
         consider.
         """
+        all_configs = []
+        if self.get_interf_configs() is not None and not self._no_interf:
+            if len(self.get_interf_configs()) > 0:
+                all_configs.extend(self.get_interf_configs())
 
-        if len(self.get_interf_configs()) == 0:
-            return(self.get_feather_configs())
-
-        if len(self.get_feather_configs()) == 0:
-            return(self.get_interf_configs())
+        if self.get_feather_configs() is not None and not self._no_feather:
+            if len(self.get_feather_configs()) > 0:
+                all_configs.extend(self.get_feather_configs())
         
-        return(self.get_interf_configs() + self.get_feather_configs())
+        if len(all_configs) == 0:
+            all_configs = None
+        
+        return all_configs
 
 #endregion
 

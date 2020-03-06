@@ -305,7 +305,7 @@ def recipe_phangs_noise(cube, noise_kwargs=None,
                            / wcs.utils.proj_plane_pixel_area(cube.wcs)
                            / u.deg**2).to(u.dimensionless_unscaled).value
         box = np.ceil(2.5 * pixels_per_beam**0.5)
-        spectral_smooth = np.ceil(cube.shape[0] / 5)
+        spectral_smooth = np.ceil(cube.shape[0] / 5) // 2 * 2 + 1
         # This looks for a non-trivial signal mask.
         if (np.sum(cube.mask.include())
                 < np.sum(np.isfinite(cube.filled_data[:].value))):

@@ -1,11 +1,10 @@
 
 
-key_dir             /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_keys/
 cleanmask_root      /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/cleanmasks/
 singledish_root     /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/singledish/
 imaging_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/imaging/
 postprocess_root    /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/postprocess/
-product_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/product/
+derived_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/derived/
 release_root        /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/release/
 ms_root             /data/tycho/0/liu.8691/Scripts/phangs_imaging_scripts/test_data/uvdata/
 
