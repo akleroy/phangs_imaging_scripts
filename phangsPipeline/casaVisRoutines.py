@@ -22,7 +22,7 @@ import analysisUtils as au
 import casaStuff
 
 # Spectral lines
-import line_list as lines
+import utilsLines as lines
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
@@ -162,7 +162,10 @@ def split_science_targets(
     """
     Split science targets from the input ALMA measurement set to form
     a new, science-only measurement set. Optionally reweight the data
-    using statwt. If only a copy is requested, use a symlink.
+    using statwt. 
+
+    Relatively thin wrapper to split that smooths out some things like
+    handling of flagversions and which data tables to use.
     
     Args:
 
@@ -170,8 +173,10 @@ def split_science_targets(
     
     outfile (str): The output measurement set data.
 
-    field (str): The field used for selection.
+    field, spw, intent (str): The field, spw, intent used for selection.
                 
+    timebin: The time bin applied.
+
     overwrite (bool): Set to True to overwrite existing output
     data. The default is False, not overwriting anything.
     
@@ -275,7 +280,8 @@ def concat_ms(
     ):
     """
     Concatenate a list of measurement sets into one measurement set. A
-    thin wrapper to concat.
+    thin wrapper to concat. Thin wrapper to concat. Might build out in
+    the future.
     
     Args:
         infile_list (list or str): The input list of measurement sets. 
@@ -506,11 +512,9 @@ def find_spws_for_line(
     else:
         return(spw_list_string)
 
-def find_spw_channels_for_lines(
+def find_spw_channels_for_freq_ranges(
     infile = None, 
-    lines_to_flag = [], 
-    vsys_kms = None, 
-    vwidth_kms = None, 
+    
     pad = True,
     ):
 

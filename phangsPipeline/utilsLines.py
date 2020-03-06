@@ -5,6 +5,7 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+import utilsLists as lists
 
 # Drawn from Splatalogue at http://www.cv.nrao.edu/php/splat/
 
@@ -237,6 +238,10 @@ def get_line_names_in_line_family(line, exit_on_error = True):
     # return
     return matched_line_names
 
+def is_line_family(line_tag = ''):
+    line_tag_cleaned = re.sub(r'[^0-9a-zA-Z]', r'', line_tag.lower())
+    return(line_tag_cleaned in line_families.keys())
+
 def get_ghz_range_for_line(line=None, vsys_kms=None, vwidth_kms=None, 
                            vlow_kms=None, vhigh_kms=None):
     """
@@ -269,6 +274,36 @@ def get_ghz_range_for_line(line=None, vsys_kms=None, vwidth_kms=None,
     line_low_ghz = np.min(line_edge_ghz)
 
     return(line_low_ghz,line_high_ghz)
+
+def get_ghz_range_for_list(line_list=[], vsys_kms=None, vwidth_kms=None, 
+                           vlow_kms=None, vhigh_kms=None):
+    """
+    Return a low, high frequency range for a list of line or line
+    family codes and either vsys, vwidth or vlow, vhigh.
+    """
+
+    if np.isscalar(line_list):
+        line_list = [line_list]
+        
+    full_line_list = []
+    for this_line in line_list:
+        if is_line_family(this_line):
+            full_line_list.extend(get_line_names_in_line_family(this_line))
+        else:
+            full_line_list.append(this_line)
+
+    initial_list = []
+    for this_line in full_line_list:
+        this_low, this_high = get_ghz_range_for_line(
+            line=this_line, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+            vlow_kms=vlow_kms,high_kms=vhigh_kms)
+        initial_list.append((this_low,this_high))
+        
+    final_list = lists.merge_pairs(initial_list)
+    return(final_list)
+
+
+                                            
 
 
     
