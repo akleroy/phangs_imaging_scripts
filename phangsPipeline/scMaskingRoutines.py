@@ -38,6 +38,9 @@ def mad_zero_centered(data, mask=None):
         mad2 = mad_to_std_fac * np.abs(np.median(np.abs(data[data_lt_mad1])))
     else:
         nData = mask.sum()
+        if nData == 0:
+            logger.info('No data in mask. Returning NaN, which will now break things')
+            return(np.nan)
         sig_false = ss.norm.isf(0.5 / nData)
         data_lt_zero = np.logical_and(np.less(data, 0, 
                                       where=where_data_valid,
