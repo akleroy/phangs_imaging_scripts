@@ -44,7 +44,7 @@ else:
 # import utils
 import utilsResolutions
 import utilsFilenames
-import line_list
+import utilsLines
 import handlerTemplate
 import scMaskingRoutines as scmasking
 import scDerivativeRoutines as scderiv

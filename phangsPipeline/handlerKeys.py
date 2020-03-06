@@ -11,9 +11,9 @@ import numpy as np
 from math import floor
 
 try:
-    import line_list as ll
+    import utilsLines as ll
 except ImportError:
-    from phangsPipeline import line_list as ll
+    from phangsPipeline import utilsLines as ll
 
 try:
     import utilsLists as list_utils
