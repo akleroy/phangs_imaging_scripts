@@ -15,7 +15,10 @@ def update_metadata(projection, cube):
             'TELESCOP', 'INSTRUME']
     hdr = projection.header
     for key in keys:
-        hdr[key] = cube.header[key]
+        try:
+            hdr[key] = cube.header[key]
+        except KeyError:
+            pass
     projection._header = hdr
     return(projection)
 
