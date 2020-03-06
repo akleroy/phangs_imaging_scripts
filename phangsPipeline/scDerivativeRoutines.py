@@ -10,6 +10,15 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+def update_metadata(projection, cube):
+    keys = ['BMAJ', 'BMIN', 'BPA', 'JTOK', 'VELREF',
+            'TELESCOP', 'INSTRUME']
+    hdr = projection.header
+    for key in keys:
+        hdr[key] = cube.header[key]
+    projection._header = hdr
+    return(projection)
+
 
 def write_moment0(cube,
                   outfile=None,
@@ -89,11 +98,13 @@ def write_moment0(cube,
                                   wcs=mom0.wcs,
                                   header=mom0.header)
         if errorfile is not None:
+            mom0err_proj = update_metadata(mom0err_proj, cube)
             mom0err_proj.write(errorfile, overwrite=overwrite)
     
     if unit is not None:
         mom0 = mom0.to(unit)
     if outfile is not None:
+        mom0 = update_metadata(mom0, cube)
         mom0.write(outfile, overwrite=overwrite)
 
     if return_products and mom0err_proj is not None:
@@ -187,11 +198,13 @@ def write_moment1(cube,
                                     wcs=mom1.wcs,
                                     header=mom1.header)
         if errorfile is not None:
+            mom1err_proj = update_metadata(mom1err_proj, cube)
             mom1err_proj.write(errorfile, overwrite=overwrite)
     
     if unit is not None:
         mom1 = mom1.to(unit)
     if outfile is not None:
+        mom1 = update_metadata(mom1, cube)
         mom1.write(outfile, overwrite=True)
 
     if return_products and mom1err_proj is not None:
@@ -290,11 +303,13 @@ def write_moment2(cube,
                                   wcs=mom2.wcs,
                                   header=mom2.header)
         if errorfile is not None:
+            mom2err_proj = update_metadata(mom2err_proj, cube)
             mom2err_proj.write(errorfile, overwrite=overwrite)
 
     if unit is not None:
         mom2 = mom2.to(unit)
     if outfile is not None:
+        mom2 = update_metadata(mom2, cube)
         mom2.write(outfile, overwrite=True)
 
     if return_products and mom2err_proj is not None:
@@ -392,10 +407,13 @@ def write_ew(cube,
                                             wcs=sigma_ew.wcs,
                                             header=sigma_ew.header)
         if outfile is not None:
+            sigma_ewerr_projection = update_metadata(
+                sigma_ewerr_projection, cube)
             sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
 
     # Do the conversion here to not mess up errors in units.
     if unit is not None:
+        sigma_ew = update_metadata(sigma_ew, cube)
         sigma_ew = sigma_ew.to(unit)
 
     sigma_ew.write(outfile, overwrite=True)
@@ -482,11 +500,13 @@ def write_tmax(cubein,
                                         wcs=maxmap.wcs,
                                         header=maxmap.header)
         if errorfile is not None:
+            tmaxerr_projection = update_metadata(tmaxerr_projection, cube)
             tmaxerr_projection.write(errorfile, overwrite=overwrite)
 
     if unit is not None:
         maxmap = maxmap.to(unit)
     if outfile is not None:
+        maxmap = update_metadata(maxmap, cube)
         maxmap.write(outfile, overwrite=True)
 
     if return_products and tmaxerr_projection is not None:
@@ -573,6 +593,7 @@ def write_vmax(cubein,
                                         wcs=maxmap.wcs,
                                         header=maxmap.header)
         if errorfile is not None:
+            vmaxerr_projection = update_metadata(vmaxerr_projection, cube)
             vmaxerr_projection.write(errorfile, overwrite=overwrite)
 
     vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)        
@@ -582,6 +603,7 @@ def write_vmax(cubein,
                                     wcs=maxmap.wcs,
                                     header=maxmap.header)
     if outfile is not None:        
+        vmaxmap_projection = update_metadata(vmaxmap_projection, cube)
         vmaxmap_projection.write(outfile, overwrite=True)
         
     if return_products and vmaxerr_projection is not None:
@@ -740,6 +762,7 @@ def write_vquad(cubein,
                                         wcs=maxmap.wcs,
                                         header=maxmap.header)
         if errorfile is not None:
+            vquaderr_projection = update_metadata(vquaderr_projection, cube)
             vquaderr_projection.write(errorfile, overwrite=overwrite)
 
     vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)
@@ -749,6 +772,7 @@ def write_vquad(cubein,
                                     wcs=maxmap.wcs,
                                     header=maxmap.header)
     if outfile is not None:
+        vmaxmap_projection = update_metadata(vmaxmap_projection, cube)
         vmaxmap_projection.write(outfile, overwrite=overwrite)
 
     if return_products and vquaderr_projection is not None:
@@ -903,6 +927,7 @@ def write_moment1_hybrid(cube,
                                  wcs=mom1strict.wcs,
                                  header=mom1strict.header)
     if outfile is not None:
+        mom1hybrid_proj = update_metadata(mom1hybrid_proj, cube)
         mom1hybrid_proj.write(outfile,
                               overwrite=overwrite)
     mom1hybrid_error = None
@@ -919,6 +944,7 @@ def write_moment1_hybrid(cube,
                                            wcs=mom1strict.wcs,
                                            header=mom1strict.header)
         if errorfile is not None:
+            mom1hybrid_error_proj = update_metadata(mom1hybrid_error_proj, cube)
             mom1hybrid_error_proj.write(errorfile,
                                         overwrite=overwrite)
     
