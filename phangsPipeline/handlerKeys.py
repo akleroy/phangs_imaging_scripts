@@ -1472,14 +1472,12 @@ class KeyHandler:
                 logger.error("Expected list or string.")
                 raise Exception("Expected list or string.")
         
-            # Allow linear mosaics
-
             for this_target in input_targets:
-                if this_target in self._ms_dict.keys():
-                    if this_target not in just_targets:
-                        just_targets.append(this_target)
-                else:
-                    if self.is_target_linmos(target=this_target) and check_linmos:
+                if this_target not in just_targets:
+                    just_targets.append(this_target)
+            
+                if check_linmos:
+                    if self.is_target_linmos(target=this_target):
                         parts = self.get_parts_for_linmos(target=this_target)
                         if parts is None:
                             continue

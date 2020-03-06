@@ -409,6 +409,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if config is None:
             logging.error("Please specify a config.")
             raise Exception("Please specify a config.")
+
+        # Change to the imaging directory for the target
+        
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
         
         # Generate the list of staged measurement sets to combine
         
@@ -420,7 +424,16 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag, 
                     obsnum=this_obsnum, product=product, ext=extra_ext_in)
-                staged_ms_list.append(this_staged_ms)
+                if os.path.isdir(this_staged_ms):
+                    staged_ms_list.append(this_staged_ms)
+                else:
+                    logger.warning("MS not found and will be dropped from concat: "+str(this_staged_ms))
+                    logger.warning("This might or might not be a problem.")
+
+
+        if len(staged_ms_list) == 0:
+            logger.warning("No measurement sets to concatenate, returning.")
+            return()
 
         # Generate the outfile name
 
@@ -432,7 +445,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Splitting (by spw) then concatenating u-v data for:")
+        logger.info("Concatenating staged and split u-v data for:")
         logger.info("... target: "+target)
         logger.info("... product: "+product)
         logger.info("... config: "+config)
@@ -440,11 +453,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("... output: "+str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-            
-        # Change to the imaging directory for the target
-        
-        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-        
+                   
         # Concatenate the measurement sets
 
         if not self._dry_run and casa_enabled:         

@@ -8,6 +8,7 @@ Standalone routines to analyze and manipulate visibilities.
 
 import os, sys, re, shutil, inspect, copy
 import numpy as np
+from scipy.ndimage import label
 #import pyfits # CASA has pyfits, not astropy
 #import glob
 
@@ -162,7 +163,10 @@ def split_science_targets(
     """
     Split science targets from the input ALMA measurement set to form
     a new, science-only measurement set. Optionally reweight the data
-    using statwt. If only a copy is requested, use a symlink.
+    using statwt. 
+
+    Relatively thin wrapper to split that smooths out some things like
+    handling of flagversions and which data tables to use.
     
     Args:
 
@@ -170,8 +174,10 @@ def split_science_targets(
     
     outfile (str): The output measurement set data.
 
-    field (str): The field used for selection.
+    field, spw, intent (str): The field, spw, intent used for selection.
                 
+    timebin: The time bin applied.
+
     overwrite (bool): Set to True to overwrite existing output
     data. The default is False, not overwriting anything.
     
@@ -275,7 +281,8 @@ def concat_ms(
     ):
     """
     Concatenate a list of measurement sets into one measurement set. A
-    thin wrapper to concat.
+    thin wrapper to concat. Thin wrapper to concat. Might build out in
+    the future.
     
     Args:
         infile_list (list or str): The input list of measurement sets. 
@@ -506,12 +513,11 @@ def find_spws_for_line(
     else:
         return(spw_list_string)
 
-def find_spw_channels_for_lines(
+def find_spw_channels_for_freq_ranges(
     infile = None, 
-    lines_to_flag = [], 
-    vsys_kms = None, 
-    vwidth_kms = None, 
-    pad = True,
+    freq_ranges_ghz = [],
+    just_spw = [],
+    complement = False,
     ):
 
     """
@@ -521,6 +527,8 @@ def find_spw_channels_for_lines(
     velocity width (vwidth) in units of km/s are needed.
     """
     
+    # Check file existence
+
     if infile is None:
         logging.error("Please specify an input file.")
         raise Exception("Please specify an input file.")
@@ -529,83 +537,56 @@ def find_spw_channels_for_lines(
         logger.error('The input measurement set "'+infile+'"does not exist.')
         raise Exception('The input measurement set "'+infile+'"does not exist.')
 
-    # check vsys
-    if vsys_kms is None:
-        logger.error('Error! Please input vsys_kms for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys_kms.')
-    
-    # check vwidth
-    if vwidth_kms is None:
-        logger.error('Error! Please input vwidth_kms for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vwidth_kms.')
-     
-    # set the list of lines to flag - propose to move this to another routine.
+    # Make sure that we have a list 
+    if type(freq_ranges_ghz) != type([]):
+        freq_ranges_ghz = [freq_ranges_ghz]
 
-    if lines_to_flag is None:
-        lines_to_flag = lines.line_families['co'] + lines.line_families['13co'] + lines.line_families['c18o']
+    if type(just_spw) != type([]):
+        just_spw = [just_spw]
 
-    else:
-        lines_to_flag_copied = copy.copy(lines_to_flag)
-        lines_to_flag = []
-        for line_to_flag_copied in lines_to_flag_copied:
-            matched_line_names = lines.get_line_names_in_line_family(line_to_flag_copied, exit_on_error = False)
-            if len(matched_line_names) > 0:
-                lines_to_flag.extend(matched_line_names)
-            else:
-                matched_line_name, matched_line_freq = lines.get_line_name_and_frequency(line_to_flag_copied, exit_on_error = False)
-                if matched_line_name is not None:
-                    lines_to_flag.append(matched_line_name)
-
-    # 
-    if len(lines_to_flag) == 0:
-        logger.debug('No line to flag for the continuum .')
-    else:
-        logger.debug('Lines to flag for the continuum: '+str(lines_to_flag))
-        # 
-
-    
     vm = au.ValueMapping(infile)
-    # 
+
+    # Loop over spectral windows
     spw_flagging_string = ''
-    first = True
-    for spw in vm.spwInfo.keys():
-        this_spw_string = str(spw)+':0' #<TODO># flag the first channel for all spws
-        if first:
-            spw_flagging_string += this_spw_string
-            first = False
-        else:
-            spw_flagging_string += ','+this_spw_string            
-    
-    for line in lines_to_flag:
-        rest_linefreq_ghz = lines.line_list[line]
+    first_string = True
+    for this_spw in vm.spwInfo:
         
-        shifted_linefreq_hz = rest_linefreq_ghz*(1.-vsys_kms/sol_kms)*1e9
-        hi_linefreq_hz = rest_linefreq_ghz*(1.-(vsys_kms-vwidth_kms/2.0)/sol_kms)*1e9
-        lo_linefreq_hz = rest_linefreq_ghz*(1.-(vsys_kms+vwidth_kms/2.0)/sol_kms)*1e9
+        if len(just_spw) > 0:
+            if this_spw not in just_spw:
+                continue
+
+        freq_axis = vm.spwInfo[this_spw]['chanFreqs']
+        half_chan = abs(freq_axis[1]-freq_axis[0])
+        chan_axis = np.arange(len(freq_axis))
+        mask_axis = np.zeros_like(chan_axis,dtype='bool')
+
+        for this_freq_range in freq_ranges_ghz:
+            
+            low_freq_hz = this_freq_range[0]*1e9
+            high_freq_hz = this_freq_range[1]*1e9
+
+            ind = ((freq_axis-half_chan) >= low_freq_hz)*((freq_axis+half_chan) <= high_freq_hz)
+            mask_axis[ind] = True
+            
+        if complement:
+            mask = np.invert(mask) 
         
-        spw_list = au.getScienceSpwsForFrequency(infile,
-                                                 shifted_linefreq_hz)
-        if len(spw_list) == 0:
-            continue
-        
-        for this_spw in spw_list:
-            freq_ra = vm.spwInfo[this_spw]['chanFreqs']
-            chan_ra = np.arange(len(freq_ra))
-            to_flag = (freq_ra >= lo_linefreq_hz)*(freq_ra <= hi_linefreq_hz)
-            to_flag[np.argmin(np.abs(freq_ra - shifted_linefreq_hz))]
-            low_chan = np.min(chan_ra[to_flag])
-            hi_chan = np.max(chan_ra[to_flag])                
-            this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(hi_chan)
-            logger.info("... found line "+line+" in spw "+this_spw_string)
+        regions = (label(mask))[0]
+        max_reg = np.max(regions)
+        for ii in range(1,max_reg+1):
+            this_mask = (regions == ii)
+            low_chan = np.min(chan_axis[this_mask])
+            high_chan = np.max(chan_axis[this_mask])
+            this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(high_chan)
             if first:
                 spw_flagging_string += this_spw_string
                 first = False
             else:
                 spw_flagging_string += ','+this_spw_string
+        
+    logger.info("... returning SPW selection string "+spw_flagging_string)
     
-    logger.info("... proposed line channels to flag "+spw_flagging_string)
-    
-    return spw_flagging_string
+    return(spw_flagging_string)
 
 def compute_common_chanwidth(
     infile_list = None, 
