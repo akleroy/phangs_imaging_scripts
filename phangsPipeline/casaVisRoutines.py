@@ -22,7 +22,7 @@ import analysisUtils as au
 import casaStuff
 
 # Spectral lines
-import line_list as lines
+import utilsLines as lines
 
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
