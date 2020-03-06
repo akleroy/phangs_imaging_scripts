@@ -418,6 +418,7 @@ def find_spws_for_line(
     line = None, vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     max_chanwidth_kms = None,
     exit_on_error = True, 
+    as_list = False,
     ):
     """
     List the spectral windows in the input ms data that contains the
@@ -491,7 +492,7 @@ def find_spws_for_line(
 
     if len(spw_list) == 0:
         logger.warning('No spectral windows contain the input line.')
-        spw_list_string = None
+        spw_list_string = None # can't be '', that selects all
     else:
         
         # sort and remove duplicates
@@ -500,7 +501,10 @@ def find_spws_for_line(
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
      
-    return(spw_list_string)
+    if as_list:
+        return(spw_list)
+    else:
+        return(spw_list_string)
 
 def find_spw_channels_for_lines(
     infile = None, 
@@ -612,15 +616,12 @@ def compute_common_chanwidth(
     vhigh_kms = None, 
     ): 
     """
-    Calculates the coarsest channel width among all spectral windows in the input measurement set that contain the input line.
+    Calculates the coarsest channel width among all spectral windows
+    in the input measurement set that contain the input line.
     
     Args:
-        infile (str): The input measurement set data with suffix ".ms".
-        line (str): Line name. 
-        output_spw (bool): Set to True to output not only found line names but also corresponding spectral window (spw) number. 
     
     Returns:
-        chan_width_kms (float): 
     
     """
         
