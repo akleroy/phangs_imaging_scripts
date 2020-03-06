@@ -528,72 +528,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         """
         pass
 
-
-    def task_compute_common_channel(
-            self, 
-            target = None, 
-            product = None, 
-            config = None, 
-            extra_ext = '', 
-            ):
-        """
-        Compute the coarsest channel width among all ms data for the input target, config and product. 
-        """
-
-        # 
-        logger.info('START: Computing common channel width among all ms data for target '+target+', config '+config+' and product '+product+'.')
-
-        # 
-        # get imaging dir and change directory
-        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-
-        # 
-        # get target vsys and vwidth
-        vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
-
-        # 
-        # get fname dict for the list of ms data for the input target and config
-        fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
-        this_ms_filenames = fname_dict['ms_filenames']
-
-        # 
-        # get line tag for product
-        line_tag = self._kh.get_line_tag_for_line_product(product)
-
-        # 
-        # loop ms data for the input target and config
-        all_chanwidths = []
-        logger.debug('Current directory: "'+os.getcwd()+'"')
-        for i in range(len(this_ms_filenames)):
-            this_ms_filename = this_ms_filenames[i]
-            logger.debug('Computing channel width in "'+this_ms_filename+'" for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
-            if not self._dry_run:
-                this_chanwidth = cvr.compute_chanwidth_for_line(in_file = this_ms_filename, 
-                                                                line = line_tag, 
-                                                                vsys = vsys, 
-                                                                vwidth = vwidth, 
-                                                                )
-                if this_chanwidth is None:
-                    this_chanwidth = np.nan
-                if np.isscalar(this_chanwidth):
-                    this_chanwidth = [this_chanwidth]
-                else:
-                    this_chanwidth = this_chanwidth.flatten()
-                all_chanwidths.extend(this_chanwidth)
-                logger.debug('Computed channel width '+str(this_chanwidth)+' km/s in "'+this_ms_filename+'" for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
-        # 
-        # take the coarsest chanwidth as the common_chanwidth
-        if not self._dry_run:
-            common_chanwidth = np.nanmax(all_chanwidths)
-        else:
-            common_chanwidth = 5.0 #<TODO><DEBUG>#
-        logger.debug('Common channel width '+str(common_chanwidth)+' km/s for target '+target+', config '+config+', product '+product+', vsys '+str(vsys)+', vwidth '+str(vwidth))
-        # 
-        logger.info('END: Computing common channel width among all ms data for target '+target+', config '+config+' and product '+product+'.')
-        # 
-        return common_chanwidth
-
-
     def task_extract_line(
             self, 
             target = None, 
@@ -617,7 +551,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         target_chanwidth = self._kh.get_channel_width_for_line_product(product=product)
         # 
         # compute the common channel width for all ms data for the input target, config and product (product is used to select spw in each ms data)
-        common_chanwidth = self.task_compute_common_channel_width(target=target, product=product, config=config, extra_ext=extra_ext)
+        common_chanwidth = self.task_compute_common_channel(target=target, product=product, config=config, extra_ext=extra_ext)
         # 
         # compute the rebinning factor to make the rebinned chanwidth as close to the target channel width as possible (but not exceeding it)
         one_plus_eps = 1.0+1e-3 #<TODO># documentation
