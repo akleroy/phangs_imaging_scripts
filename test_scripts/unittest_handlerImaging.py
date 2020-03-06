@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import os, sys, shutil, logging, unittest
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 sys.path.append('.')
