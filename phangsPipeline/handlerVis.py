@@ -429,7 +429,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 else:
                     logger.warning("MS not found and will be dropped from concat: "+str(this_staged_ms))
                     logger.warning("This might or might not be a problem.")
-                    print(target, config, product)
+
 
         if len(staged_ms_list) == 0:
             logger.warning("No measurement sets to concatenate, returning.")
