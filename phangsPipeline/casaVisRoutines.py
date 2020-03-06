@@ -352,11 +352,10 @@ def concat_ms(
 def contsub(
     infile = None, 
     outfile = None,
-    lines_to_exclude = None, 
+    ranges_to_exclude = [],
+    solint = 'int',
     fitorder = 0,
-    vsys_kms = None, 
-    vwidth_kms = None, 
-    dry_run = False,
+    combine = '',
     overwrite = False, 
     ):
     """
@@ -364,7 +363,9 @@ def contsub(
     figures out channels corresponding to spectral lines for a
     provided suite of bright lines.
     """
-    
+        
+    # Error and file existence checking
+
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
@@ -390,31 +391,30 @@ def contsub(
 
     # find_spw_channels_for_lines
 
-    spw_flagging_string = find_spw_channels_for_lines(
+    spw_flagging_string = spw_string_for_freq_ranges(
         infile = infile, 
-        lines_to_flag = lines_to_exclude, 
-        vsys_kms = vsys_kms, 
-        vwidth_kms = vwidth_kms)
+        freq_ranges_ghz = ranges_to_exclude,
+        )
     
+    os.mkdir(infile+'.contsub'+'.touch')
+
     # uvcontsub, this outputs infile+'.contsub'
 
-    if not dry_run:
+    casaStuff.uvcontsub(
+        vis = infile,
+        fitspw = spw_flagging_string,
+        excludechans = True,
+        combine=combine,
+        fitorder=fitorder,
+        solint=solint,
+        want_cont=False
+        )
 
-        # Exception: Error in uvcontsub: combine must include 'spw'
-        # when the fit is being applied to spws outside fitspw.
+    os.rmdir(infile+'.contsub'+'.touch')
 
-        os.mkdir(infile+'.contsub'+'.touch')
-        casaStuff.uvcontsub(vis = infile,
-                            fitspw = spw_flagging_string,
-                            excludechans = True,
-                            combine='spw',
-                            firorder=fitorder,
-                            )
+    # Could manipulate outfile names here.
 
-        os.rmdir(infile+'.contsub'+'.touch')
-    # 
-
-    return
+    return()
 
 ##########################################################
 # Interface between spectral lines and spectral windows. #
@@ -513,7 +513,7 @@ def find_spws_for_line(
     else:
         return(spw_list_string)
 
-def find_spw_channels_for_freq_ranges(
+def spw_string_for_freq_ranges(
     infile = None, 
     freq_ranges_ghz = [],
     just_spw = [],
@@ -569,22 +569,23 @@ def find_spw_channels_for_freq_ranges(
             mask_axis[ind] = True
             
         if complement:
-            mask = np.invert(mask) 
+            mask_axis = np.invert(mask_axis) 
         
-        regions = (label(mask))[0]
+        regions = (label(mask_axis))[0]
         max_reg = np.max(regions)
         for ii in range(1,max_reg+1):
             this_mask = (regions == ii)
             low_chan = np.min(chan_axis[this_mask])
             high_chan = np.max(chan_axis[this_mask])
             this_spw_string = str(this_spw)+':'+str(low_chan)+'~'+str(high_chan)
-            if first:
+            if first_string:
                 spw_flagging_string += this_spw_string
-                first = False
+                first_string = False
             else:
                 spw_flagging_string += ','+this_spw_string
         
-    logger.info("... returning SPW selection string "+spw_flagging_string)
+    logger.info("... returning SPW selection string:")
+    logger.info(spw_flagging_string)
     
     return(spw_flagging_string)
 

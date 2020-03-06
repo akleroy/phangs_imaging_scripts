@@ -50,6 +50,8 @@ try:
 except ImportError:
     from phangsPipeline import utilsFilenames as fnames
 
+# Spectral lines
+import utilsLines as lines
 
 class VisHandler(handlerTemplate.HandlerTemplate):
     """
@@ -493,21 +495,29 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         infile = fnames.get_vis_filename(
             target=target, config=config, product=product, 
             ext=extra_ext_in, suffix=None)
+
+        # get lines to exclude. Previously had used the continuum fit,
+        # but that mixes product definitions ... this is tricky
+        # because those lines are defined for the continuum. Need to
+        # examine conventions, but probably make this a part of
+        # product definition.
         
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
-        # get lines to exclude from the continuum fit ... this is
-        # tricky because those lines are defined for the
-        # continuum. Need to examine conventions
-
-        # lines_to_exclude = self._kh.get_lines_to_flag_for_continuum_product(product=product)
-        
+        # lines_to_exclude = self._kh.get_lines_to_flag_for_continuum_product(product=product)        
         lines_to_exclude = self._kh.get_line_tag_for_line_product(product)
+
+        ranges_to_exclude = lines.get_ghz_range_for_list(
+            line_list=lines_to_exclude, vsys_kms=vsys, vwidth_kms=vwidth)
+            
+        # Need to look up fit order and other tuning parameters eventually
+        fitorder = 0
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("u-v continuum subtraction for "+infile)
+        logger.info("... excluding frequency ranges:"+str(ranges_to_exclude))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
@@ -518,10 +528,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not self._dry_run and casa_enabled:
 
             cvr.contsub(infile = infile, 
-                        lines_to_exclude = lines_to_exclude, 
-                        vsys = vsys, 
-                        vwidth = vwidth, 
+                        # outfile is TBD
+                        ranges_to_exclude = ranges_to_exclude,              
                         overwrite = overwrite, 
+                        fitorder = fitorder,
                         )
 
         return()

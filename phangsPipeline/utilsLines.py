@@ -296,7 +296,7 @@ def get_ghz_range_for_list(line_list=[], vsys_kms=None, vwidth_kms=None,
     for this_line in full_line_list:
         this_low, this_high = get_ghz_range_for_line(
             line=this_line, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
-            vlow_kms=vlow_kms,high_kms=vhigh_kms)
+            vlow_kms=vlow_kms,vhigh_kms=vhigh_kms)
         initial_list.append((this_low,this_high))
         
     final_list = lists.merge_pairs(initial_list)
