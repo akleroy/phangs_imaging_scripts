@@ -260,19 +260,19 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         """
         
         if target is None:
-            logging.error("Please specify a target.")
+            logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
 
         if project is None:
-            logging.error("Please specify a project.")
+            logger.error("Please specify a project.")
             raise Exception("Please specify a project.")
 
         if array_tag is None:
-            logging.error("Please specify an array_tag.")
+            logger.error("Please specify an array_tag.")
             raise Exception("Please specify an array_tag.")
 
         if obsnum is None:
-            logging.error("Please specify an obsnum.")
+            logger.error("Please specify an obsnum.")
             raise Exception("Please specify an obsnum.")
         
         infile = self._kh.get_file_for_input_ms(
@@ -302,11 +302,11 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                     spw = cvr.find_spws_for_line(infile = infile, 
                                                  line = this_line, 
                                                  max_chanwidth_kms = max_chanwidth_kms,
-                                                 vsys = vsys, vwidth = vwidth)
+                                                 vsys_kms = vsys, vwidth_kms = vwidth)
 
         # TBD - Work out time binning using some logic once we
         # generate some context from the keyhandler. For now, just
-        # pass along the parameter below.
+        # pass along the parameter from the user.
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -349,19 +349,19 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         """
         
         if target is None:
-            logging.error("Please specify a target.")
+            logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
 
         if project is None:
-            logging.error("Please specify a project.")
+            logger.error("Please specify a project.")
             raise Exception("Please specify a project.")
 
         if array_tag is None:
-            logging.error("Please specify an array_tag.")
+            logger.error("Please specify an array_tag.")
             raise Exception("Please specify an array_tag.")
 
         if obsnum is None:
-            logging.error("Please specify an obsnum.")
+            logger.error("Please specify an obsnum.")
             raise Exception("Please specify an obsnum.")
         
         infile = fnames.get_staged_msname(
@@ -401,15 +401,15 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         """
         
         if target is None:
-            logging.error("Please specify a target.")
+            logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
 
         if product is None:
-            logging.error("Please specify a product.")
+            logger.error("Please specify a product.")
             raise Exception("Please specify a product.")
 
         if config is None:
-            logging.error("Please specify a config.")
+            logger.error("Please specify a config.")
             raise Exception("Please specify a config.")
 
         # Change to the imaging directory for the target
@@ -481,22 +481,22 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         """
 
         if target is None:
-            logging.error("Please specify a target.")
+            logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
 
         if product is None:
-            logging.error("Please specify a product.")
+            logger.error("Please specify a product.")
             raise Exception("Please specify a product.")
 
         if config is None:
-            logging.error("Please specify an config.")
+            logger.error("Please specify an config.")
             raise Exception("Please specify an config.")
         
         infile = fnames.get_vis_filename(
             target=target, config=config, product=product, 
             ext=extra_ext_in, suffix=None)
 
-        # get lines to exclude. Previously had used the continuum fit,
+        # Get lines to exclude. Previously had used the continuum fit,
         # but that mixes product definitions ... this is tricky
         # because those lines are defined for the continuum. Need to
         # examine conventions, but probably make this a part of
@@ -552,23 +552,61 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target = None, 
             product = None, 
             config = None, 
-            extra_ext = '', 
+            extra_ext_in = '', 
+            extra_ext_out = '',
             do_statwt = True, 
-            edge_for_statwt = -1, 
-            method_for_channel_regridding = 1, 
+            edge_for_statwt = -1,
+            method = "regrid_then_rebin",
             overwrite = False, 
             ):
         """
-        Extract spectral line data from ms data for the input target, config and product. 
-        
-        To extract the spectral line data, a common channel width needs to be calculated. 
+        Extract spectral line data from ms data for the input target,
+        config and product.        
         """
-        # 
-        logger.info('START: Extracting spectral line '+product+' for target '+target+' and config '+config+'.')
-        # 
-        # get user target channel width
-        target_chanwidth = self._kh.get_channel_width_for_line_product(product=product)
-        # 
+        
+        if target is None:
+            logger.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if product is None:
+            logger.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        if config is None:
+            logger.error("Please specify a config.")
+            raise Exception("Please specify a config.")
+        
+        infile = fnames.get_vis_filename(
+            target=target, config=config, product=product, 
+            ext=extra_ext_in, suffix=None)
+
+        outfile = fnames.get_vis_filename(
+            target=target, config=config, product=product, 
+            ext=extra_ext_out, suffix=None)
+
+        # Extract the spectral information needed for the regrid
+
+        vsys_kms, vwidth_kms = self._kh.get_system_velocity_and_velocity_width_for_target(target)
+        line_to_extract = self._kh.get_line_tag_for_line_product(product)
+        target_chanwidth = self._kh.get_channel_width_for_line_product(product)
+
+        valid_methods = ['regrid_then_rebin','rebin_then_regrid','just_regrid','just_rebin']
+        if method.lower().strip() not in valid_methods:
+            logger.error("Not a valid line extraction medod - "+str(method))
+            raise Exception("Please specify a valid line extraction method.")
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Extracting spectral product:")
+        logger.info("Line: "+str(line_to_extract))
+        logger.info("Vsys [km/s]: "+str(vsys_kms))
+        logger.info("Vwidth [km/s]: "+str(vwidth_kms))
+        logger.info("Method: "+str(method))
+        logger.info("From file: "+str(infile))
+        logger.info("To file: "+str(outfile))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+            
         # compute the common channel width for all ms data for the input target, config and product (product is used to select spw in each ms data)
         common_chanwidth = self.task_compute_common_channel(target=target, product=product, config=config, extra_ext=extra_ext)
         # 
@@ -664,9 +702,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 else:
                     logger.error('Wrong value for method_for_channel_regridding! It is '+str(method_for_channel_regridding)+' but only 1, 2, or 3 is accepted. 1 is the default.')
                     raise ValueError('Wrong value for method_for_channel_regridding!')
-        # 
-        logger.info('END: Extracting spectral line '+product+' for target '+target+' and config '+config+'.')
 
+        return()
 
     def task_extract_continuum(
             self, 

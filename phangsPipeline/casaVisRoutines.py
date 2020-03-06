@@ -465,6 +465,7 @@ def find_spws_for_line(
     # implied channel width requirement in GHz.
 
     if max_chanwidth_kms is not None:
+        line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
         max_chanwidth_ghz = line_freq_ghz*max_chanwidth_kms/sol_kms
     else:
         max_chanwidth_ghz = None
