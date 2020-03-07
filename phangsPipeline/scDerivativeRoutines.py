@@ -18,7 +18,7 @@ def update_metadata(projection, cube, error=False):
     btype_dict = {'write_moment0':'Moment0',
                   'write_moment1':'Moment1',
                   'write_moment2':'Moment2',
-                  'write_ew':'VelDisp',
+                  'write_ew':'VelDisp EW',
                   'write_tmax':'Tmax',
                   'write_vmax':'Vmax',
                   'write_vquad':'Vmax',
