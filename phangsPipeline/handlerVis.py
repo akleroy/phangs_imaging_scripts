@@ -277,6 +277,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         
         infile = self._kh.get_file_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
+
+        if infile is None:
+            logger.error("Infile not found. Returning.")
+            return()
+
+        if not os.path.isdir(infile):
+            logger.error("Infile not found. Returning.")
+            return()
         
         field = self._kh.get_field_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
@@ -303,6 +311,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                                                  line = this_line, 
                                                  max_chanwidth_kms = max_chanwidth_kms,
                                                  vsys_kms = vsys, vwidth_kms = vwidth)
+                    if spw is None:
+                        logger.warning("No SPWs meet the selection criteria. Skipping.")
+                        return()
 
         # TBD - Work out time binning using some logic once we
         # generate some context from the keyhandler. For now, just

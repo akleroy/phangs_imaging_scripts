@@ -1600,6 +1600,7 @@ class KeyHandler:
             logging.warning('Could not find measurement set for target '+ \
                                 target+' project '+project+' array_tag '+ \
                                 array_tag+' obsnum '+str(obsnum)+'!')
+            return(None)
         else:
             if len(file_paths) > 1:
                 logging.warning('Found multiple measurement sets for target '+ \
