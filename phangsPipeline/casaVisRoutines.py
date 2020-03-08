@@ -427,7 +427,8 @@ def contsub(
 
 def find_spws_for_line(
     infile = None, 
-    line = None, vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
+    line = None, restfreq_ghz = None,
+    vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     max_chanwidth_kms = None,
     exit_on_error = True, 
     as_list = False,
@@ -458,12 +459,18 @@ def find_spws_for_line(
     # Get the line name and rest-frame frequency in the line_list
     # module for the input line
 
-    line_name, restfreq_ghz = lines.get_line_name_and_frequency(line, exit_on_error=exit_on_error)
+    if restfreq_ghz is None:
+        if line is None:
+            logging.error("Specify a line name or provide a rest frequency in GHz.")
+            raise Exception("No rest frequency specified.")
+
+        restfreq_ghz = (lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
 
     # Work out the frequencies at the line edes.
 
     line_low_ghz, line_high_ghz = \
-        lines.get_ghz_range_for_line(line=line_name, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms
+        lines.get_ghz_range_for_line(restfreq_ghz=restfreq_ghz, 
+                                     vsys_kms=vsys_kms, vwidth_kms=vwidth_kms
                                      , vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
 
     # If channel width restrictions are in place, calculate the
@@ -655,181 +662,159 @@ def compute_common_chanwidth(
 #################################################################
 # Extract single-line or continuum data from a measurement set. #
 #################################################################
+    
+def reweight_data():
+    
+    if edge_for_statwt == -1:
+        exclude_str = ''
+    else:
+        nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
+        exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
+            str(nchan_final-(edge_for_statwt-2))
+        logger.info("... running statwt with exclusion: "+exclude_str)
+
+    if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
+        # CASA version somewhat >= 5.5.0
+        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+                         'statalg': 'classic', 'datacolumn': 'data', 
+                         'fitspw': exclude_str, 'excludechans': True}
+    else:
+        # CASA version <= 5.4.1
+        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+                         'statalg': 'classic', 'datacolumn': 'data', 
+                         'excludechans': exclude_str}
+        # 
+    os.mkdir(outfile+'.touch')
+    test = casaStuff.statwt(**statwt_params)
+    os.rmdir(outfile+'.touch')
+
+def batch_extract_line(
+    infile_list = [],
+    
+    ):
+    
 
 def extract_line(
-    infile, 
-    outfile, 
+    infile = None, 
+    outfile = None, 
     line = 'co21', 
-    vsys_kms = None, 
+    restfreq_ghz = None,
+    method = 'regrid_then_rebin',
+    target_chanw_kms = None,
+    vlow_kms = None,
+    vhigh_kms = None,
+    vsys_kms = None,
     vwidth_kms = None, 
-    chan_fine = 0.0, 
-    rebin_factor = 5, 
-    do_regrid_first = True, 
-    do_regrid_only = False, 
-    do_statwt = False, 
-    edge_for_statwt = -1, 
+    nchan = None,
+    binfactor = None,
     overwrite = False, 
     ):
-    """Extract a spectral line uv data from a measurement set with optimized regridding. 
+
+    # Check the method
     
-    Extract a spectral line from a measurement set and regrid onto a
-    new velocity grid with the desired spacing. This doesn't
-    necessarily need the PHANGS keys in place and may be a general
-    purpose utility. There are some minor subtleties here related to
-    regridding and rebinning.
-    
-    This functions calls CASA mstransform three times:
-        1. `mstransform(regridms=True, width=common_chanwidth*one_plus_eps)`
-           Regrid the velocity axis to the common coarest channel width
-           
-        2. `mstransform(regridms=False, chanbin=rebin_factor)`
-           Bin the velocity axis from common coarest channel width to the target channel width 
-           by an integer rebin_factor (this can be 1 if target channel width is not large enough)
-           
-        3. `mstransform(regridms=False, chanaverage=False, combinespws=True)`
-           Combine spws
-    
-    Alternatively, we can also do this with a different order (`regrid_method = 2`):
-        1. `mstransform(regridms=False, chanbin=rebin_factor)`
-           Rebin the velocity axis by an integer factor so as to get as close to 
-           the target channel width as possible.
-           
-        2. `mstransform(regridms=True, width=target_chanwidth)`
-           Regrid the velocity axis to the exact target channel width
-        
-        3. `mstransform(regridms=False, chanaverage=False, combinespws=True)`
-           Combine spws
-    
-    Args:
-        infile (str): The input measurement set data with suffix ".ms".
-        outfile (str): The output measurement set data with suffix ".ms".
-        line (str): Line name. 
-        chan_fine (float): Channel width in units of km/s to regrid to. 
-                           If it is -1 then we will keep the original channel width.
-                           If do_regrid_only is True then this will be the exact output channel width.
-        rebin_factor (int): channel rebin factor, must be an integer.  
-        do_regrid_first (bool): If True, then first do regridding then do rebinning, and the final channel 
-                                width will be `chan_fine * rebin_factor`. If False, then first do rebinning
-                                then do regridding, and the final channel width will be `chan_fine`. 
-                                The default is True. 
-        do_regrid_only (bool): If True then only regridding will be done. The default is False, that is, 
-                               we do both regridding and rebinning. 
-        do_statwt (bool): 
-        edge_for_statwt (int): 
-    
-    Inputs:
-        infile: ALMA measurement set data folder.
-    
-    Outputs:
-        outfile: ALMA measurement set data folder.
-    
-    """
-    
-    # 
-    # This funcion is modified from the extract_line() function in older version phangsPipeline.py.
-    # 
-    
-    # 
-    # check input ms data dir
+    valid_methods = ['regrid_then_rebin','rebin_then_regrid','just_regrid','just_rebin']
+    if method.lower().strip() not in valid_methods:
+        logger.error("Not a valid line extraction medod - "+str(method))
+        raise Exception("Please specify a valid line extraction method.")
+
+    # Check input
+
+    if infile is None:
+        logging.error("Please specify an input file.")
+        raise Exception("Please specify an input file.")
+
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
+
     if not os.path.isdir(infile):
-        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
-    # 
-    # check output suffix
-    if re.match(r'^(.*)\.ms$', outfile, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', outfile, re.IGNORECASE)
-        outfile = out_name + '.ms'
-    else:
-        out_name = outfile
-        outfile = out_name + '.ms'
-    # 
-    # check existing output data
-    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
+        logger.error('The input measurement set "'+infile+'"does not exist.')
+        raise Exception('The input measurement set "'+infile+'"does not exist.')
+
+    # Check existence of output data and abort if found and overwrite is off
+
+    if os.path.isdir(outfile) and  not os.path.isdir(outfile+'.touch'):            
         if not overwrite:
             logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
-            return
-    # if overwrite, then delete existing output data.
-    for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', '.temp2', '.temp2.flagversions', '.touch', '.temp.touch', '.temp2.touch']:
+            return()
+
+    # Else, clear all previous files and temporary files
+
+    # TBD suffixes/syntax need updating
+    for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', 
+                   '.temp2', '.temp2.flagversions', '.touch', '.temp.touch', '.temp2.touch']:
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
-    # 
-    # check vsys
-    if vsys_kms is None:
-        logger.error('Error! Please input vsys_kms for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vsys_kms.')
-    # 
-    # check vwidth
-    if vwidth_kms is None:
-        logger.error('Error! Please input vwidth for the galaxy systematic velocity in units of km/s.')
-        raise Exception('Error! Please input vwidth.')
-    # 
-    # find spws for line
-    spw_list_string = find_spws_for_line(infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms)
-    # 
-    # exit if no line found
-    if spw_list_string == '':
-        # there has already a warning message inside find_spws_for_line()
-        return
-    # 
-    # get the line name and line center rest-frame frequency in the line_list module for the input line
-    line_name, restfreq_ghz = lines.get_line_name_and_frequency(line, exit_on_error=True) # exit_on_error = True
-    # 
-    # print starting message
-    logger.info("EXTRACT_LINE begins:")
-    logger.info("... line: "+line)
-    logger.info("... spectral windows to consider: "+spw_list_string)
-    # 
-    start_vel_kms = (vsys_kms - vwidth_kms/2.0)
-    chan_width_hz = au.getChanWidths(infile, spw_list_string)
-    if not np.isscalar(chan_width_hz): chan_width_hz = chan_width_hz[0]
-    current_chan_width_kms = abs(chan_width_hz / (restfreq_ghz*1e9)*sol_kms)
-    restfreq_string = "{:12.8f}".format(restfreq_ghz)+'GHz'
-    start_vel_string =  "{:12.8f}".format(start_vel_kms)+'km/s'
-    current_chanwidth_string = "{:12.8f}".format(current_chan_width_kms)+'km/s'
-    if chan_fine > 0:
-        nchan_for_recenter = int(np.max(np.ceil(vwidth_kms / chan_fine)))
-        chanwidth_string =  "{:12.8f}".format(chan_fine)+'km/s'
-    else:
-        nchan_for_recenter = int(np.max(np.ceil(vwidth_kms / current_chan_width_kms)))
-        chanwidth_string =  "{:12.8f}".format(current_chan_width_kms)+'km/s'
-    # 
-    logger.info("... rest frequency: "+restfreq_string)
-    logger.info("... new starting velocity: "+start_vel_string)
-    logger.info("... original velocity width: "+str(current_chan_width_kms))
-    logger.info("... target velocity width: "+str(chan_fine))
-    logger.info("... number of channels at this stage: "+str(nchan_for_recenter))
-    # 
-    # determine regridding/rebinning/combinespw order
-    # we can do regridding-rebinning-combinespw, 
-    # or rebinning-regridding-combinespw, 
-    # or only regridding-combinespw. 
-    mstransform_call_list = []
-    mstransform_call_message_list = []
-    # 
-    # build default mstransform params for regridding
-    mstransform_params_for_regrid = {'combinespws': False, 'regridms': True, 'mode': 'velocity', 'interpolation': 'cubic', 
-                                     'spw': spw_list_string, 'datacolumn': 'DATA', 
-                                     'start': start_vel_string.strip(), 'restfreq': restfreq_string.strip(), 
-                                     'outframe': 'lsrk', 'veltype': 'radio', 
-                                     'nchan': nchan_for_recenter, 'width': chanwidth_string.strip() }
-    mstransform_message_for_regrid = 'mstransform to regrid to line velocity and channel width of '+chanwidth_string.strip()+' from the original channel width of '+current_chanwidth_string.strip()+'.'
-    # 
-    if chan_fine <= 0.0:
-        del mstransform_params_for_regrid['width'] # if user has not input a valid chan_fine, then we will keep the original channel width.
-        mstransform_message_for_regrid = 'mstransform to regrid to line velocity while keeping the original channel width of '+current_chanwidth_string.strip()+'.'
-    # 
-    # build default mstransform params for rebinning
-    mstransform_params_for_rebin = {'combinespws': False, 'regridms': False, 
-                                    'spw': '', 'datacolumn': 'DATA', 
-                                    'chanaverage': True, 'chanbin': rebin_factor }
-    mstransform_message_for_rebin = 'mstransform to rebin by a factor of '+str(rebin_factor)+'.'
-    # 
-    # build default mstransform params for combinespw
-    mstransform_params_for_combinespw = {'combinespws': True, 'regridms': False, 
-                                         'spw': '', 'datacolumn': 'DATA', 
-                                         'chanaverage': False,
-                                         'keepflags': False }
-    mstransform_message_for_combinespw = 'mstransform to combine spws.'
+
+    # Get the line name and rest-frame frequency in the line_list
+    # module for the input line.
+
+    if restfreq_ghz is None:
+        if line is None:
+            logging.error("Specify a line name or provide a rest frequency in GHz.")
+            raise Exception("No rest frequency specified.")
+
+        restfreq_ghz = (lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
+
+    # Get velocity windows
+            
+    # TBD
+
+    # Identify SPWs - note whether we have multiple windows
+
+    spw_list = find_spws_for_line(
+        infile = line, restfreq_ghz = restfreq_ghz,
+        vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
+        max_chanwidth_kms = None,
+        exit_on_error = True, 
+        as_list = False,
+        )
+
+    # Initialize the calls and check inputs
+        
+    if method == 'just_regrid' or method == 'regrid_then_rebin' or \
+            method == 'rebin_then_regrid':
+
+        # Handle velocity windows, etc.
+
+        regrid_params, regrid_msg =  build_mstransform_call(
+            infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
+            vstart_kms=vstart_kms, nchan=nchan, method='regrid')
+                               
+    if method == 'just_rebin' or method == 'regrid_then_rebin' or \
+            method == 'rebin_then_regrid':
+
+        # Verify that we have the bin factor
+
+        rebin_params, rebin_msg =  build_mstransform_call(
+            infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
+            binfactor=binfactor, method='rebin')
+
+    if multiple_spws:
+        combine_params, combine_msg =  build_mstransform_call(
+            infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
+            method='combine')
+
+    # Execute the calls, juggling temporary files as appropriate
+
+    if method == 'just_regrid':
+        pass
+
+    if method == 'just_rebin':
+        pass
+
+    if method == 'rebin_then_regrid':
+        pass
+
+    if method == 'regrid_then_rebin':
+        pass
+
+
+
+    # ............................................
+    # Arrange the calls in the requested order
+    # ............................................
+
     # 
     # first mstransform call
     if do_regrid_only or do_regrid_first:
@@ -838,6 +823,7 @@ def extract_line(
         mstransform_message = mstransform_message_for_regrid
         mstransform_call_list.append(mstransform_params)
         mstransform_call_message_list.append(mstransform_message)
+
     # 
     # second mstransform call (or the first if not do_regrid_only and not do_regrid_first)
     if not do_regrid_only and rebin_factor > 1:
@@ -847,6 +833,7 @@ def extract_line(
         mstransform_message = mstransform_message_for_rebin
         mstransform_call_list.append(mstransform_params)
         mstransform_call_message_list.append(mstransform_message)
+
     # 
     # third mstransform call (or the second if not do_regrid_only and not do_regrid_first) (same as the first mstransform call)
     if not do_regrid_only and not do_regrid_first:
@@ -855,15 +842,20 @@ def extract_line(
         mstransform_message = mstransform_message_for_regrid
         mstransform_call_list.append(mstransform_params)
         mstransform_call_message_list.append(mstransform_message)
+
     # 
     # last mstransform call, combine spw
     mstransform_params = copy.copy(mstransform_params_for_combinespw)
     mstransform_message = mstransform_message_for_combinespw
     mstransform_call_list.append(mstransform_params)
     mstransform_call_message_list.append(mstransform_message)
-    # 
-    # loop mstransform call list
+
+    # ............................................
+    # Execute the list of mstransform calls
+    # ............................................
+
     logger.info('... we will have '+str(len(mstransform_call_list))+' mstransform calls')
+
     for k, mstransform_params in enumerate(mstransform_call_list):
         if k == 0:
             mstransform_params['vis'] = infile
@@ -880,7 +872,12 @@ def extract_line(
         os.mkdir(mstransform_params['outputvis']+'.touch')
         casaStuff.mstransform(**mstransform_params)
         os.rmdir(mstransform_params['outputvis']+'.touch')
-    # 
+
+    # ............................................
+    # Clean up leftover files
+    # ............................................
+
+
     # Clean up
     if os.path.isdir(outfile):
         logger.info("... deleting temporary files")
@@ -889,40 +886,167 @@ def extract_line(
                 if os.path.isdir(outfile+suffix):
                     shutil.rmtree(outfile+suffix)
     
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # STEP 4. Re-weight the data using statwt
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    
-    # N.B. need the sliding time bin to make statwt work.
-    
-    if do_statwt:
-        # 
-        if edge_for_statwt == -1:
-            exclude_str = ''
-        else:
-            nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
-            exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
-                               str(nchan_final-(edge_for_statwt-2))
-            logger.info("... running statwt with exclusion: "+exclude_str)
-        # 
-        if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
-            # CASA version somewhat >= 5.5.0
-            statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                             'statalg': 'classic', 'datacolumn': 'data', 
-                             'fitspw': exclude_str, 'excludechans': True}
-        else:
-            # CASA version <= 5.4.1
-            statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                             'statalg': 'classic', 'datacolumn': 'data', 
-                             'excludechans': exclude_str}
-        # 
-        os.mkdir(outfile+'.touch')
-        test = casaStuff.statwt(**statwt_params)
-        os.rmdir(outfile+'.touch')
-    
     logger.info("---")
+
+def build_mstransform_call(
+    infile = None, 
+    outfile = None, 
+    restfreq_ghz = None,
+    spw = None,
+    vstart_kms = None,
+    vwidth_kms = None,
+    datacolumn = None,
+    method = 'regrid',
+    target_chan_kms = None,
+    nchan = None,
+    binfactor = None,
+    overwrite = False, 
+    ):
+    """    
+    Extract a spectral line from a measurement set and regrid onto a
+    new velocity grid with the desired spacing. There are some minor
+    subtleties here related to regridding and rebinning.
     
-    return
+    """
+
+    # ............................................
+    # Error checking and setup
+    # ............................................
+
+    # Check that the requested method is understood
+
+    valid_methods = ['rebin','regrid','combine']
+    if method.lower().strip() not in valid_methods:
+        logger.error("Not a valid line extraction medod - "+str(method))
+        raise Exception("Please specify a valid line extraction method.")
+    
+    # Check input
+
+    if infile is None:
+        logging.error("Please specify an input file.")
+        raise Exception("Please specify an input file.")
+
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
+
+    # If not supplied by the user, find which SPWs should be included
+    # in the processing.
+    
+    if spw is None:
+        if restfreq_ghz is not None:
+            spw = find_spws_for_line(
+                infile=infile, restfreq_ghz = restfreq_ghz,
+                vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+
+            # Exit if no SPWs contain the line.
+            if spw is None:
+                # there has already a warning message inside find_spws_for_line()
+                return()
+        else:
+            logger.info("Defaulting to all SPW selections.")
+            spw = ''
+
+    # Determine the column to use
+
+    if datacolumn is None:
+        casaStuff.tb.open(infile, nomodify = True)
+        colnames = casaStuff.tb.colnames()
+        if 'CORRECTED_DATA' in colnames:
+            logger.info("Data has a CORRECTED column. Will use that.")
+            datacolumn = 'CORRECTED'
+        else:
+            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            datacolumn = 'DATA'
+        casaStuff.tb.close()
+
+    # ............................................
+    # Common parameters
+    # ............................................
+
+    params = {'vis': infile, 'outputvis': outfile, 'datacolumn':datacolumn,
+              'spw': spw, 
+              }
+
+    # ............................................
+    # Regridding
+    # ............................................
+    
+    if method == 'regrid':
+
+        # Check that we are provided a rest frequency or line name
+        
+        if restfreq_ghz is None:
+            logger.error("Please specify a rest frequency in GHz.")
+            raise Exception("No rest frequency specified.")
+        restfreq_string = ("{:12.8f}".format(restfreq_ghz)+'GHz').strip()
+
+        # Check that we have a velocity start and width
+
+        if vstart_kms is None:
+            logger.error("Please specify a starting velocity in km/s.")
+            raise Exception("No starting velocity specified.")        
+        start_vel_string =  ("{:12.8f}".format(vlow_kms)+'km/s').strip()
+        
+        # Check that we have a velocity width
+
+        if vwidth_kms is None and nchan is None:
+            logger.error("Please specify a velocity width in km/s or number of channels.")
+            raise Exception("No starting velocity specified.")
+
+        # Figure out the channel spacing, catching a few possible errors
+        
+        max_chan_hz = np.max(np.abs(au.getChanWidths(infile, spw)))
+        current_chan_kms = max_chan_hz/restfreq_ghz*sol_kms
+
+        skip_width = False
+        if target_chan_kms is None:
+            target_chan_kms = current_chan_kms
+            skip_width = True
+        elif current_chan_kms > target_chan_kms:
+            target_chan_kms = current_chan_kms
+            skip_width = True
+
+        chanwidth_string =  "{:12.8f}".format(target_chan_kms)+'km/s'
+
+        # Figure the number of channels if not supplied
+
+        if nchan is None:
+            nchan = int(np.max(np.ceil(vwidth_kms / target_chan_kms)))
+        
+        params = {'combinespws': False, 'regridms': True, 'chanaverage': False,
+                  'mode': 'velocity', 'interpolation': 'cubic', 
+                  'outframe': 'lsrk', 'veltype': 'radio', 'restfreq': restfreq_string, 
+                  'start': start_vel_string, 'nchan': nchan, 'width': chanwidth_string }
+
+        if skip_width:
+            del params['width']
+
+        message = '... regrid channel width '+chanwidth_string+' and nchan '+str(nchan)
+
+    # ............................................
+    # Rebin
+    # ............................................
+    
+    if method == 'rebin':
+        
+        params.update({'combinespws': False, 'regridms': False, 'chanaverage' : True, 
+                       'chanbin': binfactor }
+
+        message = '... rebin by a factor of '+str(binfactor)
+
+    # ............................................
+    # Combine SPWs
+    # ............................................
+    
+    if method = 'combine':
+     
+        params.update({'combinespws': True, 'regridms': False, 'chanaverage' : False, 
+                       'keepflags': False })
+        
+        message = '... combine attempting to merge spectral windows.'
+
+    return(params, message)
 
 
 def extract_continuum(

@@ -242,7 +242,7 @@ def is_line_family(line_tag = ''):
     line_tag_cleaned = re.sub(r'[^0-9a-zA-Z]', r'', line_tag.lower())
     return(line_tag_cleaned in line_families.keys())
 
-def get_ghz_range_for_line(line=None, vsys_kms=None, vwidth_kms=None, 
+def get_ghz_range_for_line(line=None, restfreq_ghz=None, vsys_kms=None, vwidth_kms=None, 
                            vlow_kms=None, vhigh_kms=None):
     """
     Return a low, high frequency range for a line code and either vsys, vwidth or vlow, vhigh.
@@ -262,11 +262,17 @@ def get_ghz_range_for_line(line=None, vsys_kms=None, vwidth_kms=None,
         logger.warning("Both vsys+vwidth and vlow+vhigh specified. Using vlow method.")
         use_vsys = False
     
+    if restfreq_ghz is None:
+        if line is None:
+            logging.error("Specify a line name or provide a rest frequency in GHz.")
+            raise Exception("No rest frequency specified.")
+        restfreq_ghz = (get_line_name_and_frequency(line, exit_on_error = True))[1]
+
     if vsys_method:
         vlow_kms = vsys_kms-vwidth_kms/2.0
         vhigh_kms = vsys_kms+vwidth_kms/2.0
 
-    restfreq_ghz = (get_line_name_and_frequency(line, exit_on_error = True))[1]
+
 
     line_edge_ghz = [restfreq_ghz*(1.-(vlow_kms)/sol_kms),
                      restfreq_ghz*(1.-(vhigh_kms)/sol_kms)]
