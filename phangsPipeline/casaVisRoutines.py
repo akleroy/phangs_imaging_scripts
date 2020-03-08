@@ -756,7 +756,7 @@ def extract_line(
 
         restfreq_ghz = (lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
 
-    # Get velocity windows
+    # Handle velocity windows, etc.
             
     # TBD
 
@@ -764,18 +764,22 @@ def extract_line(
 
     spw_list = find_spws_for_line(
         infile = line, restfreq_ghz = restfreq_ghz,
-        vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
-        max_chanwidth_kms = None,
+        vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
         exit_on_error = True, 
-        as_list = False,
+        as_list = True,
         )
+    if spw_list is None:
+        logging.error("No SPWs for selected line and velocity range.")
+        return()
+    multiple_spws = len(spw_list) > 1
+    spw = spw_list.join(',')
 
-    # Initialize the calls and check inputs
+    # ............................................
+    # Initialize the calls
+    # ............................................
         
     if method == 'just_regrid' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
-
-        # Handle velocity windows, etc.
 
         regrid_params, regrid_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
@@ -795,90 +799,71 @@ def extract_line(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
             method='combine')
 
-    # Execute the calls, juggling temporary files as appropriate
+    # ............................................
+    # string the calls together in the desired order
+    # ............................................
 
+    params_list = []
+    msg_list = []
     if method == 'just_regrid':
-        pass
+        params_list.append(regrid_params)
+        msg_list.append(regrid_msg)
 
     if method == 'just_rebin':
-        pass
+        params_list.append(rebin_params)
+        msg_list.append(rebin_msg)
 
     if method == 'rebin_then_regrid':
-        pass
+        params_list.append(rebin_params)
+        msg_list.append(rebin_msg)
+
+        params_list.append(regrid_params)
+        msg_list.append(regrid_msg)
 
     if method == 'regrid_then_rebin':
-        pass
+        params_list.append(regrid_params)
+        msg_list.append(regrid_msg)
 
+        params_list.append(rebin_params)
+        msg_list.append(rebin_msg)
 
-
-    # ............................................
-    # Arrange the calls in the requested order
-    # ............................................
-
-    # 
-    # first mstransform call
-    if do_regrid_only or do_regrid_first:
-        # do regrid
-        mstransform_params = copy.copy(mstransform_params_for_regrid)
-        mstransform_message = mstransform_message_for_regrid
-        mstransform_call_list.append(mstransform_params)
-        mstransform_call_message_list.append(mstransform_message)
-
-    # 
-    # second mstransform call (or the first if not do_regrid_only and not do_regrid_first)
-    if not do_regrid_only and rebin_factor > 1:
-        # do rebin if user has input a valid rebin_factor > 1
-        # rebin will be done to all spws
-        mstransform_params = copy.copy(mstransform_params_for_rebin)
-        mstransform_message = mstransform_message_for_rebin
-        mstransform_call_list.append(mstransform_params)
-        mstransform_call_message_list.append(mstransform_message)
-
-    # 
-    # third mstransform call (or the second if not do_regrid_only and not do_regrid_first) (same as the first mstransform call)
-    if not do_regrid_only and not do_regrid_first:
-        # do regrid after rebin (if there is no rebin earlier because rebin_factor<=1, this will be the only mstransform call except for the last combinespw call.)
-        mstransform_params = copy.copy(mstransform_params_for_regrid)
-        mstransform_message = mstransform_message_for_regrid
-        mstransform_call_list.append(mstransform_params)
-        mstransform_call_message_list.append(mstransform_message)
-
-    # 
-    # last mstransform call, combine spw
-    mstransform_params = copy.copy(mstransform_params_for_combinespw)
-    mstransform_message = mstransform_message_for_combinespw
-    mstransform_call_list.append(mstransform_params)
-    mstransform_call_message_list.append(mstransform_message)
+    if multiple_spws:
+        params_list.append(combine_params)
+        msg_lis.append(combine_msg)
 
     # ............................................
     # Execute the list of mstransform calls
     # ............................................
 
-    logger.info('... we will have '+str(len(mstransform_call_list))+' mstransform calls')
+    n_calls = len(param_list)
+    logger.info('... we will have '+str(n_calls)+' mstransform calls')
 
-    for k, mstransform_params in enumerate(mstransform_call_list):
-        if k == 0:
-            mstransform_params['vis'] = infile
-            mstransform_params['outputvis'] = outfile+'.temp%d'%(k+1)
-        elif k == len(mstransform_call_list)-1:
-            mstransform_params['vis'] = outfile+'.temp%d'%(k)
-            mstransform_params['outputvis'] = outfile
+    for kk in range(n_calls):
+        this_params = params_list[kk]
+        this_msg = msg_list[kk]
+        if kk == 0:
+            this_params['vis'] = infile
+            this_params['outputvis'] = outfile+'.temp%d'%(kk+1)
+        elif kk == n_calls-1:
+            this_params['vis'] = outfile+'.temp%d'%(kk)
+            this_params['outputvis'] = outfile
         else:
-            mstransform_params['vis'] = outfile+'.temp%d'%(k)
-            mstransform_params['outputvis'] = outfile+'.temp%d'%(k+1)
-        # 
-        logger.info("... "+mstransform_call_message_list[k])
-        logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, mstransform_params[t]) for t in mstransform_params.keys())+')')
+            this_params['vis'] = outfile+'.temp%d'%(kk)
+            this_params['outputvis'] = outfile+'.temp%d'%(kk+1)
+         
+        logger.info("... "+this_msf)
+        logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, this_params[t]) for t in this_params.keys())+')')
+
         os.mkdir(mstransform_params['outputvis']+'.touch')
-        casaStuff.mstransform(**mstransform_params)
+        casaStuff.mstransform(**this_params)
         os.rmdir(mstransform_params['outputvis']+'.touch')
 
     # ............................................
     # Clean up leftover files
     # ............................................
 
+    # TBD revisit
 
-    # Clean up
     if os.path.isdir(outfile):
         logger.info("... deleting temporary files")
         for k in range(len(mstransform_call_list)):
