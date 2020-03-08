@@ -659,39 +659,20 @@ def compute_common_chanwidth(
 
     return(coarsest_channel)
 
-#################################################################
-# Extract single-line or continuum data from a measurement set. #
-#################################################################
-    
-def reweight_data():
-    
-    if edge_for_statwt == -1:
-        exclude_str = ''
-    else:
-        nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
-        exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
-            str(nchan_final-(edge_for_statwt-2))
-        logger.info("... running statwt with exclusion: "+exclude_str)
+#######################################################
+# Extract a single-line, common grid measurement set. #
+#######################################################
 
-    if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
-        # CASA version somewhat >= 5.5.0
-        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                         'statalg': 'classic', 'datacolumn': 'data', 
-                         'fitspw': exclude_str, 'excludechans': True}
-    else:
-        # CASA version <= 5.4.1
-        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                         'statalg': 'classic', 'datacolumn': 'data', 
-                         'excludechans': exclude_str}
-        # 
-    os.mkdir(outfile+'.touch')
-    test = casaStuff.statwt(**statwt_params)
-    os.rmdir(outfile+'.touch')
-
-def batch_extract_line(
+def extract_line_by_spw(
     infile_list = [],
-    
     ):
+    """
+    TBD - breaking input into individual SPWs and deploy different
+    algorithms to each of them to bring them to the same grid, then
+    concat. This is a pain, but seems like the easiest way to deal
+    with the case of very different native resolutions.
+    """
+    pass
     
 
 def extract_line(
@@ -709,6 +690,9 @@ def extract_line(
     binfactor = None,
     overwrite = False, 
     ):
+    """
+    Document. Applies the same algorithm to each window, so will break in key edge cases.
+    """
 
     # Check the method
     
@@ -1033,6 +1017,37 @@ def build_mstransform_call(
 
     return(params, message)
 
+def reweight_line_data():
+    """
+    TBD - moved statwt here.
+    """
+    
+    if edge_for_statwt == -1:
+        exclude_str = ''
+    else:
+        nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
+        exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
+            str(nchan_final-(edge_for_statwt-2))
+        logger.info("... running statwt with exclusion: "+exclude_str)
+
+    if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
+        # CASA version somewhat >= 5.5.0
+        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+                         'statalg': 'classic', 'datacolumn': 'data', 
+                         'fitspw': exclude_str, 'excludechans': True}
+    else:
+        # CASA version <= 5.4.1
+        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+                         'statalg': 'classic', 'datacolumn': 'data', 
+                         'excludechans': exclude_str}
+        # 
+    os.mkdir(outfile+'.touch')
+    test = casaStuff.statwt(**statwt_params)
+    os.rmdir(outfile+'.touch')
+
+########################################
+# Extract a continuum measurement set. #
+########################################
 
 def extract_continuum(
     infile, 
