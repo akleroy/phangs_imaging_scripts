@@ -578,8 +578,9 @@ def spw_string_for_freq_ranges(
         if complement:
             mask_axis = np.invert(mask_axis) 
 
-        if np.sum(mask_axis == False) == 0 and fail_on_empty:
-            return(None)
+        if fail_on_empty:
+            if np.sum(np.invert(mask_axis)) == 0:
+                return(None)
         
         regions = (label(mask_axis))[0]
         max_reg = np.max(regions)
