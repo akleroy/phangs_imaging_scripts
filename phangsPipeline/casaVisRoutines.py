@@ -394,7 +394,12 @@ def contsub(
     spw_flagging_string = spw_string_for_freq_ranges(
         infile = infile, 
         freq_ranges_ghz = ranges_to_exclude,
+        fail_on_empty = True,
         )
+
+    if spw_flagging_string is None:
+        logger.error("All data are masked in at least one spectral window. Returning.")
+        return()
 
     os.mkdir(infile+'.contsub'+'.touch')
 
@@ -519,6 +524,7 @@ def spw_string_for_freq_ranges(
     freq_ranges_ghz = [],
     just_spw = [],
     complement = False,
+    fail_on_empty = False,
     ):
 
     """
@@ -571,6 +577,9 @@ def spw_string_for_freq_ranges(
             
         if complement:
             mask_axis = np.invert(mask_axis) 
+
+        if np.sum(mask_axis == False) == 0 and fail_on_empty:
+            return(None)
         
         regions = (label(mask_axis))[0]
         max_reg = np.max(regions)
