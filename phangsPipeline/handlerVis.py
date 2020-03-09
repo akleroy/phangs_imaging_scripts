@@ -576,6 +576,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         config and product.        
         """
         
+        # Error checking
+
         if target is None:
             logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
@@ -731,6 +733,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         Extract continuum data from ms data for the input target, config and product.         
         """
         
+        # Error checking
+
         if target is None:
             logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
