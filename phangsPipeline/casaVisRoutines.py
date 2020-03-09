@@ -663,6 +663,9 @@ def compute_common_chanwidth(
 # Extract a single-line, common grid measurement set. #
 #######################################################
 
+# TBD add a routine to pick parameters for regridding and to calculate
+# the regrid/rebin choices. Ugh.
+
 def extract_line_by_spw(
     infile_list = [],
     ):
@@ -674,7 +677,6 @@ def extract_line_by_spw(
     """
     pass
     
-
 def extract_line(
     infile = None, 
     outfile = None, 
