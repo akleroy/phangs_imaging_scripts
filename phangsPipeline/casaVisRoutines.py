@@ -1044,6 +1044,9 @@ def extract_continuum(
     infile = None, 
     outfile = None, 
     ranges_to_exclude = [],    
+    lines_to_flag = [],
+    vsys_kms=None, vwidth_kms=None, 
+    vlow_kms=None, vhigh_kms=None,    
     do_statwt = False, 
     do_collapse = True, 
     overwrite = False, 
@@ -1085,6 +1088,19 @@ def extract_continuum(
         if not overwrite:
             logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
             return()
+
+    # Evaluate line flagging logic. If frequency ranges are supplied,
+    # use those. If not but we do have line and velocity data, use
+    # those to generate frequency ranges to flag.
+
+    if len(ranges_to_exclude) == 0 and len(lines_to_flag) > 0: 
+        vsys_method = (vsys_kms is not None) and (vwidth_kms is not None)
+        vlow_method = (vlow_kms is not None) and (vhigh_kms is not None)
+
+        if vsys_method or vlow_method:
+            ranges_to_exclude = lines.get_ghz_range_for_list(
+                line_list=lines_to_exclude, 
+                vsys_kms=vsys, vwidth_kms=vwidth, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
 
     # if overwrite, then delete existing output data.
 

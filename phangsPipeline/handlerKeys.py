@@ -1423,7 +1423,7 @@ class KeyHandler:
                     lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
         
         if len(lines_to_flag) == 0:
-            logging.error('No lines to flag for the input continuum product '+product)
+            logging.warning('No lines to flag for the input continuum product '+product)
             #raise Exception('No lines to flag for the input continuum product '+product)
             
         return lines_to_flag

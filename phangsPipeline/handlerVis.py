@@ -721,50 +721,63 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target = None, 
             product = None, 
             config = None, 
-            extra_ext = '', 
+            extra_ext_in = '', 
             do_statwt = True, 
             do_collapse = True, 
-            overwrite = False, 
+            overwrite = True, 
             ):
         """
-        Extract continuum data from ms data for the input target, config and product. 
-        
+        Extract continuum data from ms data for the input target, config and product.         
         """
-        # 
-        logger.info('START: Extracting continuum '+product+' for target '+target+' and config '+config+'.')
-        # 
-        # get imaging dir and change directory
-        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-        # 
+        
+        if target is None:
+            logger.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if product is None:
+            logger.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        if config is None:
+            logger.error("Please specify a config.")
+            raise Exception("Please specify a config.")
+
+        infile = fnames.get_vis_filename(
+            target=target, config=config, product=product, 
+            ext=extra_ext_in, suffix=None)
+
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
-        # 
+
         # get lines to flag as defined in keys
         lines_to_flag = self._kh.get_lines_to_flag_for_continuum_product(product=product)
-        # 
-        # get fname dict for the list of ms data for the input target and config
-        fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
-        this_ms_filenames = fname_dict['ms_filenames']
-        # 
-        # extract continuum for each ms data
-        logger.debug('Current directory: "'+os.getcwd()+'"')
-        for i in range(len(this_ms_filenames)):
-            this_ms_filename = this_ms_filenames[i]
-            this_ms_extracted = fname_dict['ms_extracted'][i]
-            logger.debug('Extracting continuum: "'+this_ms_extracted+'" <-- "'+this_ms_filename+'"')
-            if not self._dry_run:
-                # extract_continuum
-                cvr.extract_continuum(in_file = this_ms_filename, 
-                                      out_file = this_ms_extracted, 
-                                      lines_to_flag = lines_to_flag, 
-                                      vsys = vsys, 
-                                      vwidth = vwidth, 
-                                      do_statwt = do_statwt, 
-                                      do_collapse = do_collapse, 
-                                      overwrite = overwrite, 
-                                     )
-        # 
-        # 
-        logger.info('END: Extracting continuum '+product+' for target '+target+' and config '+config+'.')
+                
+        if len(lines_to_flag) > 0:
+            ranges_to_exclude = lines.get_ghz_range_for_list(
+                line_list=lines_to_flag, vsys_kms=vsys, vwidth_kms=vwidth)
+        else:
+            ranges_to_exclude = []
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Extracting continuum from "+infile)
+        logger.info("... flagging ranges: "+str(ranges_to_exclude))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+       
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
+        if not self._dry_run and casa_enabled:
+
+            cvr.extract_continuum(
+                infile = infile, 
+                outfile = outfile, 
+                ranges_to_exclude = ranges_to_exclude,
+                do_statwt = do_statwt,
+                do_collapse = do_collapse, 
+                overwrite = overwrite, 
+                )
+
+        return()
 
 #endregion

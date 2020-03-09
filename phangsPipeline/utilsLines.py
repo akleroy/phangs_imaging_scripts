@@ -253,6 +253,10 @@ def get_ghz_range_for_line(line=None, restfreq_ghz=None, vsys_kms=None, vwidth_k
 
     vsys_method = (vsys_kms is not None) and (vwidth_kms is not None)
     vlow_method = (vlow_kms is not None) and (vhigh_kms is not None)
+
+    if vsys_method == False and vlow_method == False:
+        logger.warning("Neither vsys+vwidth and vlow+vhigh specified. Returning.")
+        return(None)
     
     if vsys_method:
         use_vsys = True
@@ -271,8 +275,6 @@ def get_ghz_range_for_line(line=None, restfreq_ghz=None, vsys_kms=None, vwidth_k
     if vsys_method:
         vlow_kms = vsys_kms-vwidth_kms/2.0
         vhigh_kms = vsys_kms+vwidth_kms/2.0
-
-
 
     line_edge_ghz = [restfreq_ghz*(1.-(vlow_kms)/sol_kms),
                      restfreq_ghz*(1.-(vhigh_kms)/sol_kms)]
