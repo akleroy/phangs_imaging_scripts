@@ -89,8 +89,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         do_contsub = False, 
         do_extract_line = True,
         do_extract_cont = True,
-        make_directories = True,
         extra_ext = '',       
+        make_directories = True,
+        statwt_cont = True,
+        collapse_cont = True
         timebin = '0s',
         just_projects=None,        
         overwrite = False, 
@@ -220,12 +222,11 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                         self.task_extract_continuum(
                             target = this_target, 
-                            project = this_project, 
-                            array_tag = this_array_tag, 
-                            obsnum = this_obsnum, 
-                            product = this_product, 
-                            extra_ext_in = "noregrid",
-                            # could add algorithm flags here
+                            product = this_project, 
+                            config = this_config, 
+                            extra_ext_in = "noregrid", 
+                            do_statwt = statwt_cont, 
+                            do_collapse = collapse_cont, 
                             overwrite = overwrite, 
                             )                
                 
@@ -724,7 +725,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = '', 
             do_statwt = True, 
             do_collapse = True, 
-            overwrite = True, 
+            overwrite = False, 
             ):
         """
         Extract continuum data from ms data for the input target, config and product.         
