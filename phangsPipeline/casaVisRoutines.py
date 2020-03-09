@@ -314,16 +314,7 @@ def concat_ms(
         if not os.path.isdir(this_infile):
             logger.error('Error! The input measurement set "'+this_infile+'" not found')
             raise Exception('Error! The input measurement set "'+this_infile+'" not found')
-    
-    # PROPOSE TO DEPRECATE THIS (e.g., .contsub violates this rule)
-    # check output suffix
-    #if re.match(r'^(.*)\.ms$', outfile, re.IGNORECASE):
-    #    out_name = re.sub(r'^(.*)\.ms$', r'\1', outfile, re.IGNORECASE)
-    #    outfile = out_name + '.ms'
-    #else:
-    #    out_name = outfile
-    #    outfile = out_name + '.ms'
-    
+        
     # Quit if output data are present and overwrite is off.
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
@@ -663,9 +654,6 @@ def compute_common_chanwidth(
 # Extract a single-line, common grid measurement set. #
 #######################################################
 
-# TBD add a routine to pick parameters for regridding and to calculate
-# the regrid/rebin choices. Ugh.
-
 def extract_line_by_spw(
     infile_list = [],
     ):
@@ -677,6 +665,7 @@ def extract_line_by_spw(
     """
     pass
     
+
 def extract_line(
     infile = None, 
     outfile = None, 
@@ -857,7 +846,7 @@ def extract_line(
                 if os.path.isdir(outfile+suffix):
                     shutil.rmtree(outfile+suffix)
     
-    logger.info("---")
+    return()
 
 def build_mstransform_call(
     infile = None, 
@@ -998,11 +987,11 @@ def build_mstransform_call(
     # ............................................
     # Rebin
     # ............................................
-    
+        
     if method == 'rebin':
         
         params.update({'combinespws': False, 'regridms': False, 'chanaverage' : True, 
-                       'chanbin': binfactor }
+                       'chanbin': binfactor })
 
         message = '... rebin by a factor of '+str(binfactor)
 
@@ -1010,8 +999,8 @@ def build_mstransform_call(
     # Combine SPWs
     # ............................................
     
-    if method = 'combine':
-     
+    if method == 'combine':
+        
         params.update({'combinespws': True, 'regridms': False, 'chanaverage' : False, 
                        'keepflags': False })
         
@@ -1024,7 +1013,7 @@ def reweight_line_data():
     TBD - moved statwt here.
     """
     
-    if edge_for_statwt == -1:
+                      if edge_for_statwt == -1:
         exclude_str = ''
     else:
         nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
@@ -1050,86 +1039,103 @@ def reweight_line_data():
 ########################################
 # Extract a continuum measurement set. #
 ########################################
-
+                      
 def extract_continuum(
-    infile, 
-    outfile, 
-    lines_to_flag = None, 
-    vsys_kms = None, 
-    vwidth_kms = None, 
+    infile = None, 
+    outfile = None, 
+    ranges_to_exclude = [],    
     do_statwt = False, 
     do_collapse = True, 
     overwrite = False, 
     ):
-    """Extract continuum uv data from a measurement set and collapse into a single channel. 
-    
-    Extract a continuum measurement set, flagging any specified lines,
-    reweighting using statwt, and then collapsing to a single "channel
-    0" measurement.
-    
+    """
+    Extract continuum uv data from a measurement set. Optionally
+    reweights and collapses the data to a single channel per spw.
+        
     Args:
-        infile (str): The input measurement set data with suffix ".ms".
-        outfile (str): The output measurement set data with suffix ".ms".
-        lines_to_flag (list): A list of line names to flag. Lines names must be in our line_list module. If it is None, then we use all 12co, 13co and c18o lines.
-        do_statwt (bool): 
-        do_collapse (bool): Always True to produce the single-channel continuum data.
+    
+    infile (str): The input measurement set data with suffix ".ms".
+    outfile (str): The output measurement set data with suffix ".ms".
+    do_statwt (bool): 
+    do_collapse (bool): Always True to produce the single-channel continuum data.
     
     Inputs:
-        infile: ALMA measurement set data folder.
     
     Outputs:
-        outfile: ALMA measurement set data folder.
     
     """
     
-    # 
-    # check input ms data dir
+    # Check input
+
+    if infile is None:
+        logging.error("Please specify an input file.")
+        raise Exception("Please specify an input file.")
+
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
+
     if not os.path.isdir(infile):
-        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
-    # 
-    # check output suffix
-    if re.match(r'^(.*)\.ms$', outfile, re.IGNORECASE):
-        out_name = re.sub(r'^(.*)\.ms$', r'\1', outfile, re.IGNORECASE)
-        outfile = out_name + '.ms'
-    else:
-        out_name = outfile
-        outfile = out_name + '.ms'
-    # 
-    # check existing output data
+        logger.error('The input measurement set "'+infile+'"does not exist.')
+        raise Exception('The input measurement set "'+infile+'"does not exist.')
+
+    # Check existing output data
+    
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
-            return
+            return()
+
     # if overwrite, then delete existing output data.
-    for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', '.temp_copy', '.temp_copy.flagversions', '.touch']:
+
+    for suffix in ['', '.flagversions', '.touch',
+                   '.temp', '.temp.flagversions', 
+                   '.temp_copy', '.temp_copy.flagversions', 
+                   ]:
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
-    # 
-    # find_spw_channels_for_lines
-    spw_flagging_string = find_spw_channels_for_lines(infile = infile, 
-                                                      lines_to_flag = lines_to_flag, 
-                                                      vsys_kms = vsys_kms, 
-                                                      vwidth_kms = vwidth_kms)
-    # 
-    # make a continuum copy of the data
+
+    # find_spw_channels_for_provided frequency ranges
+
+    spw_flagging_string = spw_string_for_freq_ranges(
+        infile = infile, 
+        freq_ranges_ghz = ranges_to_exclude,
+        fail_on_empty = True,
+        )
+
+    # Make a copy of the data
+
     os.mkdir(outfile+'.touch')
     shutil.copytree(infile, outfile)
     os.rmdir(outfile+'.touch')
-    # 
-    # flagdata
+
+    # Flag the relevant line-affected channels.
     if spw_flagging_string != '':
         os.mkdir(outfile+'.touch')
         casaStuff.flagdata(vis=outfile,
                            spw=spw_flagging_string,
                            )
         os.rmdir(outfile+'.touch')
-    # 
-    # statwt
-    # Here - this comman needs to be examined and refined in CASA
+
+    # If requested, re-weight the data using statwt. This can be VERY
+    # slow.
+
+    # Here - this command needs to be examined and refined in CASA
     # 5.6.1 to see if it can be sped up. Right now things are
     # devastatingly slow.
+
     if do_statwt:
+
+        casaStuff.tb.open(outfile, nomodify = True)
+        colnames = casaStuff.tb.colnames()
+        if 'CORRECTED_DATA' in colnames:
+            logger.info("Data has a CORRECTED column. Will use that.")
+            datacolumn = 'CORRECTED'
+        else:
+            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            datacolumn = 'DATA'
+        casaStuff.tb.close()
+
         logger.info("... deriving empirical weights using STATWT.")
         os.mkdir(outfile+'.touch')
         casaStuff.statwt(vis=outfile,
@@ -1137,13 +1143,14 @@ def extract_continuum(
                          slidetimebin=False,
                          chanbin='spw',
                          statalg='classic',
-                         datacolumn='data',
+                         datacolumn=datacolumn,
                          )
         os.rmdir(outfile+'.touch')
-    # 
+
     # collapse
+
     if do_collapse:
-        logger.info("... Collapsing the continuum to a single channel.")
+        logger.info("... Collapsing each continuum SPW to a single channel.")
         
         if os.path.isdir(outfile):
             shutil.move(outfile, outfile+'.temp_copy')
@@ -1151,21 +1158,33 @@ def extract_continuum(
             shutil.move(outfile+'.flagversions', outfile+'.temp_copy'+'.flagversions')
         
         os.mkdir(outfile+'.touch')
+
+        casaStuff.tb.open(outfile+'.temp_copy', nomodify = True)
+        colnames = casaStuff.tb.colnames()
+        if 'CORRECTED_DATA' in colnames:
+            logger.info("Data has a CORRECTED column. Will use that.")
+            datacolumn = 'CORRECTED'
+        else:
+            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            datacolumn = 'DATA'
+        casaStuff.tb.close()
+
         casaStuff.split(vis=outfile+'.temp_copy',
                         outputvis=outfile,
-                        width=10000,
-                        datacolumn='DATA',
+                        width=100000,
+                        datacolumn=datacolumn,
                         keepflags=False)
                         #<TODO><20200210># num_chan or width
+
         os.rmdir(outfile+'.touch')
-        # 
+
         # clean up
         if os.path.isdir(outfile+'.temp_copy'):
             shutil.rmtree(outfile+'.temp_copy')
         if os.path.isdir(outfile+'.temp_copy.flagversions'):
             shutil.rmtree(outfile+'.temp_copy.flagversions')
-    # 
-    return
+
+    return()
 
 ##################
 # Analysis tasks #
