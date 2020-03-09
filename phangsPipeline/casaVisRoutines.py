@@ -421,6 +421,7 @@ def find_spws_for_line(
     line = None, restfreq_ghz = None,
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     max_chanwidth_kms = None,
+    require_data = False,
     exit_on_error = True, 
     as_list = False,
     ):
@@ -496,6 +497,10 @@ def find_spws_for_line(
             if spw_chanwidth_ghz > max_chanwidth_ghz:
                 continue
 
+        if require_data:
+            if len(vm.scansForSPW[spw]) == 0:
+                continue
+
         spw_list.append(this_spw)
 
     # If we don't find the line in this data set, issue a warning and
@@ -524,7 +529,6 @@ def spw_string_for_freq_ranges(
     complement = False,
     fail_on_empty = False,
     ):
-
     """
     Given an input measurement set, return the spectral 
     List the spectral window and channels corresponding to the input
@@ -627,8 +631,9 @@ def compute_common_chanwidth(
     line_name, restfreq_ghz = lines.get_line_name_and_frequency(line, exit_on_error=True)
 
     # Work out the frequencies at the line edes and central frequency
-    line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(line=line_name, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
-                                                               vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+    line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
+        line=line_name, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+        vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
     
     line_freq_ghz = (line_high_ghz+line_low_ghz)/2.0
 
@@ -654,8 +659,26 @@ def compute_common_chanwidth(
 # Extract a single-line, common grid measurement set. #
 #######################################################
 
-def extract_line_by_spw(
+def choose_common_res(
+    vals=[],
+    epsilon=1e-4):
+    """
+    Choose a common resolution given a list and an inflation.
+    """
+    if len(vals) == 0:
+        return(None)
+    ra = np.array(vals)
+    common_res = np.max(ra)*(1.+epsilon)
+    return(common_res)
+
+def suggest_extraction_scheme(
     infile_list = [],
+    target_chan_kms = None,
+    restfreq_ghz = None,
+    line = None,
+    vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
+    extact = False,
+    method = 'regrid_then_rebin',
     ):
     """
     TBD - breaking input into individual SPWs and deploy different
@@ -663,20 +686,139 @@ def extract_line_by_spw(
     concat. This is a pain, but seems like the easiest way to deal
     with the case of very different native resolutions.
     """
-    pass
+
+    # Check inputs
     
+    if infile_list is None:
+        logging.error("Please specify a list of infiles.")
+        raise Exception("Please specify a list of infiles.")
+    
+    valid_methods = ['regrid_then_rebin','rebin_then_regrid','just_regrid','just_rebin']
+    if method.lower().strip() not in valid_methods:
+        logger.error("Not a valid line extraction medod - "+str(method))
+        raise Exception("Please specify a valid line extraction method.")
+
+    # Get the line name and rest-frame frequency in the line_list
+    # module for the input line
+
+    if restfreq_ghz is None:
+        if line is None:
+            logging.error("Specify a line name or provide a rest frequency in GHz.")
+            raise Exception("No rest frequency specified.")
+        
+        restfreq_ghz = (lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
+
+    # Work out the frequencies at the line edes.
+
+    line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
+        restfreq_ghz=restfreq_ghz,  vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+        vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+    
+    line_freq_ghz = 0.5*(line_low_ghz+line_high_ghz)
+
+    # make sure the input infile_list is a list
+    
+    if np.isscalar(infile_list):
+        infile_list = [infile_list]    
+
+    # Loop over infiles and spectral windows
+
+    scheme = {}
+    chan_width_list = []
+    rebin_fac_list = []
+
+    for this_infile in infile_list:
+
+        vm = au.ValueMapping(this_infile)
+        
+        spw_list = vm.spwInfo.keys()
+        
+        scheme[this_infile] = {}
+
+        for this_spw in spw_list:
+
+            if len(vm.scansForSPW[this_spw]) == 0: 
+                continue
+            
+            chan_width_ghz = np.abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
+            chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms
+
+            if chan_width_kms > target_chan_kms:
+                logger.warning("Channel too big for SPW "+str(this_spw))
+                continue
+            
+            scheme[this_infile][this_spw] = {}
+            scheme[this_infile][this_spw]['chan_width_kms'] = chan_width_kms
+            scheme[this_infile][this_spw]['chan_width_ghz'] = chan_width_ghz
+            scheme[this_infile][this_spw]['rebin_fac'] = rebin_fac
+            scheme[this_infile][this_spw]['target_chan_kms'] = None
+
+            chan_width_list.append(chan_width_kms)
+            rebin_fac_list = np.floor(target_chan_kms/chan_width_kms)
+
+    # Figure out the strategy
+    
+    # ... for rebinning, just do the naive division of floor(target / current)
+    if method == 'just_rebin':
+        return(scheme)
+
+    # ... for regridding, just regrid to the desired width
+    if method == 'just_regrid':
+        for this_infile in scheme.keys():
+            for this_spw in scheme[this_infile].keys():
+                if exact:
+                    scheme[this_infile][this_spw]['target_chan_kms'] = target_chan_kms
+                else:
+                    # Could revise this ... not positive of the correct choice
+                    scheme[this_infile][this_spw]['target_chan_kms'] = target_chan_kms
+    
+    # ... for rebin-then-regrid, first rebin by the naive amount. Then
+    # regrid either to the final value (if exact) or to a common
+    # resolution determined by the actual channels and rebinnning.
+
+    if method == 'rebin_then_regrid':
+        for this_infile in scheme.keys():
+            for this_spw in scheme[this_infile].keys():
+                if exact:
+                    scheme[this_infile][this_spw]['target_chan_kms'] = target_chan_kms
+                else:
+                    common_res = choose_common_res(
+                        vals=np.array(chan_width_list)*np.array(rebin_fac_list),
+                        epsilon=1e-4)
+                    scheme[this_infile][this_spw]['target_chan_kms'] = common_res
+
+    # ... for regrid-then-rebin        
+
+    if method == 'regrid_then_rebin':
+        for this_infile in scheme.keys():
+            for this_spw in scheme[this_infile].keys():
+                if exact:
+                    scheme[this_infile][this_spw]['target_chan_kms'] = \
+                        target_chan_kms / scheme[this_infile][this_spw]['rebin_fac']
+                else:
+                    common_res = choose_common_res(
+                        vals=np.array(chan_width_list)*np.array(rebin_fac_list),
+                        epsilon=1e-4)
+                    scheme[this_infile][this_spw]['target_chan_kms'] = \
+                        common_res / scheme[this_infile][this_spw]['rebin_fac']
+
+    return(scheme)
+    
+def split_and_extract(
+    ):
+    pass
 
 def extract_line(
     infile = None, 
     outfile = None, 
-    line = 'co21', 
     restfreq_ghz = None,
-    method = 'regrid_then_rebin',
-    target_chanw_kms = None,
+    line = 'co21', 
     vlow_kms = None,
     vhigh_kms = None,
     vsys_kms = None,
     vwidth_kms = None, 
+    method = 'regrid_then_rebin',
+    target_chan_kms = None,
     nchan = None,
     binfactor = None,
     overwrite = False, 
@@ -733,15 +875,30 @@ def extract_line(
 
     # Handle velocity windows, etc.
             
-    # TBD
+    if vsys_kms is None and vwidth_kms is None:
+        if vlow_kms is not None and vhigh_kms is not None:
+            vsys_kms = 0.5*(vhigh_kms+vlow_kms)
+            vwidth_kms = (vhigh_kms - vlow_kms)
+        else:
+            if method == 'just_regrid' or method == 'regrid_then_rebin' or \
+                    method == 'rebin_then_regrid':
+                logging.error("I need a velocity width for a regridding step.")
+                raise Exception("Need velocity width for regridding.")
+
+    # ... should only reach this next block in the "just_rebinning" case
+
+    if (vsys_kms is None) and (vwidth_kms is None) and \
+            (vlow_kms is None) and (vhigh_kms is None):
+        logging.error("Missing velocities. Setting to zero as a placeholder.")
+        vsys_kms = 0.0
+        vwidth_kms = 0.0
 
     # Identify SPWs - note whether we have multiple windows
 
     spw_list = find_spws_for_line(
         infile = line, restfreq_ghz = restfreq_ghz,
         vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
-        exit_on_error = True, 
-        as_list = True,
+        require_data = True, exit_on_error = True, as_list = True,
         )
     if spw_list is None:
         logging.error("No SPWs for selected line and velocity range.")
@@ -756,9 +913,14 @@ def extract_line(
     if method == 'just_regrid' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
 
+        if target_chan_kms is None:
+            logger.warning('Need a target channel width to enable regridding.')
+            return()
+
         regrid_params, regrid_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
-            vstart_kms=vstart_kms, nchan=nchan, method='regrid')
+            vstart_kms=vstart_kms, target_chan_kms=target_chan_kms, nchan=nchan, 
+            method='regrid')
                                
     if method == 'just_rebin' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
@@ -1008,33 +1170,88 @@ def build_mstransform_call(
 
     return(params, message)
 
-def reweight_line_data():
+def reweight_line_data(
+    infile = None, 
+    outfile = None, 
+    datacolumn = None,
+    edge_chans = None,
+    overwrite = False, 
+    ):
     """
     TBD - moved statwt here.
     """
     
-                      if edge_for_statwt == -1:
-        exclude_str = ''
-    else:
-        nchan_final = int(np.floor(nchan_for_recenter / rebin_factor)+1)
-        exclude_str = '*:'+str(edge_for_statwt-1)+'~'+\
-            str(nchan_final-(edge_for_statwt-2))
-        logger.info("... running statwt with exclusion: "+exclude_str)
+    # Check input
+
+    if infile is None:
+        logging.error("Please specify an input file.")
+        raise Exception("Please specify an input file.")
+
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
+
+    if not os.path.isdir(infile):
+        logger.error('The input measurement set "'+infile+'"does not exist.')
+        raise Exception('The input measurement set "'+infile+'"does not exist.')
+
+    # Check existing output data
+    
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
+        if not overwrite:
+            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
+            return()
+
+    # Determine column to use
+
+    if datacolumn is None:
+        casaStuff.tb.open(infile, nomodify = True)
+        colnames = casaStuff.tb.colnames()
+        if 'CORRECTED_DATA' in colnames:
+            logger.info("Data has a CORRECTED column. Will use that.")
+            datacolumn = 'CORRECTED'
+        else:
+            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            datacolumn = 'DATA'
+        casaStuff.tb.close()
+
+    # Figure out the channel selection string
+
+    exclude_str = ''
+    if edge_chans is not None:
+        first = True
+        for this_spw in vm.spwInfo.keys():
+            nchan = vm.spwInfo[this_spw]['numChannels']
+            if edge_chans*2 > nchan:
+                logger.warning("Too many edge channels for given spw: "+str(this_spw))
+                low = edge_chans-1
+                high = nchan-edge_chans-2
+                if first:
+                    exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
+                else:
+                    exclude_str += ';'+str(this_spw)+':'+str(low)+'~'+str(high)
+
+    logger.info("... running statwt with exclusion: "+exclude_str)
+
+    # Build the statwt call
 
     if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
         # CASA version somewhat >= 5.5.0
         statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                         'statalg': 'classic', 'datacolumn': 'data', 
+                         'statalg': 'classic', 'datacolumn': datacolumn, 
                          'fitspw': exclude_str, 'excludechans': True}
     else:
         # CASA version <= 5.4.1
         statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                         'statalg': 'classic', 'datacolumn': 'data', 
+                         'statalg': 'classic', 'datacolumn': datacolumn, 
                          'excludechans': exclude_str}
-        # 
+
+    # Run the call
     os.mkdir(outfile+'.touch')
     test = casaStuff.statwt(**statwt_params)
     os.rmdir(outfile+'.touch')
+
+    return()
 
 ########################################
 # Extract a continuum measurement set. #
