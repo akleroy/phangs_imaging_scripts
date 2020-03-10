@@ -624,6 +624,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
+        if not os.path.isdir(infile):
+            logger.error("Infile not found. Returning.")
+            return()
+
         if not self._dry_run and casa_enabled:
 
             cvr.batch_extract_line(
