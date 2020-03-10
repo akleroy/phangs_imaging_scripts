@@ -668,11 +668,65 @@ def batch_extract_line(
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     method = 'regrid_then_rebin',
     extact = False,
+    overwrite = False,
     ):
     """
     Run a batch line extraction.
     """
-    pass
+
+    # Check that we have an output file defined.
+
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
+    
+    # Feed directly to generate an extraction scheme. This does a lot
+    # of the error checking.
+
+    schemes = suggest_extraction_scheme(
+        infile_list = infile_list,
+        target_chan_kms = target_chan_kms, method = method, extact = exact,
+        restfreq_ghz = restfreq_ghz, line = line,
+        vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,        
+        )
+
+    # Execute the extraction scheme
+    split_file_list = []
+    for this_infile in schemes.keys():
+        for this_spw in schemes[this_infile].keys():
+            this_scheme = schemes[this_infile][this_spw]
+
+            # Specify output file and check for existence
+            this_outfile = this_infile+'.temp_spw'+str(this_spw).strip()
+
+            this_scheme['outfile'] = this_outfile
+            this_scheme['overwrite'] = overwrite
+            split_file_list.append(this_outfile)
+
+            # Execute line extraction
+
+            extract_line(**this_scheme)
+
+    # Concatenate and combine the output data sets
+    
+    # ... concat
+
+    concat_ms(
+        infile_list = split_file_list,
+        outfile = outfile,
+        overwrite = overwrite,
+        freqtol = freqtol)
+
+    # ... combine
+
+    # might not be needed?
+
+    # Clean up, deleting intermediate files
+
+    for this_file in split_file_list:
+        shutil.rmtree(this_file)
+    
+    return()
 
 def choose_common_res(
     vals=[],
@@ -707,7 +761,14 @@ def suggest_extraction_scheme(
     if infile_list is None:
         logging.error("Please specify a list of infiles.")
         raise Exception("Please specify a list of infiles.")
+
+    # make sure the input infile_list is a list
     
+    if np.isscalar(infile_list):
+        infile_list = [infile_list]    
+
+    # Require a valid method choice
+
     valid_methods = ['regrid_then_rebin','rebin_then_regrid','just_regrid','just_rebin']
     if method.lower().strip() not in valid_methods:
         logger.error("Not a valid line extraction medod - "+str(method))
@@ -730,11 +791,6 @@ def suggest_extraction_scheme(
         vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
     
     line_freq_ghz = 0.5*(line_low_ghz+line_high_ghz)
-
-    # make sure the input infile_list is a list
-    
-    if np.isscalar(infile_list):
-        infile_list = [infile_list]    
 
     # ----------------------------------------------------------------
     # Loop over infiles and spectral windows and record information
@@ -942,8 +998,11 @@ def extract_line(
         if spw_list is None:
             logging.error("No SPWs for selected line and velocity range.")
             return()
-        multiple_spws = len(spw_list) > 1
         spw = spw_list.join(',')
+    else:
+        spw_list = spw.split(',')
+
+    multiple_spws = len(spw_list) > 1
 
     # ............................................
     # Initialize the calls
