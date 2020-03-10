@@ -498,7 +498,7 @@ def find_spws_for_line(
                 continue
 
         if require_data:
-            if len(vm.scansForSPW[spw]) == 0:
+            if len(vm.scansForSpw[spw]) == 0:
                 continue
 
         spw_list.append(this_spw)
@@ -667,7 +667,8 @@ def batch_extract_line(
     line = None,
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     method = 'regrid_then_rebin',
-    extact = False,
+    exact = False,
+    freqtol = '',
     overwrite = False,
     ):
     """
@@ -685,7 +686,7 @@ def batch_extract_line(
 
     schemes = suggest_extraction_scheme(
         infile_list = infile_list,
-        target_chan_kms = target_chan_kms, method = method, extact = exact,
+        target_chan_kms = target_chan_kms, method = method, exact = exact,
         restfreq_ghz = restfreq_ghz, line = line,
         vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,        
         )
@@ -704,7 +705,9 @@ def batch_extract_line(
             split_file_list.append(this_outfile)
 
             # Execute line extraction
-
+            
+            del this_scheme['chan_width_kms']
+            del this_scheme['chan_width_ghz']
             extract_line(**this_scheme)
 
     # Concatenate and combine the output data sets
@@ -737,7 +740,7 @@ def choose_common_res(
     """
     if len(vals) == 0:
         return(None)
-    ra = np.array(vals)
+    ra = np.array(np.abs(vals))
     common_res = np.max(ra)*(1.+epsilon)
     return(common_res)
 
@@ -748,7 +751,7 @@ def suggest_extraction_scheme(
     line = None,
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     method = 'regrid_then_rebin',
-    extact = False,
+    exact = False,
     ):
     """
     Recommend extraction parameters given an input list of files, a
@@ -810,7 +813,7 @@ def suggest_extraction_scheme(
 
         for this_spw in spw_list:
 
-            if len(vm.scansForSPW[this_spw]) == 0: 
+            if len(vm.scansForSpw[this_spw]) == 0: 
                 continue
             
             chan_width_ghz = np.abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
@@ -821,12 +824,13 @@ def suggest_extraction_scheme(
                 continue
             
             chan_width_list.append(chan_width_kms)
-            binfactor_list = np.floor(target_chan_kms/chan_width_kms)
+            this_binfactor = int(np.floor(target_chan_kms/chan_width_kms))
+            binfactor_list = this_binfactor
 
             # Record basic file information
             scheme[this_infile][this_spw] = {}
-            scheme[this_infile][this_spw]['infile'] = infile
-            scheme[this_infile][this_spw]['spw'] = spw
+            scheme[this_infile][this_spw]['infile'] = this_infile
+            scheme[this_infile][this_spw]['spw'] = str(this_spw)
 
             # Record the line information
             scheme[this_infile][this_spw]['restfreq_ghz'] = restfreq_ghz
@@ -838,7 +842,7 @@ def suggest_extraction_scheme(
 
             # Record method information
             scheme[this_infile][this_spw]['method'] = method
-            scheme[this_infile][this_spw]['binfactor'] = binfactor
+            scheme[this_infile][this_spw]['binfactor'] = this_binfactor
             scheme[this_infile][this_spw]['target_chan_kms'] = None
 
             # Record channel width information
@@ -1015,9 +1019,12 @@ def extract_line(
             logger.warning('Need a target channel width to enable regridding.')
             return()
 
+        vstart_kms = vsys_kms - vwidth_kms/2.0
+
         regrid_params, regrid_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
-            vstart_kms=vstart_kms, target_chan_kms=target_chan_kms, nchan=nchan, 
+            vstart_kms=vstart_kms, vwidth_kms=vwidth_kms,
+            target_chan_kms=target_chan_kms, nchan=nchan, 
             method='regrid')
                                
     if method == 'just_rebin' or method == 'regrid_then_rebin' or \
@@ -1070,7 +1077,7 @@ def extract_line(
     # Execute the list of mstransform calls
     # ............................................
 
-    n_calls = len(param_list)
+    n_calls = len(params_list)
     logger.info('... we will have '+str(n_calls)+' mstransform calls')
 
     for kk in range(n_calls):
@@ -1086,12 +1093,16 @@ def extract_line(
             this_params['vis'] = outfile+'.temp%d'%(kk)
             this_params['outputvis'] = outfile+'.temp%d'%(kk+1)
          
-        logger.info("... "+this_msf)
+        logger.info("... "+this_msg)
         logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, this_params[t]) for t in this_params.keys())+')')
 
-        os.mkdir(mstransform_params['outputvis']+'.touch')
+        if kk > 0:
+            this_params['spw']=''
+            this_params['datacolumn']='DATA'
+
+        os.mkdir(this_params['outputvis']+'.touch')
         casaStuff.mstransform(**this_params)
-        os.rmdir(mstransform_params['outputvis']+'.touch')
+        os.rmdir(this_params['outputvis']+'.touch')
 
     # ............................................
     # Clean up leftover files
@@ -1101,8 +1112,8 @@ def extract_line(
 
     if os.path.isdir(outfile):
         logger.info("... deleting temporary files")
-        for k in range(len(mstransform_call_list)):
-            for suffix in ['.temp%d'%(k), '.temp%d.flagversions'%(k), '.temp%d.touch'%(k)]:
+        for kk in range(len(params_list)):
+            for suffix in ['.temp%d'%(kk), '.temp%d.flagversions'%(kk), '.temp%d.touch'%(kk)]:
                 if os.path.isdir(outfile+suffix):
                     shutil.rmtree(outfile+suffix)
     
@@ -1206,24 +1217,35 @@ def build_mstransform_call(
         if vstart_kms is None:
             logger.error("Please specify a starting velocity in km/s.")
             raise Exception("No starting velocity specified.")        
-        start_vel_string =  ("{:12.8f}".format(vlow_kms)+'km/s').strip()
+        start_vel_string =  ("{:12.8f}".format(vstart_kms)+'km/s').strip()
         
         # Check that we have a velocity width
 
-        if vwidth_kms is None and nchan is None:
-            logger.error("Please specify a velocity width in km/s or number of channels.")
-            raise Exception("No starting velocity specified.")
+        if vwidth_kms is None:
+            if nchan is None:
+                logger.error("Please specify a velocity width in km/s or number of channels.")
+                raise Exception("No velocity width specified.")
+            else:
+                vwidth_kms = nchan*target_chan_kms
 
-        # Figure out the channel spacing, catching a few possible errors
+        # Figure out the current channel spacing
         
-        max_chan_hz = np.max(np.abs(au.getChanWidths(infile, spw)))
-        current_chan_kms = max_chan_hz/restfreq_ghz*sol_kms
+        line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
+            restfreq_ghz=restfreq_ghz, 
+            vlow_kms=vstart_kms, vhigh_kms=vstart_kms+vwidth_kms)
+        line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
+        
+        max_chan_ghz = np.max(np.abs(au.getChanWidths(infile, spw)))/1e9
+        current_chan_kms = max_chan_ghz/line_freq_ghz*sol_kms
 
         skip_width = False
         if target_chan_kms is None:
+            logger.warning('Target channel not set. Using current channel.')
             target_chan_kms = current_chan_kms
             skip_width = True
         elif current_chan_kms > target_chan_kms:
+            logger.warning('Target channel less than current channel:')
+            logger.warning(str(current_chan_kms)+' '+str(target_chan_kms))
             target_chan_kms = current_chan_kms
             skip_width = True
 
@@ -1234,11 +1256,12 @@ def build_mstransform_call(
         if nchan is None:
             nchan = int(np.max(np.ceil(vwidth_kms / target_chan_kms)))
         
-        params = {'combinespws': False, 'regridms': True, 'chanaverage': False,
-                  'mode': 'velocity', 'interpolation': 'cubic', 
-                  'outframe': 'lsrk', 'veltype': 'radio', 'restfreq': restfreq_string, 
-                  'start': start_vel_string, 'nchan': nchan, 'width': chanwidth_string }
-
+        params.update(
+            {'combinespws': False, 'regridms': True, 'chanaverage': False,
+             'mode': 'velocity', 'interpolation': 'cubic', 
+             'outframe': 'lsrk', 'veltype': 'radio', 'restfreq': restfreq_string, 
+             'start': start_vel_string, 'nchan': nchan, 'width': chanwidth_string })
+                      
         if skip_width:
             del params['width']
 

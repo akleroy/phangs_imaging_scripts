@@ -208,10 +208,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                         self.task_extract_line(
                             target = this_target, 
-                            project = this_project, 
-                            array_tag = this_array_tag, 
-                            obsnum = this_obsnum, 
+                            config = this_config, 
                             product = this_product, 
+                            exact = False,
                             extra_ext_in = "noregrid",
                             # could add algorithm flags here
                             overwrite = overwrite, 
@@ -564,6 +563,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target = None, 
             product = None, 
             config = None, 
+            exact = False,
             extra_ext_in = '', 
             extra_ext_out = '',
             do_statwt = True, 
@@ -602,12 +602,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         vsys_kms, vwidth_kms = self._kh.get_system_velocity_and_velocity_width_for_target(target)
         line_to_extract = self._kh.get_line_tag_for_line_product(product)
-        target_chanwidth = self._kh.get_channel_width_for_line_product(product)
 
         valid_methods = ['regrid_then_rebin','rebin_then_regrid','just_regrid','just_rebin']
         if method.lower().strip() not in valid_methods:
             logger.error("Not a valid line extraction medod - "+str(method))
             raise Exception("Please specify a valid line extraction method.")
+
+        target_chanwidth = self._kh.get_channel_width_for_line_product(product)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -621,101 +622,20 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
-        # compute the common channel width for all ms data for the input target, config and product (product is used to select spw in each ms data)
-        common_chanwidth = self.task_compute_common_channel(target=target, product=product, config=config, extra_ext=extra_ext)
-        # 
-        # compute the rebinning factor to make the rebinned chanwidth as close to the target channel width as possible (but not exceeding it)
-        one_plus_eps = 1.0+1e-3 #<TODO># documentation
-        interpolate_cw = common_chanwidth * one_plus_eps #<TODO># documentation
-        rat = target_chanwidth / interpolate_cw
-        rebin_fac = int(np.round(rat))
-        if rebin_fac < 1:
-            rebin_fac = 1
-        # 
-        logger.info('Computed common channel width '+str(common_chanwidth)+' km/s for target '+target+', config '+config+' and product '+product+'.')
-        logger.info('Will rebin by a factor of '+str(rebin_fac)+' to a final channel width of '+str(rebin_fac*interpolate_cw)+' km/s, given the target channel width of '+str(target_chanwidth)+' km/s as defined in "config_definitions.txt".')
-        # 
-        # get imaging dir and change directory
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-        # 
-        # get target vsys and vwidth
-        vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
-        # 
-        # get fname dict for the list of ms data for the input target and config
-        fname_dict = self._fname_dict(target = target, config = config, product = product, all_ms_data = True, extra_ext = extra_ext)
-        this_ms_filenames = fname_dict['ms_filenames']
-        # 
-        # set edge_for_statwt <TODO>
-        edge_for_statwt = 25
-        if product == 'co21': edge_for_statwt = 25
-        if product == '13co21': edge_for_statwt = 25
-        if product == 'c18o21': edge_for_statwt = 20
-        # 
-        # get line tag for product
-        line_tag = self._kh.get_line_tag_for_line_product(product)
-        # 
-        # extract line for each ms data
-        logger.debug('Current directory: "'+os.getcwd()+'"')
-        for i in range(len(this_ms_filenames)):
-            this_ms_filename = this_ms_filenames[i]
-            this_ms_extracted = fname_dict['ms_extracted'][i]
-            logger.debug('Extracting spectral line: "'+this_ms_extracted+'" <-- "'+this_ms_filename+'"')
-            if not self._dry_run:
-                # 
-                # extract line channels data for each ms data
-                # this includes regridding and rebinning the velocity axis
-                if method_for_channel_regridding == 1:
-                    # first regridding then rebinning
-                    cvr.extract_line(in_file = this_ms_filename, 
-                                     out_file = this_ms_extracted, 
-                                     line = line_tag, 
-                                     vsys = vsys, 
-                                     vwidth = vwidth, 
-                                     chan_fine = interpolate_cw, 
-                                     rebin_factor = rebin_fac, 
-                                     do_regrid_only = False, 
-                                     do_regrid_first = True, 
-                                     do_statwt = do_statwt, 
-                                     edge_for_statwt = edge_for_statwt, 
-                                     overwrite = overwrite,
-                                    )
-                # 
-                elif method_for_channel_regridding == 2:
-                    # first rebinning then regridding
-                    cvr.extract_line(in_file = this_ms_filename, 
-                                     out_file = this_ms_extracted, 
-                                     line = line_tag, 
-                                     vsys = vsys, 
-                                     vwidth = vwidth, 
-                                     chan_fine = target_chanwidth, 
-                                     rebin_factor = rebin_fac, 
-                                     do_regrid_only = False, 
-                                     do_regrid_first = False, 
-                                     do_statwt = do_statwt, 
-                                     edge_for_statwt = edge_for_statwt, 
-                                     overwrite = overwrite,
-                                    )
-                # 
-                elif method_for_channel_regridding == 3:
-                    # do only one regridding step
-                    # this is not recommended because this creates non-uniform noise due to non-integer binning, 
-                    # i.e., the spectral sawtooth issue
-                    cvr.extract_line(in_file = this_ms_filename, 
-                                     out_file = this_ms_extracted, 
-                                     line = line_tag, 
-                                     vsys = vsys, 
-                                     vwidth = vwidth, 
-                                     chan_fine = target_chanwidth, 
-                                     rebin_factor = 0, 
-                                     do_regrid_only = True, 
-                                     do_regrid_first = False, 
-                                     do_statwt = do_statwt, 
-                                     edge_for_statwt = edge_for_statwt, 
-                                     overwrite = overwrite,
-                                    )
-                else:
-                    logger.error('Wrong value for method_for_channel_regridding! It is '+str(method_for_channel_regridding)+' but only 1, 2, or 3 is accepted. 1 is the default.')
-                    raise ValueError('Wrong value for method_for_channel_regridding!')
+
+        if not self._dry_run and casa_enabled:
+
+            cvr.batch_extract_line(
+                infile_list = [infile],
+                outfile = outfile,
+                target_chan_kms = target_chanwidth,
+                line = line_to_extract,
+                vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+                method = 'regrid_then_rebin',
+                exact = exact,
+                overwrite = True,
+                )
 
         return()
 
