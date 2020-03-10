@@ -659,11 +659,27 @@ def compute_common_chanwidth(
 # Extract a single-line, common grid measurement set. #
 #######################################################
 
+def batch_extract_line(
+    infile_list = [],
+    outfile = None,
+    target_chan_kms = None,
+    restfreq_ghz = None,
+    line = None,
+    vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
+    method = 'regrid_then_rebin',
+    extact = False,
+    ):
+    """
+    Run a batch line extraction.
+    """
+    pass
+
 def choose_common_res(
     vals=[],
     epsilon=1e-4):
     """
-    Choose a common resolution given a list and an inflation.
+    Choose a common resolution given a list and an inflation
+    parameter epsilon. Returns max*(1+epsilon).).
     """
     if len(vals) == 0:
         return(None)
@@ -677,14 +693,13 @@ def suggest_extraction_scheme(
     restfreq_ghz = None,
     line = None,
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
-    extact = False,
     method = 'regrid_then_rebin',
+    extact = False,
     ):
     """
-    TBD - breaking input into individual SPWs and deploy different
-    algorithms to each of them to bring them to the same grid, then
-    concat. This is a pain, but seems like the easiest way to deal
-    with the case of very different native resolutions.
+    Recommend extraction parameters given an input list of files, a
+    desired target channel width, and a preferred algorithm. Returns a
+    dictionary suitable for putting into the extraction routine.
     """
 
     # Check inputs
@@ -721,11 +736,13 @@ def suggest_extraction_scheme(
     if np.isscalar(infile_list):
         infile_list = [infile_list]    
 
-    # Loop over infiles and spectral windows
+    # ----------------------------------------------------------------
+    # Loop over infiles and spectral windows and record information
+    # ----------------------------------------------------------------
 
     scheme = {}
     chan_width_list = []
-    rebin_fac_list = []
+    binfactor_list = []
 
     for this_infile in infile_list:
 
@@ -747,16 +764,34 @@ def suggest_extraction_scheme(
                 logger.warning("Channel too big for SPW "+str(this_spw))
                 continue
             
+            chan_width_list.append(chan_width_kms)
+            binfactor_list = np.floor(target_chan_kms/chan_width_kms)
+
+            # Record basic file information
             scheme[this_infile][this_spw] = {}
-            scheme[this_infile][this_spw]['chan_width_kms'] = chan_width_kms
-            scheme[this_infile][this_spw]['chan_width_ghz'] = chan_width_ghz
-            scheme[this_infile][this_spw]['rebin_fac'] = rebin_fac
+            scheme[this_infile][this_spw]['infile'] = infile
+            scheme[this_infile][this_spw]['spw'] = spw
+
+            # Record the line information
+            scheme[this_infile][this_spw]['restfreq_ghz'] = restfreq_ghz
+            scheme[this_infile][this_spw]['line'] = line
+            scheme[this_infile][this_spw]['vlow_kms'] = vlow_kms
+            scheme[this_infile][this_spw]['vhigh_kms'] = vhigh_kms
+            scheme[this_infile][this_spw]['vsys_kms'] = vsys_kms
+            scheme[this_infile][this_spw]['vwidth_kms'] = vwidth_kms
+
+            # Record method information
+            scheme[this_infile][this_spw]['method'] = method
+            scheme[this_infile][this_spw]['binfactor'] = binfactor
             scheme[this_infile][this_spw]['target_chan_kms'] = None
 
-            chan_width_list.append(chan_width_kms)
-            rebin_fac_list = np.floor(target_chan_kms/chan_width_kms)
+            # Record channel width information
+            scheme[this_infile][this_spw]['chan_width_kms'] = chan_width_kms
+            scheme[this_infile][this_spw]['chan_width_ghz'] = chan_width_ghz
 
+    # ----------------------------------------------------------------
     # Figure out the strategy
+    # ----------------------------------------------------------------
     
     # ... for rebinning, just do the naive division of floor(target / current)
     if method == 'just_rebin':
@@ -783,7 +818,7 @@ def suggest_extraction_scheme(
                     scheme[this_infile][this_spw]['target_chan_kms'] = target_chan_kms
                 else:
                     common_res = choose_common_res(
-                        vals=np.array(chan_width_list)*np.array(rebin_fac_list),
+                        vals=np.array(chan_width_list)*np.array(binfactor_list),
                         epsilon=1e-4)
                     scheme[this_infile][this_spw]['target_chan_kms'] = common_res
 
@@ -794,23 +829,22 @@ def suggest_extraction_scheme(
             for this_spw in scheme[this_infile].keys():
                 if exact:
                     scheme[this_infile][this_spw]['target_chan_kms'] = \
-                        target_chan_kms / scheme[this_infile][this_spw]['rebin_fac']
+                        target_chan_kms / scheme[this_infile][this_spw]['binfactor']
                 else:
                     common_res = choose_common_res(
-                        vals=np.array(chan_width_list)*np.array(rebin_fac_list),
+                        vals=np.array(chan_width_list)*np.array(binfactor_list),
                         epsilon=1e-4)
                     scheme[this_infile][this_spw]['target_chan_kms'] = \
-                        common_res / scheme[this_infile][this_spw]['rebin_fac']
+                        common_res / scheme[this_infile][this_spw]['binfactor']
+
+    # Return
 
     return(scheme)
     
-def split_and_extract(
-    ):
-    pass
-
 def extract_line(
     infile = None, 
     outfile = None, 
+    spw = None,
     restfreq_ghz = None,
     line = 'co21', 
     vlow_kms = None,
@@ -824,7 +858,8 @@ def extract_line(
     overwrite = False, 
     ):
     """
-    Document. Applies the same algorithm to each window, so will break in key edge cases.
+    Line extraction routine. Takes infile, outfile, line of interest,
+    and algorithm, along with algorithm tuning parameters.
     """
 
     # Check the method
@@ -858,8 +893,10 @@ def extract_line(
     # Else, clear all previous files and temporary files
 
     # TBD suffixes/syntax need updating
-    for suffix in ['', '.flagversions', '.temp', '.temp.flagversions', 
-                   '.temp2', '.temp2.flagversions', '.touch', '.temp.touch', '.temp2.touch']:
+    for suffix in ['', '.flagversions', 
+                   '.temp', '.temp.flagversions', 
+                   '.temp2', '.temp2.flagversions', 
+                   '.touch', '.temp.touch', '.temp2.touch']:
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
 
@@ -893,18 +930,20 @@ def extract_line(
         vsys_kms = 0.0
         vwidth_kms = 0.0
 
-    # Identify SPWs - note whether we have multiple windows
+    # ... if now SPW selection string is provided then note whether we
+    # have multiple windows.
 
-    spw_list = find_spws_for_line(
-        infile = line, restfreq_ghz = restfreq_ghz,
-        vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
-        require_data = True, exit_on_error = True, as_list = True,
-        )
-    if spw_list is None:
-        logging.error("No SPWs for selected line and velocity range.")
-        return()
-    multiple_spws = len(spw_list) > 1
-    spw = spw_list.join(',')
+    if spw is None:
+        spw_list = find_spws_for_line(
+            infile = line, restfreq_ghz = restfreq_ghz,
+            vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+            require_data = True, exit_on_error = True, as_list = True,
+            )
+        if spw_list is None:
+            logging.error("No SPWs for selected line and velocity range.")
+            return()
+        multiple_spws = len(spw_list) > 1
+        spw = spw_list.join(',')
 
     # ............................................
     # Initialize the calls
