@@ -277,8 +277,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # Test existence
         full_vis_file = self._kh.get_imaging_dir_for_target(target=target)+vis_file
         if not os.path.isdir(full_vis_file):
-            logger.error('Visibility file not found: '+full_vis_file)
-            raise Exception('Missing visibility needed for imaging.')
+            logger.error('Visibility file not found: '+full_vis_file+" returning.")
+            #raise Exception('Missing visibility needed for imaging.')
+            return(None)
 
         # Set the visibility file (note that we assume we are in the working directory)
 
@@ -786,6 +787,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = extra_ext_in, suffix_in = suffix_in,
             extra_ext_out = extra_ext_out,
             stage = 'dirty')
+
+        if clean_call is None:
+            logger.warning("I could not make a well-formed clean call.")
+            return()
         
         if dynamic_sizing:
             if cell is None or imsize is None:
