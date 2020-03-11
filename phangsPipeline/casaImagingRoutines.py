@@ -65,7 +65,8 @@ def estimate_cell_and_imsize(
     # utilities.
 
     au_cellsize, au_imsize, au_centralField = \
-        au.pickCellSize(infile, imsize=True, npix=oversamp)
+        au.pickCellSize(infile, imsize=True, 
+                        npix=oversamp, intent='')
     xextent = au_cellsize*au_imsize[0]*1.2
     yextent = au_cellsize*au_imsize[1]*1.2
 

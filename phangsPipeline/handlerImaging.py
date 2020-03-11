@@ -72,7 +72,7 @@ else:
 
 from clean_call import CleanCall, CleanCallFunctionDecorator
 
-import utilsLines
+import utilsLines as lines
 import handlerTemplate
 import utilsFilenames
 
@@ -324,10 +324,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if is_line_product:
             this_line_tag = self._kh.get_line_tag_for_line_product(product=product)
-            if this_line_tag not in line_list.line_list.keys():
+            if this_line_tag not in lines.line_list.keys():
                 logger.error("Did not find line in line_list "+this_line_tag)
                 raise Exception('Malformed clean call.')
-            rest_freq_ghz = line_list.line_list[this_line_tag]
+            rest_freq_ghz = lines.line_list[this_line_tag]
             clean_call.set_restfreq_ghz(rest_freq_ghz)
         else:
             clean_call.set_reffreq_ghz(None)
