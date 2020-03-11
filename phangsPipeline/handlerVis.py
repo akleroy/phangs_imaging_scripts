@@ -212,7 +212,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             product = this_product, 
                             exact = False,
                             extra_ext_in = "noregrid",
-                            # could add algorithm flags here
+                            contsub = "prefer",
+                            # could add algorithm flags here                            
                             overwrite = overwrite, 
                             )
 
@@ -564,7 +565,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             product = None, 
             config = None, 
             exact = False,
-            extra_ext_in = '', 
+            extra_ext_in = '',
+            contsub = "prefer",
             extra_ext_out = '',
             do_statwt = True, 
             edge_for_statwt = -1,
@@ -589,11 +591,44 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if config is None:
             logger.error("Please specify a config.")
             raise Exception("Please specify a config.")
-        
-        infile = fnames.get_vis_filename(
-            target=target, config=config, product=product, 
-            ext=extra_ext_in, suffix=None)
 
+        # Option re: continuum subtraction
+
+        valid_contsub_options = ['prefer','require','none']
+        if contsub.lower().strip() not in valid_contsub_options:
+            logger.error("Please choose a valid contsub option.")
+            logger.error("Valid options are:"+str(valid_contsub_options))
+            raise Exception("Please choose a valid contsub option.")
+
+            
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
+        if contsub == 'require':
+
+            infile = fnames.get_vis_filename(
+                target=target, config=config, product=product, 
+                ext=extra_ext_in, suffix='contsub')
+
+        if contsub == 'prefer':
+
+            infile = fnames.get_vis_filename(
+                target=target, config=config, product=product, 
+                ext=extra_ext_in, suffix='contsub')
+
+            if not os.path.isdir(infile):
+                infile = fnames.get_vis_filename(
+                    target=target, config=config, product=product, 
+                    ext=extra_ext_in, suffix=None)
+
+        if contsub == 'none':
+            infile = fnames.get_vis_filename(
+                target=target, config=config, product=product, 
+                ext=extra_ext_in, suffix=None)
+
+        if not os.path.isdir(infile):
+            logger.warning("Input file not found. Returning.")
+            return()
+                
         outfile = fnames.get_vis_filename(
             target=target, config=config, product=product, 
             ext=extra_ext_out, suffix=None)
@@ -621,12 +656,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("To file: "+str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-            
-        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
-
-        if not os.path.isdir(infile):
-            logger.error("Infile not found. Returning.")
-            return()
 
         if not self._dry_run and casa_enabled:
 

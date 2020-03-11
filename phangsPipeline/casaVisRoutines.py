@@ -840,7 +840,7 @@ def suggest_extraction_scheme(
             scheme[this_infile][this_spw]['vsys_kms'] = vsys_kms
             scheme[this_infile][this_spw]['vwidth_kms'] = vwidth_kms
 
-            # Record method information
+            # Record method information            
             scheme[this_infile][this_spw]['method'] = method
             scheme[this_infile][this_spw]['binfactor'] = this_binfactor
             scheme[this_infile][this_spw]['target_chan_kms'] = None
@@ -1093,8 +1093,18 @@ def extract_line(
             this_params['vis'] = outfile+'.temp%d'%(kk)
             this_params['outputvis'] = outfile+'.temp%d'%(kk+1)
          
+        if os.path.isdir(this_params['outputvis']):
+            if overwrite:
+                shutil.rmtree(this_params['outputvis'])
+            else:
+                debug.error("Intermediate file in place and overwrite=False. Returning.")
+                return()
+
         logger.info("... "+this_msg)
         logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, this_params[t]) for t in this_params.keys())+')')
+
+        # in the case where we are in subsequent split, we expect a
+        # single SPW and to use the data column. 
 
         if kk > 0:
             this_params['spw']=''
@@ -1249,7 +1259,7 @@ def build_mstransform_call(
             target_chan_kms = current_chan_kms
             skip_width = True
 
-        chanwidth_string =  "{:12.8f}".format(target_chan_kms)+'km/s'
+        chanwidth_string =  ("{:12.8f}".format(target_chan_kms)+'km/s').strip()
 
         # Figure the number of channels if not supplied
 
@@ -1272,9 +1282,12 @@ def build_mstransform_call(
     # ............................................
         
     if method == 'rebin':
-        
+
         params.update({'combinespws': False, 'regridms': False, 'chanaverage' : True, 
                        'chanbin': binfactor })
+
+        if binfactor == 1:
+            params['chanaverage'] = False
 
         message = '... rebin by a factor of '+str(binfactor)
 
