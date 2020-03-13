@@ -73,10 +73,8 @@ class KeyHandler:
         self.build_key_handler(master_key)
 
 ##############################################################
-# FILE READING
+# FILE READING AND INITIALIZATION
 ##############################################################
-
-#region Initialize the key handler and read files.
 
     def build_key_handler(self,master_key=None):
         """
@@ -572,13 +570,9 @@ class KeyHandler:
             key_list=self._distance_keys, reader_function=key_readers.read_distance_key,
             key_dir=self._key_dir)
 
-#endregion
-
 ##############################################################
 # LINKING AND KEY BUILDING
 ##############################################################
-
-#region Programs to cross-link and build internal structures
 
     def _build_target_list(self, check=True):
         """
@@ -739,9 +733,16 @@ class KeyHandler:
 
         return()
 
-#endregion
+##############################################################
+# Programs to run checks on the keyHandler and the data
+##############################################################
 
-#region Programs to run checks on the keyHandler and the data
+    def set_dochecks(self, dochecks=True):
+        """
+        
+        """
+        self._dochecks = dochecks
+        return()
 
     def print_missing_targets(self):
         """
@@ -928,10 +929,10 @@ class KeyHandler:
             logger.warning("Missing "+str(missing_count)+" directories. Returning that list.")
 
         return(missing_dirs)
-        
-#endregion
 
-#region Access data and lists
+##############################################################
+# Access properties and key information.
+##############################################################
     
     def _get_dir_for_target(self, target=None, changeto=False, 
                             imaging=False, postprocess=False,
@@ -1275,18 +1276,9 @@ class KeyHandler:
                     return [imaging_recipe_dir+self._imaging_dict[config][product][t] for t in VALID_IMAGING_STAGES]
         return None
 
-    def set_dochecks(self, dochecks=True):
+    def get_distance_for_target(self, target=None):
         """
-        Set the feedback level.
-        """
-        self._dochecks = dochecks
-        return
-
-    def get_distance_for_target(
-        self, 
-        target=None,
-        ):
-        """
+        Get the distance (in Mpc) associated with a target.
         """
         if target is None:
             logging.error("Please specify a target.")
@@ -1358,35 +1350,31 @@ class KeyHandler:
         
         return(rastring, decstring)
 
-    def get_channel_width_for_line_product(
-        self, 
-        product=None,
-        ):
+    def get_channel_width_for_line_product(self, product=None):
         """
+        Get the channel width (in km/s) associated with a line
+        product.
         """
         if product is None:
             logging.error("Please specify a product.")
             raise Exception("Please specify a product.")
-            return None
         
         channel_kms = None
         if 'line_product' in self._config_dict:
             if product in self._config_dict['line_product']:
                 if 'channel_kms' in self._config_dict['line_product'][product]:
                     channel_kms = self._config_dict['line_product'][product]['channel_kms']
-                #<TODO># maybe we can allow user to set 'channel_width' in units of channels in the "config_definitions.txt" at some point. 
         
         if channel_kms is None:
-            logging.error('No channel_kms value set for the input line product '+product+'. Please check your "config_definitions.txt".')
-            raise Exception('No channel_kms value set for the input line product '+product)
+            logging.error('No channel_kms value set for line product '+product)
+            raise Exception('No channel_kms value set for line product '+product)
         
-        return channel_kms
+        return(channel_kms)
 
-    def get_line_tag_for_line_product(
-        self, 
-        product=None,
-        ):
+    def get_line_tag_for_line_product(self, product=None):
         """
+        Get the line tag (in utilsLines) associated with a line data
+        product.
         """
         if product is None:
             logging.error("Please specify a product.")
@@ -1405,11 +1393,10 @@ class KeyHandler:
         
         return line_tag
 
-    def get_statwt_edge_for_line_product(
-        self,
-        product=None,
-        ):
+    def get_statwt_edge_for_line_product(self,product=None):
         """
+        Get the velocity width of the edge region to use when running
+        statwt on a line product.
         """
         if product is None:
             logging.error("Please specify a product.")
@@ -1428,11 +1415,9 @@ class KeyHandler:
         
         return(statwt_edge)
 
-    def get_lines_to_flag_for_continuum_product(
-        self, 
-        product=None,
-        ):
+    def get_lines_to_flag_for_continuum_product(self, product=None):
         """
+        Get the list of lines to flag when constructing a continuum product.
         """
         if product is None:
             logging.error("Please specify a product.")
@@ -1451,11 +1436,9 @@ class KeyHandler:
             
         return lines_to_flag
     
-    def get_array_tags_for_config(
-        self, 
-        config=None, 
-        ):
+    def get_array_tags_for_config(self, config=None):
         """
+        Get the list of array tags associated with an interferometric configuration.
         """
         if config is None:
             logging.error("Please specify a config.")
@@ -1468,12 +1451,9 @@ class KeyHandler:
         
         return None
 
-    def get_timebin_for_array_tag(
-        self,
-        array_tag=None
-        ):
+    def get_timebin_for_array_tag(self, array_tag=None):
         """
-        Get the timebin for an array tag.
+        Get the timebin for an array tag. Returns 0s by default.
         """
         if 'array_tag' not in self._config_dict.keys():
             logger.debug("No array_tags defined.")
