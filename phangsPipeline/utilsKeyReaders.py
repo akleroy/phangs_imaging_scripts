@@ -502,6 +502,11 @@ def read_config_key(fname='', existing_dict=None, delim=None):
         # expected fields and data types for each type of
         # configuration. Check to match these.
 
+        if this_type == "array_tag":
+            expected_params = {
+                'timebin':'0s',
+                }
+
         if this_type == "interf_config":
             expected_params = {
                 'array_tags':[],
@@ -509,7 +514,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_max_arcsec':0.0,
                 'res_step_factor':1.0,
                 'res_list':[],
-                'clean_scales_arcsec':[]}
+                'clean_scales_arcsec':[]
+                }
 
         if this_type == "feather_config":
             expected_params = {
@@ -517,16 +523,20 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
                 'res_step_factor':1.0,
-                'res_list':[]}
+                'res_list':[]
+                }
             
         if this_type == "line_product":
             expected_params = {
                 'line_tag':'',
-                'channel_kms':0.0}
+                'channel_kms':0.0,
+                'statwt_edge_kms':50.0,
+                }
                 
         if this_type == "cont_product":
             expected_params = {
-                'lines_to_flag':[]}                
+                'lines_to_flag':[]
+                }                
 
         # Check configs for expected name and data type
                 

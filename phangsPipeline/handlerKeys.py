@@ -1400,10 +1400,33 @@ class KeyHandler:
                     line_tag = self._config_dict['line_product'][product]['line_tag']
         
         if line_tag is None:
-            logging.error('No line_tag value set for the input line product '+product+'. Please check your "config_definitions.txt".')
+            logging.error('No line_tag value set for the input line product '+product)
             raise Exception('No line_tag value set for the input line product '+product)
         
         return line_tag
+
+    def get_statwt_edge_for_line_product(
+        self,
+        product=None,
+        ):
+        """
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        line_tag = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'line_tag' in self._config_dict['line_product'][product]:
+                    statwt_edge = self._config_dict['line_product'][product]['statwt_edge_kms']
+        
+        if line_tag is None:
+            logging.error('No line_tag value set for the input line product '+product)
+            raise Exception('No line_tag value set for the input line product '+product)
+        
+        return(statwt_edge)
 
     def get_lines_to_flag_for_continuum_product(
         self, 
@@ -1444,6 +1467,24 @@ class KeyHandler:
                     return self._config_dict['interf_config'][config]['array_tags']
         
         return None
+
+    def get_timebin_for_array_tag(
+        self,
+        array_tag=None
+        ):
+        """
+        Get the timebin for an array tag.
+        """
+        if 'array_tag' not in self._config_dict.keys():
+            logger.debug("No array_tags defined.")
+            return('0s')
+        if array_tag.lower().strip() not in self._config_dict['array_tag'].keys():
+            logger.debug("Tag "+str(array_tag)+" not in config definitions.")
+            return('0s')
+        if 'timebin' not in self._config_dict['array_tag'][array_tag].keys():
+            logger.debug("Tag "+str(array_tag)+" has no timebin.")
+            return('0s')
+        return(self._config_dict['array_tag'][array_tag]['timebin'])
         
     def loop_over_input_ms(
         self, 
