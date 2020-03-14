@@ -1304,15 +1304,15 @@ def build_mstransform_call(
 
     return(params, message)
 
-def reweight_line_data(
+def reweight_data(
     infile = None, 
-    outfile = None, 
-    datacolumn = None,
-    edge_chans = None,
+    edge_kms = None,
+    edge_chan = None,
     overwrite = False, 
     ):
     """
-    TBD - moved statwt here.
+    Use statwt to empirically re-weight data (mostly for
+    lines). Accepts an "edge" definition in either channels or km/s.
     """
     
     # Check input
@@ -1352,18 +1352,36 @@ def reweight_line_data(
     # Figure out the channel selection string
 
     exclude_str = ''
-    if edge_chans is not None:
+    if (edge_chans is not None) or (edge_kms is not None):
+
+        vm = au.ValueMapping(infile)
+
         first = True
         for this_spw in vm.spwInfo.keys():
+
+            if edge_kms is not None:
+                spw_high_ghz = np.max(vm.spwInfo[this_spw]['edgeChannels'])/1e9
+                spw_low_ghz = np.min(vm.spwInfo[this_spw]['edgeChannels'])/1e9
+                spw_chanwidth_ghz = abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
+
+                mean_freq_ghz = 0.5*(spw_high_ghz+spw_low_ghz)
+                mean_chanwidth_kms = spw_chanwidth_ghz/mean_freq_ghz*sol_kms
+                
+                edge_chan = edge_kms / mean_chanwidth_kms
+
             nchan = vm.spwInfo[this_spw]['numChannels']
+
             if edge_chans*2 > nchan:
                 logger.warning("Too many edge channels for given spw: "+str(this_spw))
-                low = edge_chans-1
-                high = nchan-edge_chans-2
-                if first:
-                    exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
-                else:
-                    exclude_str += ';'+str(this_spw)+':'+str(low)+'~'+str(high)
+                logger.warning("By default we will not exclude ANY channels.")
+                continue
+
+            low = edge_chans-1
+            high = nchan-edge_chans-2
+            if first:
+                exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
+            else:
+                exclude_str += ';'+str(this_spw)+':'+str(low)+'~'+str(high)
 
     logger.info("... running statwt with exclusion: "+exclude_str)
 

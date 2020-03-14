@@ -249,7 +249,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             product = None,
             extra_ext_out = '',
             do_statwt = False, 
-            timebin = '0s',
+            timebin = None,
             use_symlink = True, 
             overwrite = False, 
             ):
@@ -286,6 +286,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not os.path.isdir(infile):
             logger.error("Infile not found. Returning.")
             return()
+
+        # If the user doesn't override the time bin, get it from the
+        # key handler.
+
+        if timebin is None:
+            self._kh.get_timebin_for_array_tag(array_tag=array_tag)
         
         field = self._kh.get_field_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
@@ -569,7 +575,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             contsub = "prefer",
             extra_ext_out = '',
             do_statwt = True, 
-            edge_for_statwt = -1,
+            edge_for_statwt = None,
             method = "regrid_then_rebin",
             overwrite = False, 
             ):
@@ -592,6 +598,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.error("Please specify a config.")
             raise Exception("Please specify a config.")
 
+        # If the user wants statwt but doesn't override the edge
+        # value, get it from the key handler.
+
+        if do_statwt:
+            if edge_for_statwt_kms is None:
+                edge_for_statwt = get_statwt_edge_for_line_product(self,product=None)
+
         # Option re: continuum subtraction
 
         valid_contsub_options = ['prefer','require','none']
@@ -600,7 +613,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.error("Valid options are:"+str(valid_contsub_options))
             raise Exception("Please choose a valid contsub option.")
 
-            
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
         if contsub == 'require':
@@ -667,8 +679,15 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
                 method = 'regrid_then_rebin',
                 exact = exact,
-                overwrite = True,
+                overwrite = overwrite,
                 )
+
+            if do_statwt:
+                
+                cvr.reweight_data(
+                    infile = outfile,
+                    edge_kms = edge_for_statwt,
+                    overwrite = overwrite)
 
         return()
 
