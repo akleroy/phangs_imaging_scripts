@@ -1458,7 +1458,7 @@ class KeyHandler:
         if 'array_tag' not in self._config_dict.keys():
             logger.debug("No array_tags defined.")
             return('0s')
-        if array_tag.lower().strip() not in self._config_dict['array_tag'].keys():
+        if array_tag.strip() not in self._config_dict['array_tag'].keys():
             logger.debug("Tag "+str(array_tag)+" not in config definitions.")
             return('0s')
         if 'timebin' not in self._config_dict['array_tag'][array_tag].keys():
