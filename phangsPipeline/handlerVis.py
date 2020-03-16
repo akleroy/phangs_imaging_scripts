@@ -93,7 +93,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         make_directories = True,
         statwt_cont = True,
         collapse_cont = True,
-        timebin = '0s',
+        timebin = None,
         just_projects=None,        
         overwrite = False, 
         ):
