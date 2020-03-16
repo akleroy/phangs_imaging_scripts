@@ -1956,14 +1956,9 @@ class KeyHandler:
             logger.info("... "+this_config)
             this_arrays = self._config_dict['interf_config'][this_config]['array_tags']
             this_other_config = self._config_dict['interf_config'][this_config]['feather_config']
-            this_min_res = self._config_dict['interf_config'][this_config]['res_min_arcsec']
-            this_max_res = self._config_dict['interf_config'][this_config]['res_max_arcsec']
-            res_step_factor = self._config_dict['interf_config'][this_config]['res_step_factor']
             scales_for_clean = self._config_dict['interf_config'][this_config]['clean_scales_arcsec']
             logger.info("... ... includes arrays "+str(this_arrays))
             logger.info("... ... maps to feather config "+str(this_other_config))
-            logger.info("... ... minimum, maximum resolution for products "+str(this_min_res)+' '+str(this_max_res))
-            logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
             logger.info("... ... clean these scales in arcsec "+str(scales_for_clean))
 
         if 'feather_config' in self._config_dict:
@@ -1971,12 +1966,7 @@ class KeyHandler:
             for this_config in self._config_dict['feather_config'].keys():
                 logger.info("... "+this_config)
                 this_other_config = self._config_dict['feather_config'][this_config]['interf_config']
-                this_min_res = self._config_dict['feather_config'][this_config]['res_min_arcsec']
-                this_max_res = self._config_dict['feather_config'][this_config]['res_max_arcsec']
-                res_step_factor = self._config_dict['feather_config'][this_config]['res_step_factor']
                 logger.info("... ... maps to interferometer config "+str(this_other_config))
-                logger.info("... ... minimum, maximum resolution for products "+str(this_min_res)+' '+str(this_max_res))
-                logger.info("... ... step resolution by this factor for products "+str(res_step_factor))
 
         return()
 
@@ -1999,10 +1989,12 @@ class KeyHandler:
         logger.info("Line data products")
         for this_product in self.get_line_products():
             logger.info("... "+this_product)
-            channel_width = self._config_dict['line_product'][this_product]['channel_kms']
-            line_name = self._config_dict['line_product'][this_product]['line_tag']
-            logger.info("... ... channel width [km/s] "+str(channel_width))
-            logger.info("... ... line name code "+str(line_name))
+            if 'channel_kms' in self._config_dict['line_product'][this_product].keys():
+                channel_width = self._config_dict['line_product'][this_product]['channel_kms']
+                logger.info("... ... channel width [km/s] "+str(channel_width))
+            if 'line_tag' in self._config_dict['line_product'][this_product].keys():
+                line_name = self._config_dict['line_product'][this_product]['line_tag']            
+                logger.info("... ... line name code "+str(line_name))
 
         return()        
 
