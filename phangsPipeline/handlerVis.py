@@ -611,7 +611,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # value, get it from the key handler.
 
         if do_statwt:
-            if edge_for_statwt_kms is None:
+            if edge_for_statwt is None:
                 edge_for_statwt = get_statwt_edge_for_line_product(self,product=None)
 
         # Option re: continuum subtraction
