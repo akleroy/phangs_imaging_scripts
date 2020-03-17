@@ -612,7 +612,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         if do_statwt:
             if edge_for_statwt is None:
-                edge_for_statwt = self._kh.get_statwt_edge_for_line_product(self,product=None)
+                edge_for_statwt = self._kh.get_statwt_edge_for_line_product(product=None)
 
         # Option re: continuum subtraction
 
