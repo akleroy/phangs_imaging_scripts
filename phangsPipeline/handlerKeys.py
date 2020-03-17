@@ -1403,15 +1403,15 @@ class KeyHandler:
             raise Exception("Please specify a product.")
             return None
         
-        line_tag = None
+        statwt_edge = None
         if 'line_product' in self._config_dict:
             if product in self._config_dict['line_product']:
                 if 'line_tag' in self._config_dict['line_product'][product]:
                     statwt_edge = self._config_dict['line_product'][product]['statwt_edge_kms']
         
-        if line_tag is None:
-            logging.error('No line_tag value set for the input line product '+product)
-            raise Exception('No line_tag value set for the input line product '+product)
+        if statwt_edge is None:
+            logging.error('No statwt_edge found for '+product)
+            raise Exception('No statwt_edge found for '+product)
         
         return(statwt_edge)
 
