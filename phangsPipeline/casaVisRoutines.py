@@ -1321,20 +1321,9 @@ def reweight_data(
         logging.error("Please specify an input file.")
         raise Exception("Please specify an input file.")
 
-    if outfile is None:
-        logging.error("Please specify an output file.")
-        raise Exception("Please specify an output file.")
-
     if not os.path.isdir(infile):
         logger.error('The input measurement set "'+infile+'"does not exist.')
         raise Exception('The input measurement set "'+infile+'"does not exist.')
-
-    # Check existing output data
-    
-    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
-        if not overwrite:
-            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
-            return()
 
     # Determine column to use
 
@@ -1389,12 +1378,12 @@ def reweight_data(
 
     if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
         # CASA version somewhat >= 5.5.0
-        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+        statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                          'statalg': 'classic', 'datacolumn': datacolumn, 
                          'fitspw': exclude_str, 'excludechans': True}
     else:
         # CASA version <= 5.4.1
-        statwt_params = {'vis': outfile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
+        statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                          'statalg': 'classic', 'datacolumn': datacolumn, 
                          'excludechans': exclude_str}
 
