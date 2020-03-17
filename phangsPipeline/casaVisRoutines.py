@@ -1309,6 +1309,7 @@ def reweight_data(
     edge_kms = None,
     edge_chan = None,
     overwrite = False, 
+    datacolumn = None,
     ):
     """
     Use statwt to empirically re-weight data (mostly for
