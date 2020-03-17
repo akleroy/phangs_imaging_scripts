@@ -1406,7 +1406,7 @@ class KeyHandler:
         statwt_edge = None
         if 'line_product' in self._config_dict:
             if product in self._config_dict['line_product']:
-                if 'line_tag' in self._config_dict['line_product'][product]:
+                if 'statwt_edge_kms' in self._config_dict['line_product'][product]:
                     statwt_edge = self._config_dict['line_product'][product]['statwt_edge_kms']
         
         if statwt_edge is None:
