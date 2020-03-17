@@ -82,13 +82,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
     
     def loop_stage_uvdata(
         self,
-        do_copy = True,
-        do_concat = True,
+        do_all = False,
+        do_copy = False,
+        do_concat = False,
         do_remove_staging = False,
         do_custom = False,
         do_contsub = False, 
-        do_extract_line = True,
-        do_extract_cont = True,
+        do_extract_line = False,
+        do_extract_cont = False,
         extra_ext = '',       
         make_directories = True,
         statwt_cont = True,
@@ -107,6 +108,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if make_directories:
             self._kh.make_missing_directories(imaging=True)
         
+        if do_all:
+            do_copy = True
+            do_concat = True
+            do_remove_staging = True
+            do_custom = True
+            do_contsub = True
+            do_extract_cont = True
                 
         target_list = self.get_targets()
         product_list = self.get_all_products()
@@ -291,7 +299,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # key handler.
 
         if timebin is None:
-            self._kh.get_timebin_for_array_tag(array_tag=array_tag)
+            timebin = self._kh.get_timebin_for_array_tag(array_tag=array_tag)
+            logger.info("Time bin of "+str(timebin))
         
         field = self._kh.get_field_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
