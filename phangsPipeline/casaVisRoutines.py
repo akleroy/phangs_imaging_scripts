@@ -1307,7 +1307,7 @@ def build_mstransform_call(
 def reweight_data(
     infile = None, 
     edge_kms = None,
-    edge_chan = None,
+    edge_chans = None,
     overwrite = False, 
     datacolumn = None,
     ):
@@ -1357,7 +1357,7 @@ def reweight_data(
                 mean_freq_ghz = 0.5*(spw_high_ghz+spw_low_ghz)
                 mean_chanwidth_kms = spw_chanwidth_ghz/mean_freq_ghz*sol_kms
                 
-                edge_chan = edge_kms / mean_chanwidth_kms
+                edge_chans = edge_kms / mean_chanwidth_kms
 
             nchan = vm.spwInfo[this_spw]['numChannels']
 
@@ -1389,9 +1389,9 @@ def reweight_data(
                          'excludechans': exclude_str}
 
     # Run the call
-    os.mkdir(outfile+'.touch')
+    os.mkdir(infile+'.touch')
     test = casaStuff.statwt(**statwt_params)
-    os.rmdir(outfile+'.touch')
+    os.rmdir(infile+'.touch')
 
     return()
 
