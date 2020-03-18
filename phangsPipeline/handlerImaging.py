@@ -141,15 +141,16 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     
     def loop_imaging(
         self, 
-        do_dirty_image = True,
-        do_revert_to_dirty = True,
-        do_read_clean_mask = True, 
-        do_multiscale_clean = True,
-        do_revert_to_multiscale = True,
-        do_singlescale_mask = True,
-        do_singlescale_clean = True,
-        do_revert_to_singlescale = True,
-        do_export_to_fits = True, 
+        do_all = False,
+        do_dirty_image = False,
+        do_revert_to_dirty = False,
+        do_read_clean_mask = False, 
+        do_multiscale_clean = False,
+        do_revert_to_multiscale = False,
+        do_singlescale_mask = False,
+        do_singlescale_clean = False,
+        do_revert_to_singlescale = False,
+        do_export_to_fits = False, 
         extra_ext_in = None,
         suffix_in = None,
         extra_ext_out = None,        
@@ -165,6 +166,20 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         using the do_XXX booleans. Other choices affect algorithms
         used.
         """
+
+        if do_all:
+            do_dirty_image = True
+            # debateable ...
+            do_revert_to_dirty = True
+            do_read_clean_mask = True
+            do_multiscale_clean = True
+            # debateable ...
+            do_revert_to_multiscale = True
+            do_singlescale_mask = True
+            do_singlescale_clean = True
+            # debateable ...
+            do_revert_to_singlescale = True
+            do_export_to_fits = True   
 
         if len(self.get_targets()) == 0:            
             logger.error("Need a target list.")
