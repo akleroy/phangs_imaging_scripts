@@ -1376,8 +1376,9 @@ def reweight_data(
 
             if first:
                 exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
-            else:
-                exclude_str += ';'+str(this_spw)+':'+str(low)+'~'+str(high)
+                first=False
+            else:                
+                exclude_str += ','+str(this_spw)+':'+str(low)+'~'+str(high)
 
     logger.info("... running statwt with exclusion: "+exclude_str)
 

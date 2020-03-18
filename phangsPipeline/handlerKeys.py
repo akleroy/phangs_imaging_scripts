@@ -1410,8 +1410,7 @@ class KeyHandler:
                     statwt_edge = self._config_dict['line_product'][product]['statwt_edge_kms']
         
         if statwt_edge is None:
-            logging.error('No statwt_edge found for '+product)
-            raise Exception('No statwt_edge found for '+product)
+            logging.info('No statwt_edge found for '+product)
         
         return(statwt_edge)
 
