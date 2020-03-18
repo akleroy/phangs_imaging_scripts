@@ -1366,8 +1366,14 @@ def reweight_data(
                 logger.warning("By default we will not exclude ANY channels.")
                 continue
 
-            low = edge_chans-1
-            high = nchan-edge_chans-2
+            low = int(np.ceil(edge_chans-1))
+            if low < 0:
+                low = 0
+
+            high = int(np.floor(nchan-edge_chans-2))
+            if high > nchan-1:
+                high = nchan-1
+
             if first:
                 exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
             else:
