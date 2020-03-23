@@ -60,7 +60,7 @@
 # subdirectory of this imaging directory where processing for that
 # target occurs.
 
-# 'product_root' 
+# 'derived_root' 
 
 # is the root directory for creating data products, like moment maps
 # and masks from the postprocessed image cubes. Each individual target
@@ -82,7 +82,7 @@
 #singledish_root      /PATH/EXAMPLE/reduction/singledish/
 #imaging_root         /PATH/EXAMPLE/reduction/imaging/
 #postprocess_root     /PATH/EXAMPLE/reduction/postprocess/
-#product_root         /PATH/EXAMPLE/reduction/product/
+#derived_root         /PATH/EXAMPLE/reduction/derived/
 #release_root         /PATH/EXAMPLE/reduction/release/
 
 # ------------------------------------------------------------------------
@@ -202,7 +202,7 @@ key_dir        	     	/data/tycho/0/leroy.42/reduction/alma/PHANGS/scripts/key_t
 cleanmask_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/cleanmasks/
 imaging_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/imaging/
 postprocess_root	/data/tycho/0/leroy.42/reduction/alma/PHANGS/postprocess/
-product_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/product/
+derived_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/derived/
 release_root		/data/tycho/0/leroy.42/reduction/alma/PHANGS/release/
 ms_root			/data/tycho/0/leroy.42/reduction/alma/PHANGS/uvdata/
 ms_root			/data/young/leroy.42/alma_data/PHANGS/
