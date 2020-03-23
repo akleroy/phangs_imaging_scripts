@@ -90,6 +90,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         do_contsub = False, 
         do_extract_line = False,
         do_extract_cont = False,
+        do_remove_concat = False,
         extra_ext = '',       
         make_directories = True,
         statwt_cont = True,
@@ -115,6 +116,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_custom = True
             do_contsub = True
             do_extract_cont = True
+            #do_remove_concat = True
                 
         target_list = self.get_targets()
         product_list = self.get_all_products()
@@ -237,6 +239,23 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             do_collapse = collapse_cont, 
                             overwrite = overwrite, 
                             )                
+
+        # Clean up the staged but not extracted data sets. This saves
+        # another significant percentage on disk space, depending.
+
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_line=True,just_interf=True):
+
+                if do_remove_concat:
+                    
+                    self.task_remove_concat(
+                        target = this_target, 
+                        product = this_product, 
+                        config = this_config, 
+                        extra_ext_in = "noregrid", 
+                        suffixes=['','contsub'],
+                        )
                 
         return()
 
@@ -765,5 +784,54 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 )
 
         return()
+
+    def task_remove_concat(
+            self, 
+            target = None, 
+            product = None, 
+            config = None, 
+            extra_ext_in = '',
+            suffixes = None,
+            ):
+        """
+        Remove any concatenated measurement sets. These are
+        intermediate (though time consuming) products not needed for
+        imaging. This procedure wipes them and saves disk space.
+        """
+        
+        # Error checking
+
+        if target is None:
+            logger.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        if product is None:
+            logger.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        if config is None:
+            logger.error("Please specify a config.")
+            raise Exception("Please specify a config.")
+
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
+        if suffixes is None:            
+            suffixes = ['']
+        if type(suffixes) is not type([]):
+            suffixes = [suffixes]        
+
+        for this_suffix in suffixes:
+            if this_suffix == '':
+                this_suffix = None
+
+            infile = fnames.get_vis_filename(
+                target=target, config=config, product=product, 
+                ext=extra_ext_in, suffix=this_suffix)
+
+            logger.info('Removing '+infile)
+                        
+            if not self._dry_run:
+                os.system('rm -rf '+infile)
+
 
 #endregion
