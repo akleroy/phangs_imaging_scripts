@@ -1569,6 +1569,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
     def loop_postprocess(
         self,
+        do_all=False,
         do_prep=False,
         do_feather=False,
         do_mosaic=False,
@@ -1586,6 +1587,17 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         the loop using the do_XXX booleans. Other choices affect the
         algorithms used.
         """
+
+        if do_all:
+            do_prep = True
+            do_feather=True
+            do_mosaic=True
+            do_cleanup=True
+            do_convolve=True
+
+        if feather_apod is False and feather_noapod is False:
+            logger.info("Defaulting to no apodization.")
+            feather_noapod = True
 
         if len(self.get_targets()) == 0:            
             logger.error("Need a target list.")
