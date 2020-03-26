@@ -4,7 +4,14 @@
 # 
 
 import os, sys
-sys.path.append(os.getcwd())
+master_key = os.getcwd() + 'key_templates/master_key.txt'
+
+pipepath = os.environ.get('PHANGSPIPE')
+if pipepath is not None:
+    sys.path.append(os.environ.get('PHANGSPIPE'))
+else:
+    sys.path.append(os.getcwd())
+
 casa_enabled = (sys.argv[0].endswith('start_casa.py'))
 if not casa_enabled:
     print('Please run this script inside CASA!')
@@ -14,7 +21,6 @@ if not casa_enabled:
 from phangsPipeline import phangsLogger as pl
 reload(pl)
 pl.setup_logger(level='DEBUG', logfile=None)
-
 # Imports
 
 #sys.path.insert(1, )
@@ -31,14 +37,12 @@ reload(pph)
 
 # Initialize key handler
 
-this_kh = kh.KeyHandler(master_key = 'phangshi_keys/master_key.txt')
+this_kh = kh.KeyHandler(master_key = master_key)
 this_uvh = uvh.VisHandler(key_handler = this_kh)
 this_imh = imh.ImagingHandler(key_handler = this_kh)
 this_pph = pph.PostProcessHandler(key_handler= this_kh)
 
 this_uvh.set_dry_run(False)
-#this_uvh.set_targets(skip=['ngc1512','ngc1637','ngc2775','ngc3239','ngc4303','ngc4540','ngc5248'])
-#this_uvh.set_targets(only=['ngc1300','ngc5134','ngc3626','ngc3596','ngc2283','ngc4571','ngc5042','ngc5068','ngc4207','ngc3511']
 this_uvh.set_targets()
 
 ##############################################################################
