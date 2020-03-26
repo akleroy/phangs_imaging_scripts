@@ -25,11 +25,11 @@ else:
     # https://docs.python.org/3/library/configparser.html
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline')
-import line_list
+import utilsLines
 
 # Define function to get line tag for line product
 def get_line_tag_for_line_product(line_product):
-    line_tag, line_freq = line_list.get_line_name_and_frequency(line_product, exit_on_error = False)
+    line_tag, line_freq = utilsLines.get_line_name_and_frequency(line_product, exit_on_error = False)
     return line_tag
 
 def get_line_tags_for_line_products(line_products):
@@ -37,9 +37,9 @@ def get_line_tags_for_line_products(line_products):
     for line_product in line_products:
         line_tag = get_line_tag_for_line_product(line_product)
         if line_tag is None:
-            print('Sorry, line "%s" is not found in our line list: %s'%(line_product, line_list.line_list.keys()))
+            print('Sorry, line "%s" is not found in our line list: %s'%(line_product, utilsLines.line_list.keys()))
             possible_names = []
-            for key in line_list.line_list.keys():
+            for key in utilsLines.line_list.keys():
                 if key.find(line_product.lower()) >= 0:
                     possible_names.append(key)
             if len(possible_names) > 0:
