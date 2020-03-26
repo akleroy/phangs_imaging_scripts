@@ -564,7 +564,7 @@ def clean_loop(
     # Create a text record of progress through successive clean calls.
 
     record = []
-    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, delta_flux")
+    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, frac_delta_flux")
     record.append("# column 1: Loop number.")
     record.append("# column 2: Deconvolver used in clean.")
     record.append("# column 3: Allocated number of iterations.")
@@ -726,7 +726,7 @@ def clean_loop(
         this_record += str(working_call.get_param('threshold'))+', '
         this_record += str(current_noise)+'Jy/beam, '
         this_record += str(current_flux)+'Jy*chan, '
-        this_record += str(delta_flux)+''
+        this_record += str(frac_delta_flux)+''
             
         # Print the current record to the screen
 
