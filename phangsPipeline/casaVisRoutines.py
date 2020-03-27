@@ -277,6 +277,7 @@ def concat_ms(
     outfile=None,  
     freqtol='',
     dirtol='',
+    copypointing=True,
     overwrite = False, 
     ):
     """
@@ -330,7 +331,8 @@ def concat_ms(
     os.mkdir(outfile+'.touch')
     casaStuff.concat(vis = infile_list, 
                      concatvis = outfile,
-                     freqtol=freqtol, dirtol=dirtol)
+                     freqtol=freqtol, dirtol=dirtol,
+                     copypointing=copypointing)
                      #<TODO># what about freqtol? set as an input? dirtol?
     os.rmdir(outfile+'.touch')
 
@@ -669,6 +671,7 @@ def batch_extract_line(
     method = 'regrid_then_rebin',
     exact = False,
     freqtol = '',
+    clean_pointing = True,
     overwrite = False,
     ):
     """
@@ -694,6 +697,8 @@ def batch_extract_line(
     # Execute the extraction scheme
     split_file_list = []
     for this_infile in schemes.keys():
+        first_spw_for_this_infile = True
+
         for this_spw in schemes[this_infile].keys():
             this_scheme = schemes[this_infile][this_spw]
 
@@ -710,19 +715,23 @@ def batch_extract_line(
             del this_scheme['chan_width_ghz']
             extract_line(**this_scheme)
 
+            # Deal with pointing table - testing shows it to be a
+            # duplicate for each SPW here, so we remove all rows for
+            # all SPWs except the first one.
+
+            if not first_spw_for_this_infile and clean_pointing:
+                au.clearPointingTable(this_outfile)
+
+            first_spw_for_this_infile = False
+
     # Concatenate and combine the output data sets
     
-    # ... concat
-
     concat_ms(
         infile_list = split_file_list,
         outfile = outfile,
         overwrite = overwrite,
-        freqtol = freqtol)
-
-    # ... combine
-
-    # might not be needed?
+        freqtol = freqtol, 
+        copypointing = True)
 
     # Clean up, deleting intermediate files
 

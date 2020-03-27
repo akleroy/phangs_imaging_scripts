@@ -708,6 +708,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 method = 'regrid_then_rebin',
                 exact = exact,
                 overwrite = overwrite,
+                clean_pointing = True,
                 )
 
             if do_statwt:
