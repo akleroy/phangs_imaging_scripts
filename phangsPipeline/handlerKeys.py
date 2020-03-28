@@ -1414,9 +1414,55 @@ class KeyHandler:
         
         return(statwt_edge)
 
-    def get_lines_to_flag_for_continuum_product(self, product=None):
+    def get_contsub_fitorder(self, product=None):
         """
-        Get the list of lines to flag when constructing a continuum product.
+        Get the fitorder to be used for continuum subtraction for a line product.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        fitorder = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'fitorder' in self._config_dict['line_product'][product]:
+                    statwt_edge = self._config_dict['line_product'][product]['fitorder']
+        
+        if fitorder is None:
+            logging.info('No fitorder found for '+product+' . Defaulting to order zero.')
+            fitorder = 0
+
+        return(fitorder)
+
+    def get_contsub_combinespw(self, product=None):
+        """
+        Query whether the continuum subtraction should combine all SPWs.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        combinespw = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'combinespw' in self._config_dict['line_product'][product]:
+                    combinespw = self._config_dict['line_product'][product]['combinespw']
+        
+        if combinespw is None:
+            logging.info('No combinespw flag found for '+product+' . Defaulting to False.')
+            combinespw = False
+
+        return(combinespw)
+
+    def get_lines_to_flag(self, product=None):
+        """
+        Get the list of lines to flag when either constructing a
+        continuum product or carrying out continuum subtraction on a
+        line product.
         """
         if product is None:
             logging.error("Please specify a product.")
@@ -1424,16 +1470,19 @@ class KeyHandler:
             return None
         
         lines_to_flag = []
-        if 'cont_product' in self._config_dict:
-            if product in self._config_dict['cont_product']:
-                if 'lines_to_flag' in self._config_dict['cont_product'][product]:
-                    lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+        if product in self._config_dict['cont_product']:
+            if 'lines_to_flag' in self._config_dict['cont_product'][product]:
+                lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+
+        if product in self._config_dict['line_product']:
+            if 'lines_to_flag' in self._config_dict['line_product'][product]:
+                lines_to_flag = self._config_dict['line_product'][product]['lines_to_flag']
         
         if len(lines_to_flag) == 0:
-            logging.warning('No lines to flag for the input continuum product '+product)
+            logging.warning('No lines to flag for the input  product '+product)
             #raise Exception('No lines to flag for the input continuum product '+product)
             
-        return lines_to_flag
+        return(lines_to_flag)
     
     def get_array_tags_for_config(self, config=None):
         """
@@ -1470,7 +1519,7 @@ class KeyHandler:
         target=None,
         config=None,
         project=None,
-        check_linmos=True,
+        check_linmos=False,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1496,6 +1545,10 @@ class KeyHandler:
                 if this_target not in just_targets:
                     just_targets.append(this_target)
             
+                # Optionally, also include targets that are linear
+                # mosaics but don't have their own assigned
+                # measurement sets. This is set to False by default.
+
                 if check_linmos:
                     if self.is_target_linmos(target=this_target):
                         parts = self.get_parts_for_linmos(target=this_target)

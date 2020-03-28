@@ -277,6 +277,7 @@ def concat_ms(
     outfile=None,  
     freqtol='',
     dirtol='',
+    copypointing=True,
     overwrite = False, 
     ):
     """
@@ -330,7 +331,8 @@ def concat_ms(
     os.mkdir(outfile+'.touch')
     casaStuff.concat(vis = infile_list, 
                      concatvis = outfile,
-                     freqtol=freqtol, dirtol=dirtol)
+                     freqtol=freqtol, dirtol=dirtol,
+                     copypointing=copypointing)
                      #<TODO># what about freqtol? set as an input? dirtol?
     os.rmdir(outfile+'.touch')
 
@@ -522,6 +524,63 @@ def find_spws_for_line(
     else:
         return(spw_list_string)
 
+def find_spws_for_science(
+    infile = None, 
+    require_data = False,
+    exit_on_error = True, 
+    as_list = False,
+    ):
+    """
+    List all spectral windows that we judge likely to be used for
+    science. Mostly wraps analysisUtils rather than reinventing the
+    wheel.
+    """
+
+    # Check inputs
+    
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
+
+    # Verify file existence
+
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
+
+    # Call the analysisUtil version.
+
+    spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET*')
+    spw_list = []
+    for this_spw_string in spw_string.split(','):
+        spw_list.append(int(this_spw_string))
+    
+    # Shouldn't get here, I think, because of the analysisUtils logic
+
+    if require_data:
+        vm = au.ValueMapping(infile)
+
+        for spw in spw_list:
+            if len(vm.scansForSpw[spw]) == 0:
+                spw_list.remove(spw)
+    # Return
+    
+    if len(spw_list) == 0:
+        logger.warning('No science spectral windows found.')
+        spw_list_string = None # can't be '', that selects all
+    else:
+        
+        # sort and remove duplicates
+        spw_list = sorted(list(set(spw_list)))
+
+        # make spw_list_string appropriate for use in selection
+        spw_list_string = ','.join(np.array(spw_list).astype(str))
+     
+    if as_list:
+        return(spw_list)
+    else:
+        return(spw_list_string)
+
 def spw_string_for_freq_ranges(
     infile = None, 
     freq_ranges_ghz = [],
@@ -565,7 +624,7 @@ def spw_string_for_freq_ranges(
                 continue
 
         freq_axis = vm.spwInfo[this_spw]['chanFreqs']
-        half_chan = abs(freq_axis[1]-freq_axis[0])
+        half_chan = abs(freq_axis[1]-freq_axis[0])*0.5
         chan_axis = np.arange(len(freq_axis))
         mask_axis = np.zeros_like(chan_axis,dtype='bool')
 
@@ -669,6 +728,7 @@ def batch_extract_line(
     method = 'regrid_then_rebin',
     exact = False,
     freqtol = '',
+    clear_pointing = True,
     overwrite = False,
     ):
     """
@@ -694,6 +754,7 @@ def batch_extract_line(
     # Execute the extraction scheme
     split_file_list = []
     for this_infile in schemes.keys():
+        
         for this_spw in schemes[this_infile].keys():
             this_scheme = schemes[this_infile][this_spw]
 
@@ -710,19 +771,36 @@ def batch_extract_line(
             del this_scheme['chan_width_ghz']
             extract_line(**this_scheme)
 
-    # Concatenate and combine the output data sets
-    
-    # ... concat
+            # Deal with pointing table - testing shows it to be a
+            # duplicate for each SPW here, so we remove all rows for
+            # all SPWs except the first one.
 
+            if clear_pointing:
+                # This didn't work:
+                # os.system('rm -rf '+this_outfile+'/POINTING')
+
+                # This zaps the whole table:
+                au.clearPointingTable(this_outfile)
+
+    # Concatenate and combine the output data sets
+
+    if clear_pointing:
+        copy_pointing = False
+    else:
+        copy_pointing = True
+    
     concat_ms(
         infile_list = split_file_list,
         outfile = outfile,
         overwrite = overwrite,
-        freqtol = freqtol)
+        freqtol = freqtol, 
+        copypointing = copy_pointing)
 
-    # ... combine
-
-    # might not be needed?
+    #if clean_pointing:
+    #    casaStuff.ms.open(outfile, nomodify = False)
+    #    for this_infile in schemes.keys():
+    #        casaStuff.ms.concatenate(msfile=this_infile,handling=1)
+    #    casaStuff.ms.close()
 
     # Clean up, deleting intermediate files
 
