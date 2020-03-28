@@ -149,7 +149,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
+                            just_line=False,just_interf=True):
 
                 if do_concat:
 
@@ -227,12 +227,16 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             overwrite = overwrite, 
                             )
 
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_cont=True,just_interf=True):
+
                 if this_product in self._kh.get_continuum_products():
                     if do_extract_cont:
 
                         self.task_extract_continuum(
                             target = this_target, 
-                            product = this_project, 
+                            product = this_product, 
                             config = this_config, 
                             extra_ext_in = "noregrid", 
                             do_statwt = statwt_cont, 
@@ -245,7 +249,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
+                            just_line=False,just_interf=True):
 
                 if do_remove_concat:
                     
@@ -509,6 +513,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             cvr.concat_ms(infile_list = staged_ms_list, 
                           outfile = outfile, 
                           overwrite = overwrite, 
+                          copypointing = False, # come back later
                           )
 
         return()
@@ -708,7 +713,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 method = 'regrid_then_rebin',
                 exact = exact,
                 overwrite = overwrite,
-                clean_pointing = True,
+                clear_pointing = True,
                 )
 
             if do_statwt:
@@ -726,6 +731,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             product = None, 
             config = None, 
             extra_ext_in = '', 
+            extra_ext_out = '', 
             do_statwt = True, 
             do_collapse = True, 
             overwrite = False, 
@@ -752,6 +758,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target=target, config=config, product=product, 
             ext=extra_ext_in, suffix=None)
 
+        outfile = fnames.get_vis_filename(
+            target=target, config=config, product=product, 
+            ext=extra_ext_out, suffix=None)
+
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
@@ -763,7 +773,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 line_list=lines_to_flag, vsys_kms=vsys, vwidth_kms=vwidth)
         else:
             ranges_to_exclude = []
-
+                
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Extracting continuum from "+infile)
@@ -772,6 +782,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
        
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
+        if not os.path.isdir(infile):
+            logger.warning("Input file not found. Returning."+infile)
+            return()
 
         if not self._dry_run and casa_enabled:
 

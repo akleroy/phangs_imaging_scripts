@@ -1470,7 +1470,7 @@ class KeyHandler:
         target=None,
         config=None,
         project=None,
-        check_linmos=True,
+        check_linmos=False,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1496,6 +1496,10 @@ class KeyHandler:
                 if this_target not in just_targets:
                     just_targets.append(this_target)
             
+                # Optionally, also include targets that are linear
+                # mosaics but don't have their own assigned
+                # measurement sets. This is set to False by default.
+
                 if check_linmos:
                     if self.is_target_linmos(target=this_target):
                         parts = self.get_parts_for_linmos(target=this_target)

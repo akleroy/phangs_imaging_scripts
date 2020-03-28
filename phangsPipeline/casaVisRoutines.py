@@ -671,7 +671,7 @@ def batch_extract_line(
     method = 'regrid_then_rebin',
     exact = False,
     freqtol = '',
-    clean_pointing = True,
+    clear_pointing = True,
     overwrite = False,
     ):
     """
@@ -697,8 +697,7 @@ def batch_extract_line(
     # Execute the extraction scheme
     split_file_list = []
     for this_infile in schemes.keys():
-        first_spw_for_this_infile = True
-
+        
         for this_spw in schemes[this_infile].keys():
             this_scheme = schemes[this_infile][this_spw]
 
@@ -719,19 +718,32 @@ def batch_extract_line(
             # duplicate for each SPW here, so we remove all rows for
             # all SPWs except the first one.
 
-            if not first_spw_for_this_infile and clean_pointing:
+            if clear_pointing:
+                # This didn't work:
+                # os.system('rm -rf '+this_outfile+'/POINTING')
+
+                # This zaps the whole table:
                 au.clearPointingTable(this_outfile)
 
-            first_spw_for_this_infile = False
-
     # Concatenate and combine the output data sets
+
+    if clear_pointing:
+        copy_pointing = False
+    else:
+        copy_pointing = True
     
     concat_ms(
         infile_list = split_file_list,
         outfile = outfile,
         overwrite = overwrite,
         freqtol = freqtol, 
-        copypointing = True)
+        copypointing = copy_pointing)
+
+    #if clean_pointing:
+    #    casaStuff.ms.open(outfile, nomodify = False)
+    #    for this_infile in schemes.keys():
+    #        casaStuff.ms.concatenate(msfile=this_infile,handling=1)
+    #    casaStuff.ms.close()
 
     # Clean up, deleting intermediate files
 
