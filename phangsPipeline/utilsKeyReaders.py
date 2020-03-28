@@ -533,6 +533,7 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'statwt_edge_kms':50.0,
                 'fitorder':0,
                 'combinespw':False,
+                'lines_to_flag':[],
                 }
                 
         if this_type == "cont_product":

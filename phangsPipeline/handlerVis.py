@@ -530,18 +530,18 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         infile = fnames.get_staged_msname(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
             product=product, ext=extra_ext_in)
-
-        # Get lines to exclude. Previously had used the continuum fit,
-        # but that mixes product definitions ... this is tricky
-        # because those lines are defined for the continuum. Need to
-        # examine conventions, but probably make this a part of
-        # product definition.
         
         # get target vsys and vwidth
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
-        # lines_to_exclude = self._kh.get_lines_to_flag_for_continuum_product(product=product)        
-        lines_to_exclude = self._kh.get_line_tag_for_line_product(product)
+        # Get lines to exclude.
+
+        lines_to_exclude = self._kh.get_lines_to_flag(product=product)        
+        this_line_tag = self._kh.get_line_tag_for_line_product(product)
+        if len(lines_to_exclude) == 0:
+            lines_to_exclude = [this_line_tag]
+
+        # Translate these into frequency ranges
 
         ranges_to_exclude = lines.get_ghz_range_for_list(
             line_list=lines_to_exclude, vsys_kms=vsys, vwidth_kms=vwidth)
@@ -811,7 +811,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
 
         # get lines to flag as defined in keys
-        lines_to_flag = self._kh.get_lines_to_flag_for_continuum_product(product=product)
+        lines_to_flag = self._kh.get_lines_to_flag(product=product)
                 
         if len(lines_to_flag) > 0:
             ranges_to_exclude = lines.get_ghz_range_for_list(

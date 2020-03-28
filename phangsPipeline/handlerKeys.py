@@ -1458,9 +1458,11 @@ class KeyHandler:
 
         return(combinespw)
 
-    def get_lines_to_flag_for_continuum_product(self, product=None):
+    def get_lines_to_flag(self, product=None):
         """
-        Get the list of lines to flag when constructing a continuum product.
+        Get the list of lines to flag when either constructing a
+        continuum product or carrying out continuum subtraction on a
+        line product.
         """
         if product is None:
             logging.error("Please specify a product.")
@@ -1468,16 +1470,19 @@ class KeyHandler:
             return None
         
         lines_to_flag = []
-        if 'cont_product' in self._config_dict:
-            if product in self._config_dict['cont_product']:
-                if 'lines_to_flag' in self._config_dict['cont_product'][product]:
-                    lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+        if product in self._config_dict['cont_product']:
+            if 'lines_to_flag' in self._config_dict['cont_product'][product]:
+                lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+
+        if product in self._config_dict['line_product']:
+            if 'lines_to_flag' in self._config_dict['line_product'][product]:
+                lines_to_flag = self._config_dict['line_product'][product]['lines_to_flag']
         
         if len(lines_to_flag) == 0:
-            logging.warning('No lines to flag for the input continuum product '+product)
+            logging.warning('No lines to flag for the input  product '+product)
             #raise Exception('No lines to flag for the input continuum product '+product)
             
-        return lines_to_flag
+        return(lines_to_flag)
     
     def get_array_tags_for_config(self, config=None):
         """
