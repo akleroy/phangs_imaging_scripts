@@ -567,7 +567,7 @@ def spw_string_for_freq_ranges(
                 continue
 
         freq_axis = vm.spwInfo[this_spw]['chanFreqs']
-        half_chan = abs(freq_axis[1]-freq_axis[0])
+        half_chan = abs(freq_axis[1]-freq_axis[0])*0.5
         chan_axis = np.arange(len(freq_axis))
         mask_axis = np.zeros_like(chan_axis,dtype='bool')
 

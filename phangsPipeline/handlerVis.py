@@ -90,7 +90,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         do_contsub = False, 
         do_extract_line = False,
         do_extract_cont = False,
-        do_remove_concat = False,
         extra_ext = '',       
         make_directories = True,
         statwt_cont = True,
@@ -111,19 +110,20 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         
         if do_all:
             do_copy = True
+            do_contsub = True
+            do_custom = True
+            do_extract_line = True
+            do_extract_cont = True
             do_concat = True
             do_remove_staging = True
-            do_custom = True
-            do_contsub = True
-            do_extract_cont = True
-            #do_remove_concat = True
                 
         target_list = self.get_targets()
         product_list = self.get_all_products()
         config_list = self.get_interf_configs()
 
-        # Our first step uses CASA's split to extract the relevant
-        # fields and spectral windows from each input data set.
+        # Our first loop goes over the individual measurement sets,
+        # splits, and continuum subtracts the data. At this stage we
+        # have no knowledge of configs.
 
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=target_list,
@@ -131,6 +131,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                                             project=just_projects):
 
                 for this_product in product_list:
+
+                    # Our first step uses CASA's split to extract the relevant
+                    # fields and spectral windows from each input data set.
                     
                     if do_copy:
 
@@ -144,27 +147,71 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             overwrite = overwrite, 
                             )
 
-        # Next we concatenate linked data sets (sharing a
-        # target+config+product ) into unified measurement sets.
+                    # Run custom processing. Not currently used.
+
+                    if do_custom:
+
+                        pass
+
+                    # Next we apply uv continuum subtraction. We may later offer
+                    # an algorithm choice to do this before or after
+                    # regridding. The correct choice depends on some details of
+                    # the observation setup.
+
+                    if this_product in self._kh.get_line_products() and do_contsub:
+                        
+                        self.task_contsub(
+                            target = this_target, 
+                            project = this_project, 
+                            array_tag = this_array_tag, 
+                            obsnum = this_obsnum, 
+                            product = this_product,
+                            # could add algorithm flags here
+                            overwrite = overwrite, 
+                            )
+        
+        # Now we reprocess the data to have the desired spectral
+        # setup(s). This involves rebinning and regridding for line
+        # products and flagging and integration for continuum
+        # products. This requires cross-talk among the different
+        # measurement sets.
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=False,just_interf=True):
+                            just_line=True,just_interf=True):
+                
+                if do_extract_line:
+                    
+                    if this_product in self._kh.get_line_products():
 
-                if do_concat:
+                        self.task_extract_line(
+                            target = this_target, 
+                            config = this_config, 
+                            product = this_product, 
+                            exact = False,
+                            extra_ext_in = "",
+                            contsub = "prefer",
+                            # could add algorithm flags here                            
+                            overwrite = overwrite, 
+                            )
 
-                    self.task_concat_uvdata(
-                        target = this_target, 
-                        config = this_config, 
-                        product = this_product, 
-                        extra_ext_out = "noregrid",                         
-                        overwrite = overwrite, 
-                        )
+                if do_extract_cont:
+
+                    if this_product in self._kh.get_continuum_products():
+
+                        self.task_extract_continuum(
+                            target = this_target, 
+                            product = this_product, 
+                            config = this_config, 
+                            extra_ext_in = "", 
+                            do_statwt = statwt_cont, 
+                            do_collapse = collapse_cont, 
+                            overwrite = overwrite, 
+                            )                
         
         # Clean up the staged measurement sets. They cost time to
-        # re-split but have a huge disk imprint and are totally
-        # redundant with the concatenated data and original
-        # data. Saves 33% on disk space.
+        # re-split, but have a huge disk imprint and are redundant
+        # with the concatenated data and original data.
 
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=target_list,
@@ -182,84 +229,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             obsnum = this_obsnum, 
                             product = this_product,
                             )
-
-        # Next we apply uv continuum subtraction. We may later offer
-        # an algorithm choice to do this before or after
-        # regridding. The correct choice depends on some details of
-        # the observation setup. This one assumes one SPW maps to one
-        # line and so may be more common.
-
-        for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
-
-                if do_contsub:
-                    
-                    self.task_contsub(
-                        target = this_target, 
-                        config = this_config, 
-                        product = this_product, 
-                        extra_ext_in = "noregrid", 
-                        # could add algorithm flags here
-                        overwrite = overwrite, 
-                        )
-        
-        # Now we reprocess the data to have the desired spectral
-        # setup. This involves rebinning and regridding for line
-        # products and flagging and integration for continuum
-        # products.
-
-        for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=True,just_interf=True):
-
-                if this_product in self._kh.get_line_products():
-                    if do_extract_line:
-
-                        self.task_extract_line(
-                            target = this_target, 
-                            config = this_config, 
-                            product = this_product, 
-                            exact = False,
-                            extra_ext_in = "noregrid",
-                            contsub = "prefer",
-                            # could add algorithm flags here                            
-                            overwrite = overwrite, 
-                            )
-
-        for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_cont=True,just_interf=True):
-
-                if this_product in self._kh.get_continuum_products():
-                    if do_extract_cont:
-
-                        self.task_extract_continuum(
-                            target = this_target, 
-                            product = this_product, 
-                            config = this_config, 
-                            extra_ext_in = "noregrid", 
-                            do_statwt = statwt_cont, 
-                            do_collapse = collapse_cont, 
-                            overwrite = overwrite, 
-                            )                
-
-        # Clean up the staged but not extracted data sets. This saves
-        # another significant percentage on disk space, depending.
-
-        for this_target, this_product, this_config in \
-                self.looper(do_targets=True,do_products=True,do_configs=True,
-                            just_line=False,just_interf=True):
-
-                if do_remove_concat:
-                    
-                    self.task_remove_concat(
-                        target = this_target, 
-                        product = this_product, 
-                        config = this_config, 
-                        extra_ext_in = "noregrid", 
-                        suffixes=['','contsub'],
-                        )
                 
         return()
 
@@ -431,6 +400,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not self._dry_run:
             
             os.system('rm -rf '+infile)
+            os.system('rm -rf '+infile+'.contsub')
 
         return()
 
@@ -520,10 +490,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
     
     def task_contsub(
             self, 
-            target = None, 
-            config = None, 
-            product = None, 
-            extra_ext_in = '', 
+            target = None,
+            project = None,
+            array_tag = None,
+            obsnum = None,
+            product = None,
+            extra_ext_in = '',
             overwrite = False, 
             ):
         """
@@ -535,17 +507,21 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.error("Please specify a target.")
             raise Exception("Please specify a target.")
 
-        if product is None:
-            logger.error("Please specify a product.")
-            raise Exception("Please specify a product.")
+        if project is None:
+            logger.error("Please specify a project.")
+            raise Exception("Please specify a project.")
 
-        if config is None:
-            logger.error("Please specify an config.")
-            raise Exception("Please specify an config.")
+        if array_tag is None:
+            logger.error("Please specify an array_tag.")
+            raise Exception("Please specify an array_tag.")
+
+        if obsnum is None:
+            logger.error("Please specify an obsnum.")
+            raise Exception("Please specify an obsnum.")
         
-        infile = fnames.get_vis_filename(
-            target=target, config=config, product=product, 
-            ext=extra_ext_in, suffix=None)
+        infile = fnames.get_staged_msname(
+            target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
+            product=product, ext=extra_ext_in)
 
         # Get lines to exclude. Previously had used the continuum fit,
         # but that mixes product definitions ... this is tricky
@@ -604,8 +580,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             product = None, 
             config = None, 
             exact = False,
-            extra_ext_in = '',
             contsub = "prefer",
+            extra_ext_in = '',
             extra_ext_out = '',
             do_statwt = True, 
             edge_for_statwt = None,
@@ -646,34 +622,83 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.error("Valid options are:"+str(valid_contsub_options))
             raise Exception("Please choose a valid contsub option.")
 
+        # Compile a list of input files, looping over the staged
+        # measurement sets.
+
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if contsub == 'require':
+        infile_dict = {}
+        for this_target, this_project, this_array_tag, this_obsnum in \
+                self._kh.loop_over_input_ms(target=[target], 
+                                            config=[config],
+                                            project=None):                
 
-            infile = fnames.get_vis_filename(
-                target=target, config=config, product=product, 
-                ext=extra_ext_in, suffix='contsub')
+                # The name of the staged measurement set with this
+                # combination of target, project, array, obsnum.
+
+                this_infile = fnames.get_staged_msname(
+                    target=this_target, project=this_project, 
+                    array_tag=this_array_tag, obsnum=this_obsnum,
+                    product=product, ext=extra_ext_in)
+
+                # Check for existence of original data and continuum
+                # subtraction.
+
+                infile_dict[this_infile] = {}
+                infile_dict[this_infile]['present'] = \
+                    os.path.isdir(this_infile)
+                infile_dict[this_infile]['contsub'] = \
+                    os.path.isdir(this_infile+'.contsub')
+
+        # Implement the logic related to continuum
+        # subtraction. Options are "require" (use only data with
+        # continuum subtraction), "prefer" (if any data are missing
+        # continuum subtraction but are present then skip continuum
+        # subtraction), or "none" (use original data).
+
+        infile_list = []
 
         if contsub == 'prefer':
 
-            infile = fnames.get_vis_filename(
-                target=target, config=config, product=product, 
-                ext=extra_ext_in, suffix='contsub')
+            all_have_contsub = True
+            
+            for this_infile in infile_dict.keys():
+                if infile_dict[this_infile]['present'] == False:
+                    continue
+                if infile_dict[this_infile]['contsub'] == False:
+                    all_have_contsub = False
 
-            if not os.path.isdir(infile):
-                infile = fnames.get_vis_filename(
-                    target=target, config=config, product=product, 
-                    ext=extra_ext_in, suffix=None)
+            if all_have_contsub:
+                logger.info("All files have continuum subtraction. Using that.")
+                contsub = 'require'
+            else:
+                logger.info("Some files missing continuum subtraction. Skipping.")
+                contsub = 'none'
+
+        if contsub == 'require':
+            
+            for this_infile in infile_dict.keys():
+                if infile_dict[this_infile]['contsub']:
+                    infile_list.append(this_infile)
+                else:
+                    logger.warning("File lacks contsub, skipping: "+str(this_infile))
 
         if contsub == 'none':
-            infile = fnames.get_vis_filename(
-                target=target, config=config, product=product, 
-                ext=extra_ext_in, suffix=None)
 
-        if not os.path.isdir(infile):
-            logger.warning("Input file not found. Returning.")
-            return()
+            for this_infile in infile_dict.keys():
+                if infile_dict[this_infile]['present']:
+                    infile_list.append(this_infile)
+                else:
+                    logger.warning("File missing, skipping: "+str(this_infile))
                 
+        if len(infile_list) == 0:
+            logger.warning("No files to process.")
+            return()
+                    
+        # Define the output file. Line extraction has a concatenation
+        # step, so the individual measurement sets will be combined
+        # after extraction.
+
         outfile = fnames.get_vis_filename(
             target=target, config=config, product=product, 
             ext=extra_ext_out, suffix=None)
@@ -697,7 +722,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("Vsys [km/s]: "+str(vsys_kms))
         logger.info("Vwidth [km/s]: "+str(vwidth_kms))
         logger.info("Method: "+str(method))
-        logger.info("From file: "+str(infile))
+        logger.info("From files:"+str(infile_list))
         logger.info("To file: "+str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
@@ -705,7 +730,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not self._dry_run and casa_enabled:
 
             cvr.batch_extract_line(
-                infile_list = [infile],
+                infile_list = infile_list,
                 outfile = outfile,
                 target_chan_kms = target_chanwidth,
                 line = line_to_extract,
@@ -713,7 +738,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 method = 'regrid_then_rebin',
                 exact = exact,
                 overwrite = overwrite,
-                clear_pointing = True,
+                clear_pointing = False,
                 )
 
             if do_statwt:
