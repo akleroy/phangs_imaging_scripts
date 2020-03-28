@@ -531,6 +531,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'line_tag':'',
                 'channel_kms':0.0,
                 'statwt_edge_kms':50.0,
+                'fitorder':0,
+                'combinespw':False,
                 }
                 
         if this_type == "cont_product":

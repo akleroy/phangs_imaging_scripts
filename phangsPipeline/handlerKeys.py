@@ -1414,6 +1414,50 @@ class KeyHandler:
         
         return(statwt_edge)
 
+    def get_contsub_fitorder(self, product=None):
+        """
+        Get the fitorder to be used for continuum subtraction for a line product.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        fitorder = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'fitorder' in self._config_dict['line_product'][product]:
+                    statwt_edge = self._config_dict['line_product'][product]['fitorder']
+        
+        if fitorder is None:
+            logging.info('No fitorder found for '+product+' . Defaulting to order zero.')
+            fitorder = 0
+
+        return(fitorder)
+
+    def get_contsub_combinespw(self, product=None):
+        """
+        Query whether the continuum subtraction should combine all SPWs.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        
+        combinespw = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'combinespw' in self._config_dict['line_product'][product]:
+                    combinespw = self._config_dict['line_product'][product]['combinespw']
+        
+        if combinespw is None:
+            logging.info('No combinespw flag found for '+product+' . Defaulting to False.')
+            combinespw = False
+
+        return(combinespw)
+
     def get_lines_to_flag_for_continuum_product(self, product=None):
         """
         Get the list of lines to flag when constructing a continuum product.

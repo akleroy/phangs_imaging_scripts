@@ -314,22 +314,30 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target)
                 max_chanwidth_kms = self._kh.get_channel_width_for_line_product(product)
 
+                combinespw = self._kh.get_contsub_combinespw(product=product)
+                if combinespw is None:
+                    combinespw=False
+
                 if not self._dry_run and casa_enabled:
-                    spw = cvr.find_spws_for_line(infile = infile, 
-                                                 line = this_line, 
-                                                 max_chanwidth_kms = max_chanwidth_kms,
-                                                 vsys_kms = vsys, vwidth_kms = vwidth)
+                    if combinespw:
+                        spw = cvr.find_spws_for_science(infile = infile)
+                    else:
+                        spw = cvr.find_spws_for_line(
+                            infile = infile, line = this_line, 
+                            max_chanwidth_kms = max_chanwidth_kms,
+                            vsys_kms = vsys, vwidth_kms = vwidth)
                     if spw is None:
                         logger.warning("No SPWs meet the selection criteria. Skipping.")
                         return()
 
-        # TBD - Work out time binning using some logic once we
-        # generate some context from the keyhandler. For now, just
-        # pass along the parameter from the user.
+            if product in self._kh.get_continuum_products():
+
+                spw = cvr.find_spws_for_science(infile = infile)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Copying u-v data for "+outfile)
+        logger.info("... extracting spws :"+str(spw))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
@@ -538,8 +546,19 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         ranges_to_exclude = lines.get_ghz_range_for_list(
             line_list=lines_to_exclude, vsys_kms=vsys, vwidth_kms=vwidth)
             
-        # Need to look up fit order and other tuning parameters eventually
-        fitorder = 0
+        # Query the keyhandler for the details of continuum subtraction
+
+        fitorder = self._kh.get_contsub_fitorder(product=product)
+        if fitorder is None:
+            fitorder = 0
+
+        combinespw = self._kh.get_contsub_combinespw(product=product)
+        if combinespw is None:
+            combinespw=False
+
+        combine = ''
+        if combinespw:
+            combine = 'spw'
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -559,6 +578,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         ranges_to_exclude = ranges_to_exclude,              
                         overwrite = overwrite, 
                         fitorder = fitorder,
+                        combine = combine,
                         )
 
         return()

@@ -524,6 +524,63 @@ def find_spws_for_line(
     else:
         return(spw_list_string)
 
+def find_spws_for_science(
+    infile = None, 
+    require_data = False,
+    exit_on_error = True, 
+    as_list = False,
+    ):
+    """
+    List all spectral windows that we judge likely to be used for
+    science. Mostly wraps analysisUtils rather than reinventing the
+    wheel.
+    """
+
+    # Check inputs
+    
+    if infile is None:
+        logging.error("Please specify infile.")
+        raise Exception("Please specify infile.")
+
+    # Verify file existence
+
+    if not os.path.isdir(infile):
+        logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
+
+    # Call the analysisUtil version.
+
+    spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET*')
+    spw_list = []
+    for this_spw_string in spw_string.split(','):
+        spw_list.append(int(this_spw_string))
+    
+    # Shouldn't get here, I think, because of the analysisUtils logic
+
+    if require_data:
+        vm = au.ValueMapping(infile)
+
+        for spw in spw_list:
+            if len(vm.scansForSpw[spw]) == 0:
+                spw_list.remove(spw)
+    # Return
+    
+    if len(spw_list) == 0:
+        logger.warning('No science spectral windows found.')
+        spw_list_string = None # can't be '', that selects all
+    else:
+        
+        # sort and remove duplicates
+        spw_list = sorted(list(set(spw_list)))
+
+        # make spw_list_string appropriate for use in selection
+        spw_list_string = ','.join(np.array(spw_list).astype(str))
+     
+    if as_list:
+        return(spw_list)
+    else:
+        return(spw_list_string)
+
 def spw_string_for_freq_ranges(
     infile = None, 
     freq_ranges_ghz = [],
