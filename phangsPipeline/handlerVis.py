@@ -195,6 +195,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             overwrite = overwrite, 
                             )
 
+        for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True,
+                            just_cont=True,just_interf=True):
+
                 if do_extract_cont:
 
                     if this_product in self._kh.get_continuum_products():
