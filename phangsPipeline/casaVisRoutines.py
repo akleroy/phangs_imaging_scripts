@@ -796,12 +796,6 @@ def batch_extract_line(
         freqtol = freqtol, 
         copypointing = copy_pointing)
 
-    #if clean_pointing:
-    #    casaStuff.ms.open(outfile, nomodify = False)
-    #    for this_infile in schemes.keys():
-    #        casaStuff.ms.concatenate(msfile=this_infile,handling=1)
-    #    casaStuff.ms.close()
-
     # Clean up, deleting intermediate files
 
     for this_file in split_file_list:
@@ -1483,7 +1477,76 @@ def reweight_data(
 ########################################
 # Extract a continuum measurement set. #
 ########################################
-                      
+
+def batch_extract_continuum(
+    infile_list = [],
+    outfile = None,
+    ranges_to_exclude = [],
+    lines_to_flag = [],
+    vsys_kms=None, vwidth_kms=None, 
+    vlow_kms=None, vhigh_kms=None,    
+    do_statwt = False, 
+    do_collapse = True, 
+    clear_pointing = True,
+    overwrite = False,
+    ):
+    """
+    Run a batch continuum extraction.
+    """
+
+    # Check that we have an output file defined.
+
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
+        
+    split_file_list = []
+    for this_infile in infile_list:
+
+        # Specify output file and check for existence
+        this_outfile = this_infile+'.temp_cont'
+
+        split_file_list.append(this_outfile)
+        
+        extract_continuum(
+            infile = this_infile, 
+            outfile = this_outfile, 
+            ranges_to_exclude = ranges_to_exclude,
+            lines_to_flag = lines_to_flag,
+            vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, 
+            vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,    
+            do_statwt = do_statwt,
+            do_collapse = do_collapse, 
+            overwrite = overwrite, 
+            )
+
+        # Deal with pointing table - testing shows it to be a
+        # duplicate for each SPW here, so we remove all rows for
+        # all SPWs except the first one.
+
+        if clear_pointing:
+            au.clearPointingTable(this_outfile)
+
+    # Concatenate and combine the output data sets
+
+    if clear_pointing:
+        copy_pointing = False
+    else:
+        copy_pointing = True
+    
+    concat_ms(
+        infile_list = split_file_list,
+        outfile = outfile,
+        overwrite = overwrite,
+        copypointing = copy_pointing)
+
+    # Clean up, deleting intermediate files
+
+    for this_file in split_file_list:
+        shutil.rmtree(this_file)
+    
+    return()
+
 def extract_continuum(
     infile = None, 
     outfile = None, 

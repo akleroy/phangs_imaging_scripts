@@ -803,9 +803,35 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             logger.error("Please specify a config.")
             raise Exception("Please specify a config.")
 
-        infile = fnames.get_vis_filename(
-            target=target, config=config, product=product, 
-            ext=extra_ext_in, suffix=None)
+        this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
+
+        infile_dict = {}
+        for this_target, this_project, this_array_tag, this_obsnum in \
+                self._kh.loop_over_input_ms(target=[target], 
+                                            config=[config],
+                                            project=None):                
+
+                # The name of the staged measurement set with this
+                # combination of target, project, array, obsnum.
+
+                this_infile = fnames.get_staged_msname(
+                    target=this_target, project=this_project, 
+                    array_tag=this_array_tag, obsnum=this_obsnum,
+                    product=product, ext=extra_ext_in)
+
+                # Check for existence of original data and continuum
+                # subtraction.
+
+                infile_dict[this_infile] = {}
+                infile_dict[this_infile]['present'] = \
+                    os.path.isdir(this_infile)
+                
+        infile_list = []
+        for this_infile in infile_dict.keys():
+            if infile_dict[this_infile]['present']:
+                infile_list.append(this_infile)
+
+        # Note that there is a concatenation step
 
         outfile = fnames.get_vis_filename(
             target=target, config=config, product=product, 
@@ -823,23 +849,22 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         else:
             ranges_to_exclude = []
                 
+        # Pick up here - need to update extract_continuum to a batch
+        # process in casaVisRoutines
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Extracting continuum from "+infile)
+        logger.info("Extracting continuum from "+str(infile_list))
         logger.info("... flagging ranges: "+str(ranges_to_exclude))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
        
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not os.path.isdir(infile):
-            logger.warning("Input file not found. Returning."+infile)
-            return()
-
         if not self._dry_run and casa_enabled:
 
-            cvr.extract_continuum(
-                infile = infile, 
+            cvr.batch_extract_continuum(
+                infile_list = infile_list, 
                 outfile = outfile, 
                 ranges_to_exclude = ranges_to_exclude,
                 do_statwt = do_statwt,
