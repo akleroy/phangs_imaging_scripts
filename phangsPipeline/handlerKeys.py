@@ -1470,16 +1470,18 @@ class KeyHandler:
             return None
         
         lines_to_flag = []
-        if product in self._config_dict['cont_product']:
-            if 'lines_to_flag' in self._config_dict['cont_product'][product]:
-                lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+        if 'cont_product' in self._config_dict.keys():
+            if product in self._config_dict['cont_product']:
+                if 'lines_to_flag' in self._config_dict['cont_product'][product]:
+                    lines_to_flag = self._config_dict['cont_product'][product]['lines_to_flag']
+                    
+        if 'line_product' in self._config_dict.keys():
+            if product in self._config_dict['line_product']:
+                if 'lines_to_flag' in self._config_dict['line_product'][product]:
+                    lines_to_flag = self._config_dict['line_product'][product]['lines_to_flag']
 
-        if product in self._config_dict['line_product']:
-            if 'lines_to_flag' in self._config_dict['line_product'][product]:
-                lines_to_flag = self._config_dict['line_product'][product]['lines_to_flag']
-        
         if len(lines_to_flag) == 0:
-            logging.warning('No lines to flag for the input  product '+product)
+            logging.warning('No lines to flag for the input product '+product)
             #raise Exception('No lines to flag for the input continuum product '+product)
             
         return(lines_to_flag)
