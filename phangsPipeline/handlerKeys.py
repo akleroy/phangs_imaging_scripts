@@ -1428,7 +1428,7 @@ class KeyHandler:
         if 'line_product' in self._config_dict:
             if product in self._config_dict['line_product']:
                 if 'fitorder' in self._config_dict['line_product'][product]:
-                    statwt_edge = self._config_dict['line_product'][product]['fitorder']
+                    fitorder = self._config_dict['line_product'][product]['fitorder']
         
         if fitorder is None:
             logging.info('No fitorder found for '+product+' . Defaulting to order zero.')

@@ -10,7 +10,7 @@ import os, sys, re, shutil, inspect, copy
 import numpy as np
 from scipy.ndimage import label
 #import pyfits # CASA has pyfits, not astropy
-#import glob
+import glob
 
 import logging
 logger = logging.getLogger(__name__)
@@ -244,31 +244,32 @@ def split_science_targets(
         use_column = 'DATA'
     casaStuff.tb.close()
         
-    logger.debug('intent='+intent)
-    logger.debug('field='+field)
-
-    os.mkdir(outfile+'.touch')
-    casaStuff.split(vis = infile, 
-                    intent = intent, 
-                    field = field,
-                    spw = spw,
-                    datacolumn = use_column, 
-                    outputvis = outfile, 
-                    keepflags = False,
-                    timebin = timebin)
-    os.rmdir(outfile+'.touch')
-
+    logger.info('... intent: '+intent)
+    logger.info('... field: '+field)
+    logger.info('... spw: '+spw)
+    
+    if not os.path.isdir(outfile+'.touch'):
+        os.mkdir(outfile+'.touch') # mark the beginning of our processing
+        
+    split_params = {'vis':infile, 'intent':intent, 'field':field, 'spw':spw, 
+                    'datacolumn':use_column, 'outputvis':outfile, 
+                    'keepflags':False, 'timebin':timebin}
+    
+    logger.info("... running CASA "+'split('+', '.join("{!s}={!r}".format(k, split_params[k]) for k in split_params.keys())+')')
+    
+    casaStuff.split(**split_params)
+    
     # Re-weight the data if desired.
-
+    
     if do_statwt:
         logger.info("Using statwt to re-weight the data.")
-        logger.debug('casa statwt vis="'+outfile+'"')
-        os.mkdir(outfile+'.touch')
+        statwt_params = {'vis':outfile, 'datacolumn':'DATA'}
+        logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(k, statwt_params[k]) for k in statwt_params.keys())+')')
         casaStuff.statwt(vis = outfile, 
                          datacolumn = 'DATA')
-        os.rmdir(outfile+'.touch')
-            
-        return()
+    
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch') # mark the end of our processing
 
     return()
 
@@ -328,13 +329,18 @@ def concat_ms(
             shutil.rmtree(outfile+suffix)
 
     # Concatenate all of the relevant files
-    os.mkdir(outfile+'.touch')
-    casaStuff.concat(vis = infile_list, 
-                     concatvis = outfile,
-                     freqtol=freqtol, dirtol=dirtol,
-                     copypointing=copypointing)
-                     #<TODO># what about freqtol? set as an input? dirtol?
-    os.rmdir(outfile+'.touch')
+    concat_params = {'vis':infile_list, 'concatvis':outfile, 'copypointing':copypointing}
+    if freqtol is not None and freqtol != '': concat_params['freqtol'] = freqtol
+    if dirtol is not None and dirtol != '': concat_params['dirtol'] = dirtol
+    logger.info("... running CASA "+'concat('+', '.join("{!s}={!r}".format(k, concat_params[k]) for k in concat_params.keys())+')')
+    
+    if not os.path.isdir(outfile+'.touch'):
+        os.mkdir(outfile+'.touch') # mark the beginning of our processing
+    
+    casaStuff.concat(**concat_params)
+    
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch') # mark the end of our processing
 
     return()
 
@@ -394,21 +400,19 @@ def contsub(
         logger.error("All data are masked in at least one spectral window. Returning.")
         return()
 
-    os.mkdir(infile+'.contsub'+'.touch')
-
     # uvcontsub, this outputs infile+'.contsub'
+    
+    uvcontsub_params = {'vis':infile, 'fitspw':spw_flagging_string, 'excludechans':True, 'combine':combine, 
+                        'fitorder':fitorder, 'solint':solint, 'want_cont':False}
+    logger.info("... running CASA "+'uvcontsub('+', '.join("{!s}={!r}".format(k, uvcontsub_params[k]) for k in uvcontsub_params.keys())+')')
 
-    casaStuff.uvcontsub(
-        vis = infile,
-        fitspw = spw_flagging_string,
-        excludechans = True,
-        combine=combine,
-        fitorder=fitorder,
-        solint=solint,
-        want_cont=False
-        )
+    if not os.path.isdir(infile+'.contsub'+'.touch'):
+        os.mkdir(infile+'.contsub'+'.touch') # mark the beginning of our processing
 
-    os.rmdir(infile+'.contsub'+'.touch')
+    casaStuff.uvcontsub(**uvcontsub_params)
+
+    if os.path.isdir(infile+'.contsub'+'.touch'):
+        os.rmdir(infile+'.contsub'+'.touch') # mark the end of our processing
 
     # Could manipulate outfile names here.
 
@@ -740,6 +744,26 @@ def batch_extract_line(
     if outfile is None:
         logging.error("Please specify an output file.")
         raise Exception("Please specify an output file.")
+
+    # Check existence of output data and abort if found and overwrite is off
+
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+        if not overwrite:
+            logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
+            return()
+
+    # Else, clear all previous files and temporary files
+    
+    for suffix in ['', '.flagversions', '.touch', '.temp*']:
+        if not (suffix.find('*') >= 0):
+            if os.path.isdir(outfile+suffix):
+                logger.debug('... shutil.rmtree(%r)'%(outfile+suffix))
+                shutil.rmtree(outfile+suffix)
+        else:
+            for temp_outfile in glob.glob(outfile+suffix):
+                if os.path.isdir(temp_outfile):
+                    logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
+                    shutil.rmtree(temp_outfile)
     
     # Feed directly to generate an extraction scheme. This does a lot
     # of the error checking.
@@ -1017,21 +1041,29 @@ def extract_line(
 
     # Check existence of output data and abort if found and overwrite is off
 
-    if os.path.isdir(outfile) and  not os.path.isdir(outfile+'.touch'):            
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
         if not overwrite:
-            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
+            logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
             return()
 
     # Else, clear all previous files and temporary files
 
     # TBD suffixes/syntax need updating
-    for suffix in ['', '.flagversions', 
-                   '.temp', '.temp.flagversions', 
-                   '.temp2', '.temp2.flagversions', 
-                   '.touch', '.temp.touch', '.temp2.touch']:
-        if os.path.isdir(outfile+suffix):
-            shutil.rmtree(outfile+suffix)
-
+    #<DL> updated this TBD
+    for suffix in ['', '.flagversions', '.touch', '.temp*']:
+        if not (suffix.find('*') >= 0):
+            if os.path.isdir(outfile+suffix):
+                logger.debug('... shutil.rmtree(%r)'%(outfile+suffix))
+                shutil.rmtree(outfile+suffix)
+        else:
+            for temp_outfile in glob.glob(outfile+suffix):
+                if os.path.isdir(temp_outfile):
+                    logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
+                    shutil.rmtree(temp_outfile)
+    
+    # Create touch file to mark that we are processing this data
+    os.mkdir(outfile+'.touch')
+    
     # Get the line name and rest-frame frequency in the line_list
     # module for the input line.
 
@@ -1166,14 +1198,17 @@ def extract_line(
             this_params['outputvis'] = outfile+'.temp%d'%(kk+1)
          
         if os.path.isdir(this_params['outputvis']):
-            if overwrite:
-                shutil.rmtree(this_params['outputvis'])
-            else:
-                debug.error("Intermediate file in place and overwrite=False. Returning.")
-                return()
+            shutil.rmtree(this_params['outputvis'])
+        #if os.path.isdir(this_params['outputvis']+'.touch'):
+        #    shutil.rmtree(this_params['outputvis']+'.touch')
+        #    #if overwrite:
+        #    #    shutil.rmtree(this_params['outputvis'])
+        #    #else:
+        #    #    logger.error("Intermediate file in place and overwrite=False. Returning.")
+        #    #    return()
+        #    #<DL> we already have overwrite check above, here we will just delete any existing old intermediate files
 
         logger.info("... "+this_msg)
-        logger.debug("... "+'mstransform('+', '.join("{!s}={!r}".format(t, this_params[t]) for t in this_params.keys())+')')
 
         # in the case where we are in subsequent split, we expect a
         # single SPW and to use the data column. 
@@ -1181,10 +1216,16 @@ def extract_line(
         if kk > 0:
             this_params['spw']=''
             this_params['datacolumn']='DATA'
+        
+        logger.info("... running CASA "+'mstransform('+', '.join("{!s}={!r}".format(t, this_params[t]) for t in this_params.keys())+')')
 
-        os.mkdir(this_params['outputvis']+'.touch')
+        if not os.path.isdir(this_params['outputvis']+'.touch'):
+            os.mkdir(this_params['outputvis']+'.touch') # mark the beginning of our processing
+        
         casaStuff.mstransform(**this_params)
-        os.rmdir(this_params['outputvis']+'.touch')
+        
+        if os.path.isdir(this_params['outputvis']+'.touch'):
+            os.rmdir(this_params['outputvis']+'.touch') # mark the end of our processing
 
     # ............................................
     # Clean up leftover files
@@ -1198,6 +1239,9 @@ def extract_line(
             for suffix in ['.temp%d'%(kk), '.temp%d.flagversions'%(kk), '.temp%d.touch'%(kk)]:
                 if os.path.isdir(outfile+suffix):
                     shutil.rmtree(outfile+suffix)
+    
+    # Remove touch file to mark that we are have done the processing of this data
+    os.rmdir(outfile+'.touch')
     
     return()
 
@@ -1257,7 +1301,7 @@ def build_mstransform_call(
                 # there has already a warning message inside find_spws_for_line()
                 return()
         else:
-            logger.info("Defaulting to all SPW selections.")
+            logger.info("... Defaulting to all SPW selections.")
             spw = ''
 
     # Determine the column to use
@@ -1266,10 +1310,10 @@ def build_mstransform_call(
         casaStuff.tb.open(infile, nomodify = True)
         colnames = casaStuff.tb.colnames()
         if 'CORRECTED_DATA' in colnames:
-            logger.info("Data has a CORRECTED column. Will use that.")
+            logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
-            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
         casaStuff.tb.close()
 
@@ -1404,10 +1448,10 @@ def reweight_data(
         casaStuff.tb.open(infile, nomodify = True)
         colnames = casaStuff.tb.colnames()
         if 'CORRECTED_DATA' in colnames:
-            logger.info("Data has a CORRECTED column. Will use that.")
+            logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
-            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
         casaStuff.tb.close()
 
@@ -1434,8 +1478,8 @@ def reweight_data(
             nchan = vm.spwInfo[this_spw]['numChannels']
 
             if edge_chans*2 > nchan:
-                logger.warning("Too many edge channels for given spw: "+str(this_spw))
-                logger.warning("By default we will not exclude ANY channels.")
+                logger.warning("... Too many edge channels for given spw: "+str(this_spw))
+                logger.warning("... By default we will not exclude ANY channels.")
                 continue
 
             low = int(np.ceil(edge_chans-1))
@@ -1451,8 +1495,9 @@ def reweight_data(
                 first=False
             else:                
                 exclude_str += ','+str(this_spw)+':'+str(low)+'~'+str(high)
-
-    logger.info("... running statwt with exclusion: "+exclude_str)
+    
+    if exclude_str != '':
+        logger.info("... running statwt with exclusion: "+exclude_str)
 
     # Build the statwt call
 
@@ -1461,16 +1506,26 @@ def reweight_data(
         statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                          'statalg': 'classic', 'datacolumn': datacolumn, 
                          'fitspw': exclude_str, 'excludechans': True}
+        if exclude_str == '':
+            statwt_params['excludechans'] = False
     else:
         # CASA version <= 5.4.1
         statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                          'statalg': 'classic', 'datacolumn': datacolumn, 
                          'excludechans': exclude_str}
-
+    
     # Run the call
-    os.mkdir(infile+'.touch')
-    test = casaStuff.statwt(**statwt_params)
-    os.rmdir(infile+'.touch')
+    if not os.path.isdir(infile+'.touch'):
+        os.mkdir(infile+'.touch') # no overwrite checks here
+    
+    logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
+    
+    casaStuff.statwt(**statwt_params)
+    
+    logger.info("... statwt done")
+    
+    if os.path.isdir(infile+'.touch'):
+        os.rmdir(infile+'.touch') # no overwrite checks here
 
     return()
 
@@ -1499,7 +1554,31 @@ def batch_extract_continuum(
     if outfile is None:
         logging.error("Please specify an output file.")
         raise Exception("Please specify an output file.")
-        
+
+    # Check existence of output data and abort if found and overwrite is off
+
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+        if not overwrite:
+            logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
+            return()
+
+    # Else, clear all previous files and temporary files
+
+    for suffix in ['', '.flagversions', '.touch', '.temp*']:
+        if not (suffix.find('*') >= 0):
+            if os.path.isdir(outfile+suffix):
+                shutil.rmtree(outfile+suffix)
+        else:
+            for temp_outfile in glob.glob(outfile+suffix):
+                if os.path.isdir(temp_outfile):
+                    shutil.rmtree(temp_outfile)
+                    logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
+    
+    # Create touch file to mark that we are processing this data
+    os.mkdir(outfile+'.touch')
+    
+    # 
+    
     split_file_list = []
     for this_infile in infile_list:
 
@@ -1534,19 +1613,35 @@ def batch_extract_continuum(
     else:
         copy_pointing = True
     
+    # ... concat
+
     concat_ms(
         infile_list = split_file_list,
         outfile = outfile,
         overwrite = overwrite,
         copypointing = copy_pointing)
+    
+    # ... statwt
+    
+    if do_statwt:
+        statwt_params = {'vis':outfile, 'timebin':'0.001s', 'slidetimebin':False, 'chanbin':'spw', 'statalg':'classic'}
+        logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
+        casaStuff.statwt(**statwt_params)
 
     # Clean up, deleting intermediate files
 
     for this_file in split_file_list:
         shutil.rmtree(this_file)
     
+    # Remove touch file to mark that we are have done the processing of this data
+    os.rmdir(outfile+'.touch')
+    
     return()
 
+########################################
+# Extract a continuum measurement set. #
+########################################
+                      
 def extract_continuum(
     infile = None, 
     outfile = None, 
@@ -1652,10 +1747,10 @@ def extract_continuum(
         casaStuff.tb.open(outfile, nomodify = True)
         colnames = casaStuff.tb.colnames()
         if 'CORRECTED_DATA' in colnames:
-            logger.info("Data has a CORRECTED column. Will use that.")
+            logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
-            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
         casaStuff.tb.close()
 
@@ -1685,10 +1780,10 @@ def extract_continuum(
         casaStuff.tb.open(outfile+'.temp_copy', nomodify = True)
         colnames = casaStuff.tb.colnames()
         if 'CORRECTED_DATA' in colnames:
-            logger.info("Data has a CORRECTED column. Will use that.")
+            logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
-            logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+            logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
         casaStuff.tb.close()
 
