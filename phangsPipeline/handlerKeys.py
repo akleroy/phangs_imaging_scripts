@@ -1506,7 +1506,7 @@ class KeyHandler:
         Get the timebin for an array tag. Returns 0s by default.
         """
         if 'array_tag' not in self._config_dict.keys():
-            logger.debug("No array_tags defined.")
+            #logger.debug("No array_tag defined in config definitions.")
             return('0s')
         if array_tag.strip() not in self._config_dict['array_tag'].keys():
             logger.debug("Tag "+str(array_tag)+" not in config definitions.")

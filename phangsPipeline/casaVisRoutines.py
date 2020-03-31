@@ -470,6 +470,7 @@ def find_spws_for_line(
         lines.get_ghz_range_for_line(restfreq_ghz=restfreq_ghz, 
                                      vsys_kms=vsys_kms, vwidth_kms=vwidth_kms
                                      , vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+    logger.debug("... line: %s, line freq: %.6f - %.6f, rest-freq: %.6f"%(line, line_low_ghz, line_high_ghz, restfreq_ghz))
 
     # If channel width restrictions are in place, calculate the
     # implied channel width requirement in GHz.
@@ -477,6 +478,7 @@ def find_spws_for_line(
     if max_chanwidth_kms is not None:
         line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
         max_chanwidth_ghz = line_freq_ghz*max_chanwidth_kms/sol_kms
+        logger.debug("... max_chanwidth_kms: %.3f, max_chanwidth_ghz: %.6f"%(max_chanwidth_kms, max_chanwidth_ghz))
     else:
         max_chanwidth_ghz = None
 
@@ -485,12 +487,15 @@ def find_spws_for_line(
 
     spw_list = []
     
+    logger.debug("... vm = au.ValueMapping(infile) ...")
     vm = au.ValueMapping(infile)
+    logger.debug("... vm = au.ValueMapping(infile) done")
 
     for this_spw in vm.spwInfo.keys():
         
         spw_high_ghz = np.max(vm.spwInfo[this_spw]['edgeChannels'])/1e9
         spw_low_ghz = np.min(vm.spwInfo[this_spw]['edgeChannels'])/1e9
+        logger.debug("... spw: %s, freq: %.6f - %.6f GHz"%(this_spw, spw_low_ghz, spw_high_ghz))
 
         if spw_high_ghz < line_low_ghz:
             continue
