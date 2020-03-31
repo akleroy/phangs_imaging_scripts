@@ -26,6 +26,7 @@ line_families = {
     'sio':['sio10','sio21','sio32','sio43','sio54','sio65','sio76','sio87','sio98','sio109','sio1110','sio1211','sio1312','sio1413','sio1514','sio1615'],
     'hi':['hi21cm'],
     'ci':['ci10','ci21'],
+    'nh3':['nh311','nh322','nh333','nh344'],
     }
 
 # The line list dictionary
@@ -138,6 +139,10 @@ line_list = {
     'sio1514':650.94359,
     'sio1615':694.27543,
     'hi21cm':1.420405751,
+    'nh311':23.6944955,
+    'nh322':23.72263333,
+    'nh333':23.8701296,
+    'nh344':24.1394169,
     }
 
 # Run some consistency checks
