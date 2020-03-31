@@ -926,7 +926,7 @@ def suggest_extraction_scheme(
             
             chan_width_list.append(chan_width_kms)
             this_binfactor = int(np.floor(target_chan_kms/chan_width_kms))
-            binfactor_list = this_binfactor
+            binfactor_list.append(this_binfactor)
 
             # Record basic file information
             scheme[this_infile][this_spw] = {}
@@ -1246,7 +1246,8 @@ def extract_line(
                     shutil.rmtree(outfile+suffix)
     
     # Remove touch file to mark that we are have done the processing of this data
-    os.rmdir(outfile+'.touch')
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch')
     
     return()
 
