@@ -279,9 +279,17 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if obsnum is None:
             logger.error("Please specify an obsnum.")
             raise Exception("Please specify an obsnum.")
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Splitting u-v data for")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
         
         infile = self._kh.get_file_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
+        
+        logger.info("... file: "+infile)
 
         if infile is None:
             logger.error("Infile not found. Returning.")
@@ -290,13 +298,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not os.path.isdir(infile):
             logger.error("Infile not found. Returning.")
             return()
-
-        # If the user doesn't override the time bin, get it from the
-        # key handler.
-
-        if timebin is None:
-            timebin = self._kh.get_timebin_for_array_tag(array_tag=array_tag)
-            logger.info("Time bin of "+str(timebin))
         
         field = self._kh.get_field_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
@@ -306,11 +307,22 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         outfile = fnames.get_staged_msname(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum, 
             product=product, ext=extra_ext_out)
+        
+        logger.info("... output: "+outfile)
+
+        # If the user doesn't override the time bin, get it from the
+        # key handler.
+
+        if timebin is None:
+            timebin = self._kh.get_timebin_for_array_tag(array_tag=array_tag)
+            logger.info("... timebin: "+str(timebin))
 
         # If requested, select on SPW for the product
 
         spw = ''
         if product is not None:
+            
+            logger.info("... product: "+str(product))
 
             if product in self._kh.get_line_products():
 
@@ -321,7 +333,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 combinespw = self._kh.get_contsub_combinespw(product=product)
                 if combinespw is None:
                     combinespw=False
-
+                
+                logger.info("... combinespw: "+str(combinespw))
+                
                 if not self._dry_run and casa_enabled:
                     if combinespw:
                         spw = cvr.find_spws_for_science(infile = infile)
@@ -331,19 +345,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             max_chanwidth_kms = max_chanwidth_kms,
                             vsys_kms = vsys, vwidth_kms = vwidth)
                     if spw is None:
-                        logger.warning("No SPWs meet the selection criteria. Skipping.")
+                        logger.warning("... No SPWs meet the selection criteria. Skipping.")
                         return()
 
             if product in self._kh.get_continuum_products():
 
                 spw = cvr.find_spws_for_science(infile = infile)
 
-        logger.info("")
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Copying u-v data for "+outfile)
         logger.info("... extracting spws :"+str(spw))
-        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("")
             
         # Change to the imaging directory for the target
 
@@ -566,8 +575,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("u-v continuum subtraction for "+infile)
-        logger.info("... excluding frequency ranges:"+str(ranges_to_exclude))
+        logger.info("u-v continuum subtraction for")
+        logger.info("... file: "+infile)
+        logger.info("... output: "+infile+'.contsub')
+        logger.info("... excluding frequency ranges: "+str(ranges_to_exclude))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
@@ -742,12 +753,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Extracting spectral product:")
-        logger.info("Line: "+str(line_to_extract))
-        logger.info("Vsys [km/s]: "+str(vsys_kms))
-        logger.info("Vwidth [km/s]: "+str(vwidth_kms))
-        logger.info("Method: "+str(method))
-        logger.info("From files:"+str(infile_list))
-        logger.info("To file: "+str(outfile))
+        logger.info("... Line: "+str(line_to_extract))
+        logger.info("... Vsys [km/s]: "+str(vsys_kms))
+        logger.info("... Vwidth [km/s]: "+str(vwidth_kms))
+        logger.info("... Method: "+str(method))
+        logger.info("... From files: "+str(infile_list))
+        logger.info("... To file: "+str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
@@ -854,7 +865,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Extracting continuum from "+str(infile_list))
+        logger.info("Extracting continuum product:")
+        logger.info("... from files: "+str(infile_list))
+        logger.info("... to file: "+str(outfile))
         logger.info("... flagging ranges: "+str(ranges_to_exclude))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")

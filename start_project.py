@@ -2,7 +2,7 @@
 # 
 
 from __future__ import print_function
-import os, sys, re, copy, shutil, time
+import os, sys, re, glob, copy, shutil, time
 import numpy as np
 import astropy
 from astropy.coordinates import SkyCoord, FK5
@@ -47,6 +47,25 @@ def get_line_tags_for_line_products(line_products):
             return None # return None if any of the line is not found
         line_tags.append(line_tag)
     return line_tags
+
+def get_skycoord_from_input_str(x):
+    x = str(x).strip()
+    scoord = None
+    if scoord is None:
+        smatch = re.match(r'^([0-9]+h[0-9]+m[0-9.]+s)[ \t]+([+-]*[0-9]+d[0-9]+m[0-9.]+s)$', x, re.IGNORECASE)
+        if smatch:
+            scoord = SkyCoord(smatch.groups()[0]+' '+smatch.groups()[1], unit=('hour','deg'), frame=FK5)
+    if scoord is None:
+        smatch = re.match(r'^([0-9]+:[0-9]+:[0-9.]+)[ \t]+([+-]*[0-9]+:[0-9]+:[0-9.]+)$', x, re.IGNORECASE)
+        if smatch:
+            scoord = SkyCoord(smatch.groups()[0]+' '+smatch.groups()[1], unit=('hour','deg'), frame=FK5)
+    if scoord is None:
+        smatch = re.match(r'^([0-9.]+)[ \t]+([+-]*[0-9.]+)$', x, re.IGNORECASE)
+        if smatch:
+            scoord = SkyCoord(smatch.groups()[0]+' '+smatch.groups()[1], unit=('deg','deg'), frame=FK5)
+    if scoord is None:
+        raise Exception('Could not parse skycoord from input str %r!'%(x))if re.sub(r'^([0-9]+:[0-9]+:[0-9.]+)[ \t]+([[+-]*[0-9]+:[0-9]+:[0-9.]+)$', x):
+    return scoord
 
 
 
@@ -134,7 +153,7 @@ phase_center_var_dict = {   'name': 'phase_center',
                             'prompt': '\nPlease input R.A. and Dec. of the phase center of {} (J2000 epoch, FK5 frame)\n Optimal formats: 00h00m00s +01d00m00s (HMS dms) or 0.0 0.0 (decimal degrees):\n', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([0-9hms:.+-]+)[ \t]+([0-9dms:.+-]+)$', 
-                            'func': lambda x: SkyCoord(re.sub(r'^([0-9hms:.+-]+)[ \t]+([0-9dms:.+-]+)$', r'\1 \2', x), unit='deg'), 
+                            'func': lambda x: get_skycoord_from_input_str(x), 
                             'type': SkyCoord, 
                             'value': None, 
                             }
@@ -301,6 +320,18 @@ work_dir_path_var_dict = {  'name': 'work_dir',
 # recursively find files
 # 
 def find_files_and_dirs(root_dir, pattern, find_files=False, find_dirs=True, min_depth=None, max_depth=None):
+    # first try glob
+    if not pattern.startswith(os.sep):
+        found_files = glob.glob(os.path.join(root_dir, pattern))
+    else:
+        found_files = glob.glob(pattern)
+    # 
+    if len(found_files) > 0:
+        for found_file in found_files:
+            yield os.path.relpath(found_file, root_dir)
+        return
+    # 
+    # if nothing found, then try regex
     pattern_ = pattern
     pattern_ = re.sub(r'\+', r'\+', pattern_)
     pattern_ = re.sub(r'\-', r'\-', pattern_)
@@ -313,6 +344,7 @@ def find_files_and_dirs(root_dir, pattern, find_files=False, find_dirs=True, min
         else:
             pattern_ = '^.*'+pattern_
     pattern_ += r'$'
+    #print('pattern', pattern_)
     root_dir_abs_path = os.path.abspath(root_dir)
     root_dir_sep_count = root_dir_abs_path.count(os.sep)
     #print('root_dir_abs_path', root_dir_abs_path, 'count(os.sep)', root_dir_sep_count)
@@ -620,8 +652,9 @@ for i in range(multipart_num):
     phase_center_var_dict_copy['prompt_fields'][0] = 'the mosaic observation "%s"'%(target_name)
     phase_center = read_user_input(phase_center_var_dict_copy)
     target_definitions_dict['target'] = target_name
-    target_definitions_dict['ra'] = phase_center.ra.to_string(sep='hms', precision=3)
-    target_definitions_dict['dec'] = phase_center.dec.to_string(sep='dms', precision=3)
+    ##target_definitions_dict['ra'] = phase_center.ra.to_string(sep='hms', precision=3) ##BUGGY! 20200325
+    ##target_definitions_dict['dec'] = phase_center.dec.to_string(sep='dms', precision=3) ##BUGGY! 20200325
+    target_definitions_dict['ra'], target_definitions_dict['dec'] = phase_center.to_string('hmsdms', precision=3).split()
     target_definitions_list.append(target_definitions_dict)
     
     # read in ms root path
@@ -778,6 +811,12 @@ target_and_config_keys['dir_key'] = 'dir_key.txt'
 # Create output directory
 if not os.path.isdir(location_keys['key_dir']):
     os.makedirs(location_keys['key_dir'])
+
+if not os.path.isdir(location_keys['cleanmask_root']):
+    os.makedirs(location_keys['cleanmask_root'])
+
+if not os.path.isdir(location_keys['singledish_root']):
+    os.makedirs(location_keys['singledish_root'])
 
 
 ## Read/Write 'master_key.txt'
