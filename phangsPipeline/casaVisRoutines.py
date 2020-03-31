@@ -1478,7 +1478,7 @@ def reweight_data(
                 mean_freq_ghz = 0.5*(spw_high_ghz+spw_low_ghz)
                 mean_chanwidth_kms = spw_chanwidth_ghz/mean_freq_ghz*sol_kms
                 
-                edge_chans = edge_kms / mean_chanwidth_kms
+                edge_chans = int(np.ceil(edge_kms / mean_chanwidth_kms))
 
             nchan = vm.spwInfo[this_spw]['numChannels']
 
@@ -1495,6 +1495,11 @@ def reweight_data(
             if high > nchan-1:
                 high = nchan-1
 
+            if high == low:
+                logger.warning("Too many edge channels for given spw: "+str(this_spw))
+                logger.warning("By default we will not exclude ANY channels.")
+                continue
+
             if first:
                 exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
                 first=False
@@ -1508,11 +1513,13 @@ def reweight_data(
 
     if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
         # CASA version somewhat >= 5.5.0
+        if exclude_str == '':
+            excludechans = False
+        else:
+            excludechans = True
         statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
                          'statalg': 'classic', 'datacolumn': datacolumn, 
-                         'fitspw': exclude_str, 'excludechans': True}
-        if exclude_str == '':
-            statwt_params['excludechans'] = False
+                         'fitspw': exclude_str, 'excludechans': excludechans}
     else:
         # CASA version <= 5.4.1
         statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
