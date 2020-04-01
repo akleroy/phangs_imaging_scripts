@@ -126,7 +126,8 @@ def copy_ms(
                         
         # copy the data (.touch directory is a temporary flagpost)
 
-        os.mkdir(outfile+'.touch')
+        if not os.path.isdir(outfile+'.touch'):
+            os.mkdir(outfile+'.touch')
 
         if os.path.isdir(infile):
             shutil.copytree(infile, outfile)
@@ -136,7 +137,8 @@ def copy_ms(
             shutil.copytree(infile+'.flagversions', outfile+'.flagversions')
             logger.debug('shutil.copytree "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
 
-        os.rmdir(outfile+'.touch')            
+        if os.path.isdir(outfile+'.touch'):
+            os.rmdir(outfile+'.touch')            
              
         # check copied_file, make sure copying was done
         
@@ -1067,7 +1069,8 @@ def extract_line(
                     shutil.rmtree(temp_outfile)
     
     # Create touch file to mark that we are processing this data
-    os.mkdir(outfile+'.touch')
+    if not os.path.isdir(outfile+'.touch'):
+        os.mkdir(outfile+'.touch')
     
     # Get the line name and rest-frame frequency in the line_list
     # module for the input line.
@@ -1229,7 +1232,7 @@ def extract_line(
         
         casaStuff.mstransform(**this_params)
         
-        if os.path.isdir(this_params['outputvis']+'.touch'):
+        if os.path.isdir(this_params['outputvis']+'.touch') and this_params['outputvis'] != outfile:
             os.rmdir(this_params['outputvis']+'.touch') # mark the end of our processing
 
     # ............................................
@@ -1246,7 +1249,8 @@ def extract_line(
                     shutil.rmtree(outfile+suffix)
     
     # Remove touch file to mark that we are have done the processing of this data
-    os.rmdir(outfile+'.touch')
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch')
     
     return()
 
@@ -1587,7 +1591,8 @@ def batch_extract_continuum(
                     logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
     
     # Create touch file to mark that we are processing this data
-    os.mkdir(outfile+'.touch')
+    if not os.path.isdir(outfile+'.touch'):
+        os.mkdir(outfile+'.touch')
     
     # 
     
@@ -1635,10 +1640,10 @@ def batch_extract_continuum(
     
     # ... statwt
     
-    if do_statwt:
-        statwt_params = {'vis':outfile, 'timebin':'0.001s', 'slidetimebin':False, 'chanbin':'spw', 'statalg':'classic'}
-        logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
-        casaStuff.statwt(**statwt_params)
+    #if do_statwt:
+    #    statwt_params = {'vis':outfile, 'timebin':'0.001s', 'slidetimebin':False, 'chanbin':'spw', 'statalg':'classic'}
+    #    logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
+    #    casaStuff.statwt(**statwt_params)
 
     # Clean up, deleting intermediate files
 
@@ -1646,7 +1651,8 @@ def batch_extract_continuum(
         shutil.rmtree(this_file)
     
     # Remove touch file to mark that we are have done the processing of this data
-    os.rmdir(outfile+'.touch')
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch')
     
     return()
 
@@ -1734,18 +1740,22 @@ def extract_continuum(
         )
 
     # Make a copy of the data
-
-    os.mkdir(outfile+'.touch')
+    
+    if not os.path.isdir(outfile+'.touch'):
+        os.mkdir(outfile+'.touch')
     shutil.copytree(infile, outfile)
-    os.rmdir(outfile+'.touch')
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch')
 
     # Flag the relevant line-affected channels.
     if spw_flagging_string != '':
-        os.mkdir(outfile+'.touch')
+        if not os.path.isdir(outfile+'.touch'):
+            os.mkdir(outfile+'.touch')
         casaStuff.flagdata(vis=outfile,
                            spw=spw_flagging_string,
                            )
-        os.rmdir(outfile+'.touch')
+        if os.path.isdir(outfile+'.touch'):
+            os.rmdir(outfile+'.touch')
 
     # If requested, re-weight the data using statwt. This can be VERY
     # slow.
@@ -1767,7 +1777,8 @@ def extract_continuum(
         casaStuff.tb.close()
 
         logger.info("... deriving empirical weights using STATWT.")
-        os.mkdir(outfile+'.touch')
+        if not os.path.isdir(outfile+'.touch'):
+            os.mkdir(outfile+'.touch')
         casaStuff.statwt(vis=outfile,
                          timebin='0.001s',
                          slidetimebin=False,
@@ -1775,7 +1786,8 @@ def extract_continuum(
                          statalg='classic',
                          datacolumn=datacolumn,
                          )
-        os.rmdir(outfile+'.touch')
+        if os.path.isdir(outfile+'.touch'):
+            os.rmdir(outfile+'.touch')
 
     # collapse
 
@@ -1787,7 +1799,8 @@ def extract_continuum(
         if os.path.isdir(outfile+'.flagversions'):
             shutil.move(outfile+'.flagversions', outfile+'.temp_copy'+'.flagversions')
         
-        os.mkdir(outfile+'.touch')
+        if not os.path.isdir(outfile+'.touch'):
+            os.mkdir(outfile+'.touch')
 
         casaStuff.tb.open(outfile+'.temp_copy', nomodify = True)
         colnames = casaStuff.tb.colnames()
@@ -1806,7 +1819,8 @@ def extract_continuum(
                         keepflags=False)
                         #<TODO><20200210># num_chan or width
 
-        os.rmdir(outfile+'.touch')
+        if os.path.isdir(outfile+'.touch'):
+            os.rmdir(outfile+'.touch')
 
         # clean up
         if os.path.isdir(outfile+'.temp_copy'):
