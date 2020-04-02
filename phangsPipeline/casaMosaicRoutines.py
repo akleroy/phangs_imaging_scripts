@@ -180,10 +180,11 @@ def common_res_for_mosaic(
 #region Routines to match astrometry between parts of a mosaic
 
 def calculate_mosaic_extent(
-    infile_list = None, 
-    force_ra_ctr = None, 
-    force_dec_ctr = None,
-    ):
+        infile_list = None, 
+        force_ra_ctr = None, 
+        force_dec_ctr = None,
+        force_freq_ctr = None,
+):
     """
     Given a list of input files, calculate the center and extent of
     the mosaic needed to cover them all. Return the results as a
@@ -217,7 +218,6 @@ def calculate_mosaic_extent(
 
     ra_list = []
     dec_list = []
-
     # TBD - right now we assume matched frequency/velocity axis
     freq_list = []
 
@@ -270,7 +270,12 @@ def calculate_mosaic_extent(
         dec_list.append(tlc['coords'][0][1])
         dec_list.append(trc['coords'][0][1])
         dec_list.append(brc['coords'][0][1])
-        
+
+        freq_list.append(blc['coords'][0][2])
+        freq_list.append(tlc['coords'][0][2])
+        freq_list.append(trc['coords'][0][2])
+        freq_list.append(brc['coords'][0][2])
+
     # Get the minimum and maximum RA and Declination. 
 
     # TBD - this breaks straddling the meridian (RA = 0) or the poles
@@ -285,8 +290,8 @@ def calculate_mosaic_extent(
 
     # TBD - right now we assume matched frequency/velocity axis
 
-    min_freq = None
-    max_freq = None
+    min_freq = np.min(freq_list)
+    max_freq = np.max(freq_list)
 
     # If we do not force the center of the mosaic, then take it to be
     # the average of the min and max, so that the image will be a
@@ -302,12 +307,21 @@ def calculate_mosaic_extent(
     else:
         dec_ctr = force_dec_ctr*np.pi/180.
 
+
+    if force_freq_ctr == None:
+        freq_ctr = (max_freq+min_freq)*0.5
+    else:
+        freq_ctr = force_freq_ctr
+
     # Now calculate the total extent of the mosaic given the center.
 
-    delta_ra = 2.0*np.max([np.abs(max_ra-ra_ctr),np.abs(min_ra-ra_ctr)])
+    delta_ra = 2.0*np.max([np.abs(max_ra-ra_ctr),
+                           np.abs(min_ra-ra_ctr)])
     delta_ra *= np.cos(dec_ctr)
-    delta_dec = 2.0*np.max([np.abs(max_dec-dec_ctr),np.abs(min_dec-dec_ctr)])
-    
+    delta_dec = 2.0*np.max([np.abs(max_dec-dec_ctr),
+                            np.abs(min_dec-dec_ctr)])
+    delta_freq = 2.0*np.max([np.abs(max_freq-freq_ctr),
+                             np.abs(min_freq-freq_ctr)])
     # Put the output into a dictionary.
 
     output = {
@@ -315,7 +329,9 @@ def calculate_mosaic_extent(
         'dec_ctr':[dec_ctr*180./np.pi,'degrees'],
         'delta_ra':[delta_ra*180./np.pi*3600.,'arcsec'],
         'delta_dec':[delta_dec*180./np.pi*3600.,'arcsec'],
-        }
+        'freq_ctr':[freq_ctr,'Hz'],
+        'delta_freq':[delta_freq,'Hz'],
+    }
 
     return(output)
 

@@ -1373,8 +1373,6 @@ def build_mstransform_call(
         max_chan_ghz = np.max(np.abs(au.getChanWidths(infile, spw)))/1e9
         current_chan_kms = max_chan_ghz/line_freq_ghz*sol_kms
         
-        logger.warning('DEBUG: current_chan_kms set to {0}'.format(current_chan_kms))
-        logger.warning('DEBUG: target_chan_kms set to {0}'.format(target_chan_kms))
         skip_width = False
         if target_chan_kms is None:
             logger.warning('Target channel not set. Using current channel.')
