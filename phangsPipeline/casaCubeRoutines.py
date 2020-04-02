@@ -377,11 +377,17 @@ def convolve_to_round_beam(
         return(None)
     pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
 
-    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-        logger.error("Based on CASA experience. I expected units of arcseconds for the beam. I did not find this.")
-        logger.error("Adjust code or investigate file "+infile)
-        return(None)
-    bmaj = hdr['restoringbeam']['major']['value']    
+    if 'perplanebeams' in hdr.keys():
+        beamnames = hdr['perplanebeams']['beams'].keys()
+        majorlist = [hdr['perplanebeams']['beams'][b]['*0']['major']['value']
+                     for b in beamnames]
+        bmaj = np.max(majorlist)
+    else:
+        if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+            logger.error("Based on CASA experience. I expected units of arcseconds for the beam. I did not find this.")
+            logger.error("Adjust code or investigate file "+infile)
+            return(None)
+        bmaj = hdr['restoringbeam']['major']['value']    
 
     if force_beam is None:
         target_bmaj = np.sqrt((bmaj)**2+(2.0*pixel_as)**2)

@@ -37,7 +37,7 @@ from pipelineVersion import version as pipeVer
 #region Routines to analyze and extract lines in measurement sets
 
 # Physical constants
-sol_kms = 2.9979246e5
+sol_kms = 2.99792458e5
 
 ##########################################
 # Split, copy, combine measurement sets. #
@@ -920,7 +920,7 @@ def suggest_extraction_scheme(
                 continue
             
             chan_width_ghz = np.abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
-            chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms
+            chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms * (1 - vsys_kms / sol_kms)
 
             if chan_width_kms > target_chan_kms:
                 logger.warning("Channel too big for SPW "+str(this_spw))
@@ -1372,7 +1372,7 @@ def build_mstransform_call(
         
         max_chan_ghz = np.max(np.abs(au.getChanWidths(infile, spw)))/1e9
         current_chan_kms = max_chan_ghz/line_freq_ghz*sol_kms
-
+        
         skip_width = False
         if target_chan_kms is None:
             logger.warning('Target channel not set. Using current channel.')

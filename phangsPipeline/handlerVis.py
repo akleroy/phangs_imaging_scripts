@@ -191,7 +191,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             exact = False,
                             extra_ext_in = "",
                             contsub = "prefer",
-                            # could add algorithm flags here                            
+                            # could add algorithm flags here        
                             overwrite = overwrite, 
                             )
 
