@@ -110,7 +110,6 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         for this_target, this_product, this_config in \
             self.looper(do_targets=True,do_products=True,do_configs=True):
-            import pdb; pdb.set_trace()
             # do signalmask moment maps for each resolution cube
             if do_signalmask_moment_maps:
                 for this_res in self._kh.get_res_for_config(this_config):

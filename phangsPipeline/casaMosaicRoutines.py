@@ -342,6 +342,8 @@ def build_common_header(
         dec_ctr = None,
         delta_ra = None, 
         delta_dec = None,
+        freq_ctr = None,
+        delta_freq = None,
         allow_big_image = False,
         too_big_pix=1e4,
 ):
@@ -419,7 +421,8 @@ def build_common_header(
         extent_dict = calculate_mosaic_extent(
             infile_list = infile_list,
             force_ra_ctr = ra_ctr,
-            force_dec_ctr = dec_ctr
+            force_dec_ctr = dec_ctr,
+            force_freq_ctr = freq_ctr
             )
         
         if ra_ctr is None:
@@ -430,11 +433,12 @@ def build_common_header(
             delta_ra = extent_dict['delta_ra'][0]
         if delta_dec is None:
             delta_dec = extent_dict['delta_dec'][0]
+
         # Just assume Doppler
-        #        if freq_ctr is None:
-        freq_ctr = extent_dict['freq_ctr'][0]
-        #       if delta_freq is None:
-        delta_freq = extent_dict['delta_freq'][0]
+        if freq_ctr is None:
+            freq_ctr = extent_dict['freq_ctr'][0]
+        if delta_freq is None:
+            delta_freq = extent_dict['delta_freq'][0]
         
     # Get the header from the template file
 
@@ -950,15 +954,6 @@ def mosaic_aligned_data(
         myia.replacemaskedpixels(0.0)
         myia.set(pixelmask=1)
         myia.close()
-
-    # bbox = myia.boundingbox()
-    # regions = casaStuff.rg.regionmanager()
-    # bot = casaStuff.rg.regionmanager.box(regions, [0,0,0],
-    #                                      [bbox['trc'][0],bbox['trc'][1],0])
-    # top = casaStuff.rg.regionmanager.box(regions, [0,0,bbox['trc'][2]],
-    #                                      bbox['trc'])
-    # myia.set(pixels=0,pixelmask=0,region=bot)
-    # myia.set(pixels=0,pixelmask=0,region=top)
  
     cwd = os.getcwd()
     ppdir = os.chdir(os.path.dirname(full_imlist[0]))
@@ -968,6 +963,7 @@ def mosaic_aligned_data(
     temp_file = os.path.basename(temp_file)
     local_outfile = os.path.basename(outfile)
     local_maskfile = os.path.basename(mask_file)
+
     casaStuff.immath(imagename = local_imlist, mode='evalexpr',
                      expr=lel_exp_sum, outfile=sum_file,
                      imagemd = local_imlist[0])
