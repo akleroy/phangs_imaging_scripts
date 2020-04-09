@@ -398,6 +398,11 @@ def convolve_to_round_beam(
             return(None)            
         target_bmaj = force_beam
 
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(infile)
+    mask = myia.getchunk(getmask=True)
+    myia.close()
+    
     casaStuff.imsmooth(imagename=infile,
                   outfile=outfile,
                   targetres=True,
@@ -406,6 +411,11 @@ def convolve_to_round_beam(
                   pa='0.0deg',
                   overwrite=overwrite
                   )
+
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(outfile)
+    mask = myia.putregion(pixelmask=mask)
+    myia.close()
 
     return(target_bmaj)
 

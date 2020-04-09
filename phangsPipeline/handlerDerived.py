@@ -110,11 +110,16 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         for this_target, this_product, this_config in \
             self.looper(do_targets=True,do_products=True,do_configs=True):
-            
+            import pdb; pdb.set_trace()
             # do signalmask moment maps for each resolution cube
             if do_signalmask_moment_maps:
                 for this_res in self._kh.get_res_for_config(this_config):
-                    self.task_generate_moment_maps(target=this_target, product=this_product, config=this_config, res=this_res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out, overwrite=overwrite)
+                    self.task_generate_moment_maps(target=this_target, product=this_product,
+                                                   config=this_config,
+                                                   res=this_res,
+                                                   extra_ext_in=extra_ext_in,
+                                                   extra_ext_out=extra_ext_out,
+                                                   overwrite=overwrite)
             
             # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
             if do_hybridmask_moment_maps:

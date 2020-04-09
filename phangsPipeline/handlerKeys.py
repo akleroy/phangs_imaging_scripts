@@ -1969,7 +1969,17 @@ class KeyHandler:
             #res_array = res_array[res_array <= max_res]
             res_list = 10**np.arange(np.log10(min_res), np.log10(max_res)+0.5*np.log10(step), np.log10(step))
             res_array.extend([str(t)+'arcsec' for t in res_list])
-        
+
+        if 'res_min_pc' in this_dict and 'res_max_pc' in this_dict and 'res_step_factor' in this_dict:
+            min_res = this_dict['res_min_pc']
+            max_res = this_dict['res_max_pc']
+            step = this_dict['res_step_factor']
+            #max_steps = np.log10(max_res/min_res)/np.log10(step)+1
+            #res_array = min_res*step**(np.arange(0.,max_steps,1))
+            #res_array = res_array[res_array <= max_res]
+            res_list = 10**np.arange(np.log10(min_res), np.log10(max_res)+0.5*np.log10(step), np.log10(step))
+            res_array.extend([str(t)+'pc' for t in res_list])
+            
         if 'res_list' in this_dict:
             if np.isscalar(this_dict['res_list']):
                 res_array.append(this_dict['res_list'])
