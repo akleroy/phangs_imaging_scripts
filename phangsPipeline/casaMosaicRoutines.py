@@ -459,7 +459,7 @@ def build_common_header(
 
     ra_ctr_in_rad = ra_ctr * np.pi / 180.
     dec_ctr_in_rad = dec_ctr * np.pi / 180.
-    freq_ctr_in_hz = freq_ctr
+
     target_hdr['csys']['direction0']['crval'][0] = ra_ctr_in_rad
     target_hdr['csys']['direction0']['crval'][1] = dec_ctr_in_rad
     target_hdr['csys']['spectral1']['wcs']['crval'] = freq_ctr
