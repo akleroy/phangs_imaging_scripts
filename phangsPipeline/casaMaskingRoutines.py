@@ -119,7 +119,7 @@ def estimate_noise(
         logger.error("No valid data. Returning NaN.")
         return(np.nan)
 
-    use_data = data[(use_mask)*(data != 0)]
+    use_data = data[use_mask]
 
     if method == 'std':
         this_noise = np.std(use_data)
@@ -146,7 +146,6 @@ def estimate_noise(
                 logger.error("Rejected all data. Returning NaN.")
                 return(np.nan)
             use_data = use_data[keep]
-
         this_noise = np.std(use_data)
         return(this_noise)
 
