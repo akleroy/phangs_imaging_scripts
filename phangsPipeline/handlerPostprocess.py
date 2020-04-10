@@ -725,7 +725,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product,
+            extra_ext=extra_ext_in)
 
         # Note that feather changes the config
 

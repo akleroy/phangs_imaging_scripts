@@ -839,7 +839,7 @@ class KeyHandler:
                     continue
                 missing_count += 1
                 logger.warning("Missing singledish data for "+target+" "+product)
-        
+
         logger.info("Verified the existence of "+str(found_count)+" single dish data sets.")
         if missing_count == 0:
             logger.info("No single dish data found to be missing.")
