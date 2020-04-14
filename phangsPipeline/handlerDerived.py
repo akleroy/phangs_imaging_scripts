@@ -344,6 +344,10 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         Hybridize each res mask with lowres mask.
         """
         # 
+        if lowres is None:
+            logger.warning('Low-resolution cube resolution is None. Will not hybridize the mask.')
+            return
+        # 
         lowres_fname_dict = self._fname_dict(target=target, config=config, product=product, res=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
         fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
         # 
