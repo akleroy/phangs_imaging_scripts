@@ -189,6 +189,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             config = this_config, 
                             product = this_product, 
                             exact = False,
+                            do_statwt = False,
                             extra_ext_in = "",
                             contsub = "prefer",
                             # could add algorithm flags here        
