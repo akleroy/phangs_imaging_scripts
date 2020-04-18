@@ -372,9 +372,9 @@ def execute_clean_call(
     # For cubes with an empty channel, pbmask < pblimit triggers
     # NaNs in cleaning as of CASA 5.6.1.
     # Force pbmask >= pblimit to avoid this.
-    if 'pblimit' in clean_kwargs and 'pbmask' in clean_kwargs:
-        if clean_kwargs['pblimit'] > clean_kwargs['pbmask']:
-            clean_kwargs['pbmask'] = clean_kwargs['pblimit']
+    if 'pblimit' in active_kwargs and 'pbmask' in active_kwargs:
+        if active_kwargs['pblimit'] > active_kwargs['pbmask']:
+            active_kwargs['pbmask'] = active_kwargs['pblimit']
 
     #os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
     casaStuff.tclean(**active_kwargs)
