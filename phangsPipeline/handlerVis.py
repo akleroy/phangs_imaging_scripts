@@ -33,7 +33,9 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-casa_enabled = (sys.argv[0].endswith('start_casa.py')) #<TODO># check whether we are inside CASA environment
+casa_enabled = ((sys.argv[0].endswith('start_casa.py'))
+                or (sys.argv[0].endswith('casa')))
+
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
@@ -189,7 +191,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             config = this_config,
                             product = this_product,
                             exact = False,
-                            do_statwt = False,
+                            do_statwt = True,
                             extra_ext_in = "",
                             contsub = "prefer",
                             # could add algorithm flags here

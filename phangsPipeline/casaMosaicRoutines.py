@@ -283,15 +283,15 @@ def calculate_mosaic_extent(
     # this. Meridian seems more likely to come up, so just that is
     # probably fine.
 
-    min_ra = np.min(ra_list)
-    max_ra = np.max(ra_list)
-    min_dec = np.min(dec_list)
-    max_dec = np.max(dec_list)
+    min_ra = np.min(np.concatenate(ra_list))
+    max_ra = np.max(np.concatenate(ra_list))
+    min_dec = np.min(np.concatenate(dec_list))
+    max_dec = np.max(np.concatenate(dec_list))
 
     # TBD - right now we assume matched frequency/velocity axis
 
-    min_freq = np.min(freq_list)
-    max_freq = np.max(freq_list)
+    min_freq = np.min(np.concatenate(freq_list))
+    max_freq = np.max(np.concatenate(freq_list))
 
     # If we do not force the center of the mosaic, then take it to be
     # the average of the min and max, so that the image will be a
@@ -951,8 +951,9 @@ def mosaic_aligned_data(
     myia = au.createCasaTool(casaStuff.iatool)
     for thisfile in full_imlist:
         myia.open(thisfile)
-        myia.replacemaskedpixels(0.0)
-        myia.set(pixelmask=1)
+        if not np.all(myia.getchunk(getmask=True)):
+            myia.replacemaskedpixels(0.0)
+            myia.set(pixelmask=1)
         myia.close()
  
     cwd = os.getcwd()

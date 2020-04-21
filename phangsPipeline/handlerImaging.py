@@ -58,7 +58,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-casa_enabled = (sys.argv[0].endswith('start_casa.py')) #<TODO># check whether we are inside CASA environment
+casa_enabled = ((sys.argv[0].endswith('start_casa.py'))
+                or (sys.argv[0].endswith('casa')))
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
