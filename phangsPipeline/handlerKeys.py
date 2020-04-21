@@ -407,14 +407,14 @@ class KeyHandler:
 
                 # Loop over stages
                 for this_stage in VALID_IMAGING_STAGES:
-                    full_dict[this_config][this_product][this_stage] = []
+                    full_dict[this_config][this_product][this_stage] = None
 
             # Loop over continuum products
             for this_product in self.get_continuum_products():
                 full_dict[this_config][this_product] = {}
                 # Loop over stages
                 for this_stage in VALID_IMAGING_STAGES:
-                    full_dict[this_config][this_product][this_stage] = []
+                    full_dict[this_config][this_product][this_stage] = None
 
         self._imaging_dict = full_dict
 
@@ -1271,8 +1271,17 @@ class KeyHandler:
                     imaging_recipe_dir += os.sep
                 if stage is not None:
                     if stage in self._imaging_dict[config][product]:
+                        imaging_recipe_file = self._imaging_dict[config][product][stage]
+                        if imaging_recipe_file is None:
+                            logger.error('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+stage+'. Please check your "imaging_recipes.txt"!')
+                            raise Exception('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+stage+'. Please check your "imaging_recipes.txt"!')
                         return imaging_recipe_dir+self._imaging_dict[config][product][stage] #<TODO><DL># multiple recipes for one stage?
                 else:
+                    for t in VALID_IMAGING_STAGES:
+                        imaging_recipe_file = self._imaging_dict[config][product][t]
+                        if imaging_recipe_file is None:
+                            logger.error('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+t+'. Please check your "imaging_recipes.txt"!')
+                            raise Exception('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+t+'. Please check your "imaging_recipes.txt"!')
                     return [imaging_recipe_dir+self._imaging_dict[config][product][t] for t in VALID_IMAGING_STAGES]
         return None
 
