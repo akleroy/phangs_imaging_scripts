@@ -20,7 +20,10 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-casa_enabled = (sys.argv[0].endswith('start_casa.py'))
+
+casa_enabled = ((sys.argv[0].endswith('start_casa.py'))
+                or (sys.argv[0].endswith('casa')))
+
 if casa_enabled:
     logger.debug('casa_enabled = True')
     import casaCubeRoutines as ccr
@@ -725,7 +728,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product,
+            extra_ext=extra_ext_in)
 
         # Note that feather changes the config
 
@@ -738,6 +742,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         
         interf_file = fname_dict_in[interf_tag]
         sd_file = fname_dict_in[sd_tag]
+        if len(fname_dict_out) == 0:
+           logger.info("No feather config found for:")
+           logger.info(str(target) + " , "+str(product)+" , "+str(config))
+           return()
         outfile = fname_dict_out[out_tag]
 
         # Error checking

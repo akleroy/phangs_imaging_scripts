@@ -250,31 +250,31 @@ def calculate_mosaic_extent(
         yhi = this_shape[1]-1
         
         pixbox = str(xlo)+','+str(ylo)+','+str(xlo)+','+str(ylo)
-        blc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        blc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
 
         pixbox = str(xlo)+','+str(yhi)+','+str(xlo)+','+str(yhi)
-        tlc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        tlc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
         
         pixbox = str(xhi)+','+str(yhi)+','+str(xhi)+','+str(yhi)
-        trc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        trc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
 
         pixbox = str(xhi)+','+str(ylo)+','+str(xhi)+','+str(ylo)
-        brc = casaStuff.imval(this_infile, chans='0', stokes='I', box=pixbox)
+        brc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
         
-        ra_list.append(blc['coords'][0][0])
-        ra_list.append(tlc['coords'][0][0])
-        ra_list.append(trc['coords'][0][0])
-        ra_list.append(brc['coords'][0][0])
+        ra_list.append(blc['coords'][:,0])
+        ra_list.append(tlc['coords'][:,0])
+        ra_list.append(trc['coords'][:,0])
+        ra_list.append(brc['coords'][:,0])
 
-        dec_list.append(blc['coords'][0][1])
-        dec_list.append(tlc['coords'][0][1])
-        dec_list.append(trc['coords'][0][1])
-        dec_list.append(brc['coords'][0][1])
+        dec_list.append(blc['coords'][:, 1])
+        dec_list.append(tlc['coords'][:, 1])
+        dec_list.append(trc['coords'][:, 1])
+        dec_list.append(brc['coords'][:, 1])
 
-        freq_list.append(blc['coords'][0][2])
-        freq_list.append(tlc['coords'][0][2])
-        freq_list.append(trc['coords'][0][2])
-        freq_list.append(brc['coords'][0][2])
+        freq_list.append(blc['coords'][:, 2])
+        freq_list.append(tlc['coords'][:, 2])
+        freq_list.append(trc['coords'][:, 2])
+        freq_list.append(brc['coords'][:, 2])
 
     # Get the minimum and maximum RA and Declination. 
 
@@ -283,15 +283,15 @@ def calculate_mosaic_extent(
     # this. Meridian seems more likely to come up, so just that is
     # probably fine.
 
-    min_ra = np.min(ra_list)
-    max_ra = np.max(ra_list)
-    min_dec = np.min(dec_list)
-    max_dec = np.max(dec_list)
+    min_ra = np.min(np.concatenate(ra_list))
+    max_ra = np.max(np.concatenate(ra_list))
+    min_dec = np.min(np.concatenate(dec_list))
+    max_dec = np.max(np.concatenate(dec_list))
 
     # TBD - right now we assume matched frequency/velocity axis
 
-    min_freq = np.min(freq_list)
-    max_freq = np.max(freq_list)
+    min_freq = np.min(np.concatenate(freq_list))
+    max_freq = np.max(np.concatenate(freq_list))
 
     # If we do not force the center of the mosaic, then take it to be
     # the average of the min and max, so that the image will be a
@@ -322,6 +322,7 @@ def calculate_mosaic_extent(
                             np.abs(min_dec-dec_ctr)])
     delta_freq = 2.0*np.max([np.abs(max_freq-freq_ctr),
                              np.abs(min_freq-freq_ctr)])
+
     # Put the output into a dictionary.
 
     output = {
@@ -332,19 +333,20 @@ def calculate_mosaic_extent(
         'freq_ctr':[freq_ctr,'Hz'],
         'delta_freq':[delta_freq,'Hz'],
     }
-
     return(output)
 
 def build_common_header(
-    infile_list = None,
-    template_file = None,
-    ra_ctr = None, 
-    dec_ctr = None,
-    delta_ra = None, 
-    delta_dec = None,
-    allow_big_image = False,
-    too_big_pix=1e4,
-    ):
+        infile_list = None,
+        template_file = None,
+        ra_ctr = None, 
+        dec_ctr = None,
+        delta_ra = None, 
+        delta_dec = None,
+        freq_ctr = None,
+        delta_freq = None,
+        allow_big_image = False,
+        too_big_pix=1e4,
+):
     """
     Build a target header to be used as a template by imregrid when
     setting up linear mosaicking operations.
@@ -419,7 +421,8 @@ def build_common_header(
         extent_dict = calculate_mosaic_extent(
             infile_list = infile_list,
             force_ra_ctr = ra_ctr,
-            force_dec_ctr = dec_ctr
+            force_dec_ctr = dec_ctr,
+            force_freq_ctr = freq_ctr
             )
         
         if ra_ctr is None:
@@ -430,6 +433,12 @@ def build_common_header(
             delta_ra = extent_dict['delta_ra'][0]
         if delta_dec is None:
             delta_dec = extent_dict['delta_dec'][0]
+
+        # Just assume Doppler
+        if freq_ctr is None:
+            freq_ctr = extent_dict['freq_ctr'][0]
+        if delta_freq is None:
+            delta_freq = extent_dict['delta_freq'][0]
         
     # Get the header from the template file
 
@@ -453,6 +462,7 @@ def build_common_header(
 
     target_hdr['csys']['direction0']['crval'][0] = ra_ctr_in_rad
     target_hdr['csys']['direction0']['crval'][1] = dec_ctr_in_rad
+    target_hdr['csys']['spectral1']['wcs']['crval'] = freq_ctr
 
     # Calculate the size of the image in pixels and set the central
     # pixel coordinate for the RA and Dec axis.
@@ -465,6 +475,10 @@ def build_common_header(
     dec_axis_size = np.ceil(delta_dec / dec_pix_in_as)
     new_dec_ctr_pix = dec_axis_size/2.0
     
+    freq_pix_in_hz = np.abs(target_hdr['csys']['spectral1']['wcs']['cdelt'])
+    freq_axis_size = np.ceil(delta_freq / freq_pix_in_hz)
+    new_freq_ctr_pix = freq_axis_size / 2.0
+
     # Check that the axis size isn't too big. This is likely to be a
     # bug. If allowbigimage is True then bypass this, otherwise exit.
 
@@ -480,10 +494,11 @@ def build_common_header(
 
     target_hdr['csys']['direction0']['crpix'][0] = new_ra_ctr_pix
     target_hdr['csys']['direction0']['crpix'][1] = new_dec_ctr_pix
+    target_hdr['csys']['spectral1']['wcs']['crpix'] = new_freq_ctr_pix
     
     target_hdr['shap'][0] = int(ra_axis_size)
     target_hdr['shap'][1] = int(dec_axis_size)
-    
+    target_hdr['shap'][2] = int(freq_axis_size)
     return(target_hdr)
 
 def common_grid_for_mosaic(
@@ -593,7 +608,7 @@ def common_grid_for_mosaic(
     for this_infile in infile_list:
         
         this_outfile = outfile_dict[this_infile]
-
+        
         casaStuff.imregrid(imagename=this_infile,
                       template=target_hdr,
                       output=this_outfile,
@@ -601,7 +616,6 @@ def common_grid_for_mosaic(
                       axes=axes,
                       interpolation=interpolation,
                       overwrite=overwrite)
-
     return(target_hdr)
 
 #endregion
@@ -792,7 +806,6 @@ def generate_weight_file(
         weight_image = weight_image * 1./noise_value**2
 
     # Put the data back into the file and close it.
-
     myia.putchunk(weight_image)
     myia.close()
 
@@ -839,7 +852,7 @@ def mosaic_aligned_data(
     if outfile is None:
         logger.error("Output file is required.")
         return(None)
-        
+
     # Define some extra outputs and then check file existence
 
     sum_file = outfile+'.sum'
@@ -935,14 +948,31 @@ def mosaic_aligned_data(
     # Feed our two LEL strings into immath to make the sum and weight
     # images.
 
-    casaStuff.immath(imagename = full_imlist, mode='evalexpr',
-                expr=lel_exp_sum, outfile=sum_file,
-                imagemd = full_imlist[0])
+    myia = au.createCasaTool(casaStuff.iatool)
+    for thisfile in full_imlist:
+        myia.open(thisfile)
+        if not np.all(myia.getchunk(getmask=True)):
+            myia.replacemaskedpixels(0.0)
+            myia.set(pixelmask=1)
+        myia.close()
+ 
+    cwd = os.getcwd()
+    ppdir = os.chdir(os.path.dirname(full_imlist[0]))
+    local_imlist = [os.path.basename(ll) for ll in full_imlist]
+    sum_file = os.path.basename(sum_file)
+    weight_file = os.path.basename(weight_file)
+    temp_file = os.path.basename(temp_file)
+    local_outfile = os.path.basename(outfile)
+    local_maskfile = os.path.basename(mask_file)
 
-    casaStuff.immath(imagename = full_imlist, mode='evalexpr',
-                expr=lel_exp_weight, outfile=weight_file,
-                imagemd = full_imlist[0])
-    
+    casaStuff.immath(imagename = local_imlist, mode='evalexpr',
+                     expr=lel_exp_sum, outfile=sum_file,
+                     imagemd = local_imlist[0])
+
+    casaStuff.immath(imagename = local_imlist, mode='evalexpr',
+                     expr=lel_exp_weight, outfile=weight_file,
+                     imagemd = local_imlist[0])
+
     # Just to be safe, reset the masks on the two images.
     
     myia = au.createCasaTool(casaStuff.iatool)
@@ -966,16 +996,16 @@ def mosaic_aligned_data(
     # (does not have to be zero, though, I guess).
 
     casaStuff.immath(imagename = weight_file, mode='evalexpr',
-                expr='iif(IM0 > 0.0, 1.0, 0.0)', 
-                outfile=mask_file)
+                     expr='iif(IM0 > 0.0, 1.0, 0.0)', 
+                     outfile=local_maskfile)
     
     # Strip out any degenerate axes and create the final output file.
 
     casaStuff.imsubimage(imagename=temp_file, 
-                    outfile=outfile,
-                    mask='"'+mask_file+'"',
+                    outfile=local_outfile,
+                    mask='"'+local_maskfile+'"',
                     dropdeg=True)
-
+    os.chdir(cwd)
     return(None)
 
 #endregion

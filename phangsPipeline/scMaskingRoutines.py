@@ -205,7 +205,7 @@ def noise_cube(data, mask=None, box=None, spec_box=None,
         step = np.floor(box/2.5).astype(np.int)
         boxr = int(box // 2)
     if spec_box is not None:
-        spec_step = np.floor(box/2).astype(np.int)
+        spec_step = np.floor(spec_box / 2).astype(np.int)
         boxv = int(spec_box // 2)
     else:
         boxv = 0

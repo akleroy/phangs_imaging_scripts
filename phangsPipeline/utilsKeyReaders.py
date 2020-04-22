@@ -512,6 +512,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'array_tags':[],
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
+                'res_min_pc':0.0,
+                'res_max_pc':0.0,
                 'res_step_factor':1.0,
                 'res_list':[],
                 'clean_scales_arcsec':[]
@@ -523,6 +525,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
                 'res_step_factor':1.0,
+                'res_min_pc':0.0,
+                'res_max_pc':0.0,
                 'res_list':[]
                 }
             

@@ -5,7 +5,7 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-import utilsLists as lists
+import phangsPipeline.utilsLists as lists
 
 # Drawn from Splatalogue at http://www.cv.nrao.edu/php/splat/
 
