@@ -479,7 +479,14 @@ def find_spws_for_line(
 
     if max_chanwidth_kms is not None:
         line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
-        max_chanwidth_ghz = line_freq_ghz*max_chanwidth_kms/sol_kms
+
+        # Using RADIO convention for velocities:
+
+        max_chanwidth_ghz = restfreq_ghz*max_chanwidth_kms/sol_kms
+
+        # using the high-z convention used to be this (delete eventually)
+        #max_chanwidth_ghz = line_freq_ghz*max_chanwidth_kms/sol_kms
+
         logger.debug("... max_chanwidth_kms: %.3f, max_chanwidth_ghz: %.6f"%(max_chanwidth_kms, max_chanwidth_ghz))
     else:
         max_chanwidth_ghz = None
@@ -716,6 +723,8 @@ def compute_common_chanwidth(
 
         # Convert to km/s and return
         for this_chan_width_hz in chan_widths_hz:
+
+            # Using RADIO convention for velocities:
             chan_width_kms = abs(this_chan_width_hz / (line_freq_ghz*1e9)*sol_kms)
             if coarsest_channel is None:
                 coarsest_channel = chan_width_kms
@@ -829,8 +838,8 @@ def batch_extract_line(
 
     # Clean up, deleting intermediate files
 
-    for this_file in split_file_list:
-        shutil.rmtree(this_file)
+    #for this_file in split_file_list:
+    #    shutil.rmtree(this_file)
     
     return()
 
@@ -920,7 +929,11 @@ def suggest_extraction_scheme(
                 continue
             
             chan_width_ghz = np.abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
-            chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms * (1 - vsys_kms / sol_kms)
+
+            # Using RADIO convention:
+            chan_width_kms = chan_width_ghz/restfreq_ghz * sol_kms
+            # using the old relative convention was this (can delete eventually)
+            #chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms 
 
             if chan_width_kms > target_chan_kms:
                 logger.warning("Channel too big for SPW "+str(this_spw))
@@ -984,6 +997,9 @@ def suggest_extraction_scheme(
                         vals=np.array(chan_width_list)*np.array(binfactor_list),
                         epsilon=1e-4)
                     scheme[this_infile][this_spw]['target_chan_kms'] = common_res
+                    #print("chan_width_list: ", chan_width_list)
+                    #print("binfactor_list: ", binfactor_list)
+                    #print("common res/target channel: ", common_res)
 
     # ... for regrid-then-rebin        
 
@@ -997,8 +1013,13 @@ def suggest_extraction_scheme(
                     common_res = choose_common_res(
                         vals=np.array(chan_width_list)*np.array(binfactor_list),
                         epsilon=1e-4)
+                    this_target_chan_kms = common_res / scheme[this_infile][this_spw]['binfactor']
                     scheme[this_infile][this_spw]['target_chan_kms'] = \
-                        common_res / scheme[this_infile][this_spw]['binfactor']
+                        this_target_chan_kms
+                    #print("chan_width_list: ", chan_width_list)
+                    #print("binfactor_list: ", binfactor_list)
+                    #print("common res: ", common_res)
+                    #print("target channel: ", this_target_chan_kms)
 
     # Return
 
@@ -1371,7 +1392,12 @@ def build_mstransform_call(
         line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
         
         max_chan_ghz = np.max(np.abs(au.getChanWidths(infile, spw)))/1e9
-        current_chan_kms = max_chan_ghz/line_freq_ghz*sol_kms
+
+        # Using RADIO velocity convention:
+        current_chan_kms = max_chan_ghz/restfreq_ghz*sol_kms
+
+        # Old approach using the relative/high-z convention was:
+        #current_chan_kms = max_chan_ghz/line_freq_ghz*sol_kms
         
         skip_width = False
         if target_chan_kms is None:
@@ -1380,7 +1406,7 @@ def build_mstransform_call(
             skip_width = True
         elif current_chan_kms > target_chan_kms:
             logger.warning('Target channel less than current channel:')
-            logger.warning(str(current_chan_kms)+' '+str(target_chan_kms))
+            logger.warning('Asked for '+str(target_chan_kms)+' current '+str(current_chan_kms))
             target_chan_kms = current_chan_kms
             skip_width = True
 
@@ -1480,6 +1506,18 @@ def reweight_data(
                 spw_chanwidth_ghz = abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
 
                 mean_freq_ghz = 0.5*(spw_high_ghz+spw_low_ghz)
+
+                # Here we COULD convert to RADIO convention:
+
+                # mean_chanwidth_kms = spw_chanwidth_ghz/restfreq_ghz*sol_kms
+
+                # BUT the rest frequency is not defined and this is an
+                # approximate case, so would propose to leave this.
+
+                # Note use of high redshift convention.
+
+                logger.warning("... be aware that (only) statwt uses the high-z velocity convention.")
+                logger.warning("... the rest of the pipleine uses radio convention.")
                 mean_chanwidth_kms = spw_chanwidth_ghz/mean_freq_ghz*sol_kms
                 
                 edge_chans = int(np.ceil(edge_kms / mean_chanwidth_kms))
