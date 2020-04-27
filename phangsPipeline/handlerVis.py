@@ -595,7 +595,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if not self._dry_run and casa_enabled:
 
             cvr.contsub(infile = infile,
-                        # outfile is TBD
+                        # outfile is not an option right now, comes out ".contsub"
                         ranges_to_exclude = ranges_to_exclude,
                         overwrite = overwrite,
                         fitorder = fitorder,
@@ -722,7 +722,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
             for this_infile in infile_dict.keys():
                 if infile_dict[this_infile]['contsub']:
-                    infile_list.append(this_infile)
+                    infile_list.append(this_infile+'.contsub')
                     logger.warning("In file: {}".format(this_infile))
                 else:
                     logger.warning("File lacks contsub, skipping: "+str(this_infile))
