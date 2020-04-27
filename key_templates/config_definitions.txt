@@ -173,8 +173,8 @@
 
 # DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
 
-line_product    co21      {'line_tag':'co21','channel_kms':2.5}
-line_product    13co21    {'line_tag':'13co21','channel_kms':2.5}
+line_product    co21      {'line_tag':'co21','channel_kms':2.6}
+line_product    13co21    {'line_tag':'13co21','channel_kms':2.6}
 line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0}
 
 cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
