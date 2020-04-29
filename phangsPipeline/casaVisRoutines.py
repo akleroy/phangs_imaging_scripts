@@ -995,7 +995,7 @@ def suggest_extraction_scheme(
                 else:
                     common_res = choose_common_res(
                         vals=np.array(chan_width_list)*np.array(binfactor_list),
-                        epsilon=1e-4)
+                        epsilon=3e-4)
                     scheme[this_infile][this_spw]['target_chan_kms'] = common_res
                     #print("chan_width_list: ", chan_width_list)
                     #print("binfactor_list: ", binfactor_list)
@@ -1012,7 +1012,7 @@ def suggest_extraction_scheme(
                 else:
                     common_res = choose_common_res(
                         vals=np.array(chan_width_list)*np.array(binfactor_list),
-                        epsilon=1e-4)
+                        epsilon=3e-4)
                     this_target_chan_kms = common_res / scheme[this_infile][this_spw]['binfactor']
                     scheme[this_infile][this_spw]['target_chan_kms'] = \
                         this_target_chan_kms
