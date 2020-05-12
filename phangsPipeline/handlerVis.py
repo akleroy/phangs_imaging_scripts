@@ -98,6 +98,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         collapse_cont = True,
         timebin = None,
         just_projects=None,
+        strict_config=True,
         overwrite = False,
         ):
         """
@@ -125,12 +126,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         # Our first loop goes over the individual measurement sets,
         # splits, and continuum subtracts the data. At this stage we
-        # have no knowledge of configs.
+        # have no knowledge of configs except that selection may
+        # reduce the number of input measurement sets.
 
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=target_list,
                                             config=config_list,
-                                            project=just_projects):
+                                            project=just_projects,
+                                            strict_config=strict_config):
 
                 for this_product in product_list:
 
@@ -182,6 +185,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_line=True,just_interf=True):
 
+                if strict_config:
+                    self._kh.has_data_for_config(
+                        target=this_target,
+                        config=this_config,
+                        strict=True)
+
                 if do_extract_line:
 
                     if this_product in self._kh.get_line_products():
@@ -201,6 +210,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_cont=True,just_interf=True):
+
+                if strict_config:
+                    self._kh.has_data_for_config(
+                        target=this_target,
+                        config=this_config,
+                        strict=True)                    
 
                 if do_extract_cont:
 
@@ -223,7 +238,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=target_list,
                                             config=config_list,
-                                            project=just_projects):
+                                            project=just_projects,
+                                            strict_config=strict_config):
 
                 for this_product in product_list:
 
