@@ -1551,6 +1551,7 @@ class KeyHandler:
         config=None,
         project=None,
         check_linmos=False,
+        strict_config=True,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1559,6 +1560,13 @@ class KeyHandler:
         mosaic if the target is not represented in the dictionary. If
         a configuration is supplied, then only include array_tags that
         contribute to that configuration.
+
+        Note that the interaction with configs that contain multiple
+        arrays is tricky. By default, if "strict_config" is TRUE, it
+        will only loop over targets that have data from ALL arrays in
+        the configuration. For example to be included in a "12m+7m"
+        configuration you need both "12m" AND "7m" data. Set
+        strict_config to FALSE to adjust this behaviour.
         """
 
         # if user has input a target or target list, match to it
@@ -1621,29 +1629,79 @@ class KeyHandler:
                         just_arraytags.append(this_tag)
 
         # Loop over targets
-        for this_target in self._ms_dict.keys():
+        target_list = self._ms_dict.keys()
+        target_list.sort()
+        for this_target in target_list:
 
             # if user has input targets, match it
             if len(just_targets) > 0:
                 if not (this_target in just_targets):
                     continue
 
+            # If we're being strict, only consider targets that have
+            # data associated with the user-supplied configs.
+
+            if strict_config:
+
+                # This list holds the valid array tags for this target.
+
+                valid_arraytags = []
+
+                # This mode only works with a user-supplied list of
+                # configs. Else we loop over all measurement sets.
+
+                if config is not None:
+                    if type(config) == type(''):
+                        input_configs = [config]
+                    elif type(config) == type([]):
+                        input_configs = config
+                    else:
+                        logger.error("Expected list or string.")
+                        raise Exception("Expected list or string.")
+                    
+                    has_data_for_any_config = False
+
+                    # Check if the target has data for that configuration
+                    for this_config in input_configs:
+
+                        if self.has_data_for_config(target=this_target,config=this_config,strict=True):
+                            has_data_for_any_config = True
+
+                            # Note the array tags in this, known to be valid, configuration
+                            for this_arraytag in self.get_array_tags_for_config(this_config):
+                                if valid_arraytags.count(this_arraytag) == 0:
+                                    valid_arraytags.append(this_arraytag)
+                            
+                    # If there are no valid configurations skip.
+                    if not has_data_for_any_config:
+                        continue
+
             # loop over projects
-            for this_project in self._ms_dict[this_target].keys():
+            project_list = self._ms_dict[this_target].keys()
+            project_list.sort()
+            for this_project in project_list:
 
                 if len(just_projects) > 0:
                     if not (this_project in just_projects):
                         continue
 
                 # loop over array tags
-                for this_arraytag in self._ms_dict[this_target][this_project].keys():
+                arraytag_list = self._ms_dict[this_target][this_project].keys()
+                arraytag_list.sort()
+                for this_arraytag in arraytag_list:
 
                     if len(just_arraytags) > 0:
                         if not (this_arraytag in just_arraytags):
                             continue
 
+                    if strict_config:
+                        if valid_arraytags.count(this_arraytag) == 0:
+                            continue
+
                     # loop over obs nums
-                    for this_obsnum in self._ms_dict[this_target][this_project][this_arraytag].keys():
+                    obsnum_list = self._ms_dict[this_target][this_project][this_arraytag].keys()
+                    obsnum_list.sort()
+                    for this_obsnum in obsnum_list:
 
                         yield this_target, this_project, this_arraytag, this_obsnum
 
@@ -1714,6 +1772,69 @@ class KeyHandler:
 
         ms_file_path = file_paths[0]
         return(ms_file_path)
+
+    def has_data_for_config(
+        self,
+        target=None,
+        config=None,
+        strict=True,
+        ):
+        """
+        Test whether a target has data for a configuration in the ms
+        key. If "strict" is TRUE then require that a target has data
+        from ALL arrays that make up the configuration.
+        """
+        
+        if target is None:
+            logging.error("Please specify a target.")
+            return(None)
+        if config is None:
+            logging.error("Please specify a config.")
+            return(None)
+
+        config_array_tags = self.get_array_tags_for_config(config)
+        
+        for this_target in self._ms_dict.keys():
+
+            if this_target != target:
+                continue
+
+            arraytags_for_target = []
+
+            for this_project in self._ms_dict[this_target].keys():
+                
+                for this_arraytag in self._ms_dict[this_target][this_project].keys():
+                    
+                    arraytags_for_target.append(this_arraytag)
+
+        has_any = False
+        missing_any = False
+
+        for this_config_arraytag in config_array_tags:
+
+            missing_this_one = True
+
+            for this_target_arraytag in arraytags_for_target:
+
+                if this_config_arraytag == this_target_arraytag:
+                    missing_this_one = False
+                    has_any = True
+
+            if missing_this_one:
+                missing_any = True
+                
+        if strict:
+            if missing_any:
+                return(False)
+            else:
+                return(True)
+        else:
+            if has_any:
+                return(False)
+            else:
+                return(True)
+
+        return(False)
 
     def get_field_for_input_ms(
         self,
