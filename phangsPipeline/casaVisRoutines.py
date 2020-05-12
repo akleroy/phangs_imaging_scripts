@@ -838,8 +838,8 @@ def batch_extract_line(
 
     # Clean up, deleting intermediate files
 
-    #for this_file in split_file_list:
-    #    shutil.rmtree(this_file)
+    for this_file in split_file_list:
+        shutil.rmtree(this_file)
     
     return()
 
