@@ -1694,7 +1694,7 @@ class KeyHandler:
                         if not (this_arraytag in just_arraytags):
                             continue
 
-                    if strict_config:
+                    if strict_config and config is not None:
                         if valid_arraytags.count(this_arraytag) == 0:
                             continue
 
@@ -1794,12 +1794,12 @@ class KeyHandler:
 
         config_array_tags = self.get_array_tags_for_config(config)
         
+        arraytags_for_target = []
+
         for this_target in self._ms_dict.keys():
 
             if this_target != target:
                 continue
-
-            arraytags_for_target = []
 
             for this_project in self._ms_dict[this_target].keys():
                 
