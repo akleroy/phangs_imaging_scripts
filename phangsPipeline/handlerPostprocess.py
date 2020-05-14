@@ -1582,7 +1582,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         do_feather=False,
         do_mosaic=False,
         do_cleanup=False,
-        do_convolve=False,
+        do_summarize=False,
         feather_apod=False,
         feather_noapod=False,
         feather_before_mosaic=False,
@@ -1601,7 +1601,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             do_feather=True
             do_mosaic=True
             do_cleanup=True
-            do_convolve=True
+            do_summarize=True
 
         if feather_apod is False and feather_noapod is False:
             logger.info("Defaulting to no apodization.")
@@ -1618,8 +1618,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         if make_directories:
             self._kh.make_missing_directories(postprocess=True)
 
-        # Prepare the interferometer data that has imaging. Includes
-        # staging the single dish data, making weights, etc.
+        # Prepare the interferometer data that has imaging for further
+        # postprocessing. Includes staging the single dish data,
+        # making weights, etc. These are in the recipe_prep_one_target
         
         if do_prep:
 
@@ -1631,8 +1632,6 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         
                 imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
                 has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
-                has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
-                is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
 
                 if not has_imaging:
                     logger.debug("Skipping "+this_target+" because it lacks imaging.")
@@ -1644,8 +1643,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                     check_files = True)
 
         # Feather the interferometer configuration data that has
-        # imaging. We'll return to feather mosaicked intereferometer
-        # and single dish data in the next steps.
+        # single dish imaging. We'll return to feather mosaicked
+        # intereferometer and single dish data in the next steps.
                         
         if do_feather:
 
@@ -1687,7 +1686,6 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         copy_weights=True,
                         )
                     
-
         # Mosaic the intereferometer, single dish, and feathered data.
 
         if do_mosaic:
@@ -1759,26 +1757,22 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         target = this_target, product = this_product, config = this_config,
                         apodize=False, extra_ext_out='',check_files=True,
                         )
-                        
+                      
+        # Trim and downsample the data, convert to Kelvin, etc.
+  
         if do_cleanup:
 
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
-                                        
+                
                 self.recipe_cleanup_one_target(
                     target = this_target, product = this_product, config = this_config,
                     check_files = True)
-                
-                        # TBD - different feather and mosaic ordering outputs? Maybe?                        
 
-        if do_convolve:
+        # Build reports summarizing the properties of the final postprocessed data.
 
-            for this_target, this_product, this_config in \
-                    self.looper(do_targets=True,do_products=True,do_configs=True):
-                        
-                self.recipe_convolve_to_scale(
-                    target = this_target, product = this_product, config = this_config,
-                    check_files = True, export_to_fits = True)
+        if do_summarize:
 
-                
+            pass
+                                
 #endregion

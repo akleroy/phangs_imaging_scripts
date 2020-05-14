@@ -139,11 +139,19 @@ class KeyHandler:
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Printing products.")
+        logger.info("Printing spectral products.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
         self.print_products()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing derived data products.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_derived()
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -185,6 +193,7 @@ class KeyHandler:
         self._cleanmask_keys = []
 
         self._config_keys = []
+        self._derived_keys = []
         self._target_keys = []
         self._linmos_keys = []
         self._dir_keys = []
@@ -273,6 +282,10 @@ class KeyHandler:
 
             if this_key == 'config_key':
                 self._config_keys.append(this_value)
+                lines_read += 1
+
+            if this_key == 'derived_key':
+                self._derived_keys.append(this_value)
                 lines_read += 1
 
             if this_key == 'cleanmask_key':
@@ -366,7 +379,8 @@ class KeyHandler:
 
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
-             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys]
+             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys,
+             self._derived_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir + this_key)
@@ -384,8 +398,16 @@ class KeyHandler:
         return(all_valid)
 
 ##############################################################
-# READ THE INDIVIDUAL KEYS INTO DICTIONARIES
+# READ THE KEYS INTO DICTIONARIES
 ##############################################################
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Define routines to read the imaging dictionary
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# The imaging dictionary requires outside knowledge, e.g., because it
+# uses wild cards and requires entries for each case. Initialize and
+# read it here.
 
     def _initialize_imaging_dict(self):
         """
@@ -520,6 +542,176 @@ class KeyHandler:
 
         return out_dict
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Define routines to read the derived product dictionary
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# The derived product dictionary requires outside knowledge, e.g.,
+# because it uses wild cards and involved cross-indexing.
+
+    def _initialize_derived_dict(self):
+        """
+        Initialize the derive dictionary. Requires the config and
+        products dict to exist already to work successfully.
+        """
+
+        logger.info("Initializing the derived dictionary using known configs and products.")
+
+        full_dict = {}
+
+        # Loop over configs
+        for this_config in self.get_all_configs():
+            full_dict[this_config] = {}
+
+            # Loop over line products
+            for this_product in self.get_line_products():
+                full_dict[this_config][this_product] = {
+                    'phys_res':{},
+                    'ang_res':{},
+                    'mask_configs':[],
+                    }
+
+            # Loop over continuum products
+            for this_product in self.get_continuum_products():
+                full_dict[this_config][this_product] = {}
+                full_dict[this_config][this_product] = {
+                    'phys_res':{},
+                    'ang_res':{},
+                    'mask_configs':[],
+                    }
+                
+        self._derived_dict = full_dict
+
+        return()
+
+    def _read_derived_key(self, fname='', existing_dict=None, delim=None):
+        """
+        Read a file that defines the calculation of derived products.
+        """
+   
+        # Check file existence
+
+        if os.path.isfile(fname) is False:
+            logger.error("I tried to read key "+fname+" but it does not exist.")
+            return(existing_dict)
+
+        logger.info("Reading: "+fname)
+
+        # Expected Format
+
+        expected_words = 4
+        expected_format = "config product param value"
+
+        # Known parameters
+        
+        known_param_list = ['mask_configs','ang_res', 'phys_res']
+
+        # Open File
+        
+        infile = open(fname, 'r')
+        
+        # Initialize the dictionary
+        
+        if self._derived_dict is None:
+            self._initialize_derived_dict()
+        out_dict = self._derived_dict
+
+        # Loop over the lines
+        lines_read = 0
+        while True:
+            line  = infile.readline()
+            if len(line) == 0:
+                break
+
+            if key_readers.skip_line(line, expected_words=expected_words, 
+                                     delim=delim, expected_format=expected_format):
+                continue
+
+            this_config, this_product, this_param, this_value = \
+                key_readers.parse_one_line(line, delim=delim)
+            
+            if this_param.lower() not in known_param_list:
+                logger.warning("Parameter not in known parameter list. Skipping. Line is:")
+                logger.warning(line)
+                continue
+
+            if this_config.lower() != 'all':
+                if this_config not in self.get_all_configs():
+                    logger.warning("Config not recognized. Line is:")
+                    logger.warning(line)
+                    continue
+
+            if this_product.lower() != 'all_line' and \
+                    this_product.lower() != 'all_cont' and \
+                    this_product.lower() != 'all':
+                if (this_product not in self.get_line_products()) and \
+                        (this_product not in self.get_continuum_products()):
+                    logger.warning("Spectral product not recognized. Line is:")
+                    logger.warning(line)
+                    continue
+
+            # Force configs and products into a list format
+
+            if this_config.lower() == 'all':
+                config_list = self.get_all_configs()
+            else:
+                config_list = [this_config]
+
+            if this_product.lower() == 'all_line':
+                product_list = self.get_line_products()
+            elif this_product.lower() == 'all_cont':
+                product_list = self.get_continuum_products()
+            elif this_product.lower() == 'all':
+                product_list = self.get_line_products() + self.get_continuum_products()
+            else:
+                product_list = [this_product]
+
+            # Read in the read data
+            
+            for each_config in config_list:
+                for each_product in product_list:
+                    
+                    if this_param.lower() == 'phys_res':
+                        this_res_dict = ast.literal_eval(this_value)
+                        if type(this_res_dict) != type({}):
+                            logger.warning("Format of res string not a dictionary. Line is:")
+                            logger.warning(line)
+                            continue
+                        for res_tag in this_res_dict.keys():
+                            out_dict[each_config][each_product]['phys_res'][res_tag] = this_res_dict[res_tag]
+
+                    if this_param.lower() == 'ang_res':
+                        this_res_dict = ast.literal_eval(this_value)
+                        if type(this_res_dict) != type({}):
+                            logger.warning("Format of res string not a dictionary. Line is:")
+                            logger.warning(line)
+                        for res_tag in this_res_dict.keys():
+                            out_dict[each_config][each_product]['ang_res'][res_tag] = this_res_dict[res_tag]
+
+                    if this_param.lower() == 'mask_configs':
+                        this_mask_list = ast.literal_eval(this_value)
+                        if type(this_res_dict) != type([]):
+                            logger.warning("Format of mask configs not a list. Line is:")
+                            logger.warning(line)
+                        for cross_config in this_mask_list:
+                            current_list = out_dict[each_config][each_product]['mask_configs']
+                            if cross_config not in current_list:
+                                current_list.append(cross_config)
+                                out_dict[each_config][each_product]['mask_configs'] = current_list
+
+            lines_read += 1
+
+        # Close and return
+
+        infile.close()
+            
+        logger.info("Read "+str(lines_read)+" lines into a derived product definition dictionary.")
+
+        return(out_dict)
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&% 
+# Batch read the other keys.
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&% 
 
 # Mostly these wrap around the programs in utilsKeyReaders , which
 # parse individual key files into dictionaries.
@@ -561,6 +753,11 @@ class KeyHandler:
         self._imaging_dict = key_readers.batch_read(
             key_list=self._imaging_keys, reader_function=self._read_imaging_key,
             key_dir=self._key_dir, existing_dict=self._imaging_dict)
+
+        self._initialize_derived_dict()
+        self._derived_dict = key_readers.batch_read(
+            key_list=self._derived_keys, reader_function=self._read_derived_key,
+            key_dir=self._key_dir, existing_dict=self._derived_dict)
 
         self._override_dict = key_readers.batch_read(
             key_list=self._override_keys, reader_function=key_readers.read_override_key,
@@ -2211,6 +2408,32 @@ class KeyHandler:
                 logger.info("... ... line name code "+str(line_name))
 
         return()
+
+    def print_derived(
+        self
+        ):
+        """
+        Print out the information for derived products.
+        """
+        
+        if self._derived_dict is None:
+            return()
+
+        for this_config in self.get_all_configs():
+            all_products = self.get_continuum_products() + self.get_line_products()
+            for this_product in all_products:
+                logger.info("... derived produts for "+this_config+" "+this_product)
+
+                ang_res = self._derived_dict[this_config][this_product]['ang_res']
+                phys_res = self._derived_dict[this_config][this_product]['phys_res']
+                linked_configs = self._derived_dict[this_config][this_product]['mask_configs']
+
+                logger.info("... ... angular resolutions [arcsec]: "+str(ang_res))
+                logger.info("... ... physical resolutions [pc]: "+str(phys_res))
+                logger.info("... ... linked configs for masking: "+str(linked_configs))
+
+        return()
+
 
     def has_overrides_for_key(self, key=None):
         """Check whether the override dictionary contains the input key or not.
