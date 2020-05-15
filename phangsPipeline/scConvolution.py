@@ -62,7 +62,7 @@ def smooth_cube(
         if type(linear_resolution) is str:
             linear_resolution = u.Quantity(linear_resolution)
         angular_resolution = (linear_resolution / distance * u.rad).to(u.arcsec)
-        cube.meta['DIST_MPC'] = distance.to(u.mpc)
+        cube.meta['DIST_MPC'] = distance.to(u.mpc).value
 
     if tol is None:
         tol = 0.0
