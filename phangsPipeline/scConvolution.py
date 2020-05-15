@@ -4,6 +4,7 @@ from radio_beam import Beam
 import astropy.units as u
 from astropy.io import fits
 from astropy.convolution import Box1DKernel
+from astropy.convolution import convolve, convolve_fft
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ def smooth_cube(
     linear_resolution=None,
     distance=None,
     velocity_resolution=None,
+    nan_treatment='interpolate', # can also be 'fill'
     tol=None,
     ):
     """
@@ -62,7 +64,8 @@ def smooth_cube(
         if type(linear_resolution) is str:
             linear_resolution = u.Quantity(linear_resolution)
         angular_resolution = (linear_resolution / distance * u.rad).to(u.arcsec)
-        cube.meta['DIST_MPC'] = distance.to(u.mpc).value
+        dist_mpc_val = float(distance.to(u.pc).value) / 1e6
+        cube._header.append(('DIST_MPC',dist_mpc_val,'Used in convolution'))
 
     if tol is None:
         tol = 0.0
@@ -86,7 +89,8 @@ def smooth_cube(
         
         if delta > tol:
             logger.info("... proceeding with convolution.")
-            cube = cube.convolve_to(target_beam)
+            cube = cube.convolve_to(target_beam,
+                                    nan_treatment=nan_treatment)
         if np.abs(delta) < tol:
             logger.info("... current resolution meets tolerance.")
         if delta < -1.0*tol:
