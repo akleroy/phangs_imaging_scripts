@@ -287,10 +287,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         # Resolution string (if any, not required)
         fname_dict['res_tag'] = res_tag
-        if res_tag is not None:
-            if res_tag != '':
-                res_tag = '_'+res_tag
-        else:
+        if res_tag is None:
             res_tag = ''
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

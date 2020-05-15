@@ -59,6 +59,11 @@ def get_cube_filename(target=None, config=None, product=None,
     else:
         filename += casaext
 
+    # klugy cleanup to deal with underscores getting messy
+    filename = filename.replace('__','_')
+    filename = filename.replace('__','_')
+    filename = filename.replace('_.','.')
+
     return(filename)
 
 ##############################################################
@@ -116,6 +121,11 @@ def get_vis_filename(target=None, config=None, product=None,
             logging.error("Suffix needs to be a string or None.", suffix)
             return(None)
         filename += '.'+suffix        
+
+    # klugy cleanup to deal with underscores getting messy
+    filename = filename.replace('__','_')
+    filename = filename.replace('__','_')
+    filename = filename.replace('_.','.')
 
     return(filename)
 

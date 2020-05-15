@@ -312,7 +312,7 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
         dist_mpc = t.split(delim)[1]
         if re.match(r'^[0-9eE.+-]+$', dist_mpc):
             out_dict[name] = {}
-            out_dict[name]['distance'] = dist_mpc
+            out_dict[name]['distance'] = float(dist_mpc)
             #logger.debug('distance of '+t.split(delim)[0]+' is '+t.split(delim)[1]+' Mpc')
             lines_read += 1
 
