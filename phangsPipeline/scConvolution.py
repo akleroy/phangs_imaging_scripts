@@ -5,20 +5,28 @@ import astropy.units as u
 from astropy.io import fits
 from astropy.convolution import Box1DKernel
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 import numpy as np
 
-def smoothCube(
-    cubefile,
+def smooth_cube(
+    incube=None,
     outfile=None,
     angular_resolution=None,
     linear_resolution=None,
     distance=None,
     velocity_resolution=None,
+    tol=None,
     ):
     """
     Smooth an input cube to coarser angular or spectral
-    resolution. This only lightly wraps spectral cube and some of the
-    error checking is left to that.
+    resolution. This lightly wraps spectral cube and some of the error
+    checking is left to that.
+
+    tol is a fraction. When the target beam is within tol of the
+    original beam, we just copy.
     """
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -26,10 +34,10 @@ def smoothCube(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     # Require a valid cube or map input
-    if type(cubefile) is SpectralCube:
-        cube = cubefile
-    elif type(cubefile) == type("hello"):
-        cube = SpectralCube.read(cubefile)
+    if type(incube) is SpectralCube:
+        cube = incube
+    elif type(incube) == type("hello"):
+        cube = SpectralCube.read(incube)
     else:
         logger.error("Input must be a SpectralCube object or a filename.")
 
@@ -54,16 +62,36 @@ def smoothCube(
         if type(linear_resolution) is str:
             linear_resolution = u.Quantity(linear_resolution)
         angular_resolution = (linear_resolution / distance * u.rad).to(u.arcsec)
+        cube.meta['DIST_MPC'] = distance.to(u.mpc)
+
+    if tol is None:
+        tol = 0.0
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Convolution to coarser beam
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
     if angular_resolution is not None:
-        beam = Beam(major=angular_resolution,
-                    minor=angular_resolution,
-                    pa=0 * u.deg)
-        cube = cube.convolve_to(beam)
+        logger.info("... convolving from beam: "+str(cube.beam))
+        target_beam = Beam(major=angular_resolution,
+                           minor=angular_resolution,
+                           pa=0 * u.deg)
+        logger.info("... convolving to beam: "+str(target_beam))
+
+        new_major = float(target_beam.major.to(u.arcsec).value)
+        old_major = float(cube.beam.major.to(u.arcsec).value)        
+        delta = (new_major-old_major)/old_major
+
+        logger.info("... fractional change: "+str(delta))
+        
+        if delta > tol:
+            logger.info("... proceeding with convolution.")
+            cube = cube.convolve_to(target_beam)
+        if np.abs(delta) < tol:
+            logger.info("... current resolution meets tolerance.")
+        if delta < -1.0*tol:
+            logger.info("... resolution cannot be matched. Returning")
+            return(None)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Spectral convolution

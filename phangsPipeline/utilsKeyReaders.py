@@ -297,16 +297,25 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
     # 
     # Read file
     logger.info("Reading: "+fname)
+
     delim = ',' if delim is None else delim
+
     lines = [re.sub('['+delim+']+', delim, t) for t in open(fname, 'r').readlines()] # compress multiple delim
-    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim)==4))]
+
+    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim)==1))]
+
     lines_read = 0
     for t in lines:
-        if re.match(r'^[0-9eE.+-]+$', t.split(delim)[1]):
-            out_dict[t.split(delim)[0]] = {}
-            out_dict[t.split(delim)[0]]['distance'] = float(t.split(delim)[1])
+        name = t.split(delim)[0]
+        if name.strip() == 'galaxy':
+            continue
+        dist_mpc = t.split(delim)[1]
+        if re.match(r'^[0-9eE.+-]+$', dist_mpc):
+            out_dict[name] = {}
+            out_dict[name]['distance'] = dist_mpc
             #logger.debug('distance of '+t.split(delim)[0]+' is '+t.split(delim)[1]+' Mpc')
             lines_read += 1
+
         # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
     logger.info("Read "+str(lines_read)+" lines into a target/distance dictionary.")
     # 

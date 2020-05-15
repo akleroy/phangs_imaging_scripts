@@ -51,7 +51,8 @@ def get_cube_filename(target=None, config=None, product=None,
         if type(ext) is not type(''):
             logging.error("Ext needs to be a string or None.", ext)
             return(None)
-        filename += '_'+ext
+        if ext != '':
+            filename += '_'+ext
 
     if not casa:
         filename += '.fits'

@@ -51,6 +51,7 @@ import handlerTemplate
 import scMaskingRoutines as scmasking
 import scDerivativeRoutines as scderiv
 from scMoments import moment_generator
+from scConvolution import smooth_cube
 
 class DerivedHandler(handlerTemplate.HandlerTemplate):
     """
@@ -77,10 +78,14 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
     # Main processing loop #
     ########################
 
-    def loop_make_products(
+    def loop_derive_products(
         self,
-        do_signalmask_moment_maps=True, 
-        do_hybridmask_moment_maps=True, 
+        do_all=True,
+        do_convolve=True,
+        do_noise=True,
+        do_signalmask=True,
+        do_broadmask=True,
+        do_moments=True,
         make_directories=True, 
         extra_ext_in='', 
         extra_ext_out='', 
@@ -88,11 +93,18 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         ):
         """
         Loops over the full set of targets, spectral products (note
-        the dual definition here), and configurations to do the
-        imaging. Toggle the parts of the loop using the do_XXX
+        the dual definition of "product" here), and configurations to
+        do the imaging. Toggle the parts of the loop using the do_XXX
         booleans. Other choices affect algorithms used.
         """
         
+        if do_all:
+            do_convolve = True
+            do_noise = True
+            do_signalmask = True
+            do_broadmask = True
+            do_moment = True
+
         # Error checking
         
         if len(self.get_targets()) == 0:            
@@ -108,25 +120,130 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         if make_directories:
             self._kh.make_missing_directories(derived = True)
 
+        # Convolve the data to all requested angular and physical resolutions.
+        
+        if do_convolve:
+
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                # Always start with the native resolution
+                           
+                self.task_convolve(
+                    target=this_target, config=this_config, product=this_product,
+                    just_copy = True, overwrite=True)
+
+                # Loop over all angular and physical resolutions.
+                
+                res_dict = self._kh.get_ang_res_dict(
+                    config=this_config,product=this_product)
+                res_list = list(res_dict)
+                if len(res_list) > 0:
+                    res_list.sort()
+                for this_res_tag in res_list:
+                    this_res_value = res_dict[this_res_tag]
+                    self.task_convolve(
+                        target=this_target, config=this_config, product=this_product,
+                        res_tag=this_res_tag,res_value=this_res_value,res_type='ang', 
+                        overwrite=True)
+
+                res_dict = self._kh.get_phys_res_dict(
+                    config=this_config,product=this_product)
+                res_list = list(res_dict)
+                if len(res_list) > 0:
+                    res_list.sort()
+                for this_res_tag in res_list:
+                    this_res_value = res_dict[this_res_tag]
+                    self.task_convolve(
+                        target=this_target, config=this_config, product=this_product,
+                        res_tag=this_res_tag,res_value=this_res_value,res_type='phys', 
+                        overwrite=True)
+
+        # Estimate the noise for each cube.
+        
+        if do_noise:
+
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                # Loop over all angular and physical resolutions.
+
+                for this_res in self._kh.get_ang_res_dict(
+                    config=this_config,product=this_product):
+
+                    pass
+
+                for this_res in self._kh.get_phys_res_dict(
+                    config=this_config,product=this_product):
+
+                    pass
+
+        # Make "strict" signal masks for each cube
+        
+        if do_signalmask:
+
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                # Loop over all angular and physical resolutions.
+
+                for this_res in self._kh.get_ang_res_dict(
+                    config=this_config,product=this_product):
+
+                    pass
+
+                for this_res in self._kh.get_phys_res_dict(
+                    config=this_config,product=this_product):
+
+                    pass
+
+        # Make "broad" combination masks.
+        
+        if do_broadmask:
+
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+                        
+                pass
+
+        # Make "moments" - derived data products.
+        
+        if do_moments:
+
+            for this_target, this_product, this_config in \
+                    self.looper(do_targets=True,do_products=True,do_configs=True):
+                        
+                # Loop over all angular and physical resolutions.
+
+                for this_res in self._kh.get_ang_res_dict(
+                    config=this_config,product=this_product):
+
+                    pass
+
+                for this_res in self._kh.get_phys_res_dict(
+                    config=this_config,product=this_product):
+
+                    pass
+
         # Loop over target, product, config combinations
 
-        for this_target, this_product, this_config in \
-            self.looper(do_targets=True,do_products=True,do_configs=True):
+#        for this_target, this_product, this_config in \
+#            self.looper(do_targets=True,do_products=True,do_configs=True):
             # do signalmask moment maps for each resolution cube
-            if do_signalmask_moment_maps:
-                for this_res in self._kh.get_res_for_config(this_config):
-                    self.task_generate_moment_maps(target=this_target, product=this_product,
-                                                   config=this_config,
-                                                   res=this_res,
-                                                   extra_ext_in=extra_ext_in,
-                                                   extra_ext_out=extra_ext_out,
-                                                   overwrite=overwrite)
+#            if do_signalmask_moment_maps:
+#                for this_res in self._kh.get_res_for_config(this_config):
+#                    self.task_generate_moment_maps(target=this_target, product=this_product,
+#                                                   config=this_config,
+#                                                   res=this_res,
+#                                                   extra_ext_in=extra_ext_in,
+#                                                   extra_ext_out=extra_ext_out,
+#                                                   overwrite=overwrite)
             
             # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
-            if do_hybridmask_moment_maps:
-                lowres, lowres_tag = self._find_lowest_res(target=this_target, config=this_config, product=this_product, closeto='10.72arcsec')
-                for this_res in self._kh.get_res_for_config(this_config):
-                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, res=this_res, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out, overwrite=overwrite)
+#            if do_hybridmask_moment_maps:
+#                lowres, lowres_tag = self._find_lowest_res(target=this_target, config=this_config, product=this_product, closeto='10.72arcsec')
+#                for this_res in self._kh.get_res_for_config(this_config):
+#                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, res=this_res, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out, overwrite=overwrite)
             
             # end of loop
 
@@ -134,152 +251,246 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
     ###########################################
     # Defined file names for various products #
     ###########################################
-    
+
     def _fname_dict(
         self,
         target=None,
         config=None,
         product=None,
+        res_tag=None,
         extra_ext_in='',
         extra_ext_out='', 
-        res=None,
-        res_lowresmask='10p72', 
         ):
         """
         Function to define file names used in other functions.
-        
-        Output name dict contains following keys: 'in_cube', 'signalmask', 'hybridmask', 'derived_broad_map' and 'derived_strict_map'. 
-        
-        If input res == 'lowres', then we will find the lowest resolution (closest to res_lowresmask = 10.72 arcsec) 'in_cube'.
         """
 
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Error checking
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
         if target is None:
             raise Exception("Need a target.")
         if product is None:
             raise Exception("Need a product.")
         if config is None:
             raise Exception("Need a config.")
-        if res is None:
-            raise Exception("Need a res.")
         
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Initialize
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
         # The output is a nested dictionary structure, for each cube
         # resolution (res_tag)
+
         fname_dict = {}
-        indir = self._kh.get_postprocess_dir_for_target(target=target, changeto=False)
-        indir = os.path.abspath(indir)
-        #logger.debug('indir: '+indir)
-        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
-        outdir = os.path.abspath(outdir)
-        #logger.debug('outdir: '+outdir)
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
-        
-        res_tag = None
-        if type(res) is str:
-            if res == 'lowres':
-                res, res_tag = self._find_lowest_res(target=target, config=config, product=product, closeto=res_lowresmask)
-        if res_tag is None:
-            res_tag = utilsResolutions.get_tag_for_res(res) # this will be like either '5p00' or '80pc'
-        
-        fname_dict['res'] = res
+
+        # Resolution string (if any, not required)
         fname_dict['res_tag'] = res_tag
-        
-        cube_filename = utilsFilenames.get_cube_filename(target = target, 
-                                                         config = config, 
-                                                         product = product,
-                                                         ext = 'pbcorr_trimmed_k'+extra_ext_in+'_res'+res_tag,
-                                                         casa = False)
-        fname_dict['in_cube'] = os.path.join(indir, cube_filename)
-        for tag in ['signalmask', 'hybridmask']:
-            cube_filename = utilsFilenames.get_cube_filename(target = target, 
-                                                             config = config, 
-                                                             product = product,
-                                                             ext = 'pbcorr_trimmed_k'+extra_ext_in+'_res'+res_tag+extra_ext_out+'_'+tag,
-                                                             casa = False)
-            fname_dict[tag] = os.path.join(outdir, cube_filename)
-        for tag in ['broad', 'strict']:
-            derived_name = utilsFilenames.get_derived_rootname(target=target,
-                                                               config=config,
-                                                               product=product,
-                                                               ext='pbcorr_trimmed_k'+extra_ext_in,
-                                                               res_tag=res_tag+extra_ext_out,
-                                                               derived=tag)
-            fname_dict['derived_%s_map'%(tag)] = os.path.join(outdir, derived_name)
-        
-        return fname_dict
-    
-    
-    def _find_lowest_res(
-        self, 
-        target = None, 
-        config = None, 
-        product = None, 
-        closeto = None, 
-        extra_ext_in = '', 
-        ):
-        """
-        Find the lowest resolution cube data, or closest to the 'closeto' resolution if set.
-        """
-        indir = self._kh.get_postprocess_dir_for_target(target=target, changeto=False)
-        indir = os.path.abspath(indir)
-        res_list = self._kh.get_res_for_config(config)
-        if res_list is None:
-            logger.error('No target resolutions found for target '+target+' and config'+config)
-            raise Exception('No target resolutions found for target '+target+' and config'+config)
-        # 
-        if closeto is not None:
-            closest_res_tag = '' # we will find the cloest-resolution cube for the given 'closeto' resolution.
-            closest_res = None
+        if res_tag is not None:
+            if res_tag != '':
+                res_tag = '_'+res_tag
         else:
-            lowest_res_tag = '' # we will find the lowest-resolution cube for the given 'closeto' resolution.
-            lowest_res = None
-        # 
-        for this_res in res_list:
-            # 
-            if utilsResolutions.is_physical_resolution(this_res):
-                distance = self._kh.get_distance_for_target(target=target)
-            elif closest_res is not None and utilsResolutions.is_physical_resolution(closest_res):
-                distance = self._kh.get_distance_for_target(target=target)
-            else:
-                distance = None
-            # 
-            res_tag = utilsResolutions.get_tag_for_res(this_res) # this will be like either '5p00' or '80pc'
-            cube_filename = utilsFilenames.get_cube_filename(target = target, 
-                                                             config = config, 
-                                                             product = product,
-                                                             ext = 'pbcorr_trimmed_k'+extra_ext_in+'_res'+res_tag,
-                                                             casa = False)
-            if os.path.isfile(os.path.join(indir, cube_filename)):
-                # 
-                if closeto is not None:
-                    if closest_res is None:
-                        closest_res = this_res
-                        closest_res_tag = res_tag
-                    elif np.abs(utilsResolutions.get_angular_resolution_for_res(this_res, distance=distance) - utilsResolutions.get_angular_resolution_for_res(closeto, distance=distance)) < \
-                         np.abs(utilsResolutions.get_angular_resolution_for_res(closest_res, distance=distance) - utilsResolutions.get_angular_resolution_for_res(closeto, distance=distance)):
-                        closest_res = this_res
-                        closest_res_tag = res_tag
-                else:
-                    if lowest_res is None:
-                        lowest_res = this_res
-                        lowest_res_tag = res_tag
-                    elif utilsResolutions.get_angular_resolution_for_res(this_res) > utilsResolutions.get_angular_resolution_for_res(lowest_res):
-                        lowest_res = this_res
-                        lowest_res_tag = res_tag
-            else:
-                # file not found
-                logger.warning('Cube with resolution tag '+res_tag+' was not found: "'+os.path.join(indir, cube_filename)+'"')
+            res_tag = ''
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Original files
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        orig_filename = utilsFilenames.get_cube_filename(
+            target = target,  config = config, product = product,
+            ext = 'pbcorr_trimmed_k'+extra_ext_in,
+            casa = False)
+
+        fname_dict['orig'] = orig_filename
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Output Convolved Cubes
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+       
+        cube_filename = utilsFilenames.get_cube_filename(
+            target = target, config = config, product = product,
+            ext = res_tag+extra_ext_out,
+            casa = False)
+
+        fname_dict['cube'] = cube_filename
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Noise Cubes
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        noise_filename = utilsFilenames.get_cube_filename(
+            target = target, config = config, product = product,
+            ext = res_tag+extra_ext_out+'_noise',
+            casa = False)
+
+        fname_dict['noise'] = noise_filename
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Signal Mask
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        # This differs by resolution
+
+        strictmask_filename = utilsFilenames.get_cube_filename(
+            target = target, config = config, product = product,
+            ext = res_tag+extra_ext_out+'_strictmask',
+            casa = False)
+
+        fname_dict['strictmask'] = strictmask_filename
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Broad / Hybrid Mask
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        # Note that the broadmask is the same across all resolutions.
+
+        broadmask_filename = utilsFilenames.get_cube_filename(
+            target = target, config = config, product = product,
+            ext = extra_ext_out+'_signalmask',
+            casa = False)
+
+        fname_dict['broadmask'] = broadmask_filename
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Moments
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+                
+        # Just note the root of the moment file name. There are a lot
+        # of extensions that will be filled in by the programs.
+
+        derived_root_strict = utilsFilenames.get_cube_filename(
+            target=target, config=config, product=product,
+            ext=res_tag+extra_ext_out+'_strictmask')        
+        derived_root_strict = derived_root_strict.replace('.fits','')
+        fname_dict['momentroot_strict'] = derived_root_strict
+
+        derived_root_broad = utilsFilenames.get_cube_filename(
+            target=target, config=config, product=product,
+            ext=res_tag+extra_ext_out+'_broadmask')
+        derived_root_broad = derived_root_broad.replace('.fits','')
+        fname_dict['momentroot_broad'] = derived_root_broad
         
-        if closeto is not None:
-            return closest_res, closest_res_tag
-        else:
-            return lowest_res, lowest_res_tag
-    
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Return
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        
+        return(fname_dict)
+        
     
     ##################################################################
     # Tasks - discrete steps on target, product, config combinations #
     ##################################################################
+
+    def task_convolve(
+        self,
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None,
+        res_value = None,
+        res_type = 'ang',
+        just_copy = False,
+        extra_ext_in = '', 
+        extra_ext_out = '', 
+        overwrite = False, 
+        tol=0.1,
+        ):
+        """
+        Convolve data to lower resolutions.
+        """
+        
+        # Parse the input resolution
+        if not just_copy:
+            
+            if res_value is None:
+                logger.warning("Need an input resolution.")
+                logger.warning("Defaulting to copy mode.")
+                just_copy = True
+                
+            if res_type.lower() not in ['ang','phys']:
+                logger.warning("Input resolution can be angular or physical, ang or phys .")
+                logger.warning("Defaulting to copy mode.")
+                just_copy = True
+
+            if res_tag is None:
+                logger.warning("Need a resolution tag to avoid overlapping file names.")
+                logger.warning("Defaulting to copy mode.")
+                just_copy = True
+
+        # Generate file names
+
+        indir = self._kh.get_postprocess_dir_for_target(target=target, changeto=False)
+        indir = os.path.abspath(indir)+'/'
+
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        outdir = os.path.abspath(outdir)+'/'
+
+        fname_dict_in = self._fname_dict(
+            target=target, config=config, product=product, res_tag=None, 
+            extra_ext_in=extra_ext_in)
+
+        if just_copy:
+            fname_dict_out = self._fname_dict(
+                target=target, config=config, product=product, res_tag=None, 
+                extra_ext_out=extra_ext_out)
+        else:
+            fname_dict_out = self._fname_dict(
+                target=target, config=config, product=product, res_tag=res_tag, 
+                extra_ext_out=extra_ext_out)
+
+        input_file = fname_dict_in['orig']
+        outfile = fname_dict_out['cube']
+
+        # Check input file existence        
+    
+        if not (os.path.isfile(indir+input_file)):
+            logger.warning("Missing "+indir+input_file)
+            return()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("Copying or convolving cube for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        if just_copy:
+            logger.info("... mode is just copying.")
+        else:
+            logger.info("... mode is convolving.")
+            logger.info("... to resolution tag: "+res_tag)
+            logger.info("... which is resolution type: "+res_type)
+            logger.info("... and value: "+str(res_value))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+        
+        logger.info("Input file "+input_file)
+        logger.info("Target file: "+outfile)
+            
+        if (not self._dry_run):
+
+            if just_copy:
+
+                os.system('rm -rf '+outdir+outfile)
+                os.system('cp -r '+indir+input_file+' '+outdir+outfile)
+
+            else:
+                
+                if res_type == 'ang':
+                    input_res_value = res_value*u.arcsec
+                    smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
+                                angular_resolution=input_res_value, tol=tol)
+
+                if res_type == 'phys':
+                    this_distance = self._kh.get_distance_for_target(target)
+                    if this_distance is None:
+                        logger.error("No distance for target "+target)
+                        return()
+                    this_distance = this_distance*1e6*u.pc
+                    input_res_value = res_value*u.pc
+                    smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
+                                linear_resolution=input_res_value, distance=this_distance,
+                                tol=tol)
+
+        return()
 
     def task_generate_moment_maps(
         self,
@@ -292,7 +503,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         overwrite = False, 
         ):
         """
-        Placeholder for a task to generate a noise cube.
+        Placeholder for a task to...
         """
         fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
         # 
@@ -401,7 +612,6 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
 
         
-
 
 
 

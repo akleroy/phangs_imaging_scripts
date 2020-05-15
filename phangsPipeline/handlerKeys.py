@@ -154,6 +154,14 @@ class KeyHandler:
         self.print_derived()
 
         logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing missing distances.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_missing_distances()
+
+        logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -678,6 +686,9 @@ class KeyHandler:
                             logger.warning(line)
                             continue
                         for res_tag in this_res_dict.keys():
+
+                            # EWR : error checking / sanity here comparing string to numerical value.
+
                             out_dict[each_config][each_product]['phys_res'][res_tag] = this_res_dict[res_tag]
 
                     if this_param.lower() == 'ang_res':
@@ -686,11 +697,14 @@ class KeyHandler:
                             logger.warning("Format of res string not a dictionary. Line is:")
                             logger.warning(line)
                         for res_tag in this_res_dict.keys():
+
+                            # EWR : error checking / sanity here comparing string to numerical value.
+
                             out_dict[each_config][each_product]['ang_res'][res_tag] = this_res_dict[res_tag]
 
                     if this_param.lower() == 'mask_configs':
                         this_mask_list = ast.literal_eval(this_value)
-                        if type(this_res_dict) != type([]):
+                        if type(this_mask_list) != type([]):
                             logger.warning("Format of mask configs not a list. Line is:")
                             logger.warning(line)
                         for cross_config in this_mask_list:
@@ -1484,7 +1498,9 @@ class KeyHandler:
 
     def get_distance_for_target(self, target=None):
         """
-        Get the distance (in Mpc) associated with a target.
+        Get the distance (in Mpc) associated with a target. If the
+        target is part of a mosaic, return the distance to the whole
+        galaxy.
         """
         if target is None:
             logging.error("Please specify a target.")
@@ -1493,19 +1509,14 @@ class KeyHandler:
         _, target_name = self.is_target_in_mosaic(target, return_target_name=True)
 
         distance = None
-        #logger.debug('*******self._distance_dict*******'+': '+str(self._distance_dict))
+
         if self._distance_dict is not None:
-            #logger.debug('*******self._distance_dict.keys()*******'+': '+str(self._distance_dict.keys()))
+
             if target_name in self._distance_dict:
                 if 'distance' in self._distance_dict[target_name]:
                     distance = self._distance_dict[target_name]['distance']
 
-        #if distance is None:
-        #    logging.error('No distance value is set for the target '+target+'. Please check your "distance_key.txt".')
-        #    raise Exception('No distance value is set for the target '+target)
-        # -- We will not throw an exception here. distance is used by utilsResolutions which will throw an exception when distance is really needed and not found.
-
-        return distance
+        return(distance)
 
     def get_system_velocity_and_velocity_width_for_target(
         self,
@@ -2285,72 +2296,81 @@ class KeyHandler:
 
         return(this_dict['clean_scales_arcsec'])
 
-
-    def get_res_for_config(
+    def get_ang_res_dict(
         self,
         config=None,
+        product=None,
         ):
         """
-        Return the resolutions used for convolution and product
-        creation for an interferometric or feather configuration.
+        Return the angular resolutions for derived product creation
+        for a combination of resolution and spectral product.
+        """
+
+        if config is None:
+            logger.warning("Need a config.")
+            return(None)
+
+        if product is None:
+            logger.warning("Need a product.")
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return({})
+
+        if product not in self._derived_dict[config].keys():
+            return({})
+
+        return(self._derived_dict[config][product]['ang_res'])
+
+    def get_phys_res_dict(
+        self,
+        config=None,
+        product=None,
+        ):
+        """
+        Return the physical resolutions for derived product creation
+        for a combination of resolution and spectral product.
+        """
+
+        if config is None:
+            logger.warning("Need a config.")
+            return(None)
+
+        if product is None:
+            logger.warning("Need a product.")
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return({})
+
+        if product not in self._derived_dict[config].keys():
+            return({})
+
+        return(self._derived_dict[config][product]['phys_res'])
+
+    def get_linked_mask_configs(
+        self,
+        config=None,
+        product=None,
+        ):
+        """
+        Return the list of linked configurations used in making hybrid
+        masks.
         """
 
         if config is None:
             return(None)
 
-        if config in self._config_dict['interf_config'].keys():
-            this_dict = self._config_dict['interf_config'][config]
-        elif config in self._config_dict['feather_config'].keys():
-            this_dict = self._config_dict['feather_config'][config]
-        else:
+        if product is None:
             return(None)
 
-        res_array = [] # a string array
+        if config not in self._derived_dict.keys():
+            return([])
 
-        if 'res_min_arcsec' in this_dict and 'res_max_arcsec' in this_dict and 'res_step_factor' in this_dict:
-            min_res = this_dict['res_min_arcsec']
-            max_res = this_dict['res_max_arcsec']
-            step = this_dict['res_step_factor']
-            #max_steps = np.log10(max_res/min_res)/np.log10(step)+1
-            #res_array = min_res*step**(np.arange(0.,max_steps,1))
-            #res_array = res_array[res_array <= max_res]
-            res_list = 10**np.arange(np.log10(min_res), np.log10(max_res)+0.5*np.log10(step), np.log10(step))
-            res_array.extend([str(t)+'arcsec' for t in res_list])
+        if product not in self._derived_dict[config].keys():
+            return([])
 
-        if 'res_min_pc' in this_dict and 'res_max_pc' in this_dict and 'res_step_factor' in this_dict:
-            min_res = this_dict['res_min_pc']
-            max_res = this_dict['res_max_pc']
-            step = this_dict['res_step_factor']
-            #max_steps = np.log10(max_res/min_res)/np.log10(step)+1
-            #res_array = min_res*step**(np.arange(0.,max_steps,1))
-            #res_array = res_array[res_array <= max_res]
-            res_list = 10**np.arange(np.log10(min_res), np.log10(max_res)+0.5*np.log10(step), np.log10(step))
-            res_array.extend([str(t)+'pc' for t in res_list])
-
-        if 'res_list' in this_dict:
-            if np.isscalar(this_dict['res_list']):
-                res_array.append(this_dict['res_list'])
-            else:
-                res_array.extend([str(t) for t in this_dict['res_list']]) # if res_list item has no unit, then it will be parsed as arcsec unit in utilsResolutions
-
-        return res_array
-
-    #
-    # 20200304: 'get_tag_for_res' is replaced by 'utilsResolutions.get_tag_for_res'
-    #
-    #def get_tag_for_res(
-    #    self,
-    #    res=None,
-    #    ):
-    #    """
-    #    Return a string in the format we use for filenames given a float resolution in arcseconds.
-    #    """
-    #
-    #    sigfigs = 2
-    #
-    #    res_str = str(int(floor(res)))+'p'+str(int(round((res-floor(res))*10**sigfigs))).zfill(sigfigs)
-    #
-    #    return(res_str)
+        return(self._derived_dict[config][product]['mask_configs'])
 
     def print_configs(
         self
@@ -2407,6 +2427,29 @@ class KeyHandler:
                 line_name = self._config_dict['line_product'][this_product]['line_tag']
                 logger.info("... ... line name code "+str(line_name))
 
+        return()
+
+    def print_missing_distances(
+        self
+        ):
+        """
+        Print out the missing distances
+        """
+
+        if self._distance_dict is None:
+            logger.info("... there is no distance dictionary defined.")
+            return()
+
+        missing_targets = []
+        for this_target in self.get_all_targets():
+            if self.get_distance_for_target(this_target) is None:
+                missing_targets.append(this_target)
+        
+        if len(missing_targets) == 0:
+            logger.info("... no targets are missing distances!")
+            return()
+
+        logger.info("... targets missing distances: "+str(missing_targets))
         return()
 
     def print_derived(
