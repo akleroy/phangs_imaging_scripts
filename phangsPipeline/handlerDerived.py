@@ -33,7 +33,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-
 casa_enabled = ((sys.argv[0].endswith('start_casa.py'))
                 or (sys.argv[0].endswith('casa')))
 
@@ -43,7 +42,7 @@ else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# import utils
+# import phangs pipeline stuff
 import utilsResolutions
 import utilsFilenames
 import utilsLines
@@ -52,6 +51,7 @@ import scMaskingRoutines as scmasking
 import scDerivativeRoutines as scderiv
 from scMoments import moment_generator
 from scConvolution import smooth_cube
+from scNoiseRoutines import recipe_phangs_noise
 
 class DerivedHandler(handlerTemplate.HandlerTemplate):
     """
@@ -80,12 +80,12 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
     def loop_derive_products(
         self,
-        do_all=True,
-        do_convolve=True,
-        do_noise=True,
-        do_signalmask=True,
-        do_broadmask=True,
-        do_moments=True,
+        do_all=False,
+        do_convolve=False,
+        do_noise=False,
+        do_signalmask=False,
+        do_broadmask=False,
+        do_moments=False,
         make_directories=True, 
         extra_ext_in='', 
         extra_ext_out='', 
@@ -131,7 +131,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                            
                 self.task_convolve(
                     target=this_target, config=this_config, product=this_product,
-                    just_copy = True, overwrite=True)
+                    just_copy = True, overwrite=overwrite)
 
                 # Loop over all angular and physical resolutions.
                 
@@ -145,7 +145,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     self.task_convolve(
                         target=this_target, config=this_config, product=this_product,
                         res_tag=this_res_tag,res_value=this_res_value,res_type='ang', 
-                        overwrite=True)
+                        overwrite=overwrite)
 
                 res_dict = self._kh.get_phys_res_dict(
                     config=this_config,product=this_product)
@@ -157,7 +157,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     self.task_convolve(
                         target=this_target, config=this_config, product=this_product,
                         res_tag=this_res_tag,res_value=this_res_value,res_type='phys', 
-                        overwrite=True)
+                        overwrite=overwrite)
 
         # Estimate the noise for each cube.
         
@@ -166,17 +166,35 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
 
+                # Always start with the native resolution
+
+                self.task_estimate_noise(
+                    target=this_target, config=this_config, product=this_product,
+                    overwrite=overwrite)
+
                 # Loop over all angular and physical resolutions.
+                
+                res_dict = self._kh.get_ang_res_dict(
+                    config=this_config,product=this_product)
+                res_list = list(res_dict)
+                if len(res_list) > 0:
+                    res_list.sort()
+                for this_res_tag in res_list:
 
-                for this_res in self._kh.get_ang_res_dict(
-                    config=this_config,product=this_product):
+                    self.task_estimate_noise(
+                        target=this_target, config=this_config, product=this_product,
+                        res_tag=this_res_tag, overwrite=overwrite)
 
-                    pass
+                res_dict = self._kh.get_phys_res_dict(
+                    config=this_config,product=this_product)
+                res_list = list(res_dict)
+                if len(res_list) > 0:
+                    res_list.sort()
+                for this_res_tag in res_list:
 
-                for this_res in self._kh.get_phys_res_dict(
-                    config=this_config,product=this_product):
-
-                    pass
+                    self.task_estimate_noise(
+                        target=this_target, config=this_config, product=this_product,
+                        res_tag=this_res_tag, overwrite=overwrite)
 
         # Make "strict" signal masks for each cube
         
@@ -373,8 +391,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         
         return(fname_dict)
-        
-    
+            
     ##################################################################
     # Tasks - discrete steps on target, product, config combinations #
     ##################################################################
@@ -394,7 +411,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         tol=0.1,
         ):
         """
-        Convolve data to lower resolutions.
+        Convolve data to lower resolutions. Defaults to copying in some cases.
         """
         
         # Parse the input resolution
@@ -466,7 +483,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
             if just_copy:
 
-                os.system('rm -rf '+outdir+outfile)
+                if overwrite:
+                    os.system('rm -rf '+outdir+outfile)
+                
+                if (os.path.isfile(outdir+outfile)):
+                    logger.warning("Target file already present "+outdir+outfile)
+                    return()
+
                 os.system('cp -r '+indir+input_file+' '+outdir+outfile)
 
             else:
@@ -485,9 +508,67 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     input_res_value = res_value*u.pc
                     smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
                                 linear_resolution=input_res_value, distance=this_distance,
-                                tol=tol)
+                                tol=tol, overwrite=overwrite)
 
         return()
+
+
+    def task_estimate_noise(
+        self,
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None,
+        extra_ext = '', 
+        overwrite = False, 
+        ):
+        """
+        Estimate the noise associated with a data cube and save it to disk.
+        """
+
+        # Generate file names
+
+        indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        indir = os.path.abspath(indir)+'/'
+
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        outdir = os.path.abspath(outdir)+'/'
+
+        fname_dict = self._fname_dict(
+            target=target, config=config, product=product, res_tag=res_tag, 
+            extra_ext_in=extra_ext)
+
+        input_file = fname_dict['cube']
+        outfile = fname_dict['noise']
+
+
+        # Check input file existence        
+    
+        if not (os.path.isfile(indir+input_file)):
+            logger.warning("Missing "+indir+input_file)
+            return()
+
+        # Report
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("Running a noise estimate for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+        
+        logger.info("Input file "+input_file)
+        logger.info("Target file: "+outfile)
+            
+        # Call noise routines
+    
+        if (not self._dry_run):
+            
+            recipe_phangs_noise(
+                incube=indir+input_file,
+                outfile=outdir+outfile,
+                # Add kwargs/override logic
+                return_spectral_cube=False)
 
     def task_generate_moment_maps(
         self,

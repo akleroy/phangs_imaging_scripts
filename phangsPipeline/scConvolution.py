@@ -21,6 +21,7 @@ def smooth_cube(
     velocity_resolution=None,
     nan_treatment='interpolate', # can also be 'fill'
     tol=None,
+    overwrite=True
     ):
     """
     Smooth an input cube to coarser angular or spectral
@@ -118,6 +119,6 @@ def smooth_cube(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if outfile is not None:
-        cube.write(outfile, overwrite=True)
+        cube.write(outfile, overwrite=overwrite)
 
     return(cube)
