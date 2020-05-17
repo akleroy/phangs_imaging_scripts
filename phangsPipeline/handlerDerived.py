@@ -560,7 +560,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         # Access keywords for noise generation
         
-        noise_kwargs = this_kh.get_derived_kwargs(
+        noise_kwargs = self._kh.get_derived_kwargs(
             config=config, product=product, kwarg_type='noise_kw')
 
         # Report
@@ -628,7 +628,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         # Access keywords for mask generation
         
-        strictmask_kwargs = this_kh.get_derived_kwargs(
+        strictmask_kwargs = self._kh.get_derived_kwargs(
             config=config, product=product, kwarg_type='strictmask_kw'
             )
 
