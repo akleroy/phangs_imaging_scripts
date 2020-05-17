@@ -345,7 +345,8 @@ def recipe_phangs_noise(
     outfile=None,
     mask=None,
     noise_kwargs=None,
-    return_spectral_cube=False):
+    return_spectral_cube=False,
+    overwrite=False):
     """
 
     Wrap noise_cube with a set of preferred parameters for the
@@ -440,7 +441,7 @@ def recipe_phangs_noise(
     
     # Write to disk, if desired
     if outfile is not None:
-        rms.write(outfile, overwrite=True)
+        rms.write(outfile, overwrite=overwrite)
         
     if return_spectral_cube:
         return(rms)

@@ -47,11 +47,13 @@ import utilsResolutions
 import utilsFilenames
 import utilsLines
 import handlerTemplate
-import scMaskingRoutines as scmasking
-import scDerivativeRoutines as scderiv
-from scMoments import moment_generator
+
 from scConvolution import smooth_cube
 from scNoiseRoutines import recipe_phangs_noise
+from scMaskingRoutines import recipe_phangs_strict_mask, recipe_phangs_broad_mask
+
+#import scDerivativeRoutines as scderiv
+#from scMoments import moment_generator
 
 class DerivedHandler(handlerTemplate.HandlerTemplate):
     """
@@ -83,7 +85,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         do_all=False,
         do_convolve=False,
         do_noise=False,
-        do_signalmask=False,
+        do_strictmask=False,
         do_broadmask=False,
         do_moments=False,
         make_directories=True, 
@@ -101,7 +103,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         if do_all:
             do_convolve = True
             do_noise = True
-            do_signalmask = True
+            do_strictmask = True
             do_broadmask = True
             do_moment = True
 
@@ -198,22 +200,32 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         # Make "strict" signal masks for each cube
         
-        if do_signalmask:
+        if do_strictmask:
 
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                # Always start with the native resolution
+
+                self.task_build_strict_mask(
+                    target=this_target, config=this_config, product=this_product,
+                    overwrite=overwrite, res_tag=None)
 
                 # Loop over all angular and physical resolutions.
 
                 for this_res in self._kh.get_ang_res_dict(
                     config=this_config,product=this_product):
 
-                    pass
+                    self.task_build_strict_mask(
+                        target=this_target, config=this_config, product=this_product,
+                        overwrite=overwrite, res_tag=this_res)
 
                 for this_res in self._kh.get_phys_res_dict(
                     config=this_config,product=this_product):
 
-                    pass
+                    self.task_build_strict_mask(
+                        target=this_target, config=this_config, product=this_product,
+                        overwrite=overwrite, res_tag=this_res)
 
         # Make "broad" combination masks.
         
@@ -512,7 +524,6 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         return()
 
-
     def task_estimate_noise(
         self,
         target = None, 
@@ -568,7 +579,72 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                 incube=indir+input_file,
                 outfile=outdir+outfile,
                 # Add kwargs/override logic
-                return_spectral_cube=False)
+                return_spectral_cube=False,
+                overwrite=overwrite)
+
+    def task_build_strict_mask(
+        self,
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None,
+        extra_ext = '', 
+        overwrite = False, 
+        ):
+        """
+        Estimate the noise associated with a data cube and save it to disk.
+        """
+
+        # Generate file names
+
+        indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        indir = os.path.abspath(indir)+'/'
+
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        outdir = os.path.abspath(outdir)+'/'
+
+        fname_dict = self._fname_dict(
+            target=target, config=config, product=product, res_tag=res_tag, 
+            extra_ext_in=extra_ext)
+
+        input_file = fname_dict['cube']
+        noise_file = fname_dict['noise']
+        outfile = fname_dict['strictmask']
+
+        # Check input file existence        
+    
+        if not (os.path.isfile(indir+input_file)):
+            logger.warning("Missing cube: "+indir+input_file)
+            return()
+
+        if not (os.path.isfile(indir+noise_file)):
+            logger.warning("Missing noise estimate: "+indir+noise_file)
+            return()
+
+        # Report
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("Creating a strict mask for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+        
+        logger.info("Input file "+input_file)
+        logger.info("Noise file "+noise_file)
+        logger.info("Target file: "+outfile)
+            
+        # Call noise routines
+    
+        if (not self._dry_run):
+            
+            recipe_phangs_strict_mask(
+                incube=indir+input_file,
+                innoise=indir+noise_file,
+                outfile=outdir+outfile,
+                # Add kwargs/override logic
+                return_spectral_cube=False,
+                overwrite=overwrite)
 
     def task_generate_moment_maps(
         self,
