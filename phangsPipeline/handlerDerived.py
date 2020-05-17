@@ -644,7 +644,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         logger.info("Input file "+input_file)
         logger.info("Noise file "+noise_file)
         logger.info("Target file: "+outfile)
-        logger.info("Kwargs: "+str(strictmask_kwags))
+        logger.info("Kwargs: "+str(strictmask_kwargs))
             
         # Call noise routines
     
