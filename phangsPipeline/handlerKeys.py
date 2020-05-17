@@ -612,7 +612,8 @@ class KeyHandler:
 
         # Known parameters
         
-        known_param_list = ['mask_configs','ang_res', 'phys_res']
+        known_param_list = ['mask_configs','ang_res', 'phys_res',
+                            'noise_kw','strictmask_kw','broadmask_kw']
 
         # Open File
         
@@ -712,6 +713,21 @@ class KeyHandler:
                             if cross_config not in current_list:
                                 current_list.append(cross_config)
                                 out_dict[each_config][each_product]['mask_configs'] = current_list
+
+                    # Keywords for masking, noise
+
+                    for valid_dict in ['strictmask_kw','broadmask_kw','noise_kw']:
+                        if this_param.lower().strip() != valid_dict:
+                            continue
+                        this_kw_dict = ast.literal_eval(this_value)
+                        if type(this_kw_dict) != type([]):
+                            logger.warning("Format of mask keywords is a dict. Line is:")
+                            logger.warning(line)
+                            continue
+
+                        for this_tag in this_kw_dict.keys():
+                            out_dict[each_config][each_product][valid_dict][this_tag] = \
+                                this_kw_dict[this_tag]
 
             lines_read += 1
 
@@ -2296,10 +2312,7 @@ class KeyHandler:
 
         return(this_dict['clean_scales_arcsec'])
 
-    def get_ang_res_dict(
-        self,
-        config=None,
-        product=None,
+    def get_ang_res_dict(self, config=None, product=None,
         ):
         """
         Return the angular resolutions for derived product creation
@@ -2347,6 +2360,33 @@ class KeyHandler:
             return({})
 
         return(self._derived_dict[config][product]['phys_res'])
+
+    def get_derived_kwargs(self, config=None, product=None,
+                           kwarg_type='strictmask_kw'):
+        """
+        Get the dictionary of keyword arguments from the derived key
+        for masking or noise estimation. Valid kwarg_types are
+        'strictmask_kw', 'broadmask_kw', 'noise_kw'
+        """
+        
+        if config is None:
+            logger.warning("Need a config.")
+            return(None)
+
+        if product is None:
+            logger.warning("Need a product.")
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return({})
+
+        if product not in self._derived_dict[config].keys():
+            return({})
+
+        if kwarg_type not in self._derived_dict[config][product].keys():
+            return({})
+
+        return(self._derived_dict[config][product][kwarg_type])
 
     def get_linked_mask_configs(
         self,

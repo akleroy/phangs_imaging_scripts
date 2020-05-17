@@ -552,12 +552,16 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         input_file = fname_dict['cube']
         outfile = fname_dict['noise']
 
-
         # Check input file existence        
     
         if not (os.path.isfile(indir+input_file)):
             logger.warning("Missing "+indir+input_file)
             return()
+
+        # Access keywords for noise generation
+        
+        noise_kwargs = this_kh.get_derived_kwargs(
+            config=config, product=product, kwarg_type='noise_kw')
 
         # Report
 
@@ -570,6 +574,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         
         logger.info("Input file "+input_file)
         logger.info("Target file: "+outfile)
+        logger.info("Keyword arguments: "+str(noise_kwargs))
             
         # Call noise routines
     
@@ -578,7 +583,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             recipe_phangs_noise(
                 incube=indir+input_file,
                 outfile=outdir+outfile,
-                # Add kwargs/override logic
+                noise_kwargs=noise_kwargs,
                 return_spectral_cube=False,
                 overwrite=overwrite)
 
@@ -621,6 +626,12 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             logger.warning("Missing noise estimate: "+indir+noise_file)
             return()
 
+        # Access keywords for mask generation
+        
+        strictmask_kwargs = this_kh.get_derived_kwargs(
+            config=config, product=product, kwarg_type='strictmask_kw'
+            )
+
         # Report
 
         logger.info("")
@@ -633,6 +644,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         logger.info("Input file "+input_file)
         logger.info("Noise file "+noise_file)
         logger.info("Target file: "+outfile)
+        logger.info("Kwargs: "+str(strictmask_kwags))
             
         # Call noise routines
     
@@ -642,7 +654,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                 incube=indir+input_file,
                 innoise=indir+noise_file,
                 outfile=outdir+outfile,
-                # Add kwargs/override logic
+                mask_kwargs=strictmask_kwargs,
                 return_spectral_cube=False,
                 overwrite=overwrite)
 

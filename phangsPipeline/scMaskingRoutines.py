@@ -425,6 +425,18 @@ def recipe_phangs_strict_mask(
     if 'lo_nchan' not in mask_kwargs:
         mask_kwargs['lo_nchan'] = 2
 
+    if 'min_pix' not in mask_kwargs:
+        mask_kwargs['min_pix'] = None
+
+    if 'min_area' not in mask_kwargs:
+        mask_kwargs['min_area'] = None
+
+    if 'grow_xy' not in mask_kwargs:
+        mask_kwargs['grow_xy'] = 0
+
+    if 'grow_v' not in mask_kwargs:
+        mask_kwargs['grow_v'] = 0
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Create the mask
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
