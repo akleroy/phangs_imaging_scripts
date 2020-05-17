@@ -613,7 +613,8 @@ class KeyHandler:
         # Known parameters
         
         known_param_list = ['mask_configs','ang_res', 'phys_res',
-                            'noise_kw','strictmask_kw','broadmask_kw']
+                            'noise_kw','strictmask_kw','broadmask_kw',
+                            'convolve_kw']
 
         # Open File
         
@@ -716,7 +717,7 @@ class KeyHandler:
 
                     # Keywords for masking, noise
 
-                    for valid_dict in ['strictmask_kw','broadmask_kw','noise_kw']:
+                    for valid_dict in ['strictmask_kw','broadmask_kw','noise_kw','convolve_kw']:
                         if this_param.lower().strip() != valid_dict:
                             continue
                         this_kw_dict = ast.literal_eval(this_value)

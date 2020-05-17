@@ -234,7 +234,11 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
                         
-                pass
+                # Only build one broad mask that covers all resolutions
+
+                self.task_build_broad_mask(
+                    target=this_target, config=this_config, product=this_product,
+                    overwrite=overwrite, res_tag=None)
 
         # Make "moments" - derived data products.
         
@@ -374,7 +378,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         broadmask_filename = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
-            ext = extra_ext_out+'_signalmask',
+            ext = extra_ext_out+'_broadmask',
             casa = False)
 
         fname_dict['broadmask'] = broadmask_filename
@@ -421,6 +425,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         extra_ext_out = '', 
         overwrite = False, 
         tol=0.1,
+        nan_treatment='interpolate',
         ):
         """
         Convolve data to lower resolutions. Defaults to copying in some cases.
@@ -474,6 +479,12 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             logger.warning("Missing "+indir+input_file)
             return()
 
+        # Access keywords for mask generation
+        
+        convolve_kwargs = self._kh.get_derived_kwargs(
+            config=config, product=product, kwarg_type='convolve_kw'
+            )
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Copying or convolving cube for:")
@@ -490,6 +501,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         
         logger.info("Input file "+input_file)
         logger.info("Target file: "+outfile)
+        logger.info("Keywords: "+str(convolve_kwargs))
             
         if (not self._dry_run):
 
@@ -506,10 +518,18 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
             else:
                 
+                if 'tol' in convolve_kwargs:
+                    tol = convolve_kwargs['tol']
+
+                if 'nan_treatment' in convolve_kwargs:
+                    nan_treatment = convolve_kwargs['nan_treatment']
+
                 if res_type == 'ang':
                     input_res_value = res_value*u.arcsec
                     smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
-                                angular_resolution=input_res_value, tol=tol)
+                                angular_resolution=input_res_value, 
+                                tol=tol, nan_treatment=nan_treatment,
+                                overwrite=overwrite)
 
                 if res_type == 'phys':
                     this_distance = self._kh.get_distance_for_target(target)
@@ -520,7 +540,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     input_res_value = res_value*u.pc
                     smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
                                 linear_resolution=input_res_value, distance=this_distance,
-                                tol=tol, overwrite=overwrite)
+                                tol=tol, nan_treatment=nan_treatment,
+                                overwrite=overwrite)
 
         return()
 
@@ -632,7 +653,9 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             config=config, product=product, kwarg_type='strictmask_kw'
             )
 
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Report
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -646,7 +669,9 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         logger.info("Target file: "+outfile)
         logger.info("Kwargs: "+str(strictmask_kwargs))
             
-        # Call noise routines
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Call the masking routines
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
         if (not self._dry_run):
             
@@ -683,18 +708,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             target=target, config=config, product=product, res_tag=res_tag, 
             extra_ext_in=extra_ext)
 
-        input_file = fname_dict['cube']
-        noise_file = fname_dict['noise']
-        outfile = fname_dict['strictmask']
+        input_file = fname_dict['strictmask']
+        outfile = fname_dict['broadmask']
 
         # Check input file existence        
     
         if not (os.path.isfile(indir+input_file)):
             logger.warning("Missing cube: "+indir+input_file)
-            return()
-
-        if not (os.path.isfile(indir+noise_file)):
-            logger.warning("Missing noise estimate: "+indir+noise_file)
             return()
 
         # Access keywords for mask generation
@@ -703,30 +723,83 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             config=config, product=product, kwarg_type='broadmask_kw'
             )
 
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Create the list of masks to combine
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        list_of_masks = []
+        
+        linked_configs = self._kh.get_linked_mask_configs(
+            config=config, product=product)
+
+        if config not in linked_configs:
+            linked_configs.append(config)
+            
+        for cross_config in linked_configs:
+
+            fname_dict = self._fname_dict(
+                target=target, config=cross_config, product=product, res_tag=None, 
+                extra_ext_in=extra_ext)
+
+            this_mask = fname_dict['strictmask']
+            if this_mask not in list_of_masks:
+                if os.path.isfile(indir+this_mask):
+                    list_of_masks.append(indir+this_mask)
+            
+            # Loop over all angular and physical resolutions.
+
+            for this_res in self._kh.get_ang_res_dict(
+                config=cross_config,product=product):
+
+                fname_dict = self._fname_dict(
+                    target=target, config=cross_config, product=product, res_tag=this_res, 
+                    extra_ext_in=extra_ext)
+                
+                this_mask = fname_dict['strictmask']
+                if this_mask not in list_of_masks:
+                    if os.path.isfile(indir+this_mask):
+                        list_of_masks.append(indir+this_mask)
+
+            for this_res in self._kh.get_phys_res_dict(
+                config=cross_config,product=product):
+
+                fname_dict = self._fname_dict(
+                    target=target, config=cross_config, product=product, res_tag=this_res, 
+                    extra_ext_in=extra_ext)
+                
+                this_mask = fname_dict['strictmask']
+                if this_mask not in list_of_masks:
+                    if os.path.isfile(indir+this_mask):
+                        list_of_masks.append(indir+this_mask)
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Report
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-        logger.info("Creating a strict mask for:")
+        logger.info("Creating a broad mask for:")
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
         
         logger.info("Input file "+input_file)
-        logger.info("Noise file "+noise_file)
+        logger.info("List of other masks "+str(list_of_masks))
         logger.info("Target file: "+outfile)
         logger.info("Kwargs: "+str(broadmask_kwargs))
             
-        # Call noise routines
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Call the mask combining routine
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
         if (not self._dry_run):
             
             recipe_phangs_broad_mask(
-                template=indir+input_file,
+                indir+input_file,
                 list_of_masks=list_of_masks,
                 outfile=outdir+outfile,
-                mask_kwargs=broadmask_kwargs,
-                return_spectral_cube=False,
+                #mask_kwargs=broadmask_kwargs,
+                #return_spectral_cube=False,
                 overwrite=overwrite)
 
     def task_generate_moment_maps(
