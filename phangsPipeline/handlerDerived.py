@@ -658,6 +658,77 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                 return_spectral_cube=False,
                 overwrite=overwrite)
 
+    def task_build_broad_mask(
+        self,
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None,
+        extra_ext = '', 
+        overwrite = False, 
+        ):
+        """
+        Estimate the noise associated with a data cube and save it to disk.
+        """
+
+        # Generate file names
+
+        indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        indir = os.path.abspath(indir)+'/'
+
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        outdir = os.path.abspath(outdir)+'/'
+
+        fname_dict = self._fname_dict(
+            target=target, config=config, product=product, res_tag=res_tag, 
+            extra_ext_in=extra_ext)
+
+        input_file = fname_dict['cube']
+        noise_file = fname_dict['noise']
+        outfile = fname_dict['strictmask']
+
+        # Check input file existence        
+    
+        if not (os.path.isfile(indir+input_file)):
+            logger.warning("Missing cube: "+indir+input_file)
+            return()
+
+        if not (os.path.isfile(indir+noise_file)):
+            logger.warning("Missing noise estimate: "+indir+noise_file)
+            return()
+
+        # Access keywords for mask generation
+        
+        broadmask_kwargs = self._kh.get_derived_kwargs(
+            config=config, product=product, kwarg_type='broadmask_kw'
+            )
+
+        # Report
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("Creating a strict mask for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+        
+        logger.info("Input file "+input_file)
+        logger.info("Noise file "+noise_file)
+        logger.info("Target file: "+outfile)
+        logger.info("Kwargs: "+str(broadmask_kwargs))
+            
+        # Call noise routines
+    
+        if (not self._dry_run):
+            
+            recipe_phangs_broad_mask(
+                template=indir+input_file,
+                list_of_masks=list_of_masks,
+                outfile=outdir+outfile,
+                mask_kwargs=broadmask_kwargs,
+                return_spectral_cube=False,
+                overwrite=overwrite)
+
     def task_generate_moment_maps(
         self,
         target = None, 

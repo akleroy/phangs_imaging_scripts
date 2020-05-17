@@ -720,10 +720,13 @@ class KeyHandler:
                         if this_param.lower().strip() != valid_dict:
                             continue
                         this_kw_dict = ast.literal_eval(this_value)
-                        if type(this_kw_dict) != type([]):
+                        if type(this_kw_dict) != type({}):
                             logger.warning("Format of mask keywords is a dict. Line is:")
                             logger.warning(line)
                             continue
+
+                        if valid_dict not in out_dict[each_config][each_product].keys():
+                            out_dict[each_config][each_product][valid_dict] = {}
 
                         for this_tag in this_kw_dict.keys():
                             out_dict[each_config][each_product][valid_dict][this_tag] = \
@@ -2386,7 +2389,7 @@ class KeyHandler:
         if kwarg_type not in self._derived_dict[config][product].keys():
             return({})
 
-        return(self._derived_dict[config][product][kwarg_type])
+        return(self._derived_dict[config][product][kwarg_type].copy())
 
     def get_linked_mask_configs(
         self,

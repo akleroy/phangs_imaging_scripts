@@ -173,7 +173,7 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
 
     if iters_v > 0:
 
-        struct = np.ones(grow_v, dtype=np.bool)
+        struct = np.ones(iters_v, dtype=np.bool)
         struct = struct[:, np.newaxis, np.newaxis]
 
         if iters_xy > 0:
@@ -306,10 +306,10 @@ def cprops_mask(data, noise=None,
     # calls mean that the xy is applied then the v.
 
     if grow_xy is not None:
-        mask = grow_mask(mask, xy_iters=grow_xy)
+        mask = grow_mask(mask, iters_xy=grow_xy)
     
     if grow_v is not None:
-        mask = grow_mask(mask, v_iters=grow_v)
+        mask = grow_mask(mask, iters_v=grow_v)
     
     return(mask)
 
@@ -505,4 +505,22 @@ def recipe_phangs_broad_mask(
 
     """
     
-    pass
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Error checking and work out inputs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # TBD error checking, dimensions, types, etc.
+
+    if type(incube) is SpectralCube:
+        cube = incube
+    elif type(incube) == type("hello"):
+        cube = SpectralCube.read(incube)
+    else:
+        logger.error("Input cube must be a SpectralCube object or a filename.")
+
+    if type(innoise) is SpectralCube:
+        rms = innoise
+    elif type(innoise) == type("hello"):
+        rms = SpectralCube.read(innoise)
+    else:
+        logger.error("Input noise must be a SpectralCube object or a filename.")
