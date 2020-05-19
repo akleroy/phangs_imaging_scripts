@@ -134,7 +134,7 @@ def moment_generator(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Call the moment generation
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        
+    
     moment_map, error_map = func(
         cube, rms=noisecube,
         outfile=outfile, errorfile=errorfile,

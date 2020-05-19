@@ -746,7 +746,7 @@ def write_tmax(cubein,
                overwrite=True,
                unit=None,
                window=None,
-               return_products=False):
+               return_products=True):
     """
     Write out Tmax map for a SpectralCube
     
@@ -842,7 +842,7 @@ def write_vmax(cubein,
                overwrite=True,
                unit=None,
                window=None,
-               return_products=False):
+               return_products=True):
     """
     Write out velocity map at max brightness temp for a SpectralCube
     
@@ -947,7 +947,7 @@ def write_vquad(cubein,
                 unit=None,
                 window=None,
                 maxshift=0.5,
-                return_products=False):
+                return_products=True):
     """
     Write out velocity map at max brightness temp for a 
     SpectralCube using the quadratic peak interpolation
