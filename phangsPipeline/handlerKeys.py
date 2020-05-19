@@ -66,6 +66,7 @@ class KeyHandler:
         self._cleanmask_dict = None
         self._linmos_dict = None
         self._distance_dict = None
+        self._moment_dict = None
 
         self._dir_for_target = None
         self._override_dict = None
@@ -202,6 +203,7 @@ class KeyHandler:
 
         self._config_keys = []
         self._derived_keys = []
+        self._moment_keys = []
         self._target_keys = []
         self._linmos_keys = []
         self._dir_keys = []
@@ -296,6 +298,10 @@ class KeyHandler:
                 self._derived_keys.append(this_value)
                 lines_read += 1
 
+            if this_key == 'moment_key':
+                self._moment_keys.append(this_value)
+                lines_read += 1
+
             if this_key == 'cleanmask_key':
                 self._cleanmask_keys.append(this_value)
                 lines_read += 1
@@ -388,7 +394,7 @@ class KeyHandler:
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
              self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys,
-             self._derived_keys]
+             self._derived_keys, self._moment_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir + this_key)
@@ -577,6 +583,7 @@ class KeyHandler:
                     'phys_res':{},
                     'ang_res':{},
                     'mask_configs':[],
+                    'moments':[],
                     }
 
             # Loop over continuum products
@@ -586,6 +593,7 @@ class KeyHandler:
                     'phys_res':{},
                     'ang_res':{},
                     'mask_configs':[],
+                    'moments':[],
                     }
                 
         self._derived_dict = full_dict
@@ -614,7 +622,7 @@ class KeyHandler:
         
         known_param_list = ['mask_configs','ang_res', 'phys_res',
                             'noise_kw','strictmask_kw','broadmask_kw',
-                            'convolve_kw']
+                            'convolve_kw','moments']
 
         # Open File
         
@@ -715,6 +723,17 @@ class KeyHandler:
                                 current_list.append(cross_config)
                                 out_dict[each_config][each_product]['mask_configs'] = current_list
 
+                    if this_param.lower() == 'moments':
+                        this_moment_list = ast.literal_eval(this_value)
+                        if type(this_moment_list) != type([]):
+                            logger.warning("Format of moments not a list. Line is:")
+                            logger.warning(line)
+                        for this_moment in this_moment_list:
+                            current_list = out_dict[each_config][each_product]['moments']
+                            if this_moment not in current_list:
+                                current_list.append(this_moment)
+                                out_dict[each_config][each_product]['moments'] = current_list
+
                     # Keywords for masking, noise
 
                     for valid_dict in ['strictmask_kw','broadmask_kw','noise_kw','convolve_kw']:
@@ -799,6 +818,10 @@ class KeyHandler:
 
         self._distance_dict = key_readers.batch_read(
             key_list=self._distance_keys, reader_function=key_readers.read_distance_key,
+            key_dir=self._key_dir)
+
+        self._moment_dict = key_readers.batch_read(
+            key_list=self._moment_keys, reader_function=key_readers.read_moment_key,
             key_dir=self._key_dir)
 
 ##############################################################
@@ -2416,6 +2439,44 @@ class KeyHandler:
 
         return(self._derived_dict[config][product]['mask_configs'])
 
+    def get_moment_list(
+        self,
+        config=None,
+        product=None,
+        ):
+        """
+        Return the list of moments to build for a config + product.
+        masks.
+        """
+
+        if config is None:
+            return(None)
+
+        if product is None:
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return([])
+
+        if product not in self._derived_dict[config].keys():
+            return([])
+
+        return(self._derived_dict[config][product]['moments'])
+
+    def get_params_for_moment(self, moment=None):
+        """
+        Return parameter dictionary for a moment.
+        """
+
+        if moment is None:
+            return(None)
+
+        if moment not in self._moment_dict.keys():
+            logger.error("Moment not found in keys: "+str(moment))
+            return(None)
+
+        return(self._moment_dict[moment])
+
     def print_configs(
         self
         ):
@@ -2514,10 +2575,12 @@ class KeyHandler:
                 ang_res = self._derived_dict[this_config][this_product]['ang_res']
                 phys_res = self._derived_dict[this_config][this_product]['phys_res']
                 linked_configs = self._derived_dict[this_config][this_product]['mask_configs']
+                moments = self._derived_dict[this_config][this_product]['moments']
 
                 logger.info("... ... angular resolutions [arcsec]: "+str(ang_res))
                 logger.info("... ... physical resolutions [pc]: "+str(phys_res))
                 logger.info("... ... linked configs for masking: "+str(linked_configs))
+                logger.info("... ... moments to produce: "+str(moments))
 
         return()
 

@@ -53,7 +53,7 @@ from scNoiseRoutines import recipe_phangs_noise
 from scMaskingRoutines import recipe_phangs_strict_mask, recipe_phangs_broad_mask
 
 #import scDerivativeRoutines as scderiv
-#from scMoments import moment_generator
+from scMoments import moment_generator
 
 class DerivedHandler(handlerTemplate.HandlerTemplate):
     """
@@ -247,39 +247,29 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
                         
+                # Always start with the native resolution
+
+                self.task_generate_moments(
+                    target=this_target, product=this_product, config=this_config,
+                    res_tag=None, overwrite=overwrite)
+
                 # Loop over all angular and physical resolutions.
 
                 for this_res in self._kh.get_ang_res_dict(
                     config=this_config,product=this_product):
 
-                    pass
+                    self.task_generate_moments(
+                        target=this_target, product=this_product, config=this_config,
+                        res_tag=this_res, overwrite=overwrite)
 
                 for this_res in self._kh.get_phys_res_dict(
                     config=this_config,product=this_product):
 
-                    pass
+                    self.task_generate_moments(
+                        target=this_target, product=this_product, config=this_config,
+                        res_tag=this_res, overwrite=overwrite)
 
-        # Loop over target, product, config combinations
-
-#        for this_target, this_product, this_config in \
-#            self.looper(do_targets=True,do_products=True,do_configs=True):
-            # do signalmask moment maps for each resolution cube
-#            if do_signalmask_moment_maps:
-#                for this_res in self._kh.get_res_for_config(this_config):
-#                    self.task_generate_moment_maps(target=this_target, product=this_product,
-#                                                   config=this_config,
-#                                                   res=this_res,
-#                                                   extra_ext_in=extra_ext_in,
-#                                                   extra_ext_out=extra_ext_out,
-#                                                   overwrite=overwrite)
-            
-            # do hybridmask moment maps for each resolution cube, using a cube close to 10.72 arcsec resolution
-#            if do_hybridmask_moment_maps:
-#                lowres, lowres_tag = self._find_lowest_res(target=this_target, config=this_config, product=this_product, closeto='10.72arcsec')
-#                for this_res in self._kh.get_res_for_config(this_config):
-#                    self.task_hybridize_masks(target=this_target, product=this_product, config=this_config, res=this_res, lowres=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out, overwrite=overwrite)
-            
-            # end of loop
+# end of loop
 
 
     ###########################################
@@ -390,17 +380,11 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # Just note the root of the moment file name. There are a lot
         # of extensions that will be filled in by the programs.
 
-        derived_root_strict = utilsFilenames.get_cube_filename(
+        moment_root = utilsFilenames.get_cube_filename(
             target=target, config=config, product=product,
-            ext=res_tag+extra_ext_out+'_strictmask')        
-        derived_root_strict = derived_root_strict.replace('.fits','')
-        fname_dict['momentroot_strict'] = derived_root_strict
-
-        derived_root_broad = utilsFilenames.get_cube_filename(
-            target=target, config=config, product=product,
-            ext=res_tag+extra_ext_out+'_broadmask')
-        derived_root_broad = derived_root_broad.replace('.fits','')
-        fname_dict['momentroot_broad'] = derived_root_broad
+            ext=res_tag+extra_ext_out)        
+        moment_root = moment_root.replace('.fits','')
+        fname_dict['momentroot'] = moment_root
         
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Return
@@ -802,127 +786,148 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                 #return_spectral_cube=False,
                 overwrite=overwrite)
 
-    def task_generate_moment_maps(
+    def task_generate_moments(
         self,
         target = None, 
         config = None, 
         product = None, 
-        res = None, 
-        extra_ext_in = '', 
-        extra_ext_out = '', 
+        res_tag = None, 
+        extra_ext = '', 
         overwrite = False, 
         ):
         """
-        Placeholder for a task to...
+        Generate moment maps.
         """
-        fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
-        # 
-        check_existence = True
-        if not os.path.isfile(fname_dict['signalmask']):
-            check_existence = False
-        if not os.path.isfile(fname_dict['derived_strict_map']+'_noise'+'.fits'):
-            check_existence = False
-        else:
-            for tag in ['mom0','mom1','mom2','tpeak','vpeak','ew','vquad']:
-                for etag in ['','_error']:
-                    if not os.path.isfile(fname_dict['derived_strict_map']+'_'+tag+etag+'.fits'):
-                        check_existence = False
-                        break
-                if not check_existence: 
-                    break
-        if check_existence and not overwrite:
-            logger.info('Found existing moment maps: "'+fname_dict['derived_strict_map']+'*". Will not overwrite.')
-            return
-        # 
-        if not os.path.isfile(fname_dict['in_cube']):
-            logger.warning('Input cube file not found: "'+fname_dict['in_cube']+'"')
-            return
-        # 
-        logger.info('Generate moment maps: "'+fname_dict['derived_strict_map']+'*"')
-        moment_generator(fname_dict['in_cube'], 
-                         root_name = fname_dict['derived_strict_map'], 
-                         generate_mask = True, 
-                         mask_name = 'signalmask', 
-                         generate_noise = True, 
-                         )
-                         # mask will have a file name: fname_dict['derived_strict_map']+'_signalmask.fits'
-                         # noise will have a file name: fname_dict['derived_strict_map']+'_noise.fits'
-        output_mask_file = fname_dict['derived_strict_map']+'_signalmask.fits' # according to moment_generator()
-        if not os.path.isfile(output_mask_file):
-            raise Exception('Error! Failed to run momemnt_generator and produce "'+output_mask_file+'"')
-        if output_mask_file != fname_dict['signalmask']:
-            shutil.move(output_mask_file, fname_dict['signalmask'])
-            if not os.path.isfile(fname_dict['signalmask']):
-                raise Exception('Error! Failed to run momemnt_generator and produce "'+fname_dict['signalmask']+'"')
-    
-    
-    def task_hybridize_masks(
-        self,
-        target = None, 
-        config = None, 
-        product = None, 
-        res = None, 
-        lowres = None, 
-        extra_ext_in = '', 
-        extra_ext_out = '', 
-        overwrite = False, 
-        ):
-        """
-        Hybridize each res mask with lowres mask.
-        """
-        # 
-        if lowres is None:
-            logger.warning('Low-resolution cube resolution is None. Will not hybridize the mask.')
-            return
-        # 
-        lowres_fname_dict = self._fname_dict(target=target, config=config, product=product, res=lowres, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
-        fname_dict = self._fname_dict(target=target, config=config, product=product, res=res, extra_ext_in=extra_ext_in, extra_ext_out=extra_ext_out)
-        # 
-        check_existence = True
-        if not os.path.isfile(fname_dict['hybridmask']):
-            check_existence = False
-        #if not os.path.isfile(fname_dict['derived_broad_map']+'_noise'+'.fits'):
-        #    check_existence = False
-        else:
-            for tag in ['mom0','mom1','mom2','tpeak','vpeak','ew','vquad']:
-                for etag in ['','_error']:
-                    if not os.path.isfile(fname_dict['derived_broad_map']+'_'+tag+etag+'.fits'):
-                        check_existence = False
-                        break
-                if not check_existence: 
-                    break
-        if check_existence and not overwrite:
-            logger.info('Found existing moment maps: "'+fname_dict['derived_broad_map']+'*". Will not overwrite.')
-            return
-        # 
-        if not os.path.isfile(fname_dict['in_cube']):
-            logger.warning('Input cube file not found: "'+fname_dict['in_cube']+'"')
-            return
-        # 
-        logger.info('Generate hybridmask moment maps: "'+fname_dict['derived_broad_map']+'*"')
-        lowres_mask = fits.getdata(lowres_fname_dict['signalmask'])
-        mask, header = fits.getdata(fname_dict['signalmask'], header=True)
-        hybridmask = np.logical_or(mask.astype(bool), lowres_mask.astype(bool))
-        header['HISTORY'] = ''
-        header['HISTORY'] = 'Hybridizing masks "%s" and "%s".'%(lowres_fname_dict['signalmask'], fname_dict['signalmask'])
-        header['HISTORY'] = ''
-        hybridmask_spectralcube = SpectralCube(data=mask.astype(int), wcs=WCS(header))
-        hybridmask_spectralcube.write(fname_dict['hybridmask'], overwrite=True)
-        moment_generator(fname_dict['in_cube'], 
-                         root_name = fname_dict['derived_broad_map'], 
-                         generate_mask = False, 
-                         mask = fname_dict['hybridmask'], 
-                         generate_noise = False, 
-                         rms = fname_dict['derived_strict_map']+'_noise'+'.fits', 
-                         )
-                         # mask will have a file name: fname_dict['derived_strict_map']+'_signalmask.fits'
-                         # noise will have a file name: fname_dict['derived_strict_map']+'_noise.fits'
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Look up filenames, list of moments, etc.
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        # Generate file names
+
+        indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        indir = os.path.abspath(indir)+'/'
+
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        outdir = os.path.abspath(outdir)+'/'
+
+        # Filenames
+
+        fname_dict_nores = self._fname_dict(
+            target=target, config=config, product=product, res_tag=None, 
+            extra_ext_in=extra_ext)
+
+        fname_dict = self._fname_dict(
+            target=target, config=config, product=product, res_tag=res_tag, 
+            extra_ext_in=extra_ext)
+
+        # ... broad mask never has a resolution tag
+
+        broadmask_file = fname_dict_nores['broadmask']
+
+        # ... files with resolution tag
+
+        input_file = fname_dict['cube']
+        noise_file = fname_dict['noise']
+        strictmask_file = fname_dict['strictmask']
+
+        outroot = fname_dict['momentroot']
         
+        # Check input file and mask existence        
         
+        if not (os.path.isfile(indir+input_file)):
+            logger.warning("Missing cube: "+indir+input_file)
+            return()
 
+        found_broadmask = (os.path.isfile(indir+broadmask_file))
+        found_strictmask = (os.path.isfile(indir+strictmask_file))
 
+        # Look up which moments to calculate
+
+        list_of_moments = self._kh.get_moment_list(config=config, product=product)
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Report
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("Generating moment maps for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        if res_tag is not None:
+            logger.info("Resolution "+str(res_tag))
+        logger.info("Found a strict mask? "+str(found_strictmask))
+        logger.info("Found a broad mask? "+str(found_broadmask))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
         
+        logger.info("... input file: "+input_file)
+        logger.info("... noise file: "+noise_file)
+        logger.info("... strict mask file: "+strictmask_file)
+        logger.info("... broad mask file: "+broadmask_file)
+        logger.info("... list of moments: "+str(list_of_moments))
+        logger.info("... output root: "+outroot)
+            
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Execute
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+        if (not self._dry_run):
+            
+            for this_mom in list_of_moments:
+                
+                logger.info('... generating moment: '+str(this_mom))
 
+                mom_params = self._kh.get_params_for_moment(this_mom)
 
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                # Look up mask
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+                if mom_params['mask'] is None:
+                    mask_file = None
+                elif mom_params['mask'].strip().lower() == 'none':
+                    mask_file = None
+                elif mom_params['mask'] == 'strictmask':
+                    if not found_strictmask:
+                        logger.warning("Strict mask needed but not found. Skipping.")
+                        continue
+                    mask_file = indir+strictmask_file
+                elif mom_params['mask'] == 'broadmask':
+                    if not found_broadmask:
+                        logger.warning("Broad mask needed but not found. Skipping.")
+                        continue
+                    mask_file = indir+broadmask_file
+                else:
+                    logger.warning("Mask choice not recognized for moment: "+str(this_mom))
+                    logger.warning("Skipping.")
+                    continue
+
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                # Check noise
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                if not (os.path.isfile(indir+noise_file)):
+                    logger.warning("Missing noise: "+indir+noise_file)
+                    noise_in = None
+                    errorfile = None
+                else:
+                    noise_in = indir+noise_file
+                    errorfile = outdir+outroot+mom_params['ext_error']+'.fits'
+
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                # Set up output file
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                outfile = outdir+outroot+mom_params['ext']+'.fits'
+
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                # Call the moment generator
+                # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                moment_generator(
+                    indir+input_file, mask=mask_file, noise=noise_in,
+                    moment=mom_params['algorithm'], momkwargs=mom_params['kwargs'],
+                    outfile=outfile, errorfile=errorfile,
+                    channel_correlation=None)
+                
+                
