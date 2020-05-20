@@ -35,7 +35,7 @@ from pipelineVersion import version as pipeVer
 #region Setting up imaging
 
 def estimate_cell_and_imsize(
-    infile=None,    
+    infile=None,
     oversamp=5,
     force_square=False,
     ):
@@ -50,7 +50,7 @@ def estimate_cell_and_imsize(
     if os.path.isdir(infile) == False:
         logger.error('Error! The input file "'+infile+'" was not found!')
         return
-    
+
     # These are the CASA-preferred sizes for fast FFTs
 
     valid_sizes = []
@@ -65,7 +65,7 @@ def estimate_cell_and_imsize(
     # utilities.
 
     au_cellsize, au_imsize, au_centralField = \
-        au.pickCellSize(infile, imsize=True, 
+        au.pickCellSize(infile, imsize=True,
                         npix=oversamp, intent='')
     xextent = au_cellsize*au_imsize[0]*1.2
     yextent = au_cellsize*au_imsize[1]*1.2
@@ -126,7 +126,7 @@ def wipe_imaging(
 
     if image_root == None:
         return
-    
+
     logger.debug('wipe_imaging under "'+os.getcwd()+'"')
     cmd_list = [
         'rm -rf '+image_root+'.image',
@@ -184,10 +184,10 @@ def copy_imaging(
     loops, shifting clean modes, selfcal, etc). Overwrites any
     previous imaging with that output name.
     """
-    
+
     if wipe_first:
         wipe_imaging(output_root)
-    
+
     logger.debug('Copying imaging from root '+input_root+' to root '+output_root)
     cmd_list = [
         'cp -r '+input_root+'.image '+output_root+'.image',
@@ -227,7 +227,7 @@ def copy_imaging(
         'cp -r '+input_root+'.sumwt.tt1 '+output_root+'.sumwt.tt1',
         'cp -r '+input_root+'.sumwt.tt2 '+output_root+'.sumwt.tt2',
         ]
-    
+
     for this_cmd in cmd_list:
         logger.debug(this_cmd)
         os.system(this_cmd+' 2>/dev/null')
@@ -239,7 +239,7 @@ def export_imaging_to_fits(
     """
     Export the products associated with a CASA imaging run to FITS.
     """
-    
+
     ext_map = {
         '.alpha':'_alpha.fits',
         '.alpha.error':'_alpha_error.fits',
@@ -290,9 +290,9 @@ def export_imaging_to_fits(
         logger.debug('exportfits from '+casa_image+' to '+fits_image)
         casaStuff.exportfits(imagename=casa_image,
                              fitsimage=fits_image,
-                             velocity=True, overwrite=True, dropstokes=True, 
+                             velocity=True, overwrite=True, dropstokes=True,
                              dropdeg=True, bitpix=bitpix)
-    
+
     return()
 
 #endregion
@@ -310,22 +310,22 @@ def execute_clean_call(
     """
     Execute a clean call object, optionally deleting previous versions
     of the imaging first.
-    
+
     Set reset to wipe any existing output data.
     """
-    
+
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
-      
+
     if not clean_call.has_param('vis'):
         logger.error("No visibility defined in clean_call. Returning.")
         return
-      
+
     if not clean_call.has_param('imagename'):
         logger.error("No imagename defined in clean_call. Returning.")
         return
-    
+
     #<TODO><DEBUG><DL># this will not overwrite existing data
     #if os.path.isdir(clean_call.get_param('imagename')+'.image') and not os.path.isdir(clean_call.get_param('imagename')+'.image'+'.touch'):
     #    logger.info('Found existing data "'+clean_call.get_param('imagename')+'.image'+'". Will not overwrite.')
@@ -334,7 +334,7 @@ def execute_clean_call(
     if not os.path.isdir(clean_call.get_param('vis')):
         logger.error("Visibility file not found: "+clean_call.get_param('vis'))
         return
-    
+
     if clean_call.logfile != None:
         oldlogfile = casaStuff.casalog.logfile()
         casaStuff.casalog.setlogfile(clean_call.logfile)
@@ -342,10 +342,10 @@ def execute_clean_call(
     if reset:
         logger.debug("Wiping previous versions of the cube.")
         wipe_imaging(clean_call.get_param('imagename'))
-    
-    
-    # a simple way to slightly solve the compatible issue is to check 
-    # the list of expected_kwargs and only return keys inside it. 
+
+
+    # a simple way to slightly solve the compatible issue is to check
+    # the list of expected_kwargs and only return keys inside it.
     logger.debug("Running CASA "+str(clean_call))
     clean_kwargs = clean_call.kwargs_for_clean()
     expected_kwargs = inspect.getargspec(casaStuff.tclean)[0]
@@ -367,12 +367,19 @@ def execute_clean_call(
             logger.warning('Missing key arguments for clean: '+str(missing_kwargs)+'. Caution that CASA will use some default values depending on the CASA version.')
     else:
         active_kwargs = copy.deepcopy(clean_kwargs)
-    
-    
+
+    # Force pbmask == pblimit
+    # For cubes with an empty channel, pbmask < pblimit triggers
+    # NaNs in cleaning as of CASA 5.6.1.
+    # Force pbmask >= pblimit to avoid this.
+    if 'pblimit' in active_kwargs and 'pbmask' in active_kwargs:
+        if active_kwargs['pblimit'] > active_kwargs['pbmask']:
+            active_kwargs['pbmask'] = active_kwargs['pblimit']
+
     #os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
     casaStuff.tclean(**active_kwargs)
     #os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
-    
+
     if clean_call.logfile != None:
         casaStuff.casalog.setlogfile(oldlogfile)
 
@@ -383,9 +390,9 @@ def execute_clean_call(
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Run a clean call with NITER=0 to make a dirty image
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    
+
 def make_dirty_image(
-    clean_call = None, 
+    clean_call = None,
     ):
     """
     Create a dirty image using the provided clean call. Forces number
@@ -394,11 +401,11 @@ def make_dirty_image(
     unchanged. Making a dirty image also forces a reset, wiping any
     previous version of the imaging. Avoids mutating the clean_call.
     """
-    
+
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
-    
+
     dirty_clean_call = copy.deepcopy(clean_call)
 
     dirty_clean_call.set_param('niter', 0)
@@ -455,7 +462,7 @@ def eval_niter(
     # Experimental/untested: an expression to be 'exec'ed
     if model.lower() == 'expr':
         exec(other_input)
-    
+
     # Cap at the saturation value
     if saturation is not None:
         if niter >= saturation:
@@ -466,12 +473,12 @@ def eval_niter(
 def clean_loop(
     clean_call=None,
     record_file=None,
-    suffix='', 
+    suffix='',
     log_ext=None,
     niter_base_perchan = 10,
-    niter_growth_model = 'geometric', 
-    niter_growth_factor = 2.0, 
-    niter_saturation_perchan = 1000,    
+    niter_growth_model = 'geometric',
+    niter_growth_factor = 2.0,
+    niter_saturation_perchan = 1000,
     niter_other_input = None,
     cycleniter_base = 100,
     cycleniter_growth_model='linear',
@@ -483,19 +490,19 @@ def clean_loop(
     min_loops = 0,
     max_loops = 20,
     max_total_niter = None,
-    convergence_fracflux=0.02,    
+    convergence_fracflux=0.02,
     convergence_totalflux=None,
     convergence_fluxperniter=None,
     use_absolute_delta=True,
     stop_at_negative=True,
     remask_each_loop=False,
-    force_dirty_image=False,    
+    force_dirty_image=False,
     ):
     """
     Carry out an iterative clean until a convergence criteria is
     met. The loop releases progressively more iterations to the
     provided clean call and checks for convergence after each call to
-    clean. 
+    clean.
 
     Optional parameters control the growth of major cycle
     (cycle_niter) and total (niter) iterations/components, the
@@ -514,18 +521,18 @@ def clean_loop(
     manipulate the clean mask. Right now "remasking" and "stat_cube"
     are the only option implemented in this step.
     """
-    
+
     # Some definitions and error checking
 
     if not isinstance(clean_call, CleanCall):
         logger.error("Please input a valid clean call!")
         raise Exception("Please input a valid clean call!")
-    
+
     if suffix == '':
         if clean_call.has_param('specmode'):
             if clean_call.get_param('specmode') == 'mfs':
                 suffix = '.tt0'
-    
+
     valid_model_types = ['fixed', 'geometric','linear','sequence','expr']
     for growth_model in [niter_growth_model.lower(), cycleniter_growth_model.lower()]:
         if growth_model not in valid_model_types:
@@ -540,7 +547,7 @@ def clean_loop(
     # Check if a residual image exists. If not, then build the dirty
     # image. Also build the dirty image if the flag to
     # force_dirt_image is set to True.
-    
+
     missing_image = True
     if os.path.isdir(clean_call.get_param('imagename')+'.residual'+suffix):
         missing_image = False
@@ -591,7 +598,7 @@ def clean_loop(
         # iterations per major cycle (cycleniter) released to clean
         # during this call.
 
-        niter = eval_niter(loopnum = loop, 
+        niter = eval_niter(loopnum = loop,
                            baseval = niter_base_perchan*nchan,
                            model=niter_growth_model, factor=niter_growth_factor,
                            saturation = niter_saturation_perchan*nchan,
@@ -601,7 +608,7 @@ def clean_loop(
                                 model=cycleniter_growth_model, factor=cycleniter_growth_factor,
                                 saturation = cycleniter_saturation_value,
                                 other_input=cycleniter_other_input)
-        
+
         working_call.set_param('niter', niter, nowarning=True)
         working_call.set_param('cycleniter', cycleniter, nowarning=True)
 
@@ -611,7 +618,7 @@ def clean_loop(
         # exclude the masked region from the noise calculation but do
         # turn on iterative noise estimation (Chauvenet+m.a.d. using 5
         # iterations should be quite robust).
-        
+
         current_noise = cmr.noise_for_cube(
             infile=working_call.get_param('imagename')+'.residual'+suffix,
             method='chauvmad', niter=5)
@@ -643,8 +650,8 @@ def clean_loop(
             signal_mask(
                 cube_root=working_call.get_param('imagename'),
                 out_file=working_call.get_param('imagename')+'.mask'+suffix,
-                suffix_in=suffix, 
-                suffix_out=suffix, 
+                suffix_in=suffix,
+                suffix_out=suffix,
                 operation='AND',
                 high_snr=4.0,
                 low_snr=2.0,
@@ -659,7 +666,7 @@ def clean_loop(
             working_call.logfile = None
 
         # Save the previous version of the imaging for comparison
-            
+
         copy_imaging(
             input_root=working_call.get_param('imagename'),
             output_root=working_call.get_param('imagename')+'_prev')
@@ -717,7 +724,7 @@ def clean_loop(
             proceed = True
 
         # Generate a record line and print the current status to the screen
-        
+
         this_record = ''
         this_record += str(loop)+', '
         this_record += str(working_call.get_param('deconvolver'))+', '
@@ -728,7 +735,7 @@ def clean_loop(
         this_record += str(current_flux)+'Jy*chan, '
         this_record += str(frac_delta_flux)+''
         this_record += '\n'
-            
+
         # Print the current record to the screen
 
         record.append(this_record)
