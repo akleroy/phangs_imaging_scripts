@@ -1558,8 +1558,9 @@ class KeyHandler:
             if target_name in self._distance_dict:
                 if 'distance' in self._distance_dict[target_name]:
                     distance = self._distance_dict[target_name]['distance']
-
+                    
         return(distance)
+
 
     def get_system_velocity_and_velocity_width_for_target(
         self,
@@ -1584,6 +1585,7 @@ class KeyHandler:
             if 'vsys' in self._target_dict[target] and 'vwidth' in self._target_dict[target]:
                 target_vsys = self._target_dict[target]['vsys']
                 target_vwidth = self._target_dict[target]['vwidth']
+
 
                 # If this is part of a linear mosaic, check that vwidth is
                 # equivalent so the full line extent is used for all chunks.
@@ -1950,6 +1952,7 @@ class KeyHandler:
                             continue
 
                     # loop over obs nums
+
                     obsnum_list = self._ms_dict[this_target][this_project][this_arraytag].keys()
                     obsnum_list.sort()
                     for this_obsnum in obsnum_list:
@@ -2583,7 +2586,6 @@ class KeyHandler:
                 logger.info("... ... moments to produce: "+str(moments))
 
         return()
-
 
     def has_overrides_for_key(self, key=None):
         """Check whether the override dictionary contains the input key or not.
