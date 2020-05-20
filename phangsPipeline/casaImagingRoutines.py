@@ -734,6 +734,7 @@ def clean_loop(
         this_record += str(current_noise)+'Jy/beam, '
         this_record += str(current_flux)+'Jy*chan, '
         this_record += str(frac_delta_flux)+''
+        this_record += '\n'
 
         # Print the current record to the screen
 

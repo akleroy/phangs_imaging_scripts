@@ -66,6 +66,7 @@ class KeyHandler:
         self._cleanmask_dict = None
         self._linmos_dict = None
         self._distance_dict = None
+        self._moment_dict = None
 
         self._dir_for_target = None
         self._override_dict = None
@@ -139,11 +140,27 @@ class KeyHandler:
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Printing products.")
+        logger.info("Printing spectral products.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
         self.print_products()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing derived data products.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_derived()
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing missing distances.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_missing_distances()
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -185,6 +202,8 @@ class KeyHandler:
         self._cleanmask_keys = []
 
         self._config_keys = []
+        self._derived_keys = []
+        self._moment_keys = []
         self._target_keys = []
         self._linmos_keys = []
         self._dir_keys = []
@@ -273,6 +292,14 @@ class KeyHandler:
 
             if this_key == 'config_key':
                 self._config_keys.append(this_value)
+                lines_read += 1
+
+            if this_key == 'derived_key':
+                self._derived_keys.append(this_value)
+                lines_read += 1
+
+            if this_key == 'moment_key':
+                self._moment_keys.append(this_value)
                 lines_read += 1
 
             if this_key == 'cleanmask_key':
@@ -366,7 +393,8 @@ class KeyHandler:
 
         all_key_lists = \
             [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
-             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys]
+             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys,
+             self._derived_keys, self._moment_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir + this_key)
@@ -384,8 +412,16 @@ class KeyHandler:
         return(all_valid)
 
 ##############################################################
-# READ THE INDIVIDUAL KEYS INTO DICTIONARIES
+# READ THE KEYS INTO DICTIONARIES
 ##############################################################
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Define routines to read the imaging dictionary
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# The imaging dictionary requires outside knowledge, e.g., because it
+# uses wild cards and requires entries for each case. Initialize and
+# read it here.
 
     def _initialize_imaging_dict(self):
         """
@@ -520,6 +556,215 @@ class KeyHandler:
 
         return out_dict
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Define routines to read the derived product dictionary
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+# The derived product dictionary requires outside knowledge, e.g.,
+# because it uses wild cards and involved cross-indexing.
+
+    def _initialize_derived_dict(self):
+        """
+        Initialize the derive dictionary. Requires the config and
+        products dict to exist already to work successfully.
+        """
+
+        logger.info("Initializing the derived dictionary using known configs and products.")
+
+        full_dict = {}
+
+        # Loop over configs
+        for this_config in self.get_all_configs():
+            full_dict[this_config] = {}
+
+            # Loop over line products
+            for this_product in self.get_line_products():
+                full_dict[this_config][this_product] = {
+                    'phys_res':{},
+                    'ang_res':{},
+                    'mask_configs':[],
+                    'moments':[],
+                    }
+
+            # Loop over continuum products
+            for this_product in self.get_continuum_products():
+                full_dict[this_config][this_product] = {}
+                full_dict[this_config][this_product] = {
+                    'phys_res':{},
+                    'ang_res':{},
+                    'mask_configs':[],
+                    'moments':[],
+                    }
+                
+        self._derived_dict = full_dict
+
+        return()
+
+    def _read_derived_key(self, fname='', existing_dict=None, delim=None):
+        """
+        Read a file that defines the calculation of derived products.
+        """
+   
+        # Check file existence
+
+        if os.path.isfile(fname) is False:
+            logger.error("I tried to read key "+fname+" but it does not exist.")
+            return(existing_dict)
+
+        logger.info("Reading: "+fname)
+
+        # Expected Format
+
+        expected_words = 4
+        expected_format = "config product param value"
+
+        # Known parameters
+        
+        known_param_list = ['mask_configs','ang_res', 'phys_res',
+                            'noise_kw','strictmask_kw','broadmask_kw',
+                            'convolve_kw','moments']
+
+        # Open File
+        
+        infile = open(fname, 'r')
+        
+        # Initialize the dictionary
+        
+        if self._derived_dict is None:
+            self._initialize_derived_dict()
+        out_dict = self._derived_dict
+
+        # Loop over the lines
+        lines_read = 0
+        while True:
+            line  = infile.readline()
+            if len(line) == 0:
+                break
+
+            if key_readers.skip_line(line, expected_words=expected_words, 
+                                     delim=delim, expected_format=expected_format):
+                continue
+
+            this_config, this_product, this_param, this_value = \
+                key_readers.parse_one_line(line, delim=delim)
+            
+            if this_param.lower() not in known_param_list:
+                logger.warning("Parameter not in known parameter list. Skipping. Line is:")
+                logger.warning(line)
+                continue
+
+            if this_config.lower() != 'all':
+                if this_config not in self.get_all_configs():
+                    logger.warning("Config not recognized. Line is:")
+                    logger.warning(line)
+                    continue
+
+            if this_product.lower() != 'all_line' and \
+                    this_product.lower() != 'all_cont' and \
+                    this_product.lower() != 'all':
+                if (this_product not in self.get_line_products()) and \
+                        (this_product not in self.get_continuum_products()):
+                    logger.warning("Spectral product not recognized. Line is:")
+                    logger.warning(line)
+                    continue
+
+            # Force configs and products into a list format
+
+            if this_config.lower() == 'all':
+                config_list = self.get_all_configs()
+            else:
+                config_list = [this_config]
+
+            if this_product.lower() == 'all_line':
+                product_list = self.get_line_products()
+            elif this_product.lower() == 'all_cont':
+                product_list = self.get_continuum_products()
+            elif this_product.lower() == 'all':
+                product_list = self.get_line_products() + self.get_continuum_products()
+            else:
+                product_list = [this_product]
+
+            # Read in the read data
+            
+            for each_config in config_list:
+                for each_product in product_list:
+                    
+                    if this_param.lower() == 'phys_res':
+                        this_res_dict = ast.literal_eval(this_value)
+                        if type(this_res_dict) != type({}):
+                            logger.warning("Format of res string not a dictionary. Line is:")
+                            logger.warning(line)
+                            continue
+                        for res_tag in this_res_dict.keys():
+
+                            # EWR : error checking / sanity here comparing string to numerical value.
+
+                            out_dict[each_config][each_product]['phys_res'][res_tag] = this_res_dict[res_tag]
+
+                    if this_param.lower() == 'ang_res':
+                        this_res_dict = ast.literal_eval(this_value)
+                        if type(this_res_dict) != type({}):
+                            logger.warning("Format of res string not a dictionary. Line is:")
+                            logger.warning(line)
+                        for res_tag in this_res_dict.keys():
+
+                            # EWR : error checking / sanity here comparing string to numerical value.
+
+                            out_dict[each_config][each_product]['ang_res'][res_tag] = this_res_dict[res_tag]
+
+                    if this_param.lower() == 'mask_configs':
+                        this_mask_list = ast.literal_eval(this_value)
+                        if type(this_mask_list) != type([]):
+                            logger.warning("Format of mask configs not a list. Line is:")
+                            logger.warning(line)
+                        for cross_config in this_mask_list:
+                            current_list = out_dict[each_config][each_product]['mask_configs']
+                            if cross_config not in current_list:
+                                current_list.append(cross_config)
+                                out_dict[each_config][each_product]['mask_configs'] = current_list
+
+                    if this_param.lower() == 'moments':
+                        this_moment_list = ast.literal_eval(this_value)
+                        if type(this_moment_list) != type([]):
+                            logger.warning("Format of moments not a list. Line is:")
+                            logger.warning(line)
+                        for this_moment in this_moment_list:
+                            current_list = out_dict[each_config][each_product]['moments']
+                            if this_moment not in current_list:
+                                current_list.append(this_moment)
+                                out_dict[each_config][each_product]['moments'] = current_list
+
+                    # Keywords for masking, noise
+
+                    for valid_dict in ['strictmask_kw','broadmask_kw','noise_kw','convolve_kw']:
+                        if this_param.lower().strip() != valid_dict:
+                            continue
+                        this_kw_dict = ast.literal_eval(this_value)
+                        if type(this_kw_dict) != type({}):
+                            logger.warning("Format of mask keywords is a dict. Line is:")
+                            logger.warning(line)
+                            continue
+
+                        if valid_dict not in out_dict[each_config][each_product].keys():
+                            out_dict[each_config][each_product][valid_dict] = {}
+
+                        for this_tag in this_kw_dict.keys():
+                            out_dict[each_config][each_product][valid_dict][this_tag] = \
+                                this_kw_dict[this_tag]
+
+            lines_read += 1
+
+        # Close and return
+
+        infile.close()
+            
+        logger.info("Read "+str(lines_read)+" lines into a derived product definition dictionary.")
+
+        return(out_dict)
+
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&% 
+# Batch read the other keys.
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&% 
 
 # Mostly these wrap around the programs in utilsKeyReaders , which
 # parse individual key files into dictionaries.
@@ -562,12 +807,21 @@ class KeyHandler:
             key_list=self._imaging_keys, reader_function=self._read_imaging_key,
             key_dir=self._key_dir, existing_dict=self._imaging_dict)
 
+        self._initialize_derived_dict()
+        self._derived_dict = key_readers.batch_read(
+            key_list=self._derived_keys, reader_function=self._read_derived_key,
+            key_dir=self._key_dir, existing_dict=self._derived_dict)
+
         self._override_dict = key_readers.batch_read(
             key_list=self._override_keys, reader_function=key_readers.read_override_key,
             key_dir=self._key_dir)
 
         self._distance_dict = key_readers.batch_read(
             key_list=self._distance_keys, reader_function=key_readers.read_distance_key,
+            key_dir=self._key_dir)
+
+        self._moment_dict = key_readers.batch_read(
+            key_list=self._moment_keys, reader_function=key_readers.read_moment_key,
             key_dir=self._key_dir)
 
 ##############################################################
@@ -761,8 +1015,8 @@ class KeyHandler:
             return(None)
 
         logger.warning("Missing a total of "+str(len(self._missing_targets))+" target definitions.") # missing sources in the target_definitions.txt
-        #for target in self._missing_targets:
-        #    logger.error("missing: "+target)
+        for target in self._missing_targets:
+           logger.error("missing: "+target)
 
         return()
 
@@ -1287,7 +1541,9 @@ class KeyHandler:
 
     def get_distance_for_target(self, target=None):
         """
-        Get the distance (in Mpc) associated with a target.
+        Get the distance (in Mpc) associated with a target. If the
+        target is part of a mosaic, return the distance to the whole
+        galaxy.
         """
         if target is None:
             logging.error("Please specify a target.")
@@ -1296,25 +1552,28 @@ class KeyHandler:
         _, target_name = self.is_target_in_mosaic(target, return_target_name=True)
 
         distance = None
-        #logger.debug('*******self._distance_dict*******'+': '+str(self._distance_dict))
+
         if self._distance_dict is not None:
-            #logger.debug('*******self._distance_dict.keys()*******'+': '+str(self._distance_dict.keys()))
+
             if target_name in self._distance_dict:
                 if 'distance' in self._distance_dict[target_name]:
                     distance = self._distance_dict[target_name]['distance']
+                    
+        return(distance)
 
-        #if distance is None:
-        #    logging.error('No distance value is set for the target '+target+'. Please check your "distance_key.txt".')
-        #    raise Exception('No distance value is set for the target '+target)
-        # -- We will not throw an exception here. distance is used by utilsResolutions which will throw an exception when distance is really needed and not found.
-
-        return distance
 
     def get_system_velocity_and_velocity_width_for_target(
         self,
         target=None,
+        check_parent=False,
         ):
         """
+
+        Inputs
+        ------
+        check_parent: bool, optional
+            If part of a linear mosaic, return the vsys, vwidth of the parent
+            target.
         """
         if target is None:
             logging.error("Please specify a target.")
@@ -1326,6 +1585,20 @@ class KeyHandler:
             if 'vsys' in self._target_dict[target] and 'vwidth' in self._target_dict[target]:
                 target_vsys = self._target_dict[target]['vsys']
                 target_vwidth = self._target_dict[target]['vwidth']
+
+
+                # If this is part of a linear mosaic, check that vwidth is
+                # equivalent so the full line extent is used for all chunks.
+                if check_parent and target in self._mosaic_assign_dict:
+                    parent = self._mosaic_assign_dict[target]
+                    parent_vsys = self._target_dict[parent]['vsys']
+                    parent_vwidth = self._target_dict[parent]['vwidth']
+
+                    target_vsys = parent_vsys
+                    target_vwidth = parent_vwidth
+
+                    logger.warning("... Found parent target {}. Using parent ".format(parent) +
+                                   "vsys, vwidth for {}".format(target))
 
         if target_vsys is None or target_vwidth is None:
             logging.error('No vsys or vwidth values set for the target '+target+'. Please check your "target_definitions.txt".')
@@ -1531,6 +1804,7 @@ class KeyHandler:
         config=None,
         project=None,
         check_linmos=False,
+        strict_config=True,
         ):
         """
         Loop over the the target name, project tag, array tag, and
@@ -1539,6 +1813,13 @@ class KeyHandler:
         mosaic if the target is not represented in the dictionary. If
         a configuration is supplied, then only include array_tags that
         contribute to that configuration.
+
+        Note that the interaction with configs that contain multiple
+        arrays is tricky. By default, if "strict_config" is TRUE, it
+        will only loop over targets that have data from ALL arrays in
+        the configuration. For example to be included in a "12m+7m"
+        configuration you need both "12m" AND "7m" data. Set
+        strict_config to FALSE to adjust this behaviour.
         """
 
         # if user has input a target or target list, match to it
@@ -1601,29 +1882,80 @@ class KeyHandler:
                         just_arraytags.append(this_tag)
 
         # Loop over targets
-        for this_target in self._ms_dict.keys():
+        target_list = self._ms_dict.keys()
+        target_list.sort()
+        for this_target in target_list:
 
             # if user has input targets, match it
             if len(just_targets) > 0:
                 if not (this_target in just_targets):
                     continue
 
+            # If we're being strict, only consider targets that have
+            # data associated with the user-supplied configs.
+
+            if strict_config:
+
+                # This list holds the valid array tags for this target.
+
+                valid_arraytags = []
+
+                # This mode only works with a user-supplied list of
+                # configs. Else we loop over all measurement sets.
+
+                if config is not None:
+                    if type(config) == type(''):
+                        input_configs = [config]
+                    elif type(config) == type([]):
+                        input_configs = config
+                    else:
+                        logger.error("Expected list or string.")
+                        raise Exception("Expected list or string.")
+                    
+                    has_data_for_any_config = False
+
+                    # Check if the target has data for that configuration
+                    for this_config in input_configs:
+
+                        if self.has_data_for_config(target=this_target,config=this_config,strict=True):
+                            has_data_for_any_config = True
+
+                            # Note the array tags in this, known to be valid, configuration
+                            for this_arraytag in self.get_array_tags_for_config(this_config):
+                                if valid_arraytags.count(this_arraytag) == 0:
+                                    valid_arraytags.append(this_arraytag)
+                            
+                    # If there are no valid configurations skip.
+                    if not has_data_for_any_config:
+                        continue
+
             # loop over projects
-            for this_project in self._ms_dict[this_target].keys():
+            project_list = self._ms_dict[this_target].keys()
+            project_list.sort()
+            for this_project in project_list:
 
                 if len(just_projects) > 0:
                     if not (this_project in just_projects):
                         continue
 
                 # loop over array tags
-                for this_arraytag in self._ms_dict[this_target][this_project].keys():
+                arraytag_list = self._ms_dict[this_target][this_project].keys()
+                arraytag_list.sort()
+                for this_arraytag in arraytag_list:
 
                     if len(just_arraytags) > 0:
                         if not (this_arraytag in just_arraytags):
                             continue
 
+                    if strict_config and config is not None:
+                        if valid_arraytags.count(this_arraytag) == 0:
+                            continue
+
                     # loop over obs nums
-                    for this_obsnum in self._ms_dict[this_target][this_project][this_arraytag].keys():
+
+                    obsnum_list = self._ms_dict[this_target][this_project][this_arraytag].keys()
+                    obsnum_list.sort()
+                    for this_obsnum in obsnum_list:
 
                         yield this_target, this_project, this_arraytag, this_obsnum
 
@@ -1694,6 +2026,69 @@ class KeyHandler:
 
         ms_file_path = file_paths[0]
         return(ms_file_path)
+
+    def has_data_for_config(
+        self,
+        target=None,
+        config=None,
+        strict=True,
+        ):
+        """
+        Test whether a target has data for a configuration in the ms
+        key. If "strict" is TRUE then require that a target has data
+        from ALL arrays that make up the configuration.
+        """
+        
+        if target is None:
+            logging.error("Please specify a target.")
+            return(None)
+        if config is None:
+            logging.error("Please specify a config.")
+            return(None)
+
+        config_array_tags = self.get_array_tags_for_config(config)
+        
+        arraytags_for_target = []
+
+        for this_target in self._ms_dict.keys():
+
+            if this_target != target:
+                continue
+
+            for this_project in self._ms_dict[this_target].keys():
+                
+                for this_arraytag in self._ms_dict[this_target][this_project].keys():
+                    
+                    arraytags_for_target.append(this_arraytag)
+
+        has_any = False
+        missing_any = False
+
+        for this_config_arraytag in config_array_tags:
+
+            missing_this_one = True
+
+            for this_target_arraytag in arraytags_for_target:
+
+                if this_config_arraytag == this_target_arraytag:
+                    missing_this_one = False
+                    has_any = True
+
+            if missing_this_one:
+                missing_any = True
+                
+        if strict:
+            if missing_any:
+                return(False)
+            else:
+                return(True)
+        else:
+            if has_any:
+                return(False)
+            else:
+                return(True)
+
+        return(False)
 
     def get_field_for_input_ms(
         self,
@@ -1947,62 +2342,143 @@ class KeyHandler:
 
         return(this_dict['clean_scales_arcsec'])
 
-
-    def get_res_for_config(
-        self,
-        config=None,
+    def get_ang_res_dict(self, config=None, product=None,
         ):
         """
-        Return the resolutions used for convolution and product
-        creation for an interferometric or feather configuration.
+        Return the angular resolutions for derived product creation
+        for a combination of resolution and spectral product.
+        """
+
+        if config is None:
+            logger.warning("Need a config.")
+            return(None)
+
+        if product is None:
+            logger.warning("Need a product.")
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return({})
+
+        if product not in self._derived_dict[config].keys():
+            return({})
+
+        return(self._derived_dict[config][product]['ang_res'])
+
+    def get_phys_res_dict(
+        self,
+        config=None,
+        product=None,
+        ):
+        """
+        Return the physical resolutions for derived product creation
+        for a combination of resolution and spectral product.
+        """
+
+        if config is None:
+            logger.warning("Need a config.")
+            return(None)
+
+        if product is None:
+            logger.warning("Need a product.")
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return({})
+
+        if product not in self._derived_dict[config].keys():
+            return({})
+
+        return(self._derived_dict[config][product]['phys_res'])
+
+    def get_derived_kwargs(self, config=None, product=None,
+                           kwarg_type='strictmask_kw'):
+        """
+        Get the dictionary of keyword arguments from the derived key
+        for masking or noise estimation. Valid kwarg_types are
+        'strictmask_kw', 'broadmask_kw', 'noise_kw'
+        """
+        
+        if config is None:
+            logger.warning("Need a config.")
+            return(None)
+
+        if product is None:
+            logger.warning("Need a product.")
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return({})
+
+        if product not in self._derived_dict[config].keys():
+            return({})
+
+        if kwarg_type not in self._derived_dict[config][product].keys():
+            return({})
+
+        return(self._derived_dict[config][product][kwarg_type].copy())
+
+    def get_linked_mask_configs(
+        self,
+        config=None,
+        product=None,
+        ):
+        """
+        Return the list of linked configurations used in making hybrid
+        masks.
         """
 
         if config is None:
             return(None)
 
-        if config in self._config_dict['interf_config'].keys():
-            this_dict = self._config_dict['interf_config'][config]
-        elif config in self._config_dict['feather_config'].keys():
-            this_dict = self._config_dict['feather_config'][config]
-        else:
+        if product is None:
             return(None)
 
-        res_array = [] # a string array
+        if config not in self._derived_dict.keys():
+            return([])
 
-        if 'res_min_arcsec' in this_dict and 'res_max_arcsec' in this_dict and 'res_step_factor' in this_dict:
-            min_res = this_dict['res_min_arcsec']
-            max_res = this_dict['res_max_arcsec']
-            step = this_dict['res_step_factor']
-            #max_steps = np.log10(max_res/min_res)/np.log10(step)+1
-            #res_array = min_res*step**(np.arange(0.,max_steps,1))
-            #res_array = res_array[res_array <= max_res]
-            res_list = 10**np.arange(np.log10(min_res), np.log10(max_res)+0.5*np.log10(step), np.log10(step))
-            res_array.extend([str(t)+'arcsec' for t in res_list])
+        if product not in self._derived_dict[config].keys():
+            return([])
 
-        if 'res_list' in this_dict:
-            if np.isscalar(this_dict['res_list']):
-                res_array.append(this_dict['res_list'])
-            else:
-                res_array.extend([str(t) for t in this_dict['res_list']]) # if res_list item has no unit, then it will be parsed as arcsec unit in utilsResolutions
+        return(self._derived_dict[config][product]['mask_configs'])
 
-        return res_array
+    def get_moment_list(
+        self,
+        config=None,
+        product=None,
+        ):
+        """
+        Return the list of moments to build for a config + product.
+        masks.
+        """
 
-    #
-    # 20200304: 'get_tag_for_res' is replaced by 'utilsResolutions.get_tag_for_res'
-    #
-    #def get_tag_for_res(
-    #    self,
-    #    res=None,
-    #    ):
-    #    """
-    #    Return a string in the format we use for filenames given a float resolution in arcseconds.
-    #    """
-    #
-    #    sigfigs = 2
-    #
-    #    res_str = str(int(floor(res)))+'p'+str(int(round((res-floor(res))*10**sigfigs))).zfill(sigfigs)
-    #
-    #    return(res_str)
+        if config is None:
+            return(None)
+
+        if product is None:
+            return(None)
+
+        if config not in self._derived_dict.keys():
+            return([])
+
+        if product not in self._derived_dict[config].keys():
+            return([])
+
+        return(self._derived_dict[config][product]['moments'])
+
+    def get_params_for_moment(self, moment=None):
+        """
+        Return parameter dictionary for a moment.
+        """
+
+        if moment is None:
+            return(None)
+
+        if moment not in self._moment_dict.keys():
+            logger.error("Moment not found in keys: "+str(moment))
+            return(None)
+
+        return(self._moment_dict[moment])
 
     def print_configs(
         self
@@ -2058,6 +2534,56 @@ class KeyHandler:
             if 'line_tag' in self._config_dict['line_product'][this_product].keys():
                 line_name = self._config_dict['line_product'][this_product]['line_tag']
                 logger.info("... ... line name code "+str(line_name))
+
+        return()
+
+    def print_missing_distances(
+        self
+        ):
+        """
+        Print out the missing distances
+        """
+
+        if self._distance_dict is None:
+            logger.info("... there is no distance dictionary defined.")
+            return()
+
+        missing_targets = []
+        for this_target in self.get_all_targets():
+            if self.get_distance_for_target(this_target) is None:
+                missing_targets.append(this_target)
+        
+        if len(missing_targets) == 0:
+            logger.info("... no targets are missing distances!")
+            return()
+
+        logger.info("... targets missing distances: "+str(missing_targets))
+        return()
+
+    def print_derived(
+        self
+        ):
+        """
+        Print out the information for derived products.
+        """
+        
+        if self._derived_dict is None:
+            return()
+
+        for this_config in self.get_all_configs():
+            all_products = self.get_continuum_products() + self.get_line_products()
+            for this_product in all_products:
+                logger.info("... derived produts for "+this_config+" "+this_product)
+
+                ang_res = self._derived_dict[this_config][this_product]['ang_res']
+                phys_res = self._derived_dict[this_config][this_product]['phys_res']
+                linked_configs = self._derived_dict[this_config][this_product]['mask_configs']
+                moments = self._derived_dict[this_config][this_product]['moments']
+
+                logger.info("... ... angular resolutions [arcsec]: "+str(ang_res))
+                logger.info("... ... physical resolutions [pc]: "+str(phys_res))
+                logger.info("... ... linked configs for masking: "+str(linked_configs))
+                logger.info("... ... moments to produce: "+str(moments))
 
         return()
 

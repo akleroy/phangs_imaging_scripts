@@ -297,16 +297,25 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
     # 
     # Read file
     logger.info("Reading: "+fname)
+
     delim = ',' if delim is None else delim
+
     lines = [re.sub('['+delim+']+', delim, t) for t in open(fname, 'r').readlines()] # compress multiple delim
-    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim)==4))]
+
+    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim)==1))]
+
     lines_read = 0
     for t in lines:
-        if re.match(r'^[0-9eE.+-]+$', t.split(delim)[1]):
-            out_dict[t.split(delim)[0]] = {}
-            out_dict[t.split(delim)[0]]['distance'] = float(t.split(delim)[1])
+        name = t.split(delim)[0]
+        if name.strip() == 'galaxy':
+            continue
+        dist_mpc = t.split(delim)[1]
+        if re.match(r'^[0-9eE.+-]+$', dist_mpc):
+            out_dict[name] = {}
+            out_dict[name]['distance'] = float(dist_mpc)
             #logger.debug('distance of '+t.split(delim)[0]+' is '+t.split(delim)[1]+' Mpc')
             lines_read += 1
+
         # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
     logger.info("Read "+str(lines_read)+" lines into a target/distance dictionary.")
     # 
@@ -512,6 +521,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'array_tags':[],
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
+                'res_min_pc':0.0,
+                'res_max_pc':0.0,
                 'res_step_factor':1.0,
                 'res_list':[],
                 'clean_scales_arcsec':[]
@@ -523,6 +534,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_min_arcsec':0.0,
                 'res_max_arcsec':0.0,
                 'res_step_factor':1.0,
+                'res_min_pc':0.0,
+                'res_max_pc':0.0,
                 'res_list':[]
                 }
             
@@ -567,7 +580,88 @@ def read_config_key(fname='', existing_dict=None, delim=None):
     return(out_dict)
 
 ##############################################################
-# Override Key
+# Moment Definition Key
+##############################################################
+
+def read_moment_key(fname='', existing_dict=None, delim=None):
+    """
+    Read a moment key.
+    """
+
+    # Check file existence
+
+    if os.path.isfile(fname) is False:
+        logger.error("I tried to read key "+fname+" but it does not exist.")
+        return(existing_dict)
+
+    logger.info("Reading: "+fname)
+
+    # Expected Format
+
+    expected_words = 3
+    expected_format = "moment_name param_name params_values"
+
+
+    # Initialize the dictionary
+
+    if existing_dict is None:
+        out_dict = {}
+    else:
+        out_dict = existing_dict
+
+    # Open File
+
+    infile = open(fname, 'r')
+
+    # Loop over the lines    
+    lines_read = 0
+    while True:
+        line  = infile.readline()
+        if len(line) == 0:
+            break
+        if skip_line(line, expected_words=expected_words, delim=delim, expected_format=expected_format):
+            continue
+
+        this_moment, this_param, this_value = parse_one_line(line, delim=delim)
+
+        # Check if the moment of entry is new
+        if (this_moment in out_dict.keys()) == False:
+            out_dict[this_moment] = {
+                'algorithm':None,
+                'mask':None,
+                'ext':None,
+                'ext_error':None,
+                'round':1,
+                'kwargs':{},
+                }
+
+        if (this_param not in out_dict[this_moment].keys()):
+            logger.error("Unrecognized parameter in moment definitions. Line is:")
+            logger.error(line)
+            raise NotImplementedError
+
+        if this_param in ['algorithm','mask','ext','ext_error']:
+            out_dict[this_moment][this_param] = str(this_value)
+
+        if this_param in ['round']:
+            out_dict[this_moment][this_param] = int(this_value)
+
+        if this_param == 'kwargs':
+            this_dict = ast.literal_eval(this_value)
+            for this_key in this_dict.keys():
+                out_dict[this_moment][this_param][this_key] = this_dict[this_key]
+
+        lines_read += 1
+
+    infile.close()
+
+    logger.info("Read "+str(lines_read)+" lines into a moment definition dictionary.")
+
+    return(out_dict)
+
+
+##############################################################
+# Override Key - PROBABLY WILL BE DEPRECATED
 ##############################################################
 
 # Format still nebulous

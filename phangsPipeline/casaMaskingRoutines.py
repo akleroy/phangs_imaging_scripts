@@ -146,7 +146,6 @@ def estimate_noise(
                 logger.error("Rejected all data. Returning NaN.")
                 return(np.nan)
             use_data = use_data[keep]
-            
         this_noise = np.std(use_data)
         return(this_noise)
 

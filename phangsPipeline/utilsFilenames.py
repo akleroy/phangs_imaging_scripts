@@ -51,12 +51,18 @@ def get_cube_filename(target=None, config=None, product=None,
         if type(ext) is not type(''):
             logging.error("Ext needs to be a string or None.", ext)
             return(None)
-        filename += '_'+ext
+        if ext != '':
+            filename += '_'+ext
 
     if not casa:
         filename += '.fits'
     else:
         filename += casaext
+
+    # klugy cleanup to deal with underscores getting messy
+    filename = filename.replace('__','_')
+    filename = filename.replace('__','_')
+    filename = filename.replace('_.','.')
 
     return(filename)
 
@@ -115,6 +121,11 @@ def get_vis_filename(target=None, config=None, product=None,
             logging.error("Suffix needs to be a string or None.", suffix)
             return(None)
         filename += '.'+suffix        
+
+    # klugy cleanup to deal with underscores getting messy
+    filename = filename.replace('__','_')
+    filename = filename.replace('__','_')
+    filename = filename.replace('_.','.')
 
     return(filename)
 
@@ -186,6 +197,9 @@ def get_staged_msname(target=None, project=None, array_tag=None,
 
     return(filename)
 
+##############################################################
+# 
+##############################################################
 
 def get_derived_rootname(target=None, config=None, product=None,
                          res_tag=None, ext=None, derived=None):

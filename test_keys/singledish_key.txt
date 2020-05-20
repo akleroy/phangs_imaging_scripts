@@ -13,14 +13,14 @@
 # The syntax for the key is space or tab delimited:
 
 # Column 1: target name
-# Column 3: file name (to be searched under 'singledish_root' directory)
 # Column 2: spectral product for this single dish image cube.
+# Column 3: file name (to be searched under 'singledish_root' directory)
 
 # PHANGS-ALMA examples:
 
-#ic1954      cycle5_data/ALMA_TP.IC1954.CO21.processed.fits        co21
-#ngc3621_1   cycle5_data/ALMA_TP.NGC3621.CO21.a.image.VLSRK.fits   co21
-#ngc3621_2   cycle5_data/ALMA_TP.NGC3621.CO21.b.image.VLSRK.fits   co21
+#ic1954    co21  cycle5_data/ALMA_TP.IC1954.CO21.processed.fits        
+#ngc3621_1 co21  cycle5_data/ALMA_TP.NGC3621.CO21.a.image.VLSRK.fits   
+#ngc3621_2 co21  cycle5_data/ALMA_TP.NGC3621.CO21.b.image.VLSRK.fits   
 
 ##########################################################################
 
