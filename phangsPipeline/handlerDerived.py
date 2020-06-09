@@ -105,7 +105,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             do_noise = True
             do_strictmask = True
             do_broadmask = True
-            do_moment = True
+            do_moments = True
 
         # Error checking
         
