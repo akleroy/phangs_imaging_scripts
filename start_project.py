@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # 
+# This code helps generating the basic key files, 
+# it is not necessary to run this if you manually 
+# copy and set all key files from elsewhere. 
+# 
+# Note that even when you have run this, please
+# also carefully check the key files and edit 
+# them for your own project!
+# 
 
 from __future__ import print_function
 import os, sys, re, glob, copy, shutil, time
@@ -64,12 +72,13 @@ def get_skycoord_from_input_str(x):
         if smatch:
             scoord = SkyCoord(smatch.groups()[0]+' '+smatch.groups()[1], unit=('deg','deg'), frame=FK5)
     if scoord is None:
-        raise Exception('Could not parse skycoord from input str %r!'%(x))if re.sub(r'^([0-9]+:[0-9]+:[0-9.]+)[ \t]+([[+-]*[0-9]+:[0-9]+:[0-9.]+)$', x):
+        if re.sub(r'^([0-9]+:[0-9]+:[0-9.]+)[ \t]+([[+-]*[0-9]+:[0-9]+:[0-9.]+)$', x):
+            raise Exception('Could not parse skycoord from input str %r!'%(x))
     return scoord
 
 
 
-# Get template phangsalma_keys dir, we will copy documentation and header from there. 
+# Get template key_templates dir, we will copy documentation and header from there. 
 template_key_dir = os.path.dirname(os.path.abspath(__file__))+os.sep+'key_templates'+os.sep
 if not os.path.isdir(template_key_dir):
     print('Error! Directory "%s" was not found! Please make sure you have downloaded our code completely.'%(template_key_dir))
@@ -168,7 +177,7 @@ ms_root_path_var_dict = {   'name': 'ms_root_path',
                             }
 
 ms_data_path_var_dict = {   'name': 'ms_data_path', 
-                            'prompt': '\nPlease input the name pattern of the ALMA calibrated Measurement Set for {} (no whitespace).\n Use * for matching multiple MS names.\n', 
+                            'prompt': '\nPlease input the name pattern of the ALMA calibrated Measurement Set for {} (relative to the Measurement Set root path, no whitespace).\n Use * for matching multiple MS names.\n', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: x, 
@@ -186,7 +195,7 @@ array_tag_var_dict = {      'name': 'array_tag',
                             }
 
 project_tag_var_dict = {    'name': 'project_tag', 
-                            'prompt': '\nWhich project tag for {} (simple project nick name, no whitespace)?', 
+                            'prompt': '\nWhich project tag for {} (a unique tag, e.g., ALMA project code, no whitespace)?', 
                             'prompt_fields': ['this mosaic observation'], 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: x, 
@@ -272,7 +281,7 @@ lines_to_flag_var_dict = {  'name': 'lines_to_flag',
                             # 'func': lambda x: re.findall(r'\b(co21|13co|c18o|CI|HI)\b', x, re.IGNORECASE), 
 
 key_dir_ok_var_dict = {     'name': 'key_dir_ok', 
-                            'prompt': '\nWe will take current directory as the directory to create our pipeline keys under a "phangsalma_keys" sub-directory.\n Is that OK? [Y/N]', 
+                            'prompt': '\nWe will set the key directory to '+os.path.join(os.getcwd(),'keys')+'.\n Please input Y to confirm or N to modify [Y/N]', 
                             'prompt_fields': None, 
                             'regex': r'^(Y|N).*$', 
                             'func': lambda x: re.sub(r'^(Y|N).*$', r'\1', x.upper())=='Y', 
@@ -290,7 +299,7 @@ key_dir_keep_var_dict = {   'name': 'key_dir_keep',
                             }
 
 key_dir_path_var_dict = {   'name': 'key_dir', 
-                            'prompt': '\nPlease input your preferred configuration key directory (no whitespace):\n', 
+                            'prompt': '\nPlease input your preferred key directory (no whitespace):\n', 
                             'prompt_fields': None, 
                             'regex': r'^([^ ]+)$', 
                             'func': lambda x: os.path.abspath(x)+os.sep, 
@@ -425,12 +434,21 @@ def read_user_input(var_dict, repeat = True, check_file_existence = False, check
             var_value = var_dict['func'](var_str)
             #print('var_value', var_value, 'var_str', var_str)
             if var_value is not None:
-                print('%s = %r'%(var_dict['name'], var_value))
+                # 
                 var_ok = True
                 # 
                 if root_dir != '':
                     if not root_dir.endswith(os.sep):
                         root_dir += os.sep
+                    # 
+                    if type(var_value) is str:
+                        if not os.path.isdir(root_dir+var_value) and os.path.isdir(var_value):
+                            var_value = os.path.relpath(var_value, root_dir) # get relative path if input an absolute path and the root_path
+                # 
+                if type(var_value) is str:
+                    var_value = var_value.strip()
+                # 
+                print('%s = %r'%(var_dict['name'], var_value))
                 # 
                 if check_dir_existence:
                     if var_value.find('*') >= 0:
@@ -588,7 +606,7 @@ if not confpar.has_section('master_key'):
     # Read key_dir
     key_dir_ok = read_user_input(key_dir_ok_var_dict)
     if key_dir_ok:
-        key_dir_path = os.getcwd()+os.sep+"phangsalma_keys"+os.sep
+        key_dir_path = os.getcwd()+os.sep+"keys"+os.sep
     else:
         key_dir_path = read_user_input(key_dir_path_var_dict)
     
@@ -635,7 +653,7 @@ has_multipart = read_user_input(has_multipart_var_dict)
 galaxy_multiparts = []
 if has_multipart:
     multipart_num = read_user_input(multipart_num_var_dict)
-    galaxy_multiparts = ['%s_%d'%(galaxy_name, k) for k in range(multipart_num)]
+    galaxy_multiparts = ['%s_%d'%(galaxy_name, k+1) for k in range(multipart_num)]
 else:
     multipart_num = 1
 
@@ -781,7 +799,7 @@ if do_continuum:
 
 
 
-# We will create key files in a folder named "phangsalma_keys" under current directory
+# We will create key files in a folder named "keys" under current directory
 
 location_keys = OrderedDict() # = {}
 location_keys['key_dir'] = key_dir_path
@@ -804,7 +822,7 @@ target_and_config_keys['config_key'] = 'config_definitions.txt'
 target_and_config_keys['target_key'] = 'target_definitions.txt'
 target_and_config_keys['imaging_key'] = 'imaging_recipes.txt'
 target_and_config_keys['linmos_key'] = 'linearmosaic_definitions.txt'
-target_and_config_keys['dir_key'] = 'dir_key.txt'
+target_and_config_keys['derived_key'] = 'derived_key.txt'
 target_and_config_keys['moment_key'] = 'moment_key.txt'
 target_and_config_keys['override_key'] = 'overrides.txt'
 target_and_config_keys['dir_key'] = 'dir_key.txt'
@@ -1281,30 +1299,16 @@ key_filepath = location_keys['key_dir']+key_filename
 key_contents = []
 # 
 if not os.path.isfile(key_filepath):
-    #copy_key_file_header(template_key_dir+os.sep+key_filename, key_filepath)
     shutil.copy(template_key_dir+os.sep+key_filename, key_filepath)
     print('Initialized "%s"'%(key_filepath))
-else:
-    #key_contents = read_key_file_contents(key_filepath) # below check_contents = key_contents will make us not write duplicated lines. 
-    pass
-# 
-#if True:
-#    with open(key_filepath, 'a') as fp:
-#        colwidth1 = max([len(t) for t in galaxy_multiparts])
-#        colwidth2 = len(galaxy_name)
-#        colwidth1 = colwidth1 if colwidth1>15 else 15
-#        colwidth2 = colwidth2 if colwidth2>15 else 15
-#        colformat = '  {:%d}  {:%d}\n'%(colwidth1+1, colwidth2+1)
-#        for k in range(len(galaxy_multiparts)):
-#            write_line_content_to_fp(fp, colformat.format(galaxy_multiparts[k], galaxy_name), 
-#                                         check_contents = key_contents)
-#    print('Written to "%s"'%(key_filepath))
 
 
 
 # 
 # done
 print('Please check all the above key files carefully!')
+
+print('Note: please define your output resolutions in "derived_key.txt"')
 
 
 
