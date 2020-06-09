@@ -797,12 +797,15 @@ data_file_keys = OrderedDict() # = {}
 data_file_keys['ms_key'] = 'ms_file_key.txt'
 data_file_keys['singledish_key'] = 'singledish_key.txt'
 data_file_keys['cleanmask_key'] = 'cleanmask_key.txt'
+data_file_keys['distance_key'] = 'distance_key.txt'
 
 target_and_config_keys = OrderedDict() # = {}
 target_and_config_keys['config_key'] = 'config_definitions.txt'
 target_and_config_keys['target_key'] = 'target_definitions.txt'
 target_and_config_keys['imaging_key'] = 'imaging_recipes.txt'
 target_and_config_keys['linmos_key'] = 'linearmosaic_definitions.txt'
+target_and_config_keys['dir_key'] = 'dir_key.txt'
+target_and_config_keys['moment_key'] = 'moment_key.txt'
 target_and_config_keys['override_key'] = 'overrides.txt'
 target_and_config_keys['dir_key'] = 'dir_key.txt'
 
@@ -1242,6 +1245,60 @@ for file_name in list_of_files:
             #print(template_key_dir+file_name, key_filepath)
             shutil.copy(template_key_dir+file_name, key_filepath)
             print('Initialized "%s"'%(key_filepath))
+
+
+
+# 
+# 20200609 Need to remind the users to add their line/cont products into "derived_key.txt" if other than co21. 
+key_filename = target_and_config_keys['derived_key']
+key_filepath = location_keys['key_dir']+key_filename
+key_contents = []
+# 
+if not os.path.isfile(key_filepath):
+    #copy_key_file_header(template_key_dir+os.sep+key_filename, key_filepath)
+    shutil.copy(template_key_dir+os.sep+key_filename, key_filepath)
+    print('Initialized "%s"'%(key_filepath))
+else:
+    key_contents = read_key_file_contents(key_filepath) # below check_contents = key_contents will make us not write duplicated lines. 
+# 
+#if True:
+#    with open(key_filepath, 'a') as fp:
+#        colwidth1 = max([len(t) for t in galaxy_multiparts])
+#        colwidth2 = len(galaxy_name)
+#        colwidth1 = colwidth1 if colwidth1>15 else 15
+#        colwidth2 = colwidth2 if colwidth2>15 else 15
+#        colformat = '  {:%d}  {:%d}\n'%(colwidth1+1, colwidth2+1)
+#        for k in range(len(galaxy_multiparts)):
+#            write_line_content_to_fp(fp, colformat.format(galaxy_multiparts[k], galaxy_name), 
+#                                         check_contents = key_contents)
+#    print('Written to "%s"'%(key_filepath))
+
+
+
+# 
+key_filename = target_and_config_keys['moment_key']
+key_filepath = location_keys['key_dir']+key_filename
+key_contents = []
+# 
+if not os.path.isfile(key_filepath):
+    #copy_key_file_header(template_key_dir+os.sep+key_filename, key_filepath)
+    shutil.copy(template_key_dir+os.sep+key_filename, key_filepath)
+    print('Initialized "%s"'%(key_filepath))
+else:
+    #key_contents = read_key_file_contents(key_filepath) # below check_contents = key_contents will make us not write duplicated lines. 
+    pass
+# 
+#if True:
+#    with open(key_filepath, 'a') as fp:
+#        colwidth1 = max([len(t) for t in galaxy_multiparts])
+#        colwidth2 = len(galaxy_name)
+#        colwidth1 = colwidth1 if colwidth1>15 else 15
+#        colwidth2 = colwidth2 if colwidth2>15 else 15
+#        colformat = '  {:%d}  {:%d}\n'%(colwidth1+1, colwidth2+1)
+#        for k in range(len(galaxy_multiparts)):
+#            write_line_content_to_fp(fp, colformat.format(galaxy_multiparts[k], galaxy_name), 
+#                                         check_contents = key_contents)
+#    print('Written to "%s"'%(key_filepath))
 
 
 
