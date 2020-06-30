@@ -1,0 +1,76 @@
+##########################################################################
+# DERIVED PRODUCT DEFINITION KEY
+##########################################################################
+
+# This key defines the final science products derived by the pipeline.
+
+# Column 1: configuration name (e.g., 12m+7m, 7m+tp, etc.)
+# "all" is an acceptable wildcard.
+
+# Column 2: spectral product name
+# "all" is an acceptable wildcard.
+
+# Column 3: field being defined
+
+# Column 4: values
+
+# FIELDS
+
+# phys_res - target physical resolutions in parsecs. Format is a a set
+# of 'tag':value pairs in which the value is the parsec target and the
+# tag is the tag to insert into filenames.
+
+# ang_res - target angular resolutions in arcseconds. Format is a a
+# set of 'tag':value pairs in which the value is the arcsecond target
+# and the tag is the tag to insert into filenames.
+
+# mask_configs - the names of other configurations to check for
+# masks. Masks from these configurations will be used as part of the
+# hybrid masking step of the pipeline.
+
+# moments - list of moments (defined in the moment key) to calculate
+# for that config.
+
+##########################################################################
+
+all		all	convolve_kw	{}
+
+all		all	noise_kw	{'spec_box':5,'iterations':3}
+
+all		all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
+all		all	strictmask_kw	{'grow_xy':0,'grow_v':0}
+all		all	strictmask_kw	{'min_pix':None,'min_area':None}
+
+all		all	broadmask_kw	{}
+
+12m		all	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0}
+12m		all	ang_res		{'2as':2.0}
+12m		cont	ang_res		{'2as':2.0}
+12m		all	mask_configs	['12m+7m','12m+7m+tp','7m','7m+tp']
+12m		all	moments		['strictmom0','broadmom0']
+
+12m+7m		all	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0}
+12m+7m		all	ang_res		{'2as':2.0}
+12m+7m		cont	ang_res		{'2as':2.0}
+12m+7m		all	mask_configs	['12m+7m+tp','7m','7m+tp']
+12m+7m		all	moments		['strictmom0','broadmom0']
+
+12m+7m+tp	all	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0}
+12m+7m+tp	all	ang_res		{'2as':2.0}
+12m+7m+tp	all	mask_configs	['7m','7m+tp']
+12m+7m+tp	all	moments		['strictmom0','broadmom0']
+
+7m		all	phys_res	{'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
+7m		all	ang_res		{'11as':11.0,'15as':15.0}
+7m		cont	ang_res		{'11as':11.0,'15as':15.0}
+7m		all	mask_configs	['7m+tp']
+7m		all	moments		['strictmom0','strictmom1','strictmom2','strictew']
+7m		all	moments		['broadmom0','broadtpeak','broadtpeak12p5']
+
+7m+tp		all	phys_res	{'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
+7m+tp		all	ang_res		{'11as':11.0,'15as':15.0}
+7m+tp		all	moments		['strictmom0','strictmom1','strictmom2','strictew']
+7m+tp		all	moments		['broadmom0','broadtpeak','broadtpeak12p5']
+
+
+

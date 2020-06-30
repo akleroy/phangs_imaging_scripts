@@ -571,15 +571,15 @@ def clean_loop(
     # Create a text record of progress through successive clean calls.
 
     record = []
-    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, frac_delta_flux")
-    record.append("# column 1: Loop number.")
-    record.append("# column 2: Deconvolver used in clean.")
-    record.append("# column 3: Allocated number of iterations.")
-    record.append("# column 4: Cycleniter used to force major cycles.")
-    record.append("# column 5: Threshold supplied to clean.")
-    record.append("# column 6: Noise level measured in residuals.")
-    record.append("# column 7: Integrated model flux.")
-    record.append("# column 8: Fractional change in flux from previous loop.")
+    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, frac_delta_flux\n")
+    record.append("# column 1: Loop number.\n")
+    record.append("# column 2: Deconvolver used in clean.\n")
+    record.append("# column 3: Allocated number of iterations.\n")
+    record.append("# column 4: Cycleniter used to force major cycles.\n")
+    record.append("# column 5: Threshold supplied to clean.\n")
+    record.append("# column 6: Noise level measured in residuals.\n")
+    record.append("# column 7: Integrated model flux.\n")
+    record.append("# column 8: Fractional change in flux from previous loop.\n")
 
     # Initialize the loop counter and our tracking of the flux in the
     # model (which we use to estimate convergence).
@@ -760,8 +760,53 @@ def clean_loop(
 
 #endregion
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Evaluate the output of imaging
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+def calc_residual_statistics(
+    resid_name=None,
+    mask_name=None,
+    ):
+    """
+    """
+    
+    if os.path.isdir(resid_name) == False:
+        logger.error('Error! The input file "'+resid_name+'" was not found!')
+        return
 
+    if os.path.isdir(mask_name) == False:
+        logger.error('Error! The input file "'+mask_name+'" was not found!')
+        return
+    
+    myia = au.createCasaTool(casaStuff.iatool)
 
+    myia.open(mask_name)
+    mask = myia.getchunk()    
+    myia.close()
 
+    myia.open(resid_name)
+    resid = myia.getchunk()    
+    myia.close()
 
+    vec = resid[((mask == 1)*np.isfinite(resid))]
+    del mask
+    del resid
+
+    current_noise = cmr.noise_for_cube(
+        infile=resid_name,
+        method='chauvmad', niter=5)
+    
+    out_dict = {
+        'cubename':resid_name,
+        'maskname':mask_name,
+        'max':np.max(vec),
+        'p99':np.percentile(vec,99),
+        'p95':np.percentile(vec,95),
+        'p90':np.percentile(vec,90),
+        'noise':current_noise,
+        }
+    
+    return(out_dict)
+    
+    
