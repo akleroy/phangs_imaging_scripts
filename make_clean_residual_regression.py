@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 import os, sys, re, shutil
+import json
 import glob
 import numpy as np
 import scipy.ndimage.morphology as morph
@@ -26,7 +27,7 @@ else:
 from phangsPipeline import handlerTemplate
 from phangsPipeline import handlerKeys
 from phangsPipeline import utilsFilenames
-
+from phangsPipeline import casaImagingRoutines as cir
 
 class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
     """Make clean residual regression
@@ -51,23 +52,42 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
         ):
         """main function to execute.
         """
+        ms_dict = {}
+        ss_dict = {}
         for this_target, this_product, this_config in \
             self.looper(do_targets=True, do_products=True, do_configs=True, just_interf=True):
             # 
-            self.recipe_make_clean_residual_regression(\
+            this_ms_dict = self.recipe_make_clean_residual_regression(
                 target=this_target, 
                 product=this_product, 
                 config=this_config,
                 casaext='_multiscale', 
                 )
+            ms_dict[this_ms_dict['cubename']] = this_ms_dict
+
             # 
-            self.recipe_make_clean_residual_regression(\
+            this_ss_dict = self.recipe_make_clean_residual_regression(
                 target=this_target, 
                 product=this_product, 
                 config=this_config,
                 casaext='_singlescale', 
                 )
+            ss_dict[this_ss_dict['cubename']] = this_ss_dict
     
+        # Convert to a table and write to disk
+        with open('stats_multiscale.json', 'w') as fout:
+            json.dump(ms_dict , fout)
+        with open(r"stats_multiscale.json", "r") as read_file:
+            test = json.load(read_file)
+            print(test)
+
+        # Convert to a table and write to disk
+        with open('stats_singlescale.json', 'w') as fout:
+            json.dump(ss_dict , fout)
+        with open(r"stats_singlescale.json", "r") as read_file:
+            test = json.load(read_file)
+            print(test)
+
     def _fname_dict(
         self,
         product, 
@@ -146,11 +166,17 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
         residual_file = os.path.join(imaging_dir, residual_file)
         mask_file = os.path.join(imaging_dir, mask_file)
         # 
-        self.task_make_clean_residual_regression(\
+
+        stat_dict = self.task_make_clean_residual_regression(
             image_file=image_file, 
             residual_file=residual_file, 
             mask_file=mask_file)
-        
+
+        stat_dict['target'] = target
+        stat_dict['product'] = product
+        stat_dict['config'] = config
+
+        return(stat_dict)
 
     def task_make_clean_residual_regression(
         self, 
@@ -164,9 +190,11 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
         logger.info('residual : %r'%(residual_file))
         logger.info('mask     : %r'%(mask_file))
         
-        # TODO
-        # exportfits?
-        # analyze residual?
+        stat_dict = cir.calc_residual_statistics(
+            resid_name=residual_file,mask_name=mask_file)
+
+        return(stat_dict)
+        
 
 
 ########
