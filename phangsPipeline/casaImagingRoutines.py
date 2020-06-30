@@ -571,15 +571,15 @@ def clean_loop(
     # Create a text record of progress through successive clean calls.
 
     record = []
-    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, frac_delta_flux")
-    record.append("# column 1: Loop number.")
-    record.append("# column 2: Deconvolver used in clean.")
-    record.append("# column 3: Allocated number of iterations.")
-    record.append("# column 4: Cycleniter used to force major cycles.")
-    record.append("# column 5: Threshold supplied to clean.")
-    record.append("# column 6: Noise level measured in residuals.")
-    record.append("# column 7: Integrated model flux.")
-    record.append("# column 8: Fractional change in flux from previous loop.")
+    record.append("loopnum, deconvolver, niter, cycleniter, threshold, noise, model_flux, frac_delta_flux\n")
+    record.append("# column 1: Loop number.\n")
+    record.append("# column 2: Deconvolver used in clean.\n")
+    record.append("# column 3: Allocated number of iterations.\n")
+    record.append("# column 4: Cycleniter used to force major cycles.\n")
+    record.append("# column 5: Threshold supplied to clean.\n")
+    record.append("# column 6: Noise level measured in residuals.\n")
+    record.append("# column 7: Integrated model flux.\n")
+    record.append("# column 8: Fractional change in flux from previous loop.\n")
 
     # Initialize the loop counter and our tracking of the flux in the
     # model (which we use to estimate convergence).
