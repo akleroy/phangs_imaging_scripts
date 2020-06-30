@@ -5,16 +5,8 @@ from __future__ import print_function
 import os, sys, re, shutil
 import glob
 import numpy as np
-from astropy.io import fits
-from astropy.wcs import WCS
-from astropy.wcs.utils import proj_plane_pixel_scales, proj_plane_pixel_area
-from astropy.convolution import convolve, Gaussian2DKernel, Box1DKernel
-import astropy.units as u
 import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
-import spectral_cube
-from spectral_cube import SpectralCube
-from radio_beam import Beam
 
 import logging
 logging.basicConfig()
@@ -25,16 +17,12 @@ casa_enabled = (sys.argv[0].endswith('start_casa.py'))
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    reload(scmasking)
-    reload(scproduct)
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline')
 
 #print(sys.path)
-#from phangsPipeline import scMaskingRoutines as scmasking
-#from phangsPipeline import scDerivativeRoutines as scproduct
 from phangsPipeline import handlerTemplate
 from phangsPipeline import handlerKeys
 from phangsPipeline import utilsFilenames

@@ -760,8 +760,53 @@ def clean_loop(
 
 #endregion
 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+# Evaluate the output of imaging
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+def calc_residual_statistics(
+    resid_name=None,
+    mask_name=None,
+    ):
+    """
+    """
+    
+    if os.path.isdir(resid_name) == False:
+        logger.error('Error! The input file "'+resid_name+'" was not found!')
+        return
 
+    if os.path.isdir(mask_name) == False:
+        logger.error('Error! The input file "'+mask_name+'" was not found!')
+        return
+    
+    myia = au.createCasaTool(casaStuff.iatool)
 
+    myia.open(mask_name)
+    mask = myia.getchunk()    
+    myia.close()
 
+    myia.open(resid_name)
+    resid = myia.getchunk()    
+    myia.close()
 
+    vec = resid[((mask == 1)*np.isfinite(resid))]
+    del mask
+    del resid
+
+    current_noise = cmr.noise_for_cube(
+        infile=resid_name,
+        method='chauvmad', niter=5)
+    
+    out_dict = {
+        'cubename':resid_name,
+        'maskname':mask_name,
+        'max':np.max(vec),
+        'p99':np.percentile(vec,99),
+        'p95':np.percentile(vec,95),
+        'p90':np.percentile(vec,90),
+        'noise':current_noise,
+        }
+    
+    return(out_dict)
+    
+    
