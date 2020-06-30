@@ -29,8 +29,9 @@ from phangsPipeline import handlerKeys
 from phangsPipeline import utilsFilenames
 from phangsPipeline import casaImagingRoutines as cir
 
-class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
-    """Make clean residual regression
+class StatsHandler(handlerTemplate.HandlerTemplate):
+    """
+    Make handler for statistics.
     """
     
     ############
@@ -57,22 +58,24 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
         for this_target, this_product, this_config in \
             self.looper(do_targets=True, do_products=True, do_configs=True, just_interf=True):
             # 
-            this_ms_dict = self.recipe_make_clean_residual_regression(
+            this_ms_dict = self.recipe_residual_regression(
                 target=this_target, 
                 product=this_product, 
                 config=this_config,
                 casaext='_multiscale', 
                 )
-            ms_dict[this_ms_dict['cubename']] = this_ms_dict
+            if this_ms_dict is not None:
+                ms_dict[this_ms_dict['cubename']] = this_ms_dict
 
             # 
-            this_ss_dict = self.recipe_make_clean_residual_regression(
+            this_ss_dict = self.recipe_residual_regression(
                 target=this_target, 
                 product=this_product, 
                 config=this_config,
                 casaext='_singlescale', 
                 )
-            ss_dict[this_ss_dict['cubename']] = this_ss_dict
+            if this_ss_dict is not None:
+                ss_dict[this_ss_dict['cubename']] = this_ss_dict
     
         # Convert to a table and write to disk
         with open('stats_multiscale.json', 'w') as fout:
@@ -124,7 +127,7 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
         return fname_dict
     
     
-    def recipe_make_clean_residual_regression(
+    def recipe_residual_regression(
         self,
         target=None, 
         product=None, 
@@ -167,10 +170,12 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
         mask_file = os.path.join(imaging_dir, mask_file)
         # 
 
-        stat_dict = self.task_make_clean_residual_regression(
+        stat_dict = self.task_residual_regression(
             image_file=image_file, 
             residual_file=residual_file, 
             mask_file=mask_file)
+        if stat_dict is None:
+            return(stat_dict)
 
         stat_dict['target'] = target
         stat_dict['product'] = product
@@ -178,7 +183,7 @@ class MakeCleanResidualRegressionHandler(handlerTemplate.HandlerTemplate):
 
         return(stat_dict)
 
-    def task_make_clean_residual_regression(
+    def task_residual_regression(
         self, 
         image_file, 
         residual_file, 
@@ -219,7 +224,7 @@ if __name__ == '__main__':
         raise Exception('Error! Input master key file does not exist: %r'%(master_key))
     
     this_key_handler = handlerKeys.KeyHandler(master_key = master_key)
-    this_handler = MakeCleanResidualRegressionHandler(key_handler = this_key_handler)
+    this_handler = StatsHandler(key_handler = this_key_handler)
     this_handler.set_line_products(only=['co21'])
     this_handler.set_no_cont_products(True)
     this_handler.go()
