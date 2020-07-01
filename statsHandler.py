@@ -50,6 +50,8 @@ class StatsHandler(handlerTemplate.HandlerTemplate):
     
     def go(
         self, 
+        outfile_singlescale='stats_singlesale.json',
+        outfile_multiscale='stats_multiscale.json',
         ):
         """main function to execute.
         """
