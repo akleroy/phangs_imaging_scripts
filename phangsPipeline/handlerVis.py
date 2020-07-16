@@ -97,6 +97,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         do_extract_cont = False,
         extra_ext = '',
         make_directories = True,
+        statwt_line = True,
         statwt_cont = True,
         collapse_cont = True,
         timebin = None,
@@ -203,7 +204,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             config = this_config,
                             product = this_product,
                             exact = False,
-                            do_statwt = True,
+                            do_statwt = statwt_line,
                             extra_ext_in = "",
                             contsub = "prefer",
                             # could add algorithm flags here
