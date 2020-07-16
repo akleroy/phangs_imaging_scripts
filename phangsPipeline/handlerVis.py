@@ -33,9 +33,12 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-casa_enabled = ((sys.argv[0].endswith('start_casa.py'))
-                or (sys.argv[0].endswith('casa')))
-
+# Check casa environment by importing CASA-only packages
+try:
+    import taskinit
+    casa_enabled = True
+except ImportError:
+    casa_enabled = False
 
 if casa_enabled:
     logger.debug('casa_enabled = True')

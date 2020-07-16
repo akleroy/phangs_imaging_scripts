@@ -12,8 +12,10 @@ if pipepath is not None:
 else:
     sys.path.append(os.getcwd())
 
-casa_enabled = (sys.argv[0].endswith('start_casa.py'))
-if not casa_enabled:
+# Check casa environment by importing CASA-only packages
+try:
+    import taskinit
+except ImportError:
     print('Please run this script inside CASA!')
     sys.exit()
 
