@@ -1,4 +1,4 @@
-from spectral_cube import SpectralCube
+from spectral_cube import SpectralCube, LazyMask
 from radio_beam import Beam
 
 import astropy.units as u
@@ -21,6 +21,8 @@ def smooth_cube(
     velocity_resolution=None,
     nan_treatment='interpolate', # can also be 'fill'
     tol=None,
+    make_coverage_cube=False,
+    coveragefile=None,
     overwrite=True
     ):
     """
@@ -30,6 +32,10 @@ def smooth_cube(
 
     tol is a fraction. When the target beam is within tol of the
     original beam, we just copy.
+
+    Optionally, also calculate a coverage footprint in which original
+    (finite) cube coverage starts at 1.0 and the output cube shows the
+    fraction of finite pixels.
     """
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -88,12 +94,25 @@ def smooth_cube(
 
         logger.info("... fractional change: "+str(delta))
         
+        if make_coverage_cube:
+            coverage = SpectralCube(np.isfinite(cube.unmasked_data[:])*1.0,
+                                    wcs=cube.wcs,
+                                    header=cube.header,
+                                    meta={'BUNIT': ' ', 'BTYPE': 'Coverage'})
+            coverage = coverage.with_mask(LazyMask(np.isfinite,cube=coverage))
+            
+
         if delta > tol:
             logger.info("... proceeding with convolution.")
             cube = cube.convolve_to(target_beam,
                                     nan_treatment=nan_treatment)
+            if make_coverage_cube:
+                coverage = coverage.convolve_to(target_beam,
+                                                nan_treatment=nan_treatment)
+
         if np.abs(delta) < tol:
             logger.info("... current resolution meets tolerance.")
+
         if delta < -1.0*tol:
             logger.info("... resolution cannot be matched. Returning")
             return(None)
@@ -113,6 +132,8 @@ def smooth_cube(
         nChan = (velocity_resolution / dv).to(u.dimensionless_unscaled).value
         if nChan > 1:
             cube = cube.spectral_smooth(Box1DKernel(nChan))
+            if make_coverage_cube:
+                coverage = coverage.spectral_smooth(Box1DKernel(nChan))
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Write or return as requested
@@ -120,5 +141,8 @@ def smooth_cube(
 
     if outfile is not None:
         cube.write(outfile, overwrite=overwrite)
+        if make_coverage_cube:
+            if coveragefile is not None:
+                coverage.write(coveragefile, overwrite=overwrite)
 
     return(cube)

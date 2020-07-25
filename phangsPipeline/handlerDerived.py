@@ -338,7 +338,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             ext = res_tag+extra_ext_out,
             casa = False)
 
+        coverage_filename = utilsFilenames.get_cube_filename(
+            target = target, config = config, product = product,
+            ext = res_tag+'_coverage'+extra_ext_out,
+            casa = False)
+
         fname_dict['cube'] = cube_filename
+        fname_dict['coverage'] = coverage_filename
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Noise Cubes
@@ -460,6 +466,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         input_file = fname_dict_in['orig']
         outfile = fname_dict_out['cube']
+        coveragefile = fname_dict_out['coverage']
 
         # Check input file existence        
     
@@ -489,6 +496,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         
         logger.info("Input file "+input_file)
         logger.info("Target file: "+outfile)
+        logger.info("Coverage file: "+coveragefile)
         logger.info("Keywords: "+str(convolve_kwargs))
             
         if (not self._dry_run):
@@ -517,6 +525,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
                                 angular_resolution=input_res_value, 
                                 tol=tol, nan_treatment=nan_treatment,
+                                make_coverage_cube=True, coveragefile=outdir+coveragefile,
                                 overwrite=overwrite)
 
                 if res_type == 'phys':
@@ -529,6 +538,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
                                 linear_resolution=input_res_value, distance=this_distance,
                                 tol=tol, nan_treatment=nan_treatment,
+                                make_coverage_cube=True, coveragefile=outdir+coveragefile,
                                 overwrite=overwrite)
 
         return()
