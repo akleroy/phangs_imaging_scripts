@@ -236,17 +236,6 @@ def signal_mask(
         logger.info('Returning. Generalize the code if you want different syntax.')
         return
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    if operation == 'AND' or operation == 'OR':
-        if os.path.isdir(cube_root+'.mask'+suffix_in) == True:
-            myia.open(cube_root+'.mask'+suffix_in)
-            old_mask = myia.getchunk()
-            myia.close()
-        else:
-            logger.info("Operation AND/OR requested but no previous mask found.")
-            logger.info("... will set operation=NEW.")
-            operation = 'NEW'    
-
     if os.path.isdir(cube_root+'.residual'+suffix_in) == True:
         stats = stat_cube(cube_root+'.residual'+suffix_in)
     else:
@@ -261,30 +250,52 @@ def signal_mask(
     else:
         spec_axis = 3
 
+    logger.info('Reading cube.')
+    myia = au.createCasaTool(casaStuff.iatool)
     myia.open(cube_root+'.image'+suffix_in)
     cube = myia.getchunk()
     myia.close()
 
+    logger.info('Building high mask.')
     if absolute:
         hi_mask = (np.abs(cube) > hi_thresh)
     else:
         hi_mask = (cube > hi_thresh)
+    logger.info('... rolling.')
     mask = \
         (hi_mask + np.roll(hi_mask,1,axis=spec_axis) + \
              np.roll(hi_mask,-1,axis=spec_axis)) >= 1
 
+    logger.info('Expanding mask.')
     if high_snr > low_snr:
+        logger.info('Building low mask.')
         if absolute:
             low_mask = (np.abs(cube) > low_thresh)
         else:
             low_mask = (cube > low_thresh)
+        logger.info('... rolling.')
         rolled_low_mask = \
             (low_mask + np.roll(low_mask,1,axis=spec_axis) + \
                  np.roll(low_mask,-1,axis=spec_axis)) >= 1
+        logger.info('... joining with high mask via dilation.')
         mask = ndimage.binary_dilation(hi_mask, 
                                        mask=rolled_low_mask, 
                                        iterations=-1)
+        del low_mask
 
+    del hi_mask
+
+    if operation == 'AND' or operation == 'OR':
+        if os.path.isdir(cube_root+'.mask'+suffix_in) == True:
+            myia.open(cube_root+'.mask'+suffix_in)
+            old_mask = myia.getchunk()
+            myia.close()
+        else:
+            logger.info("Operation AND/OR requested but no previous mask found.")
+            logger.info("... will set operation=NEW.")
+            operation = 'NEW'    
+
+    logger.info('Joining with old mask.')
     if operation == 'AND':
         mask = mask*old_mask
     if operation == 'OR':
@@ -292,10 +303,16 @@ def signal_mask(
     if operation == 'NEW':
         mask = mask
 
+    del old_mask
+
+    logger.info('Recasting as an int.')
+    mask.astype(np.int, copy=False)
+
+    logger.info('Writing back to disk.')
     os.system('rm -rf '+cube_root+'.mask'+suffix_out)
     os.system('cp -r '+cube_root+'.image'+suffix_in+' '+cube_root+'.mask'+suffix_out)
     myia.open(cube_root+'.mask'+suffix_out)
-    myia.putchunk(mask.astype(int)) #<TODO><DL># modified mask --> mask.astype(int)
+    myia.putchunk(mask)
     myia.close()
 
 def apply_additional_mask(
