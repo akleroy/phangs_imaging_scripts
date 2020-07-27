@@ -306,7 +306,8 @@ def signal_mask(
     del old_mask
 
     logger.info('Recasting as an int.')
-    mask.astype(np.int, copy=False)
+    # this might be better: mask.astype(np.int, copy=False)
+    mask = mask.astype(int)
 
     logger.info('Writing back to disk.')
     os.system('rm -rf '+cube_root+'.mask'+suffix_out)
