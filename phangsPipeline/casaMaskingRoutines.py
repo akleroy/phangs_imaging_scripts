@@ -309,10 +309,12 @@ def signal_mask(
     # this might be better: mask.astype(np.int, copy=False)
     mask = mask.astype(int)
 
-    logger.info('Writing back to disk.')
+    logger.info('Writing back to disk plane by plane.')
     os.system('rm -rf '+cube_root+'.mask'+suffix_out)
     os.system('cp -r '+cube_root+'.image'+suffix_in+' '+cube_root+'.mask'+suffix_out)
+
     myia.open(cube_root+'.mask'+suffix_out)
+    print(mask)
     myia.putchunk(mask)
     myia.close()
 
