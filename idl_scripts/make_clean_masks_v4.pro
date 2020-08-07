@@ -1,9 +1,10 @@
-pro make_clean_masks $
+pro make_clean_masks_v4 $
    , nopause=nopause $
    , inspect=do_inspect $
    , start = start_num $
    , skip = skip $
-   , only = only
+   , only = only $
+   , s2n = s2n
 
 ;+
 ;
@@ -15,52 +16,29 @@ pro make_clean_masks $
 ; DIRECTORIES AND SETUP
 ; &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-  root_imaging_dir = '../'
-
 ; ... look up the version to based the masks on
 
-  if n_elements(version) eq 0 then $
-     version = '4'
-  
-  if version eq '2' then begin
-     vstring = 'v2'
-     release_dir = root_imaging_dir+'release/'+vstring+'/'
-  endif else if version eq '3' then begin
-     vstring = 'v3'
-     release_dir = root_imaging_dir+'release/'+vstring+'/'
-  endif else if version eq '4' then begin
-     imroot_dir = root_imaging_dir+'../../phangs-alma/imaging/'
-     cleanmask_dir = root_imaging_dir+'../../phangs-alma/cleanmasks/'     
-  endif else begin
-     print, "Version not recognized. Returning."
-     return
-  endelse
+  imroot_dir = '../../phangs-alma/imaging/'
+  pproot_dir = '../../phangs-alma/postprocess/'
+  derived_dir = '../../phangs-alma/derived/'
+  cleanmask_dir = '../../phangs-alma/cleanmasks/'     
 
   if n_elements(start_num) eq 0 then $
      start_num = 0 
 
 ; ... look up the list of galaxies
 
-  if version eq '4' then begin
-     readcol, '../phangsalma_keys/ms_file_key.txt', comment='#', format='A,X,A' $
-              , ms_file_gal, ms_file_array, /silent
-  endif else begin
-     readcol, 'ms_file_key.txt', comment='#', format='A,X,A' $
-              , ms_file_gal, ms_file_array, /silent
-  endelse
+  readcol, '../phangsalma_keys/ms_file_key.txt', comment='#', format='A,X,A' $
+           , ms_file_gal, ms_file_array, /silent
+
   gals = ms_file_gal[sort(ms_file_gal)]
   gals = gals[uniq(gals)]
   n_gals = n_elements(gals)
   
 ; ... look up the cases with nonstandard directory names
 
-  if version eq '4' then begin
-     readcol, '../phangsalma_keys/dir_key.txt', comment='#', format='A,A' $
-              , dir_key_gal, dir_key_dir, /silent
-  endif else begin
-     readcol, 'dir_key.txt', comment='#', format='A,A' $
-              , dir_key_gal, dir_key_dir, /silent
-  endelse
+  readcol, '../phangsalma_keys/dir_key.txt', comment='#', format='A,A' $
+           , dir_key_gal, dir_key_dir, /silent
 
   dir_for_gal = gals
   for ii = 0, n_elements(dir_key_gal)-1 do begin
@@ -132,7 +110,8 @@ pro make_clean_masks $
      ]
 
   is_super_faint = $
-     ['ngc0300' $
+     [ $
+     'ngc0300' $
       , 'ngc3489' $
       , 'ngc3599' $
       , 'ngc3489' $
@@ -199,20 +178,49 @@ pro make_clean_masks $
      print, "Making clean mask for "+gals[ii]+' (Galaxy '+str(ii)+')'
      print, ""
 
-     dir = release_dir+'process/'
-     print, dir, version, vstring
+     if keyword_set(s2n) then begin
+        dir = derived_dir+this_gal
+        ext = '_co21.fits'
+        noise_ext = '_co21_noise.fits'
+     endif else begin
+        dir = pproot_dir+this_gal
+        ext = '_co21_pbcorr_trimmed_k.fits'
+     endelse
 
-     clean_mask_fname = '../clean_masks/'+this_gal+'_co21_clean_mask.fits'
+     clean_mask_fname = $
+        cleanmask_dir+ $
+        this_gal+'_co21_clean_mask.fits'
 
 ;if n_elements(only) gt 0 then $
 ;   if total(only eq gals[ii]) eq 0 then continue
 
-     cube_fname = dir+this_gal+'_7m+tp_co21_flat_round_k.fits'
-     if file_test(cube_fname) eq 0 then begin
-        cube_fname = dir+this_gal+'_7m_co21_flat_round_k.fits'
+     cube_fname = $
+        dir+'/'+ $
+        this_gal+'_7m+tp+'+ext
+     if keyword_set(s2n) then begin
+        noise_fname = $
+           dir+'/'+ $
+           this_gal+'_7m+tp'+noise_ext
      endif
      if file_test(cube_fname) eq 0 then begin
-        cube_fname = dir+this_gal+'_12m_co21_flat_round_k.fits'
+        cube_fname = $
+           dir+'/'+ $
+           this_gal+'_7m'+ext
+        if keyword_set(s2n) then begin
+           noise_fname = $
+              dir+'/'+ $
+              this_gal+'_7m'+noise_ext
+        endif
+     endif
+     if file_test(cube_fname) eq 0 then begin
+        cube_fname = $
+           dir+'/'+ $
+           this_gal+'_12m'+ext
+        if keyword_set(s2n) then begin
+           noise_fname = $
+              dir+'/'+ $
+              this_gal+'_12m'+ext
+        endif
      endif
      if file_test(cube_fname) eq 0 then begin
         print, ""
@@ -224,6 +232,11 @@ pro make_clean_masks $
         continue
      endif
      cube = readfits(cube_fname, cube_hdr)
+
+     if keyword_set(s2n) then begin
+        noise = readfits(noise_fname, noise_hdr)
+        cube = cube/noise
+     endif
 
      kernel_lores = 33.0
      chan_lores = 20
@@ -260,6 +273,13 @@ pro make_clean_masks $
         hi_thresh_lowres = 10
      endelse
 
+     if this_gal[0] eq 'ngc0247' then begin
+        lo_thresh_lowres = 3
+        hi_thresh_lowres = 5
+     endif
+
+;     stop
+
      make_cprops_mask $
         , indata=lowres_cube $
         , inrms = rms_lowres_cube $
@@ -275,6 +295,11 @@ pro make_clean_masks $
      if this_gal[0] eq 'ngc0300' then begin
         mask[*,*,0:25] = 0B
         mask[*,*,150:*] = 0B
+        mask = grow_mask(mask, /xy_only, iter=20)
+     endif
+     if this_gal[0] eq 'ngc0247' then begin
+        mask[*,*,0:50] = 0B
+        mask[*,*,200:*] = 0B
         mask = grow_mask(mask, /xy_only, iter=20)
      endif
 
@@ -305,7 +330,7 @@ pro make_clean_masks $
 
      writefits, clean_mask_fname, mask, lowres_hdr
 
-     inspect_clean_masks $
+     inspect_clean_masks_v4 $
         , nopause=nopause $
         , only=this_gal $
         , array='7m'
