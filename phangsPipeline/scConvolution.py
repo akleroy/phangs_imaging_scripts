@@ -50,6 +50,11 @@ def smooth_cube(
     else:
         logger.error("Input must be a SpectralCube object or a filename.")
 
+    # Allow huge operations. If the speed or segfaults become a huge
+    # problem, we will adjust our strategy here.
+
+    cube.allow_huge_operations = True
+
     # Check that only one target scale is set
     if (angular_resolution is not None) and (linear_resolution is not None):
         logger.error('Only one of angular_resolution or ',
@@ -101,6 +106,10 @@ def smooth_cube(
                                     meta={'BUNIT': ' ', 'BTYPE': 'Coverage'})
             coverage = coverage.with_mask(LazyMask(np.isfinite,cube=coverage))
             
+            # Allow huge operations. If the speed or segfaults become a huge
+            # problem, we will adjust our strategy here.
+
+            coverage.allow_huge_operations = True
 
         if delta > tol:
             logger.info("... proceeding with convolution.")
