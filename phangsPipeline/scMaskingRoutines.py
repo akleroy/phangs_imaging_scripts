@@ -366,6 +366,9 @@ def join_masks(orig_mask_in, new_mask_in,
         logging.error('Unrecognized input type for orig_mask_in')
         raise NotImplementedError
 
+    # Enable large operations
+    orig_mask.allow_huge_operations = True
+
     if type(new_mask_in) is str:
         new_mask = SpectralCube.read(new_mask_in)
     elif type(new_mask_in) is SpectralCube:
@@ -373,6 +376,9 @@ def join_masks(orig_mask_in, new_mask_in,
     else:
         logging.error('Unrecognized input type for new_mask_in')
         raise NotImplementedError
+
+    # Enable large operations
+    new_mask.allow_huge_operations = True
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Reproject the new mask onto the original WCS
@@ -452,12 +458,16 @@ def recipe_phangs_strict_mask(
     else:
         logger.error("Input cube must be a SpectralCube object or a filename.")
 
+    cube.allow_huge_operations = True
+
     if type(innoise) is SpectralCube:
         rms = innoise
     elif type(innoise) == type("hello"):
         rms = SpectralCube.read(innoise)
     else:
         logger.error("Input noise must be a SpectralCube object or a filename.")
+
+    rms.allow_huge_operations = True
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Set up the masking kwargs
@@ -577,6 +587,8 @@ def recipe_phangs_broad_mask(
         logger.error("Input mask must be a SpectralCube object or a filename.")
         return(None)
 
+    mask.allow_huge_operations = True
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Loop over other masks
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -590,6 +602,8 @@ def recipe_phangs_broad_mask(
         else:
             logger.error("Input masks must be SpectralCube objects or filenames.")
             return(None)
+
+        other_mask.allow_huge_operations = True
 
         mask = join_masks(mask, other_mask, operation='or'
                           , order='bilinear')
@@ -609,6 +623,8 @@ def recipe_phangs_broad_mask(
         mask = SpectralCube(mask_values*1.0, wcs=cube.wcs, header=mask.header
                             , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
     
+        mask.allow_huge_operations = True
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Write to disk and return
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
