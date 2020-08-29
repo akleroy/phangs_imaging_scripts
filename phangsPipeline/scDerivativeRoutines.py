@@ -386,7 +386,64 @@ def write_moment1_hybrid(
         vfield_reject_thresh=30 * u.km / u.s,
         mom0_thresh_for_mom1=2.0,
         context=None):
+    """Write out moment1 map using combination of other moment maps.
+    This is a secondary moment that needs to be calculated in the
+    context of other moments.
+    
+    Keywords:
+    ---------
+    
+    cube : SpectralCube
+        Included to keep same call signature but not used
+    
+    outfile : str
+        File name of output file
+        
+    errorfile : str
+        File name of map for the uncertainty
+        
+    rms : SpectralCube
+        Included to keep the same call signature but not used.
+        
+    channel_correlation : np.array
+        Included to keep the same call signature but not used.
 
+    overwrite : bool
+        Set to True (the default) to overwrite existing maps if present. 
+        
+    unit : astropy.Unit
+        Preferred unit for moment masks
+        
+    return_products : bool
+        Return products calculated in the map
+
+    strict_vfield : str
+        Moment tag for velocity field to be used as a high confidence map
+
+    broad_vfield : str
+        Moment tag for velocity field for low confidence map
+
+    broad_signal : str
+        Moment tag to be used as an estimate of the signal for a S/N
+        cut on where the broad_vfield is valid.  Also finds a noise
+        estimate of the same and uses this for the Noise component
+
+    vfield_prior : str
+        Moment tag for low-resolution prior map of velocity field
+
+    vfield_prior_res : str
+        Resolution tag for low-resolution prior map of velocity field
+
+    vfield_reject_thresh : astropy.units.Quantity
+        The maximum difference between the broad field and the prior
+        field in units that can convert to that of the velocity field.
+
+     mom0_thresh_for_mom1 : float
+        S/N threshold for using a broad_vfield estimate in the map
+    """
+
+
+    
     resname = context['res_tag']
     if resname is None:
         resname = ''
