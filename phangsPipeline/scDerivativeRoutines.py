@@ -6,6 +6,9 @@ import numpy as np
 from astropy.io import fits
 import inspect
 
+import utilsFilenames
+import os
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -48,6 +51,7 @@ def update_metadata(projection, cube, error=False):
         idx = projection.meta['moment_axis']
     else:
         idx = 0 # Assume spectral moment
+
     collapse_name = cube.wcs.axis_type_names[::-1][idx]
     med_spaxis = np.abs(np.median(cube.spectral_axis[1:]
                                   - cube.spectral_axis[0:-1]))
@@ -346,19 +350,183 @@ def write_moment1(
     elif return_products and mom1err_proj is None:
         return(mom1)
 
-def write_moment1_hybrid(cube,
-                         broad_mask=None,
-                         moment1_prior=None,
-                         order='bilinear',
-                         outfile=None,
-                         errorfile=None,
-                         rms=None,
-                         channel_correlation=None,
-                         overwrite=True,
-                         vfield_reject_thresh=30 * u.km / u.s,
-                         mom0_thresh_for_mom1=2.0,
-                         unit=None,
-                         return_products=False):
+
+def convert_and_reproject(name, template=None, unit=None, order=1):
+    # Ensure inputs are Projections
+    if name is not None:
+        if type(name) is Projection:
+            data = name
+        elif type(name) is str:
+            hdu_list = fits.open(name)
+            data = Projection.from_hdu(hdu_list[0])
+        else:
+            print("Input is not a string or a Projection")
+            raise ValueError
+        
+        if unit is not None:
+            data = data.to(unit)
+        if template is not None:
+            data = data.reproject(template.header, order=order)
+    else:
+        data = None
+        
+    return(data)
+
+
+def write_moment1_hybrid(
+        cube, rms=None, channel_correlation=None,
+        outfile=None, errorfile=None,
+        overwrite=True, unit=None,
+        return_products=True,
+        strict_vfield=None,
+        broad_vfield=None,
+        broad_signal=None,
+        vfield_prior=None,
+        vfield_prior_res=None,
+        vfield_reject_thresh=30 * u.km / u.s,
+        mom0_thresh_for_mom1=2.0,
+        context=None):
+
+    resname = context['res_tag']
+    if resname is None:
+        resname = ''
+
+    moment_root = utilsFilenames.get_cube_filename(
+        target=context['target'], config=context['config'],
+        product=context['product'],
+        ext=resname + context['extra_ext'])
+    moment_root = moment_root.replace('.fits','')
+
+    strict_moment1_name = ''.join([context['indir'],
+                                   moment_root,
+                                   context['allmoments'][strict_vfield]['ext'],
+                                   '.fits'])
+
+    mom1strict = convert_and_reproject(strict_moment1_name, unit=unit)
+
+
+    strict_moment1_err_name = ''.join([context['indir'],
+                                       moment_root,
+                                       context['allmoments'][strict_vfield]['ext_error'],
+                                       '.fits'])
+    
+    mom1strict_error = convert_and_reproject(strict_moment1_err_name, unit=unit)
+
+    broad_moment0_name = ''.join([context['indir'],
+                                  moment_root,
+                                  context['allmoments'][broad_signal]['ext'],
+                                  '.fits'])
+
+    mom0broad = convert_and_reproject(broad_moment0_name, template=mom1strict)
+
+    broad_moment0_err_name = ''.join([context['indir'],
+                                      moment_root,
+                                      context['allmoments'][broad_signal]['ext_error'],
+                                      '.fits'])
+
+    mom0broad_error = convert_and_reproject(broad_moment0_err_name, template=mom1strict)
+
+    broad_moment1_name = ''.join([context['indir'],
+                                  moment_root,
+                                  context['allmoments'][broad_vfield]['ext'],
+                                  '.fits'])
+
+    mom1broad = convert_and_reproject(broad_moment1_name, template=mom1strict,
+                                      unit=unit)
+
+    broad_moment1_err_name = ''.join([context['indir'],
+                                      moment_root,
+                                      context['allmoments'][broad_vfield]['ext_error'],
+                                      '.fits'])
+    
+    mom1broad_error = convert_and_reproject(broad_moment1_err_name, template=mom1strict,
+                                            unit=unit)    
+
+    resname = vfield_prior_res
+
+    moment_root = utilsFilenames.get_cube_filename(
+        target=context['target'], config=context['config'],
+        product=context['product'],
+        ext=resname + context['extra_ext'])
+    moment_root = moment_root.replace('.fits','')
+
+
+    prior_moment1_name = ''.join([context['indir'],
+                                  moment_root,
+                                  context['allmoments'][vfield_prior]['ext'],
+                                  '.fits'])
+
+    
+    mom1prior = convert_and_reproject(prior_moment1_name, template=mom1strict,
+                                      unit=unit)
+
+    
+    mom1hybrid = mom1strict.value
+    valid_broad_mom1 = np.isfinite(mom1broad.value)
+    valid_broad_mom1[np.isfinite(mom1strict)] = False
+
+    if mom0broad_error is not None:
+        valid_broad_mom1 *= (mom0broad.value
+                             > (mom0_thresh_for_mom1
+                             * mom0broad_error.value))
+        
+    if mom1prior is not None:
+        valid_broad_mom1 = (valid_broad_mom1 *
+                            (np.abs(mom1broad - mom1prior)
+                             < vfield_reject_thresh)
+                            )
+    
+    mom1hybrid[valid_broad_mom1] = (mom1broad.value)[valid_broad_mom1]
+    mom1hybrid = u.Quantity(mom1hybrid, unit)
+    if unit is not None:
+        mom1hybrid = mom1hybrid.to(unit)
+    
+    mom1hybrid_proj = Projection(mom1hybrid,
+                                 wcs=mom1strict.wcs,
+                                 header=mom1strict.header,
+                                 meta=mom1strict.meta)
+    if outfile is not None:
+        mom1hybrid_proj.write(outfile,
+                              overwrite=overwrite)
+    mom1hybrid_error = None
+    
+    if (type(mom1broad_error) is Projection and 
+        type(mom1strict_error) is Projection):
+        mom1hybrid_error = mom1broad_error
+        mom1hybrid_error[~np.isfinite(mom1hybrid.value)] = np.nan
+        strictvals = np.isfinite(mom1strict_error.value)
+        mom1hybrid_error[strictvals] = mom1strict_error[strictvals]
+        if unit is not None:
+            mom1hybrid_error = mom1hybrid_error.to(unit)
+        mom1hybrid_error_proj = Projection(mom1hybrid_error,
+                                           wcs=mom1strict.wcs,
+                                           header=mom1strict.header,
+                                           meta=mom1strict.meta)
+        if errorfile is not None:
+            mom1hybrid_error_proj = update_metadata(mom1hybrid_error_proj,
+                                                    cube, error=True)
+            mom1hybrid_error_proj.write(errorfile,
+                                        overwrite=overwrite)
+    
+    if return_products and mom1hybrid_error_proj is not None:
+        return(mom1hybrid_proj, mom1hybrid_error_proj)
+    elif return_products and mom1hybrid_error_proj is None:
+        return(mom1hybrid_proj)
+
+    
+def old_write_moment1_hybrid(cube,
+                             broad_mask=None,
+                             moment1_prior=None,
+                             order='bilinear',
+                             outfile=None,
+                             errorfile=None,
+                             rms=None,
+                             channel_correlation=None,
+                             overwrite=True,
+                             vfield_reject_thresh=30 * u.km / u.s,
+                             mom0_thresh_for_mom1=2.0,
+                             unit=None,
+                             return_products=False):
     """
     Writes a moment 1 map 
     
