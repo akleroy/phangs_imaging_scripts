@@ -383,7 +383,7 @@ def write_moment1_hybrid(
         broad_signal=None,
         vfield_prior=None,
         vfield_prior_res=None,
-        vfield_reject_thresh=30 * u.km / u.s,
+        vfield_reject_thresh='30km/s',
         mom0_thresh_for_mom1=2.0,
         context=None):
     """Write out moment1 map using combination of other moment maps.
@@ -441,13 +441,12 @@ def write_moment1_hybrid(
      mom0_thresh_for_mom1 : float
         S/N threshold for using a broad_vfield estimate in the map
     """
-
-
     
     resname = context['res_tag']
     if resname is None:
         resname = ''
 
+    vfield_reject_thresh = u.Quantity(vfield_reject_thresh)
     moment_root = utilsFilenames.get_cube_filename(
         target=context['target'], config=context['config'],
         product=context['product'],
