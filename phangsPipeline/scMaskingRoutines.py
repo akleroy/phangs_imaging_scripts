@@ -384,19 +384,45 @@ def join_masks(orig_mask_in, new_mask_in,
     # Reproject the new mask onto the original WCS
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    new_mask = new_mask.reproject(orig_mask.header, order=order)
-    new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
 
+    if order == 'fast_nearest_neighbor':
+
+        logger.warn('Joining masks with nearest neighbor coordinate lookup')
+        # Grab WCS out of template mask and map to other mask
+
+        x, y, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:][::-1]), 0)
+        x = np.rint(x).astype(np.int)
+        y = np.rint(y).astype(np.int)
+        z = np.rint(z).astype(np.int)
+        new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool)
+
+        # Create new mask
+        new_mask_vals = np.zeros(orig_mask.shape, dtype=np.bool)
+        
+        # Find all values that are in bounds
+        inbounds = np.logical_and.reduce([(z >= 0), (z < new_mask.shape[0]),
+                                          (y >= 0), (y < new_mask.shape[1]),
+                                          (x >= 0), (x < new_mask.shape[2])])
+        # Look 'em up in the new_mask
+        new_mask_vals[inbounds] = new_mask_data[z[inbounds], y[inbounds], x[inbounds]]
+        
+    else:
+
+        logger.warn('Joining masks with reprojection')
+        new_mask = new_mask.reproject(orig_mask.header, order=order)
+        new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
+        new_mask_vals = np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool)
+        
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Combine
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if operation.strip().lower() == 'or':
         mask = np.logical_or(np.array(orig_mask.filled_data[:].value > thresh, dtype=np.bool),
-                             np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool))    
+                             new_mask_vals)    
     elif operation.strip().lower() == 'and':      
         mask = np.logical_and(np.array(orig_mask.filled_data[:].value > thresh, dtype=np.bool),
-                              np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool))    
+                              new_mask_vals)    
     else:
         logging.error('Unrecognized operation. Not "and" or "or".')
         raise NotImplementedError
@@ -405,7 +431,7 @@ def join_masks(orig_mask_in, new_mask_in,
     # Write to disk, return output, etc.
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    mask = SpectralCube(mask*1.0, wcs=orig_mask.wcs,
+    mask = SpectralCube(mask.astype(np.int), wcs=orig_mask.wcs,
                         header=orig_mask.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
     
@@ -581,7 +607,7 @@ def recipe_phangs_broad_mask(
 
     if type(template_mask) is SpectralCube:
         mask = template_mask
-    elif type(template_mask) == type("hello"):
+    elif type(template_mask) == str:
         mask = SpectralCube.read(template_mask)
     else:
         logger.error("Input mask must be a SpectralCube object or a filename.")
@@ -606,7 +632,7 @@ def recipe_phangs_broad_mask(
         other_mask.allow_huge_operations = True
 
         mask = join_masks(mask, other_mask, operation='or'
-                          , order='bilinear')
+                          , order='fast_nearest_neighbor')
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Grow the mask
