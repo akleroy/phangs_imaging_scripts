@@ -1558,7 +1558,7 @@ class KeyHandler:
             if target_name in self._distance_dict:
                 if 'distance' in self._distance_dict[target_name]:
                     distance = self._distance_dict[target_name]['distance']
-                    
+
         return(distance)
 
 
@@ -2550,7 +2550,7 @@ class KeyHandler:
 
         missing_targets = []
         for this_target in self.get_all_targets():
-            if self.get_distance_for_target(this_target) is None:
+            if self.get_distance_for_target(target=this_target) is None:
                 missing_targets.append(this_target)
         
         if len(missing_targets) == 0:

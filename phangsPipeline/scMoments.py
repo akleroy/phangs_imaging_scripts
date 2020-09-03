@@ -4,6 +4,7 @@ import astropy.units as u
 from astropy.io import fits
 import numpy as np
 from radio_beam import Beam
+import inspect
 
 def _nicestr(quantity):
     if quantity.value == int(quantity.value):
@@ -27,9 +28,6 @@ def _func_and_kwargs_for_moment(moment_tag=None):
     elif moment_tag == 'mom1':
         func = scdr.write_moment1
         kwargs = {'unit': u.km / u.s}
-    elif moment_tag == 'mom1wprior':
-        func = scdr.write_moment1_hybrid
-        kwargs = {'unit': u.K}
     elif moment_tag == 'mom2':
         func = scdr.write_moment2
         kwargs = {'unit': u.km / u.s}
@@ -45,6 +43,9 @@ def _func_and_kwargs_for_moment(moment_tag=None):
     elif moment_tag == 'tpeak':
         func = scdr.write_tmax
         kwargs = {'unit': u.K}
+    elif moment_tag == 'mom1wprior':
+        func = scdr.write_moment1_hybrid
+        kwargs = {'unit': u.km / u.s}
 
     return(func, kwargs)
 
@@ -58,14 +59,14 @@ def moment_tag_known(moment_tag=None):
     return(True)
 
 def moment_generator(
-    cubein, mask=None, noise=None,
-    moment=None, momkwargs=None,
-    outfile=None, errorfile=None,
-    channel_correlation=None):
+        cubein, mask=None, noise=None,
+        moment=None, momkwargs=None,
+        outfile=None, errorfile=None,
+        channel_correlation=None,
+        context=None):
+
     """
     Generate one moment map from input cube, noise, and masks.
-
-    
     """
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -87,6 +88,7 @@ def moment_generator(
         for this_kwarg in momkwargs:
             kwargs[this_kwarg] = momkwargs[this_kwarg]
 
+            
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Read in the data
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -134,14 +136,23 @@ def moment_generator(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Call the moment generation
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    
-    moment_map, error_map = func(
-        cube, rms=noisecube,
-        outfile=outfile, errorfile=errorfile,
-        channel_correlation=channel_correlation,
-        **kwargs)
-    
+
+    theseargs, _, _, _ = inspect.getargspec(func)
+
+    if 'context' in theseargs:
+        moment_map, error_map = func(
+            cube, rms=noisecube,
+            outfile=outfile, errorfile=errorfile,
+            channel_correlation=channel_correlation,
+            context=context,
+            **kwargs)
+    else:
+        moment_map, error_map = func(
+            cube, rms=noisecube,
+            outfile=outfile, errorfile=errorfile,
+            channel_correlation=channel_correlation,
+            **kwargs)
+        
     return(moment_map, error_map)
-    
     
 

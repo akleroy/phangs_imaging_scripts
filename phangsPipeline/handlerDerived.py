@@ -72,30 +72,32 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
     ############
     
     def __init__(
-        self,
-        key_handler = None,
-        dry_run = False,
-        ):
-        
+            self,
+            key_handler = None,
+            dry_run = False,
+    ):
         # inherit template class
-        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
-    
+        handlerTemplate.HandlerTemplate.__init__(self,
+                                                 key_handler = key_handler,
+                                                 dry_run = dry_run)
+
     ########################
     # Main processing loop #
     ########################
 
     def loop_derive_products(
-        self,
-        do_all=False,
-        do_convolve=False,
-        do_noise=False,
-        do_strictmask=False,
-        do_broadmask=False,
-        do_moments=False,
-        make_directories=True, 
-        extra_ext_in='', 
-        extra_ext_out='', 
-        overwrite=True, 
+            self,
+            do_all=False,
+            do_convolve=False,
+            do_noise=False,
+            do_strictmask=False,
+            do_broadmask=False,
+            do_moments=False,
+            do_secondary=False,
+            make_directories=True, 
+            extra_ext_in='', 
+            extra_ext_out='', 
+            overwrite=True, 
         ):
         """
         Loops over the full set of targets, spectral products (note
@@ -110,7 +112,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             do_strictmask = True
             do_broadmask = True
             do_moments = True
-
+            do_secondary = True
+            
         # Error checking
         
         if len(self.get_targets()) == 0:            
@@ -273,6 +276,31 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                         target=this_target, product=this_product, config=this_config,
                         res_tag=this_res, overwrite=overwrite)
 
+        if do_secondary:
+            for this_target, this_product, this_config in \
+                self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                # Loop over all angular and physical resolutions.
+
+                self.task_generate_secondary_moments(
+                    target=this_target, product=this_product, config=this_config,
+                    res_tag=None, overwrite=overwrite)
+                
+                for this_res in self._kh.get_ang_res_dict(
+                    config=this_config,product=this_product):
+
+                    self.task_generate_secondary_moments(
+                        target=this_target, product=this_product, config=this_config,
+                        res_tag=this_res, overwrite=overwrite)
+
+                for this_res in self._kh.get_phys_res_dict(
+                    config=this_config,product=this_product):
+
+                    self.task_generate_secondary_moments(
+                        target=this_target, product=this_product, config=this_config,
+                        res_tag=this_res, overwrite=overwrite)
+
+        
 # end of loop
 
 
@@ -862,7 +890,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Report
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
+        
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Generating moment maps for:")
@@ -885,10 +913,24 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # Execute
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+        rounds = []
+        for this_mom in list_of_moments:
+            rounds.append(self._kh.get_params_for_moment(this_mom)['round'])
+
+        uniqrounds = sorted(list(set(rounds)))
+        
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+
+        logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
+        logger.info("... First, calculate all moments in stage {0}".format(np.min(uniqrounds)))
+        logger.info("")
+
+        sublist_of_moments = [this_mom for this_mom in list_of_moments
+                              if self._kh.get_params_for_moment(this_mom)['round'] == uniqrounds[0]]
+
         if (not self._dry_run):
-            
-            for this_mom in list_of_moments:
-                
+            for this_mom in sublist_of_moments:
                 logger.info('... generating moment: '+str(this_mom))
 
                 mom_params = self._kh.get_params_for_moment(this_mom)
@@ -919,7 +961,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 # Check noise
                 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+
                 if not (os.path.isfile(indir+noise_file)):
                     logger.warning("Missing noise: "+indir+noise_file)
                     noise_in = None
@@ -931,17 +973,192 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 # Set up output file
                 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+
                 outfile = outdir+outroot+mom_params['ext']+'.fits'
 
                 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                # Call the moment generator
+                # In the first round, just call the moment generator
                 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
                 moment_generator(
                     indir+input_file, mask=mask_file, noise=noise_in,
                     moment=mom_params['algorithm'], momkwargs=mom_params['kwargs'],
                     outfile=outfile, errorfile=errorfile,
                     channel_correlation=None)
-                
-                
+
+
+
+    def task_generate_secondary_moments(
+        self,
+        target = None, 
+        config = None, 
+        product = None, 
+        res_tag = None, 
+        extra_ext = '', 
+        overwrite = False, 
+        ):
+        """
+        Generate moment maps.
+        """
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Look up filenames, list of moments, etc.
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        # Generate file names
+
+        indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        indir = os.path.abspath(indir)+'/'
+
+        outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+        outdir = os.path.abspath(outdir)+'/'
+
+        # Filenames
+
+        fname_dict_nores = self._fname_dict(
+            target=target, config=config, product=product, res_tag=None, 
+            extra_ext_in=extra_ext)
+
+        fname_dict = self._fname_dict(
+            target=target, config=config, product=product, res_tag=res_tag, 
+            extra_ext_in=extra_ext)
+
+        # ... broad mask never has a resolution tag
+
+        broadmask_file = fname_dict_nores['broadmask']
+
+        # ... files with resolution tag
+
+        input_file = fname_dict['cube']
+        noise_file = fname_dict['noise']
+        strictmask_file = fname_dict['strictmask']
+
+        outroot = fname_dict['momentroot']
+        
+        # Check input file and mask existence        
+        
+        if not (os.path.isfile(indir+input_file)):
+            logger.warning("Missing cube: "+indir+input_file)
+            return()
+
+        found_broadmask = (os.path.isfile(indir+broadmask_file))
+        found_strictmask = (os.path.isfile(indir+strictmask_file))
+
+        # Look up which moments to calculate
+
+        list_of_moments = self._kh.get_moment_list(config=config, product=product)
+
+        rounds = []
+        for this_mom in list_of_moments:
+            rounds.append(self._kh.get_params_for_moment(this_mom)['round'])
+        uniqrounds = sorted(list(set(rounds)))
+
+        if len(uniqrounds) == 1:
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+            logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
+            logger.info("... Secondary moments requested but not specified in moment keys")
+            logger.info("... Returning to main loop")
+            logger.info("")
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Report
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("Generating moment maps for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        if res_tag is not None:
+            logger.info("Resolution "+str(res_tag))
+        logger.info("Found a strict mask? "+str(found_strictmask))
+        logger.info("Found a broad mask? "+str(found_broadmask))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+        
+        logger.info("... input file: "+input_file)
+        logger.info("... noise file: "+noise_file)
+        logger.info("... strict mask file: "+strictmask_file)
+        logger.info("... broad mask file: "+broadmask_file)
+        logger.info("... list of moments: "+str(list_of_moments))
+        logger.info("... output root: "+outroot)
+            
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Execute
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+        logger.info("")
+
+        logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
+
+        for thisround in uniqrounds[1:]:
+            logger.info("... Now, calculate all moments in stage {0}".format(thisround))
+            logger.info("")
+
+            sublist_of_moments = [this_mom for this_mom in list_of_moments
+                                  if self._kh.get_params_for_moment(this_mom)['round'] == thisround]
+            if (not self._dry_run):
+                for this_mom in sublist_of_moments:
+                    logger.info('... generating moment: '+str(this_mom))
+
+                    mom_params = self._kh.get_params_for_moment(this_mom)
+
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    # Look up mask
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                    if mom_params['mask'] is None:
+                        mask_file = None
+                    elif mom_params['mask'].strip().lower() == 'none':
+                        mask_file = None
+                    elif mom_params['mask'] == 'strictmask':
+                        if not found_strictmask:
+                            logger.warning("Strict mask needed but not found. Skipping.")
+                            continue
+                        mask_file = indir+strictmask_file
+                    elif mom_params['mask'] == 'broadmask':
+                        if not found_broadmask:
+                            logger.warning("Broad mask needed but not found. Skipping.")
+                            continue
+                        mask_file = indir+broadmask_file
+                    else:
+                        logger.warning("Mask choice not recognized for moment: "+str(this_mom))
+                        logger.warning("Skipping.")
+                        continue
+
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    # Check noise
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                    if not (os.path.isfile(indir+noise_file)):
+                        logger.warning("Missing noise: "+indir+noise_file)
+                        noise_in = None
+                        errorfile = None
+                    else:
+                        noise_in = indir+noise_file
+                        errorfile = outdir+outroot+mom_params['ext_error']+'.fits'
+
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    # Set up output file
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                    outfile = outdir+outroot+mom_params['ext']+'.fits'
+
+                    allmoments = {}
+                    for other_mom in list_of_moments:
+                        allmoments[other_mom] = self._kh.get_params_for_moment(other_mom)
+
+                    context = {'indir':indir,
+                               'target':target,
+                               'config':config,
+                               'product':product,
+                               'res_tag':res_tag,
+                               'extra_ext':extra_ext,
+                               'allmoments':allmoments}
+
+                    moment_generator(
+                        indir+input_file, mask=mask_file, noise=noise_in,
+                        moment=mom_params['algorithm'], momkwargs=mom_params['kwargs'],
+                        outfile=outfile, errorfile=errorfile,
+                        channel_correlation=None, context=context)
+                    
