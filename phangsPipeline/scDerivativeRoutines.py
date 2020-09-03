@@ -43,8 +43,16 @@ def update_metadata(projection, cube, error=False):
             hdr[key] = cube.header[key]
         except KeyError:
             pass
-    mx = np.nanmax(projection.filled_data[:].value)
-    mn = np.nanmin(projection.filled_data[:].value)
+
+    # Check if the moment map is empty. If so, nanmax and nanmin
+    # will not be finite and writing the header to disc will fail.
+    if not np.isfinite(projection.filled_data[:].value).any():
+        mx = 0.
+        mn = 0.
+    else:
+        mx = np.nanmax(projection.filled_data[:].value)
+        mn = np.nanmin(projection.filled_data[:].value)
+
     hdr['DATAMAX'] = mx
     hdr['DATAMIN'] = mn
     if 'moment_axis' in projection.meta.keys():
