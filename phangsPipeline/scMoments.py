@@ -102,6 +102,8 @@ def moment_generator(
         logging.error('Unrecognized input type for cubein')
         raise NotImplementedError
 
+    cube.allow_huge_operations = True
+
     # Force Kelvin. We will be unit agnostic later.
     cube = cube.to(u.K)
     
@@ -123,6 +125,8 @@ def moment_generator(
         mask = np.array(mask.filled_data[:].value, dtype=np.bool)
         cube = cube.with_mask(mask, inherit_mask=False)
 
+        mask.allow_huge_operations = True
+
     # Read in the noise (if present)
     if noise is not None:        
         if type(noise) is str:
@@ -132,6 +136,8 @@ def moment_generator(
         else:
             logging.error('Unrecognized input type for noise.')
             raise NotImplementedError
+
+        noise.allow_huge_operations = True
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Call the moment generation
