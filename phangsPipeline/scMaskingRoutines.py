@@ -208,6 +208,8 @@ def cprops_mask(data, noise=None,
                 lo_thresh=None, lo_nchan=None,
                 min_pix=None, min_area=None,
                 grow_xy=None, grow_v=None, 
+                prior_hi = None,
+                prior_lo = None,
                 invert=False):
     """
     Standard CPROPS masking recipe.
@@ -250,10 +252,17 @@ def cprops_mask(data, noise=None,
         Default: None
 
     grow_xy : int
-        Not implemented
+        Number of iterations to grow the final mask in the xy plane.
 
     grow_v : int
-        Not implemented
+        Number of iterations to grow the final mask in velocity 
+
+    prior_hi : np. array
+        Mask that will be applied to the high significance mask before
+        any expansion.
+
+    prior_lo : np. array
+        Mask that will be applied to the low significance mask.
 
     invert : bool
         If True, invert the data before applying masking.
@@ -293,11 +302,19 @@ def cprops_mask(data, noise=None,
         hi_mask = reject_small_regions(
             hi_mask, min_volume=min_pix, min_area=min_area)
 
+    # If a prior is supplied for the high significane mask, apply it
+
+    if prior_hi is not None:
+        hi_mask *= prior_hi
+
     # If supplied, make a lower significance mask and expand into it
 
     if (lo_thresh is not None) and (lo_nchan is not None):
         lo_mask = nchan_thresh_mask(
             signif, thresh=lo_thresh, nchan=lo_nchan)
+
+        if prior_lo is not None:
+            lo_mask *= prior_lo
 
         # Now expand the original mask into the lower mask
         mask = grow_mask(hi_mask, constraint=lo_mask)
@@ -443,6 +460,7 @@ def join_masks(orig_mask_in, new_mask_in,
 
 def recipe_phangs_strict_mask(
     incube, innoise, outfile=None, 
+    coverage=None, coverage_thresh=0.95,
     mask_kwargs=None, 
     return_spectral_cube=False,
     overwrite=False):
@@ -495,6 +513,16 @@ def recipe_phangs_strict_mask(
 
     rms.allow_huge_operations = True
 
+    if coverage is not None:
+        if type(coverage) is SpectralCube:
+            coverage_cube = coverage
+        elif type(coverage) == type("hello"):
+            coverage_cube = SpectralCube.read(coverage)
+        else:
+            logger.error("Coverage cube must be a SpectralCube object or a filename or None.")
+
+        coverage_cube.allow_huge_operations = True
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Set up the masking kwargs
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -532,7 +560,13 @@ def recipe_phangs_strict_mask(
     # Create the mask
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+    prior_hi = None
+    if coverage is not None:
+        
+        prior_hi = coverage_cube.filled_data[:].value > coverage_thresh
+
     mask = cprops_mask(cube.filled_data[:].value, rms.filled_data[:].value, 
+                       prior_hi = prior_hi,
                        **mask_kwargs)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

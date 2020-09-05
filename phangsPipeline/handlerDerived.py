@@ -661,6 +661,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
         input_file = fname_dict['cube']
         noise_file = fname_dict['noise']
+        coverage_file = fname_dict['coverage']
         outfile = fname_dict['strictmask']
 
         # Check input file existence        
@@ -673,6 +674,13 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             logger.warning("Missing noise estimate: "+indir+noise_file)
             return()
 
+        # Coverage
+
+        if not (os.path.isfile(indir+coverage_file)):
+            logger.warning("Missing coverage estimate: "+indir+coverage_file)
+            logger.warning("This may be fine. Proceeding")
+            coverage_file = None
+        
         # Access keywords for mask generation
         
         strictmask_kwargs = self._kh.get_derived_kwargs(
@@ -692,6 +700,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         
         logger.info("Input file "+input_file)
         logger.info("Noise file "+noise_file)
+        if coverage_file is not None:
+            logger.info("Coverage file "+coverage_file)
         logger.info("Target file: "+outfile)
         logger.info("Kwargs: "+str(strictmask_kwargs))
             
@@ -700,10 +710,18 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
         if (not self._dry_run):
+
+            # ... put the directory into the name to allow it to remain
+            # None when missing.
+            if coverage_file is not None:
+                coverage_file_in = indir+coverage_file
+            else:
+                coverage_file_in = None
             
             recipe_phangs_strict_mask(
                 incube=indir+input_file,
                 innoise=indir+noise_file,
+                coverage=coverage_file_in,
                 outfile=outdir+outfile,
                 mask_kwargs=strictmask_kwargs,
                 return_spectral_cube=False,
