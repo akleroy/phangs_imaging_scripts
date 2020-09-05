@@ -632,6 +632,8 @@ def read_moment_key(fname='', existing_dict=None, delim=None):
                 'ext':None,
                 'ext_error':None,
                 'round':1,
+                'maps_to_pass':[],
+                'other_exts':{},
                 'kwargs':{},
                 }
 
@@ -646,7 +648,11 @@ def read_moment_key(fname='', existing_dict=None, delim=None):
         if this_param in ['round']:
             out_dict[this_moment][this_param] = int(this_value)
 
-        if this_param == 'kwargs':
+        if this_param in ['maps_to_pass']:
+            this_list = ast.literal_eval(this_value)
+            out_dict[this_moment][this_param] = this_list
+
+        if this_param in ['kwargs','other_exts']:
             this_dict = ast.literal_eval(this_value)
             for this_key in this_dict.keys():
                 out_dict[this_moment][this_param][this_key] = this_dict[this_key]

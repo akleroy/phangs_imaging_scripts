@@ -1057,7 +1057,9 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
             logger.info("... Secondary moments requested but not specified in moment keys")
             logger.info("... Returning to main loop")
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
+            return()
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Report
@@ -1084,8 +1086,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Execute
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-        
+    
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
 
@@ -1097,9 +1098,12 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
             sublist_of_moments = [this_mom for this_mom in list_of_moments
                                   if self._kh.get_params_for_moment(this_mom)['round'] == thisround]
+
             if (not self._dry_run):
                 for this_mom in sublist_of_moments:
                     logger.info('... generating moment: '+str(this_mom))
+
+                    proceed = True
 
                     mom_params = self._kh.get_params_for_moment(this_mom)
 
@@ -1144,21 +1148,59 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
 
                     outfile = outdir+outroot+mom_params['ext']+'.fits'
 
-                    allmoments = {}
-                    for other_mom in list_of_moments:
-                        allmoments[other_mom] = self._kh.get_params_for_moment(other_mom)
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    # Look up maps to pass and build the kwarg list
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                    context = {'indir':indir,
-                               'target':target,
-                               'config':config,
-                               'product':product,
-                               'res_tag':res_tag,
-                               'extra_ext':extra_ext,
-                               'allmoments':allmoments}
+                    kwargs_dict = mom_params['kwargs']
+
+                    maps_to_pass = mom_params['maps_to_pass']
+                    for map_ext in maps_to_pass:
+                        
+                        # File name for this extension
+                        this_map_file = outroot+'_'+map_ext+'.fits'
+
+                        # Verify file existence
+                        if not (os.path.isfile(indir+this_map_file)):
+                            logger.warning("Missing needed context file: "+indir+this_map_file)
+                            proceed = False
+                        
+                        # Add as param to kwarg dict
+                        kwargs_dict[map_ext] = indir+this_map_file
+
+                    other_exts = mom_params['other_exts']
+                    for param_name in other_exts.keys():
+
+                        # File name for this extension
+                        this_ext = other_exts[param_name]
+
+                        # Code to look up file name
+                        this_ext_file = str(target)+this_ext
+
+                        # Verify file existence
+                        if not (os.path.isfile(indir+this_ext_file)):
+                            logger.warning("Missing needed context file: "+indir+this_ext_file)
+                            proceed = False
+
+                        # Add as param to kwarg dict
+                        kwargs_dict[param_name] = indir+this_ext_file
+
+                    if proceed == False:
+                        logger.warning("Missing some needed information. Skipping this calculation.")
+                        continue
+
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    # Call the moment generator
+                    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                    print(kwargs_dict)
 
                     moment_generator(
                         indir+input_file, mask=mask_file, noise=noise_in,
-                        moment=mom_params['algorithm'], momkwargs=mom_params['kwargs'],
                         outfile=outfile, errorfile=errorfile,
-                        channel_correlation=None, context=context)
+                        channel_correlation=None,
+                        moment=mom_params['algorithm'],
+                        momkwargs=kwargs_dict,
+                        # Deprecated context
+                        )
                     

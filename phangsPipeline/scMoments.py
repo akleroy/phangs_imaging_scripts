@@ -148,7 +148,7 @@ def moment_generator(
             cube, rms=noisecube,
             outfile=outfile, errorfile=errorfile,
             channel_correlation=channel_correlation,
-            context=context,
+            #context=context,
             **kwargs)
     else:
         moment_map, error_map = func(
