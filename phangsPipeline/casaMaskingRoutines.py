@@ -224,6 +224,7 @@ def signal_mask(
     high_snr = 4.0,
     low_snr = 2.0,
     absolute = False,
+    do_roll = True,
     ):
     """
     A simple signal mask creation routine used to make masks on the
@@ -261,29 +262,42 @@ def signal_mask(
         hi_mask = (np.abs(cube) > hi_thresh)
     else:
         hi_mask = (cube > hi_thresh)
-    logger.info('... rolling.')
-    mask = \
-        (hi_mask + np.roll(hi_mask,1,axis=spec_axis) + \
-             np.roll(hi_mask,-1,axis=spec_axis)) >= 1
 
-    logger.info('Expanding mask.')
     if high_snr > low_snr:
+        logger.info('Expanding mask.')
         logger.info('Building low mask.')
         if absolute:
             low_mask = (np.abs(cube) > low_thresh)
         else:
             low_mask = (cube > low_thresh)
-        logger.info('... rolling.')
-        rolled_low_mask = \
-            (low_mask + np.roll(low_mask,1,axis=spec_axis) + \
-                 np.roll(low_mask,-1,axis=spec_axis)) >= 1
-        logger.info('... joining with high mask via dilation.')
+        if do_roll:
+            logger.info('... rolling.')
+            rolled_low_mask = \
+                (low_mask + np.roll(low_mask,1,axis=spec_axis) + \
+                     np.roll(low_mask,-1,axis=spec_axis)) >= 1
+            low_mask = rolled_low_mask
+
+        logger.info('... joining low mask with high mask via dilation.')
         mask = ndimage.binary_dilation(hi_mask, 
-                                       mask=rolled_low_mask, 
+                                       mask=low_mask, 
                                        iterations=-1)
         del low_mask
+        del hi_mask
+        if do_roll:
+            del rolled_low_mask
+    else:
+        logger.info('No expansion requested.')
+        if do_roll:
+            logger.info('... rolling.')
+            mask = \
+                (hi_mask + np.roll(hi_mask,1,axis=spec_axis) + \
+                     np.roll(hi_mask,-1,axis=spec_axis)) >= 1
+            del hi_mask
+        else:
+            mask = hi_mask
 
-    del hi_mask
+    # Expect to be here with minimal memory footprint and mask
+    # created.
 
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root+'.mask'+suffix_in) == True:
