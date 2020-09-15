@@ -840,14 +840,13 @@ def write_tmax(cubein,
     if window is not None:
         window = u.Quantity(window)
         
-        if type(window) is u.Quantity:
-            from astropy.convolution import Box1DKernel
-            dv = channel_width(cube)
-            nChan = (window / dv).to(u.dimensionless_unscaled).value
-            if nChan > 1:
-                cube = cubein.spectral_smooth(Box1DKernel(nChan))
-            else:
-                cube = cubein
+        from astropy.convolution import Box1DKernel
+        dv = channel_width(cubein)
+        nChan = (window / dv).to(u.dimensionless_unscaled).value
+        if nChan > 1:
+            cube = cubein.spectral_smooth(Box1DKernel(nChan))
+        else:
+            cube = cubein
 
     else:
         cube = cubein
