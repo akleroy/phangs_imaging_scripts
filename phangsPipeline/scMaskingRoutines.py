@@ -680,7 +680,7 @@ def recipe_phangs_broad_mask(
         if grow_v is not None:
             mask_values = grow_mask(mask_values, iters_v=grow_v)
     
-        mask = SpectralCube(mask_values*1.0, wcs=cube.wcs, header=mask.header
+        mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
                             , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
     
         mask.allow_huge_operations = True
