@@ -476,7 +476,7 @@ def build_common_header(
     new_dec_ctr_pix = dec_axis_size/2.0
     
     freq_pix_in_hz = np.abs(target_hdr['csys']['spectral1']['wcs']['cdelt'])
-    freq_axis_size = np.ceil(delta_freq / freq_pix_in_hz)
+    freq_axis_size = np.ceil(delta_freq / freq_pix_in_hz) + 1
     new_freq_ctr_pix = freq_axis_size / 2.0
 
     # Check that the axis size isn't too big. This is likely to be a
