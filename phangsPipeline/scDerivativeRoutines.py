@@ -225,7 +225,8 @@ def write_moment0(
             mom0err[x, y] = (np.sum(covar))**0.5
 
         # Multiply by the channel width and assign correct units
-        mom0err = u.Quantity(mom0err * dv.value, cube.unit * dv.unit, copy=False)
+        mom0err = u.Quantity(mom0err * dv.value,
+                             cube.unit * dv.unit, copy=False)
 
         # Convert units if request
         if unit is not None:
