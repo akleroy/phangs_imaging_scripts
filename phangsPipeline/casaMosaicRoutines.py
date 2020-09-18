@@ -468,11 +468,11 @@ def build_common_header(
     # pixel coordinate for the RA and Dec axis.
     
     ra_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][0]*180./np.pi*3600.)
-    ra_axis_size = np.ceil(delta_ra / ra_pix_in_as)
+    ra_axis_size = np.ceil(delta_ra / ra_pix_in_as) + 1
     new_ra_ctr_pix = ra_axis_size/2.0
 
     dec_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][1]*180./np.pi*3600.)
-    dec_axis_size = np.ceil(delta_dec / dec_pix_in_as)
+    dec_axis_size = np.ceil(delta_dec / dec_pix_in_as) + 1
     new_dec_ctr_pix = dec_axis_size/2.0
     
     freq_pix_in_hz = np.abs(target_hdr['csys']['spectral1']['wcs']['cdelt'])
