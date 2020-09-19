@@ -469,15 +469,16 @@ def build_common_header(
     
     ra_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][0]*180./np.pi*3600.)
     ra_axis_size = np.ceil(delta_ra / ra_pix_in_as) + 1
-    new_ra_ctr_pix = ra_axis_size/2.0
+    new_ra_ctr_pix = (ra_axis_size + 1) /2.0
 
     dec_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][1]*180./np.pi*3600.)
     dec_axis_size = np.ceil(delta_dec / dec_pix_in_as) + 1
-    new_dec_ctr_pix = dec_axis_size/2.0
+    new_dec_ctr_pix = (dec_axis_size + 1)/2.0
     
     freq_pix_in_hz = np.abs(target_hdr['csys']['spectral1']['wcs']['cdelt'])
     freq_axis_size = np.ceil(delta_freq / freq_pix_in_hz) + 1
-    new_freq_ctr_pix = freq_axis_size / 2.0
+    # +1 or the 1-indexing
+    new_freq_ctr_pix = (freq_axis_size + 1) / 2.0
 
     # Check that the axis size isn't too big. This is likely to be a
     # bug. If allowbigimage is True then bypass this, otherwise exit.

@@ -780,8 +780,8 @@ def write_ew(cube,
     if unit is not None:
         sigma_ew = update_metadata(sigma_ew, cube)
         sigma_ew = sigma_ew.to(unit)
-
-    sigma_ew.write(outfile, overwrite=True)
+    if outfile is not None:
+        sigma_ew.write(outfile, overwrite=True)
 
     if return_products and sigma_ewerr_projection is not None:
         return(sigma_ew, sigma_ewerr_projection)
@@ -856,7 +856,7 @@ def write_tmax(cubein,
     if errorfile is not None and rms is None:
         logger.error("Tmax error requested but no RMS provided")
 
-    if rms is not None and errorfile is not None:
+    if rms is not None:
         argmaxmap = cube.argmax(axis=0)
         rms = rms.with_mask(cube._mask, inherit_mask=False)
 
