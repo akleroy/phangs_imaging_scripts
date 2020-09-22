@@ -222,10 +222,11 @@ def write_moment0(
                 index=index)
 
             # Collapse the covariance matrix into an integrated moment map
-            mom0err[x, y] = (np.sum(covar**2))**0.5
+            mom0err[x, y] = (np.sum(covar))**0.5
 
         # Multiply by the channel width and assign correct units
-        mom0err = u.Quantity(mom0err * dv.value, cube.unit * dv.unit, copy=False)
+        mom0err = u.Quantity(mom0err * dv.value,
+                             cube.unit * dv.unit, copy=False)
 
         # Convert units if request
         if unit is not None:
@@ -756,11 +757,11 @@ def write_ew(cube,
                                      rms=rms_spec,
                                      channel_correlation=channel_correlation,
                                      index=index)
-            sigma_ew_err[x, y] = (np.sum(covar**2) 
+            sigma_ew_err[x, y] = (np.sum(covar) 
                                   + (sigma_ew[x, y].value**2 
                                      * rms_at_max[0, x, y]**2 
                                      / maxmap[x, y].value**2))**0.5
-        sigma_ew_err / np.sqrt(2 * np.pi)
+            sigma_ew_err /= np.sqrt(2 * np.pi)
         sigma_ew_err = u.Quantity(sigma_ew_err, 
                                   cube.spectral_axis.unit, copy=False)
         if unit is not None:
@@ -779,8 +780,8 @@ def write_ew(cube,
     if unit is not None:
         sigma_ew = update_metadata(sigma_ew, cube)
         sigma_ew = sigma_ew.to(unit)
-
-    sigma_ew.write(outfile, overwrite=True)
+    if outfile is not None:
+        sigma_ew.write(outfile, overwrite=True)
 
     if return_products and sigma_ewerr_projection is not None:
         return(sigma_ew, sigma_ewerr_projection)
@@ -855,7 +856,7 @@ def write_tmax(cubein,
     if errorfile is not None and rms is None:
         logger.error("Tmax error requested but no RMS provided")
 
-    if rms is not None and errorfile is not None:
+    if rms is not None:
         argmaxmap = cube.argmax(axis=0)
         rms = rms.with_mask(cube._mask, inherit_mask=False)
 
