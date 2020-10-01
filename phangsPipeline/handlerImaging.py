@@ -541,7 +541,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # import_and_align_mask
         msr.import_and_align_mask(in_file=this_cleanmask, \
                                   out_file=fname_dict['mask'], \
-                                  template=fname_dict['image'])
+                                  template=fname_dict['image'],
+                                  blank_to_match=True)
         clean_call.set_param('usemask','user')
 
         return()

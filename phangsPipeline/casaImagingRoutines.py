@@ -376,6 +376,8 @@ def execute_clean_call(
         if active_kwargs['pblimit'] > active_kwargs['pbmask']:
             active_kwargs['pbmask'] = active_kwargs['pblimit']
 
+    #print(active_kwargs)
+
     #os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
     casaStuff.tclean(**active_kwargs)
     #os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#

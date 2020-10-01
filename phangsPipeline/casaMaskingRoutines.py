@@ -368,6 +368,7 @@ def import_and_align_mask(
     in_file=None,
     out_file=None,
     template=None,
+    blank_to_match=False,
     ):
     """
     Align a mask to a target astrometry. This includes some klugy
@@ -460,8 +461,15 @@ def import_and_align_mask(
     myia.open(out_file+'.temp_aligned')
     mask = myia.getchunk(dropdeg=True)
     myia.close()
+
+    # If requested, blank the mask wherever the cube is non-finite.
+    if blank_to_match:
+        myia.open(template)
+        nans = np.invert(myia.getchunk(dropdeg=True,getmask=True))        
+        myia.close()
+        mask[nans] = 0.0
     
-    # 
+    # Shove the mask into the data set
     if is_template_2D and not is_mask_2D:
         while len(mask.shape) < len(hdr['shape']):
             mask = np.expand_dims(mask, axis=len(mask.shape))
