@@ -310,7 +310,12 @@ def noise_cube(data, mask=None,
 
                 kernel = savgol_coeffs(int(bandpass_smooth_window),
                                        int(bandpass_smooth_order))
-                noise_spec = convolve(noise_spec, kernel, boundary='extend')
+
+                baddata = np.isnan(noise_spec)
+                noise_spec = convolve(noise_spec, kernel,
+                                      nan_treatment='interpolate',
+                                      boundary='extend')
+                noise_spec[baddata] = np.nan
 
                 # Make sure that the noise spectrum is normalized by
                 # setting the median to one.
