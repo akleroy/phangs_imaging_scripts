@@ -8,12 +8,13 @@ but also may be of general utility.
 
 import os
 import numpy as np
+import scipy.ndimage as nd
 import pyfits # CASA has pyfits, not astropy
 import glob
 
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
 
 # Analysis utilities
 import analysisUtils as au
@@ -178,11 +179,12 @@ def export_and_cleanup(
     return()
 
 def trim_cube(    
-    infile=None, 
-    outfile=None, 
-    overwrite=False, 
-    inplace=False, 
-    min_pixperbeam=3,    
+        infile=None, 
+        outfile=None, 
+        overwrite=False, 
+        inplace=False, 
+        min_pixperbeam=3,
+        pad=1
     ):
     """
     Trim empty space from around the edge of a cube. Also rebin the
@@ -236,7 +238,6 @@ def trim_cube(
     this_shape = mask.shape
 
     mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
-    pad = 0
     xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
     xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
 
@@ -267,6 +268,47 @@ def trim_cube(
 
     return(True)
 
+def trim_rind(
+        infile=None, 
+        outfile=None, 
+        overwrite=False,
+        inplace=True,
+        pixels=1
+        ):
+    
+    if infile is None or outfile is None:
+        logger.error("Missing required input.")
+        return(False)
+    
+    if os.path.isdir(infile) == False:
+        logger.error("Input file not found: "+infile)
+        return(False)
+
+    if inplace == False:
+        if os.path.isdir(outfile) or os.path.isfile(outfile):
+            if overwrite:
+                os.system('rm -rf '+outfile)
+            else:
+                logger.error("Output file already present: "+outfile)
+                return(False)
+
+        os.system('cp -r '+infile+' '+outfile)
+        target_file = outfile
+    else:
+        target_file = infile
+
+    # Figure out the extent of the image inside the cube
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(target_file)
+    mask = myia.getchunk(getmask=True)    
+    elt = nd.generate_binary_structure(2,1)
+    if pixels > 1:
+        elt = nd.iterate_structure(elt, pixels-1)
+    mask = nd.binary_erosion(mask, elt[:,:,np.newaxis, np.newaxis])
+    myia.putregion(pixelmask=mask)
+    myia.close()
+    return(True)
+    
 def primary_beam_correct(
     infile=None, 
     pbfile=None, 

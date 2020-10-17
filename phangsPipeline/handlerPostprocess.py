@@ -832,19 +832,20 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         return()
 
     def task_compress(
-        self,
-        target = None,
-        product = None,
-        config = None,
-        in_tag = 'pbcorr_round',
-        out_tag = 'pbcorr_trimmed',
-        do_pb_too = True,
-        in_pb_tag = 'pb',
-        out_pb_tag = 'pb_trimmed',
-        extra_ext_in = '',
-        extra_ext_out = '',
-        check_files = True,
-        ):
+            self,
+            target = None,
+            product = None,
+            config = None,
+            in_tag = 'pbcorr_round',
+            out_tag = 'pbcorr_trimmed',
+            do_trimrind = True,
+            do_pb_too = True,
+            in_pb_tag = 'pb',
+            out_pb_tag = 'pb_trimmed',
+            extra_ext_in = '',
+            extra_ext_out = '',
+            check_files = True
+    ):
         """
         For one target, product, config combination, compress the cube
         to the smallest reasonable volume. Also align the primary beam
@@ -891,7 +892,15 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 outfile=outdir+outfile,
                 overwrite=True,
                 inplace=False,
-                min_pixperbeam=3)
+                min_pixperbeam=3,
+                pad=1)
+
+            if do_trimrind:
+                ccr.trim_cube(
+                    infile=outdir+outfile,
+                    inplace=True,
+                    pixels=1)
+                
 
         if do_pb_too is False:
             return()
@@ -1514,6 +1523,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         self.task_compress(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
+            do_trimrind=True,
             extra_ext_in=ext_ext, extra_ext_out=ext_ext,
             )
 
@@ -1767,13 +1777,18 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         if do_cleanup:
 
             for this_target, this_product, this_config in \
-                    self.looper(do_targets=True,do_products=True,do_configs=True):
+                    self.looper(do_targets=True,
+                                do_products=True,
+                                do_configs=True):
                 
                 self.recipe_cleanup_one_target(
-                    target = this_target, product = this_product, config = this_config,
+                    target = this_target,
+                    product = this_product,
+                    config = this_config,
                     check_files = True)
 
-        # Build reports summarizing the properties of the final postprocessed data.
+        # Build reports summarizing the properties of the final
+        # postprocessed data.
 
         if do_summarize:
 
