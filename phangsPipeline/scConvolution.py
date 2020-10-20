@@ -12,18 +12,34 @@ logger.setLevel(logging.DEBUG)
 
 import numpy as np
 
+def coverage_collapser(coveragecube,
+                       coverage2dfile=None,
+                       overwrite=False):
+    coverage2d = coveragecube.sum(axis=0)
+    coverage2darray = (np.array(coverage2d, dtype=np.float32)
+                       / coveragecube.shape[0])
+    hdr = coverage2d.header
+    hdr['DATAMIN'] = np.nanmin(coverage2darray)
+    hdr['DATAMAX'] = np.nanmax(coverage2darray)
+    hdu = fits.PrimaryHDU(coverage2darray, hdr)
+    hdu.writeto(coverage2dfile, overwrite=overwrite)
+
+
 def smooth_cube(
-    incube=None,
-    outfile=None,
-    angular_resolution=None,
-    linear_resolution=None,
-    distance=None,
-    velocity_resolution=None,
-    nan_treatment='interpolate', # can also be 'fill'
-    tol=None,
-    make_coverage_cube=False,
-    coveragefile=None,
-    overwrite=True
+        incube=None,
+        outfile=None,
+        angular_resolution=None,
+        linear_resolution=None,
+        distance=None,
+        velocity_resolution=None,
+        nan_treatment='interpolate', # can also be 'fill'
+        tol=None,
+        make_coverage_cube=False,
+        collapse_coverage=False,
+        coveragefile=None,
+        coverage2dfile=None,
+        dtype=np.float32,
+        overwrite=True
     ):
     """
     Smooth an input cube to coarser angular or spectral
@@ -149,9 +165,21 @@ def smooth_cube(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if outfile is not None:
-        cube.write(outfile, overwrite=overwrite)
+        # cube.write(outfile, overwrite=overwrite)
+        hdu = fits.PrimaryHDU(np.array(cube.filled_data[:], dtype=dtype),
+                              header=cube.header)
+        hdu.writeto(outfile, overwrite=overwrite)
         if make_coverage_cube:
             if coveragefile is not None:
-                coverage.write(coveragefile, overwrite=overwrite)
+                hdu = fits.PrimaryHDU(np.array(coverage.filled_data[:], dtype=dtype),
+                                      header=coverage.header)
+                hdu.writeto(coveragefile, overwrite=overwrite)
+            if collapse_coverage:
+                if coveragefile and not coverage2dfile:
+                    coverage2dfile = coveragefile.replace('.fits','2d.fits')
+                coverage_collapser(coverage,
+                                   coverage2dfile=coverage2dfile,
+                                   overwrite=overwrite)
+                # coverage.write(coveragefile, overwrite=overwrite)
 
     return(cube)

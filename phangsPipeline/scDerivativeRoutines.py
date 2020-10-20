@@ -17,6 +17,14 @@ logger.setLevel(logging.DEBUG)
 # Helper functions
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+
+# Force reduction in bit-depth to save space.
+def writer(projection, filename, overwrite=True, dtype=np.float32):
+    hdu = fits.PrimaryHDU(projection.hdu.data.astype(dtype),
+                          header=projection.hdu.header)
+    hdu.writeto(filename, overwrite=overwrite)
+
+    
 def update_metadata(projection, cube, error=False):
     keys = ['BMAJ', 'BMIN', 'BPA', 'JYTOK', 'VELREF',
             'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT']
@@ -45,16 +53,16 @@ def update_metadata(projection, cube, error=False):
             pass
 
     # Check if the moment map is empty. If so, nanmax and nanmin
-    # will not be finite and writing the header to disc will fail.
+    # will not be finite and writing the header to disk will fail.
     if not np.isfinite(projection.filled_data[:].value).any():
         mx = 0.
         mn = 0.
     else:
         mx = np.nanmax(projection.filled_data[:].value)
         mn = np.nanmin(projection.filled_data[:].value)
+        hdr['DATAMAX'] = mx
+        hdr['DATAMIN'] = mn
 
-    hdr['DATAMAX'] = mx
-    hdr['DATAMIN'] = mn
     if 'moment_axis' in projection.meta.keys():
         idx = projection.meta['moment_axis']
     else:
@@ -1165,5 +1173,3 @@ def write_vquad(cubein,
         return(vmaxmap_projection, vquaderr_projection)
     elif return_products and vquaderr_projection is None:
         return(vmaxmap_projection)
-
-

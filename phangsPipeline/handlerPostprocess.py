@@ -137,7 +137,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 target = target, product = product)            
             fname_dict[tag] = orig_sd_file
         else:
-            fname_dict[tag] = None
+            fname_dict[tag] = ''
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Processed files (apply the extra_ext tag here)
