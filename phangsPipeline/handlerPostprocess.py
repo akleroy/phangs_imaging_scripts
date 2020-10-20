@@ -896,7 +896,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 pad=1)
 
             if do_trimrind:
-                ccr.trim_cube(
+                ccr.trim_rind(
                     infile=outdir+outfile,
                     inplace=True,
                     pixels=1)
@@ -1049,7 +1049,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 outfile=outdir+outfile,
                 overwrite=True,
                 remove_cards=[],
-                add_cards=[],
+                add_cards={'OBJECT':target.upper()},
                 add_history=[],
                 zap_history=True,
                 round_beam=True,
@@ -1078,7 +1078,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 outfile=outdir+outfile_pb,
                 overwrite=True,    
                 remove_cards=[],
-                add_cards=[],
+                add_cards={'OBJECT':target.upper()},
                 add_history=[],
                 zap_history=True,
                 round_beam=False,

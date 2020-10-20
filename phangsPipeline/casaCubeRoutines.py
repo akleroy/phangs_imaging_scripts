@@ -13,8 +13,8 @@ import pyfits # CASA has pyfits, not astropy
 import glob
 
 import logging
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # Analysis utilities
 import analysisUtils as au
@@ -80,7 +80,7 @@ def export_and_cleanup(
     outfile=None,
     overwrite=False,    
     remove_cards=[],
-    add_cards=[],
+    add_cards={},
     add_history=[],
     zap_history=True,
     round_beam=True,
@@ -146,7 +146,10 @@ def export_and_cleanup(
 
     for history_line in add_history:
         add_history(history_line)
-            
+
+    for card in add_cards:
+        hdr[card] = add_cards[card]
+        
     # Get the data min and max right
 
     datamax = np.nanmax(data)
@@ -154,6 +157,7 @@ def export_and_cleanup(
     hdr['DATAMAX'] = datamax
     hdr['DATAMIN'] = datamin
 
+    
     # Round the beam recorded in the header if it lies within the
     # specified tolerance.
 
