@@ -191,9 +191,8 @@ def write_moment0(
     # Spectral cube collapse routine. Applies the masked, automatically
     mom0 = cube.moment0()
     if include_limits:
-        observed = np.any(np.isfinite(cube.filled_data[:]), axis=0)
-        mom0[np.isnan(mom0) and observed] = 0.0
-    import pdb; pdb.set_trace()
+        observed = np.any(np.isfinite(cube._data), axis=0)
+        mom0[np.logical_and(np.isnan(mom0), observed)] = 0.0
 
     # Handle the error.
     mom0err_proj = None
@@ -208,14 +207,13 @@ def write_moment0(
 
         # Initialize the error map
         mom0err = np.empty(mom0.shape)
-        if include_limits:
-            mom0err.fill(0.0)
-            
-        else:
-            mom0err.fill(np.nan)
+        mom0err.fill(np.nan)
 
         # Note the channel width
         dv = channel_width(cube)
+        if include_limits:
+            rmsmax = np.max(rms, axis=0)
+            mom0err[observed] = rmsmax[observed]
 
         # Make a masked version of the noise cube
         rms = rms.with_mask(cube._mask, inherit_mask=False)
