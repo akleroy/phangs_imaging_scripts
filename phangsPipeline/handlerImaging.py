@@ -156,6 +156,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_singlescale_clean = False,
         do_revert_to_singlescale = False,
         do_export_to_fits = False, 
+        convergence_fracflux = 0.01,
         extra_ext_in = None,
         suffix_in = None,
         extra_ext_out = None,        
@@ -235,6 +236,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                     do_singlescale_clean = do_singlescale_clean, 
                     do_revert_to_singlescale = do_revert_to_singlescale, 
                     do_export_to_fits = do_export_to_fits, 
+                    convergence_fracflux = convergence_fracflux,
                     dynamic_sizing = dynamic_sizing, 
                     force_square = force_square, 
                     overwrite = overwrite, 
@@ -519,7 +521,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         this_cleanmask = self._kh.get_cleanmask_filename(target = target, product = product)
         if this_cleanmask is None:
             logger.info("No clean mask found for target "+target+" product "+product)
-            clean_call.set_param('usemask','pb')
+            # AKL - propose to deprecate
+            #clean_call.set_param('usemask','pb')
             return()    
 
         logger.info("")
@@ -543,7 +546,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                                   out_file=fname_dict['mask'], \
                                   template=fname_dict['image'],
                                   blank_to_match=True)
-        clean_call.set_param('usemask','user')
+        # AKL - propose to deprecate
+        #clean_call.set_param('usemask','user')
 
         return()
     
@@ -551,6 +555,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     def task_multiscale_clean(
         self, 
         clean_call = None, 
+        convergence_fracflux = 0.01,
         backup = True, 
         ):
         """
@@ -595,7 +600,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                        min_loops = 3,
                        max_loops = 20,
                        max_total_niter = None,
-                       convergence_fracflux=0.01,
+                       convergence_fracflux=convergence_fracflux,
                        convergence_totalflux=None,
                        convergence_fluxperniter=None,
                        use_absolute_delta=True,
@@ -662,6 +667,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     def task_singlescale_clean(
         self, 
         clean_call = None, 
+        convergence_fracflux=0.01,
         backup = True, 
         ):
         """
@@ -707,7 +713,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                        min_loops = 3,
                        max_loops = 20,
                        max_total_niter = None,
-                       convergence_fracflux=0.01,
+                       convergence_fracflux=convergence_fracflux,
                        convergence_totalflux=None,
                        convergence_fluxperniter=None,
                        use_absolute_delta=True,
@@ -771,6 +777,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         do_singlescale_clean = True,
         do_revert_to_singlescale = True,
         do_export_to_fits = True, 
+        convergence_fracflux = 0.01,
         dynamic_sizing = True,
         force_square = False,
         export_dirty = False,
@@ -842,7 +849,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         if do_read_clean_mask: 
 
             self.task_read_clean_mask(
-                clean_call = clean_call,
+                # AKL - propose to deprecate interaction with the clean_call here
+                #clean_call = clean_call,
                 target = target, config = config, product = product)
 
         # For the next few steps, we use the clean call appropriate
@@ -853,10 +861,27 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = extra_ext_in, suffix_in = suffix_in,
             extra_ext_out = extra_ext_out,
             stage = 'multiscale')
-        
-        if not do_read_clean_mask: 
+
+        # AKL - adding a check on the mask existence here
+
+        # Check if we have a mask in place. This might happen if we
+        # didn't find a clean mask or if we did not supply one. Either
+        # way, now turn on a primary beam based mask.
+
+        fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
+        if os.path.isdir(fname_dict['mask']) == False:
+            logger.warning("I looked for this and did not find it: "+fname_dict['mask'])
+            logger.warning("No mask found, we will use a pblimit mask.")
             clean_call.set_param('usemask', 'pb')
-            clean_call.set_param('pbmask', 0.2)
+            if clean_call.get_param('pblimit') is None:
+                clean_call.set_param('pbmask', 0.5)
+            else:
+                clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
+
+        # AKL - propose to deprecate
+        #if not do_read_clean_mask: 
+        #    clean_call.set_param('usemask', 'pb')
+        #    clean_call.set_param('pbmask', 0.2)
         
         if dynamic_sizing:
             clean_call.set_param('cell',cell,nowarning=True)
@@ -870,7 +895,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if do_multiscale_clean:
             
-            self.task_multiscale_clean(clean_call=clean_call)
+            self.task_multiscale_clean(clean_call=clean_call,
+                                       convergence_fracflux = convergence_fracflux,
+                                       )
 
         if do_export_to_fits and export_multiscale:
 
@@ -905,7 +932,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if do_singlescale_clean:
 
-            self.task_singlescale_clean(clean_call=clean_call)
+            self.task_singlescale_clean(clean_call=clean_call,
+                                        convergence_fracflux = convergence_fracflux)
 
         # Reset the current imaging to the results of the singlescale clean.
 
