@@ -850,7 +850,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
             self.task_read_clean_mask(
                 # AKL - propose to deprecate interaction with the clean_call here
-                #clean_call = clean_call,
+                clean_call = clean_call,
                 target = target, config = config, product = product)
 
         # For the next few steps, we use the clean call appropriate
