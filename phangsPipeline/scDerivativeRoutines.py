@@ -148,10 +148,12 @@ def calculate_channel_correlation(cube, length=1):
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 def write_moment0(
-    cube, rms=None, channel_correlation=None,
-    outfile=None, errorfile=None,
-    overwrite=True, unit=None,
-    return_products=True):
+        cube, rms=None, channel_correlation=None,
+        outfile=None, errorfile=None,
+        overwrite=True, unit=None,
+        include_limits=True,
+        return_products=True):
+
     """
     Write out moment0 map for a SpectralCube
     
@@ -188,6 +190,10 @@ def write_moment0(
     
     # Spectral cube collapse routine. Applies the masked, automatically
     mom0 = cube.moment0()
+    if include_limits:
+        observed = np.any(np.isfinite(cube.filled_data[:]), axis=0)
+        mom0[np.isnan(mom0) and observed] = 0.0
+    import pdb; pdb.set_trace()
 
     # Handle the error.
     mom0err_proj = None
@@ -202,7 +208,11 @@ def write_moment0(
 
         # Initialize the error map
         mom0err = np.empty(mom0.shape)
-        mom0err.fill(np.nan)
+        if include_limits:
+            mom0err.fill(0.0)
+            
+        else:
+            mom0err.fill(np.nan)
 
         # Note the channel width
         dv = channel_width(cube)
@@ -248,7 +258,8 @@ def write_moment0(
         # Write to disk if requested
         if errorfile is not None:
             mom0err_proj = update_metadata(mom0err_proj, cube, error=True)
-            mom0err_proj.write(errorfile, overwrite=overwrite)
+            writer(mom0err_proj, errorfile, overwrite=overwrite)
+            # mom0err_proj.write(errorfile, overwrite=overwrite)
     else:
         mom0err_proj = None
 
@@ -259,7 +270,8 @@ def write_moment0(
     # If requested, write to disk
     if outfile is not None:
         mom0 = update_metadata(mom0, cube)
-        mom0.write(outfile, overwrite=overwrite)
+        writer(mom0, outfile, overwrite=overwrite)
+        # mom0.write(outfile, overwrite=overwrite)
 
     # If requested, return
     if return_products:
@@ -354,13 +366,15 @@ def write_moment1(
                                   meta=mom1.meta)
         if errorfile is not None:
             mom1err_proj = update_metadata(mom1err_proj, cube, error=True)
-            mom1err_proj.write(errorfile, overwrite=overwrite)
+            writer(mom1err_proj, errorfile, overwrite=overwrite)
+            # mom1err_proj.write(errorfile, overwrite=overwrite)
     
     if unit is not None:
         mom1 = mom1.to(unit)
     if outfile is not None:
         mom1 = update_metadata(mom1, cube)
-        mom1.write(outfile, overwrite=True)
+        writer(mom1, outfile, overwrite=overwrite)
+        # mom1.write(outfile, overwrite=True)
 
     if return_products and mom1err_proj is not None:
         return(mom1, mom1err_proj)
@@ -538,8 +552,9 @@ def write_moment1_hybrid(
 
     # Write to disk
     if outfile is not None:
-        mom1hybrid_proj.write(outfile,
-                              overwrite=overwrite)
+        writer(mom1hybrid_proj, outfile, overwrite=overwrite)
+        # mom1hybrid_proj.write(outfile,
+        #                      overwrite=overwrite)
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     # Propagate errors from the input map to an error map
@@ -569,8 +584,9 @@ def write_moment1_hybrid(
         if errorfile is not None:
             mom1hybrid_error_proj = update_metadata(mom1hybrid_error_proj,
                                                     cube, error=True)
-            mom1hybrid_error_proj.write(errorfile,
-                                        overwrite=overwrite)
+            writer(mom1hybrid_error_proj, errorfile, overwrite=overwrite)
+            # mom1hybrid_error_proj.write(errorfile,
+            #                            overwrite=overwrite)
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     # Return if requested
@@ -677,13 +693,15 @@ def write_moment2(
                                   meta=mom2.meta)
         if errorfile is not None:
             mom2err_proj = update_metadata(mom2err_proj, cube, error=True)
-            mom2err_proj.write(errorfile, overwrite=overwrite)
+            writer(mom2err_proj, errorfile, overwrite=overwrite)
+            # mom2err_proj.write(errorfile, overwrite=overwrite)
 
     if unit is not None:
         mom2 = mom2.to(unit)
     if outfile is not None:
         mom2 = update_metadata(mom2, cube)
-        mom2.write(outfile, overwrite=True)
+        writer(mom2, outfile, overwrite=overwrite)
+        # mom2.write(outfile, overwrite=True)
 
     if return_products and mom2err_proj is not None:
         return(mom2, mom2err_proj)
@@ -782,14 +800,16 @@ def write_ew(cube,
         if outfile is not None:
             sigma_ewerr_projection = update_metadata(
                 sigma_ewerr_projection, cube, error=True)
-            sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
+            writer(sigma_ewerr_projection, errorfile, overwrite=overwrite)
+            # sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
 
     # Do the conversion here to not mess up errors in units.
     if unit is not None:
         sigma_ew = update_metadata(sigma_ew, cube)
         sigma_ew = sigma_ew.to(unit)
     if outfile is not None:
-        sigma_ew.write(outfile, overwrite=True)
+        writer(sigma_ew, outfile, overwrite=overwrite)
+        # sigma_ew.write(outfile, overwrite=True)
 
     if return_products and sigma_ewerr_projection is not None:
         return(sigma_ew, sigma_ewerr_projection)
@@ -882,13 +902,15 @@ def write_tmax(cubein,
         if errorfile is not None:
             tmaxerr_projection = update_metadata(tmaxerr_projection, cube,
                                                  error=True)
-            tmaxerr_projection.write(errorfile, overwrite=overwrite)
+            writer(tmaxerr_projection, errorfile, overwrite=overwrite)
+            # tmaxerr_projection.write(errorfile, overwrite=overwrite)
 
     if unit is not None:
         maxmap = maxmap.to(unit)
     if outfile is not None:
         maxmap = update_metadata(maxmap, cube)
-        maxmap.write(outfile, overwrite=True)
+        writer(maxmap, outfile, overwrite=overwrite)
+        # maxmap.write(outfile, overwrite=True)
 
     if return_products and tmaxerr_projection is not None:
         return(maxmap, tmaxerr_projection)
@@ -980,7 +1002,8 @@ def write_vmax(cubein,
         if errorfile is not None:
             vmaxerr_projection = update_metadata(vmaxerr_projection, cube,
                                                  error=True)
-            vmaxerr_projection.write(errorfile, overwrite=overwrite)
+            writer(vmaxerr_projection, errorfile, overwrite=overwrite)
+            # vmaxerr_projection.write(errorfile, overwrite=overwrite)
 
     vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)        
     if unit is not None:
@@ -992,7 +1015,8 @@ def write_vmax(cubein,
 
     if outfile is not None:        
         vmaxmap_projection = update_metadata(vmaxmap_projection, cube)
-        vmaxmap_projection.write(outfile, overwrite=True)
+        writer(vmaxmap_projection, outfile, overwrite=overwrite)
+        # vmaxmap_projection.write(outfile, overwrite=True)
         
     if return_products and vmaxerr_projection is not None:
         return(vmaxmap_projection, vmaxerr_projection)
@@ -1156,7 +1180,8 @@ def write_vquad(cubein,
         if errorfile is not None:
             vquaderr_projection = update_metadata(vquaderr_projection, cube,
                                                   error=True)
-            vquaderr_projection.write(errorfile, overwrite=overwrite)
+            writer(vquaderr_projection, errorfile, overwrite=overwrite)
+            # vquaderr_projection.write(errorfile, overwrite=overwrite)
 
     vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)
     if unit is not None:
@@ -1167,7 +1192,8 @@ def write_vquad(cubein,
                                     meta=maxmap.meta)
     if outfile is not None:
         vmaxmap_projection = update_metadata(vmaxmap_projection, cube)
-        vmaxmap_projection.write(outfile, overwrite=overwrite)
+        writer(vmaxmap_projection, outfile, overwrite=overwrite)
+        # vmaxmap_projection.write(outfile, overwrite=overwrite)
 
     if return_products and vquaderr_projection is not None:
         return(vmaxmap_projection, vquaderr_projection)

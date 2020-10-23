@@ -561,7 +561,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                                 angular_resolution=input_res_value, 
                                 tol=tol, nan_treatment=nan_treatment,
                                 make_coverage_cube=True, coveragefile=outdir+coveragefile,
-                                collapse_coverage=True,
+                                collapse_coverage=True, coverage2dfile=outdir+coverage2dfile,
                                 overwrite=overwrite)
 
                 if res_type == 'phys':
@@ -575,7 +575,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                                 linear_resolution=input_res_value, distance=this_distance,
                                 tol=tol, nan_treatment=nan_treatment,
                                 make_coverage_cube=True, coveragefile=outdir+coveragefile,
-                                collapse_coverage=True,
+                                collapse_coverage=True, 
                                 overwrite=overwrite)
 
         return()

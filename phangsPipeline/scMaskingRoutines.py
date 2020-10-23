@@ -454,7 +454,10 @@ def join_masks(orig_mask_in, new_mask_in,
     
     # Write to disk, if desired
     if outfile is not None:        
-        mask.write(outfile, overwrite=overwrite)
+        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+                              header=mask.header)
+        hdu.writeto(outfile, overwrite=overwrite)
+        # mask.write(outfile, overwrite=overwrite)
 
     return(mask)
 
@@ -583,7 +586,10 @@ def recipe_phangs_strict_mask(
     
     # Write to disk, if desired
     if outfile is not None:        
-        mask.write(outfile, overwrite=overwrite)
+        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+                              header=mask.header)
+        hdu.writeto(outfile, overwrite=overwrite)
+        # mask.write(outfile, overwrite=overwrite)
         
     if return_spectral_cube:
         return(mask)
@@ -691,7 +697,11 @@ def recipe_phangs_broad_mask(
     
     # Write to disk, if desired
     if outfile is not None:        
-        mask.write(outfile, overwrite=overwrite)
+        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+                              header=mask.header)
+        hdu.writeto(outfile, overwrite=overwrite)
+
+        # mask.write(outfile, overwrite=overwrite)
         
     if return_spectral_cube:
         return(mask)
