@@ -152,10 +152,10 @@ def write_moment0(
         outfile=None, errorfile=None,
         overwrite=True, unit=None,
         include_limits=True,
+        line_width=10 * u.km / u.s,
         return_products=True):
 
-    """
-    Write out moment0 map for a SpectralCube
+    """Write out moment0 map for a SpectralCube
     
     Keywords:
     ---------
@@ -184,8 +184,17 @@ def write_moment0(
     unit : astropy.Unit
         Preferred unit for moment masks
     
+    include_limits : bool
+        If true: For masked lines of sight inside the data, set the
+        moment0 value to 0 and the error to a value of 1sigma over
+        line_width as specified below.
+
+    line_width : astropy.Quantity
+        Assumed line width for moment0 upper limit.  Default = 10 km/s
+
     return_products : bool
         Return products calculated in the map
+
     """
     
     # Spectral cube collapse routine. Applies the masked, automatically
@@ -212,8 +221,10 @@ def write_moment0(
         # Note the channel width
         dv = channel_width(cube)
         if include_limits:
-            rmsmax = np.max(rms, axis=0)
-            mom0err[observed] = rmsmax[observed]
+            rmsmed = np.nanmedian(rms, axis=0)
+            mom0err[observed] = (rmsmed[observed]
+                                 * (np.abs(line_width
+                                           / dv).to(u.dimensionless_unscaled).value)**0.5)
 
         # Make a masked version of the noise cube
         rms = rms.with_mask(cube._mask, inherit_mask=False)
@@ -872,11 +883,13 @@ def write_tmax(cubein,
         nChan = (window / dv).to(u.dimensionless_unscaled).value
         if nChan > 1:
             cube = cubein.spectral_smooth(Box1DKernel(nChan))
+            rmsfac = 1/np.sqrt(nChan)
         else:
             cube = cubein
-
+            rmsfac = 1.0
     else:
         cube = cubein
+        rmsfac = 1.0
     maxmap = cube.max(axis=0)
 
     if errorfile is not None and rms is None:
@@ -889,7 +902,9 @@ def write_tmax(cubein,
         rms_at_max = np.take_along_axis(
             rms.filled_data[:],
             argmaxmap[np.newaxis, :, :], 0).value
-        rms_at_max = np.squeeze(rms_at_max)
+        # rmsfac accounts for smoothing leading to reduction in rms
+        # assuming channels are (nearly) independent
+        rms_at_max = np.squeeze(rms_at_max) * rmsfac 
         rms_at_max = u.Quantity(rms_at_max, cube.unit, copy=False)
         if unit is not None:
             rms_at_max = rms_at_max.to(unit)

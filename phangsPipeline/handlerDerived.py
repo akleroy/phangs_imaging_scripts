@@ -848,7 +848,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
         if (not self._dry_run):
-            
+
             recipe_phangs_broad_mask(
                 indir+input_file,
                 list_of_masks=list_of_masks,
