@@ -1595,7 +1595,8 @@ def batch_extract_continuum(
     vsys_kms=None, vwidth_kms=None, 
     vlow_kms=None, vhigh_kms=None,    
     do_statwt = False, 
-    do_collapse = True, 
+    do_collapse = True,
+    collapse_width = 10000,
     clear_pointing = True,
     overwrite = False,
     ):
@@ -1650,7 +1651,8 @@ def batch_extract_continuum(
             vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, 
             vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,    
             do_statwt = do_statwt,
-            do_collapse = do_collapse, 
+            do_collapse = do_collapse,
+            collapse_width = collapse_width, 
             overwrite = overwrite, 
             )
 
@@ -1706,7 +1708,8 @@ def extract_continuum(
     vsys_kms=None, vwidth_kms=None, 
     vlow_kms=None, vhigh_kms=None,    
     do_statwt = False, 
-    do_collapse = True, 
+    do_collapse = True,
+    collapse_width = 10000,
     overwrite = False, 
     ):
     """
@@ -1719,7 +1722,7 @@ def extract_continuum(
     outfile (str): The output measurement set data with suffix ".ms".
     do_statwt (bool): 
     do_collapse (bool): Always True to produce the single-channel continuum data.
-    
+    collapse_width (int): The number of channels to be binned for continuum imaging.  
     Inputs:
     
     Outputs:
@@ -1852,7 +1855,7 @@ def extract_continuum(
 
         casaStuff.split(vis=outfile+'.temp_copy',
                         outputvis=outfile,
-                        width=100000,
+                        width=collapse_width,
                         datacolumn=datacolumn,
                         keepflags=False)
                         #<TODO><20200210># num_chan or width

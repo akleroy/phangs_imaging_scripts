@@ -100,6 +100,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         statwt_line = True,
         statwt_cont = True,
         collapse_cont = True,
+        cont_width = 10000, 
         timebin = None,
         just_projects=None,
         strict_config=True,
@@ -232,6 +233,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             extra_ext_in = "",
                             do_statwt = statwt_cont,
                             do_collapse = collapse_cont,
+                            collapse_width = cont_width, 
                             overwrite = overwrite,
                             )
 
@@ -823,6 +825,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             extra_ext_out = '',
             do_statwt = True,
             do_collapse = True,
+            collapse_width = 10000, 
             overwrite = False,
             ):
         """
@@ -913,6 +916,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 ranges_to_exclude = ranges_to_exclude,
                 do_statwt = do_statwt,
                 do_collapse = do_collapse,
+                collapse_width = collapse_width, 
                 overwrite = overwrite,
                 )
 
