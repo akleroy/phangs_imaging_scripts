@@ -224,7 +224,7 @@ def signal_mask(
     high_snr = 4.0,
     low_snr = 2.0,
     absolute = False,
-    do_roll = True,
+    do_roll = False,
     ):
     """
     A simple signal mask creation routine used to make masks on the
@@ -316,8 +316,9 @@ def signal_mask(
         mask = (mask + old_mask) > 0
     if operation == 'NEW':
         mask = mask
-
-    del old_mask
+    
+    if operation == 'AND' or operation == 'OR':
+        del old_mask
 
     logger.info('Recasting as an int.')
     # this might be better: mask.astype(np.int, copy=False)

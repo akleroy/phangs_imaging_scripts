@@ -628,8 +628,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         mask for deep cleaning. Used before running a deep single
         scale clean.
         """
-                
-        imagename = clean_call.get_param('imagename')+'.image'
+        if product == 'cont':
+            imagename = clean_call.get_param('imagename')+'.image.tt0'
+        else:
+            imagename = clean_call.get_param('imagename')+'.image'
         if not os.path.isdir(imagename):
             logger.error("Image not found: "+imagename)
             return()
@@ -650,14 +652,24 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
 
         # signal_mask
-        msr.signal_mask(cube_root=fname_dict['root'],
-                        out_file=fname_dict['mask'],
-                        suffix_in=fname_dict['suffix'], 
-                        suffix_out=fname_dict['suffix'], 
-                        operation='AND',
-                        high_snr=4.0,
-                        low_snr=2.0,
-                        absolute=False)
+        if product == 'cont':
+            msr.signal_mask(cube_root=fname_dict['root'],
+                            out_file=fname_dict['mask'],
+                            suffix_in=fname_dict['suffix'], 
+                            suffix_out='', 
+                            operation='AND',
+                            high_snr=4.0,
+                            low_snr=2.0,
+                            absolute=False)
+        else:
+            msr.signal_mask(cube_root=fname_dict['root'],
+                            out_file=fname_dict['mask'],
+                            suffix_in=fname_dict['suffix'], 
+                            suffix_out=fname_dict['suffix'], 
+                            operation='AND',
+                            high_snr=4.0,
+                            low_snr=2.0,
+                            absolute=False)
 
         clean_call.set_param('usemask','user')
 
