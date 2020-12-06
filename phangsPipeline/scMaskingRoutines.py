@@ -14,7 +14,7 @@ import astropy.units as u
 from astropy.io import fits
 
 from scNoiseRoutines import mad_zero_centered
-
+from functools import reduce
 np.seterr(divide='ignore', invalid='ignore')
 
 mad_to_std_fac = 1.482602218505602
@@ -406,8 +406,9 @@ def join_masks(orig_mask_in, new_mask_in,
 
         logger.warn('Joining masks with nearest neighbor coordinate lookup')
         # Grab WCS out of template mask and map to other mask
+        x, y, _ = new_mask.wcs.wcs_world2pix(*(orig_mask.world[0,:,:][::-1]), 0)
+        _, _, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:,0,0][::-1]), 0)
 
-        x, y, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:][::-1]), 0)
         x = np.rint(x).astype(np.int)
         y = np.rint(y).astype(np.int)
         z = np.rint(z).astype(np.int)
@@ -415,31 +416,42 @@ def join_masks(orig_mask_in, new_mask_in,
 
         # Create new mask
         new_mask_vals = np.zeros(orig_mask.shape, dtype=np.bool)
-        
         # Find all values that are in bounds
-        inbounds = np.logical_and.reduce([(z >= 0), (z < new_mask.shape[0]),
-                                          (y >= 0), (y < new_mask.shape[1]),
-                                          (x >= 0), (x < new_mask.shape[2])])
+        inbounds = reduce((lambda A, B: np.logical_and(A, B)),
+                          [(z[:,np.newaxis,np.newaxis] >= 0),
+                           (z[:,np.newaxis,np.newaxis] < new_mask.shape[0]),
+                           (y[np.newaxis,:,:] >= 0),
+                           (y[np.newaxis,:,:] < new_mask.shape[1]),
+                           (x[np.newaxis,:,:] >= 0),
+                           (x[np.newaxis,:,:] < new_mask.shape[2])])
+#        inbounds = np.logical_and.reduce(
         # Look 'em up in the new_mask
-        new_mask_vals[inbounds] = new_mask_data[z[inbounds], y[inbounds], x[inbounds]]
+        new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=np.int))[inbounds],
+                                                (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=np.int))[inbounds],
+                                                (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=np.int))[inbounds]]
         
     else:
 
         logger.warn('Joining masks with reprojection')
         new_mask = new_mask.reproject(orig_mask.header, order=order)
         new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
-        new_mask_vals = np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool)
+        new_mask_vals = np.array(new_mask.filled_data[:].value > thresh,
+                                 dtype=np.bool)
         
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Combine
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if operation.strip().lower() == 'or':
-        mask = np.logical_or(np.array(orig_mask.filled_data[:].value > thresh, dtype=np.bool),
+        mask = np.logical_or(np.array(orig_mask.filled_data[:].value > thresh,
+                                      dtype=np.bool),
                              new_mask_vals)    
     elif operation.strip().lower() == 'and':      
-        mask = np.logical_and(np.array(orig_mask.filled_data[:].value > thresh, dtype=np.bool),
+        mask = np.logical_and(np.array(orig_mask.filled_data[:].value > thresh,
+                                       dtype=np.bool),
                               new_mask_vals)    
+    elif operation.strip().lower() == 'sum':
+        mask = (orig_mask.filled_data[:].value) + new_mask_vals
     else:
         logging.error('Unrecognized operation. Not "and" or "or".')
         raise NotImplementedError
