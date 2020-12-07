@@ -27,7 +27,8 @@ def writer(projection, filename, overwrite=True, dtype=np.float32):
     
 def update_metadata(projection, cube, error=False):
     keys = ['BMAJ', 'BMIN', 'BPA', 'JYTOK', 'VELREF',
-            'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT']
+            'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT',
+            'TIMESYS','MJDREFI','MJDREFF','DATEREF']
     calling_name = inspect.getouterframes(inspect.currentframe())[1][3]
     btype_dict = {'write_moment0':'Moment0',
                   'write_moment1':'Moment1',
