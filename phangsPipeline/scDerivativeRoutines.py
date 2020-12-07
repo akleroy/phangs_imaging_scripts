@@ -222,13 +222,13 @@ def write_moment0(
         # Note the channel width
         dv = channel_width(cube)
         if include_limits:
-            rmsmed = np.nanmedian(rms, axis=0)
+            rmsmed = np.nanmedian(rms.filled_data[:].value, axis=0)
             mom0err[observed] = (rmsmed[observed]
                                  * (np.abs(line_width
                                            / dv).to(u.dimensionless_unscaled).value)**0.5)
 
         # Make a masked version of the noise cube
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         # Iterates over the cube one ray at a time
         for x, y, slc in cube._iter_rays(0):
@@ -345,7 +345,7 @@ def write_moment1(
         mom1err = np.empty(mom1.shape)
         mom1err.fill(np.nan)
         # Ensure the same mask applied to both.
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
         
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -667,7 +667,7 @@ def write_moment2(
 
         mom2err = np.empty(mom2.shape)
         mom2err.fill(np.nan)
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -780,7 +780,7 @@ def write_ew(cube,
         sigma_ew_err = np.empty(sigma_ew.shape)
         sigma_ew_err.fill(np.nan)
 
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -898,7 +898,7 @@ def write_tmax(cubein,
 
     if rms is not None:
         argmaxmap = cube.argmax(axis=0)
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         rms_at_max = np.take_along_axis(
             rms.filled_data[:],
@@ -1138,7 +1138,7 @@ def write_vquad(cubein,
         logger.error("Vquad error requested but no RMS provided")
 
     if rms is not None:
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
         
         dv = channel_width(cube)
         RMSup = np.take_along_axis(rms.filled_data[:],
