@@ -609,10 +609,11 @@ def recipe_phangs_strict_mask(
         return(mask.filled_data[:].value)
 
 def recipe_phangs_broad_mask(
-    template_mask, outfile=None, list_of_masks = [],
-    grow_xy = None, grow_v = None,
-    return_spectral_cube=True, overwrite=False,
-    ):
+        template_mask, outfile=None, list_of_masks = [],
+        grow_xy = None, grow_v = None,
+        return_spectral_cube=True, overwrite=False,
+        recipe='somescales', fraction_of_scales=0.25,
+):
     """
     Task to create the PHANGS-style "broad" masks from the combination
     of a set of other masks. Optionally also grow the mask at the end.
@@ -683,9 +684,22 @@ def recipe_phangs_broad_mask(
 
         other_mask.allow_huge_operations = True
 
-        mask = join_masks(mask, other_mask, operation='or'
+        mask = join_masks(mask, other_mask, operation='sum'
                           , order='fast_nearest_neighbor')
 
+    if recipe is 'anyscale':
+        mask_values = mask.filled_data[:].value > 0
+        mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
+                            , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
+        mask.allow_huge_operations = True
+
+    if recipe is 'somescales':
+        mask_values = mask.filled_data[:].value > (fraction_of_scales
+                                                  * len(list_of_masks))
+        mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
+                            , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
+        mask.allow_huge_operations = True
+        
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Grow the mask
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
