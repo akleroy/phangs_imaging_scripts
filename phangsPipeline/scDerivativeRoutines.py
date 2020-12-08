@@ -17,9 +17,18 @@ logger.setLevel(logging.DEBUG)
 # Helper functions
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+
+# Force reduction in bit-depth to save space.
+def writer(projection, filename, overwrite=True, dtype=np.float32):
+    hdu = fits.PrimaryHDU(projection.hdu.data.astype(dtype),
+                          header=projection.hdu.header)
+    hdu.writeto(filename, overwrite=overwrite)
+
+    
 def update_metadata(projection, cube, error=False):
     keys = ['BMAJ', 'BMIN', 'BPA', 'JYTOK', 'VELREF',
-            'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT']
+            'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT',
+            'TIMESYS','MJDREFI','MJDREFF','DATEREF']
     calling_name = inspect.getouterframes(inspect.currentframe())[1][3]
     btype_dict = {'write_moment0':'Moment0',
                   'write_moment1':'Moment1',
@@ -45,16 +54,16 @@ def update_metadata(projection, cube, error=False):
             pass
 
     # Check if the moment map is empty. If so, nanmax and nanmin
-    # will not be finite and writing the header to disc will fail.
+    # will not be finite and writing the header to disk will fail.
     if not np.isfinite(projection.filled_data[:].value).any():
         mx = 0.
         mn = 0.
     else:
         mx = np.nanmax(projection.filled_data[:].value)
         mn = np.nanmin(projection.filled_data[:].value)
+        hdr['DATAMAX'] = mx
+        hdr['DATAMIN'] = mn
 
-    hdr['DATAMAX'] = mx
-    hdr['DATAMIN'] = mn
     if 'moment_axis' in projection.meta.keys():
         idx = projection.meta['moment_axis']
     else:
@@ -140,12 +149,14 @@ def calculate_channel_correlation(cube, length=1):
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 def write_moment0(
-    cube, rms=None, channel_correlation=None,
-    outfile=None, errorfile=None,
-    overwrite=True, unit=None,
-    return_products=True):
-    """
-    Write out moment0 map for a SpectralCube
+        cube, rms=None, channel_correlation=None,
+        outfile=None, errorfile=None,
+        overwrite=True, unit=None,
+        include_limits=True,
+        line_width=10 * u.km / u.s,
+        return_products=True):
+
+    """Write out moment0 map for a SpectralCube
     
     Keywords:
     ---------
@@ -174,12 +185,24 @@ def write_moment0(
     unit : astropy.Unit
         Preferred unit for moment masks
     
+    include_limits : bool
+        If true: For masked lines of sight inside the data, set the
+        moment0 value to 0 and the error to a value of 1sigma over
+        line_width as specified below.
+
+    line_width : astropy.Quantity
+        Assumed line width for moment0 upper limit.  Default = 10 km/s
+
     return_products : bool
         Return products calculated in the map
+
     """
     
     # Spectral cube collapse routine. Applies the masked, automatically
     mom0 = cube.moment0()
+    if include_limits:
+        observed = np.any(np.isfinite(cube._data), axis=0)
+        mom0[np.logical_and(np.isnan(mom0), observed)] = 0.0
 
     # Handle the error.
     mom0err_proj = None
@@ -198,9 +221,14 @@ def write_moment0(
 
         # Note the channel width
         dv = channel_width(cube)
+        if include_limits:
+            rmsmed = np.nanmedian(rms.filled_data[:].value, axis=0)
+            mom0err[observed] = (rmsmed[observed]
+                                 * (np.abs(line_width
+                                           / dv).to(u.dimensionless_unscaled).value)**0.5)
 
         # Make a masked version of the noise cube
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         # Iterates over the cube one ray at a time
         for x, y, slc in cube._iter_rays(0):
@@ -240,7 +268,8 @@ def write_moment0(
         # Write to disk if requested
         if errorfile is not None:
             mom0err_proj = update_metadata(mom0err_proj, cube, error=True)
-            mom0err_proj.write(errorfile, overwrite=overwrite)
+            writer(mom0err_proj, errorfile, overwrite=overwrite)
+            # mom0err_proj.write(errorfile, overwrite=overwrite)
     else:
         mom0err_proj = None
 
@@ -251,7 +280,8 @@ def write_moment0(
     # If requested, write to disk
     if outfile is not None:
         mom0 = update_metadata(mom0, cube)
-        mom0.write(outfile, overwrite=overwrite)
+        writer(mom0, outfile, overwrite=overwrite)
+        # mom0.write(outfile, overwrite=overwrite)
 
     # If requested, return
     if return_products:
@@ -315,7 +345,7 @@ def write_moment1(
         mom1err = np.empty(mom1.shape)
         mom1err.fill(np.nan)
         # Ensure the same mask applied to both.
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
         
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -346,13 +376,15 @@ def write_moment1(
                                   meta=mom1.meta)
         if errorfile is not None:
             mom1err_proj = update_metadata(mom1err_proj, cube, error=True)
-            mom1err_proj.write(errorfile, overwrite=overwrite)
+            writer(mom1err_proj, errorfile, overwrite=overwrite)
+            # mom1err_proj.write(errorfile, overwrite=overwrite)
     
     if unit is not None:
         mom1 = mom1.to(unit)
     if outfile is not None:
         mom1 = update_metadata(mom1, cube)
-        mom1.write(outfile, overwrite=True)
+        writer(mom1, outfile, overwrite=overwrite)
+        # mom1.write(outfile, overwrite=True)
 
     if return_products and mom1err_proj is not None:
         return(mom1, mom1err_proj)
@@ -530,8 +562,9 @@ def write_moment1_hybrid(
 
     # Write to disk
     if outfile is not None:
-        mom1hybrid_proj.write(outfile,
-                              overwrite=overwrite)
+        writer(mom1hybrid_proj, outfile, overwrite=overwrite)
+        # mom1hybrid_proj.write(outfile,
+        #                      overwrite=overwrite)
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     # Propagate errors from the input map to an error map
@@ -561,8 +594,9 @@ def write_moment1_hybrid(
         if errorfile is not None:
             mom1hybrid_error_proj = update_metadata(mom1hybrid_error_proj,
                                                     cube, error=True)
-            mom1hybrid_error_proj.write(errorfile,
-                                        overwrite=overwrite)
+            writer(mom1hybrid_error_proj, errorfile, overwrite=overwrite)
+            # mom1hybrid_error_proj.write(errorfile,
+            #                            overwrite=overwrite)
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     # Return if requested
@@ -633,7 +667,7 @@ def write_moment2(
 
         mom2err = np.empty(mom2.shape)
         mom2err.fill(np.nan)
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -669,13 +703,15 @@ def write_moment2(
                                   meta=mom2.meta)
         if errorfile is not None:
             mom2err_proj = update_metadata(mom2err_proj, cube, error=True)
-            mom2err_proj.write(errorfile, overwrite=overwrite)
+            writer(mom2err_proj, errorfile, overwrite=overwrite)
+            # mom2err_proj.write(errorfile, overwrite=overwrite)
 
     if unit is not None:
         mom2 = mom2.to(unit)
     if outfile is not None:
         mom2 = update_metadata(mom2, cube)
-        mom2.write(outfile, overwrite=True)
+        writer(mom2, outfile, overwrite=overwrite)
+        # mom2.write(outfile, overwrite=True)
 
     if return_products and mom2err_proj is not None:
         return(mom2, mom2err_proj)
@@ -744,7 +780,7 @@ def write_ew(cube,
         sigma_ew_err = np.empty(sigma_ew.shape)
         sigma_ew_err.fill(np.nan)
 
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         for x, y, slc in cube._iter_rays(0):
             mask = np.squeeze(cube._mask.include(view=slc))
@@ -774,14 +810,16 @@ def write_ew(cube,
         if outfile is not None:
             sigma_ewerr_projection = update_metadata(
                 sigma_ewerr_projection, cube, error=True)
-            sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
+            writer(sigma_ewerr_projection, errorfile, overwrite=overwrite)
+            # sigma_ewerr_projection.write(errorfile, overwrite=overwrite)
 
     # Do the conversion here to not mess up errors in units.
     if unit is not None:
         sigma_ew = update_metadata(sigma_ew, cube)
         sigma_ew = sigma_ew.to(unit)
     if outfile is not None:
-        sigma_ew.write(outfile, overwrite=True)
+        writer(sigma_ew, outfile, overwrite=overwrite)
+        # sigma_ew.write(outfile, overwrite=True)
 
     if return_products and sigma_ewerr_projection is not None:
         return(sigma_ew, sigma_ewerr_projection)
@@ -846,11 +884,13 @@ def write_tmax(cubein,
         nChan = (window / dv).to(u.dimensionless_unscaled).value
         if nChan > 1:
             cube = cubein.spectral_smooth(Box1DKernel(nChan))
+            rmsfac = 1/np.sqrt(nChan)
         else:
             cube = cubein
-
+            rmsfac = 1.0
     else:
         cube = cubein
+        rmsfac = 1.0
     maxmap = cube.max(axis=0)
 
     if errorfile is not None and rms is None:
@@ -858,12 +898,14 @@ def write_tmax(cubein,
 
     if rms is not None:
         argmaxmap = cube.argmax(axis=0)
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
 
         rms_at_max = np.take_along_axis(
             rms.filled_data[:],
             argmaxmap[np.newaxis, :, :], 0).value
-        rms_at_max = np.squeeze(rms_at_max)
+        # rmsfac accounts for smoothing leading to reduction in rms
+        # assuming channels are (nearly) independent
+        rms_at_max = np.squeeze(rms_at_max) * rmsfac 
         rms_at_max = u.Quantity(rms_at_max, cube.unit, copy=False)
         if unit is not None:
             rms_at_max = rms_at_max.to(unit)
@@ -874,13 +916,15 @@ def write_tmax(cubein,
         if errorfile is not None:
             tmaxerr_projection = update_metadata(tmaxerr_projection, cube,
                                                  error=True)
-            tmaxerr_projection.write(errorfile, overwrite=overwrite)
+            writer(tmaxerr_projection, errorfile, overwrite=overwrite)
+            # tmaxerr_projection.write(errorfile, overwrite=overwrite)
 
     if unit is not None:
         maxmap = maxmap.to(unit)
     if outfile is not None:
         maxmap = update_metadata(maxmap, cube)
-        maxmap.write(outfile, overwrite=True)
+        writer(maxmap, outfile, overwrite=overwrite)
+        # maxmap.write(outfile, overwrite=True)
 
     if return_products and tmaxerr_projection is not None:
         return(maxmap, tmaxerr_projection)
@@ -972,7 +1016,8 @@ def write_vmax(cubein,
         if errorfile is not None:
             vmaxerr_projection = update_metadata(vmaxerr_projection, cube,
                                                  error=True)
-            vmaxerr_projection.write(errorfile, overwrite=overwrite)
+            writer(vmaxerr_projection, errorfile, overwrite=overwrite)
+            # vmaxerr_projection.write(errorfile, overwrite=overwrite)
 
     vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)        
     if unit is not None:
@@ -984,7 +1029,8 @@ def write_vmax(cubein,
 
     if outfile is not None:        
         vmaxmap_projection = update_metadata(vmaxmap_projection, cube)
-        vmaxmap_projection.write(outfile, overwrite=True)
+        writer(vmaxmap_projection, outfile, overwrite=overwrite)
+        # vmaxmap_projection.write(outfile, overwrite=True)
         
     if return_products and vmaxerr_projection is not None:
         return(vmaxmap_projection, vmaxerr_projection)
@@ -1092,7 +1138,7 @@ def write_vquad(cubein,
         logger.error("Vquad error requested but no RMS provided")
 
     if rms is not None:
-        rms = rms.with_mask(cube._mask, inherit_mask=False)
+        rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
         
         dv = channel_width(cube)
         RMSup = np.take_along_axis(rms.filled_data[:],
@@ -1148,7 +1194,8 @@ def write_vquad(cubein,
         if errorfile is not None:
             vquaderr_projection = update_metadata(vquaderr_projection, cube,
                                                   error=True)
-            vquaderr_projection.write(errorfile, overwrite=overwrite)
+            writer(vquaderr_projection, errorfile, overwrite=overwrite)
+            # vquaderr_projection.write(errorfile, overwrite=overwrite)
 
     vmaxmap = u.Quantity(vmaxmap, cube.spectral_axis.unit)
     if unit is not None:
@@ -1159,11 +1206,10 @@ def write_vquad(cubein,
                                     meta=maxmap.meta)
     if outfile is not None:
         vmaxmap_projection = update_metadata(vmaxmap_projection, cube)
-        vmaxmap_projection.write(outfile, overwrite=overwrite)
+        writer(vmaxmap_projection, outfile, overwrite=overwrite)
+        # vmaxmap_projection.write(outfile, overwrite=overwrite)
 
     if return_products and vquaderr_projection is not None:
         return(vmaxmap_projection, vquaderr_projection)
     elif return_products and vquaderr_projection is None:
         return(vmaxmap_projection)
-
-

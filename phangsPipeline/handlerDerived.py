@@ -371,9 +371,15 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             ext = res_tag+'_coverage'+extra_ext_out,
             casa = False)
 
+        coverage2d_filename = utilsFilenames.get_cube_filename(
+            target = target, config = config, product = product,
+            ext = res_tag+'_coverage2d'+extra_ext_out,
+            casa = False)
+        
         fname_dict['cube'] = cube_filename
         fname_dict['coverage'] = coverage_filename
-
+        fname_dict['coverage2d'] = coverage2d_filename
+        
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Noise Cubes
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -495,6 +501,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         input_file = fname_dict_in['orig']
         outfile = fname_dict_out['cube']
         coveragefile = fname_dict_out['coverage']
+        coverage2dfile = fname_dict_out['coverage2d']
 
         # Check input file existence        
     
@@ -554,6 +561,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                                 angular_resolution=input_res_value, 
                                 tol=tol, nan_treatment=nan_treatment,
                                 make_coverage_cube=True, coveragefile=outdir+coveragefile,
+                                collapse_coverage=True, coverage2dfile=outdir+coverage2dfile,
                                 overwrite=overwrite)
 
                 if res_type == 'phys':
@@ -567,6 +575,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                                 linear_resolution=input_res_value, distance=this_distance,
                                 tol=tol, nan_treatment=nan_treatment,
                                 make_coverage_cube=True, coveragefile=outdir+coveragefile,
+                                collapse_coverage=True, 
                                 overwrite=overwrite)
 
         return()
@@ -662,6 +671,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         input_file = fname_dict['cube']
         noise_file = fname_dict['noise']
         coverage_file = fname_dict['coverage']
+        coverage2d_file = fname_dict['coverage2d']
+
         outfile = fname_dict['strictmask']
 
         # Check input file existence        
@@ -837,7 +848,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
         if (not self._dry_run):
-            
+
             recipe_phangs_broad_mask(
                 indir+input_file,
                 list_of_masks=list_of_masks,

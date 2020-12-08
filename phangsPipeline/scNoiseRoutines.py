@@ -93,7 +93,8 @@ def noise_cube(data, mask=None,
                do_map=True, do_spec=True,
                box=None, spec_box=None,
                bandpass_smooth_window=None,
-               bandpass_smooth_order=3):
+               bandpass_smooth_order=3,
+               oversample_boundary=False):
 
     """
 
@@ -156,7 +157,7 @@ def noise_cube(data, mask=None,
     """
 
     # TBD: add error checking
-
+    
     # Create a mask that identifies voxels to be fitting the noise
 
     noisemask = np.isfinite(data)
@@ -171,11 +172,24 @@ def noise_cube(data, mask=None,
     # If the user has supplied a spatial box size, recast this into a
     # step size that critically samples the box and a halfbox size
     # used for convenience.
-
+    
     if box is not None:
         step = np.floor(box/2.5).astype(np.int)
         halfbox = int(box // 2)
 
+    # Include all pixels adjacent to the spatial
+    # boundary of the data as set by NaNs
+    boundary = np.all(np.isnan(data), axis=0)
+
+    if oversample_boundary:
+        struct = nd.generate_binary_structure(2, 1)
+        struct = nd.iterate_structure(struct, halfbox)
+        rind = np.logical_xor(nd.binary_dilation(boundary, struct),
+                              boundary)
+        extray, extrax = np.where(rind)
+    else:
+        extray, extrax = None, None
+        
     # If the user has supplied a spectral box size, use this to
     # calculate a spectral step size.
 
@@ -220,20 +234,39 @@ def noise_cube(data, mask=None,
             # Sample starting at halfbox and stepping by step. In the
             # individual pixel limit this just samples every spectrum.
 
-            for x in xx[halfbox::step]:
-                for y in yy[halfbox::step]:
+            xsamps = xx[halfbox::step]
+            ysamps = yy[halfbox::step]
+            xsampsf = (xsamps[np.newaxis,:]
+                      * (np.ones_like(ysamps))[:,np.newaxis]).flatten()
+            ysampsf = (ysamps[:,np.newaxis] * np.ones_like(xsamps)).flatten()
 
-                    # Extract a minicube and associated mask from the cube
+            for x, y in zip(xsampsf, ysampsf):
+                # Extract a minicube and associated mask from the cube
+
+                minicube = data[:, (y-halfbox):(y+halfbox+1),
+                               (x-halfbox):(x+halfbox+1)]
+                minicube_mask = noisemask[:, (y-halfbox):(y+halfbox+1),
+                                             (x-halfbox):(x+halfbox+1)]
+
+                # If we have enough data, fit a noise value for this entry
+
+                if np.sum(minicube_mask) > nThresh:
+                    noise_map[y, x] = mad_zero_centered(minicube,
+                                                        mask=minicube_mask)
+            
+            if extrax is not None and extray is not None:
+                for x, y in zip(extrax, extray):
 
                     minicube = data[:, (y-halfbox):(y+halfbox+1),
-                                   (x-halfbox):(x+halfbox+1)]
+                                    (x-halfbox):(x+halfbox+1)]
                     minicube_mask = noisemask[:, (y-halfbox):(y+halfbox+1),
-                                                 (x-halfbox):(x+halfbox+1)]
-                
-                    # If we have enough data, fit a noise value for this entry
+                                              (x-halfbox):(x+halfbox+1)]
 
                     if np.sum(minicube_mask) > nThresh:
-                        noise_map[y, x] = mad_zero_centered(minicube, mask=minicube_mask)
+                        noise_map[y, x] = mad_zero_centered(minicube,
+                                                            mask=minicube_mask)
+                
+            noise_map[boundary] = np.nan
 
             # If we are using a box size greater than an individual pixel
             # interpolate to fill in the noise map.
@@ -242,11 +275,9 @@ def noise_cube(data, mask=None,
 
                 # Note the location of data, this is the location
                 # where we want to fill in noise values.
-
                 data_footprint = np.any(np.isfinite(data), axis=0)
 
                 # Generate a smoothing kernel based on the box size.
-
                 kernel = Gaussian2DKernel(box / np.sqrt(8 * np.log(2)))
 
                 # Make a weight map to be used in the convolution, in
@@ -254,21 +285,31 @@ def noise_cube(data, mask=None,
                 # unity weight. This without measured values have zero
                 # weight.
 
-                wt_map = np.isfinite(noise_map).astype(np.float)
-
+                # wt_map = np.isfinite(noise_map).astype(np.float)
+                # wt_map[boundary] = np.nan
                 # Take an average weighted by the kernel at each
                 # location.
+                # noise_map[np.isnan(noise_map)] = 0.0
+                # y, x = np.where(np.isfinite(noise_map))
+                # import scipy.interpolate as interp
+                # func = interp.interp2d(x, y, noise_map[y, x], kind='cubic')
 
-                noise_map[np.isnan(noise_map)] = 0.0
-                noise_map = convolve(noise_map, kernel)
-                wt_map = convolve(wt_map, kernel)
-                noise_map /= wt_map
+                noise_map = convolve(noise_map, kernel, boundary='extend')
+
+                # yy, xx = np.indices(noise_map.shape)
+                # noise_map_beta = interp.griddata((y, x), noise_map[y,x],
+                #                                  (yy, xx), method='cubic')
+                # noise_map_beta = func(yy, xx)
+                # noise_map_beta[boundary] = np.nan
+                # noise_map = noise_map_beta
+                # wt_map = convolve(wt_map, kernel, boundary='extend')
+
+                # noise_map /= wt_map
 
                 # Set the noise map to not-a-number outside the data
                 # footprint.
 
                 noise_map[~data_footprint] = np.nan
-
         # Initialize spectrum
 
         noise_spec = np.zeros(data.shape[0]) + np.nan
@@ -310,7 +351,12 @@ def noise_cube(data, mask=None,
 
                 kernel = savgol_coeffs(int(bandpass_smooth_window),
                                        int(bandpass_smooth_order))
-                noise_spec = convolve(noise_spec, kernel, boundary='extend')
+
+                baddata = np.isnan(noise_spec)
+                noise_spec = convolve(noise_spec, kernel,
+                                      nan_treatment='interpolate',
+                                      boundary='extend')
+                noise_spec[baddata] = np.nan
 
                 # Make sure that the noise spectrum is normalized by
                 # setting the median to one.
@@ -373,9 +419,10 @@ def recipe_phangs_noise(
     # Error checking and work out inputs
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+
     if type(incube) is SpectralCube:
         cube = incube
-    elif type(incube) == type("hello"):
+    elif type(incube) == str:
         cube = SpectralCube.read(incube)
     else:
         logger.error("Input must be a SpectralCube object or a filename.")
@@ -399,7 +446,7 @@ def recipe_phangs_noise(
         noise_kwargs['spec_box'] = 5
 
     if 'iterations' not in noise_kwargs:
-        noise_kwargs['iterations'] = 3
+        noise_kwargs['iterations'] = 4
 
     # Require a valid cube input as a
     if mask is not None:
@@ -420,11 +467,17 @@ def recipe_phangs_noise(
         else:
             noise_kwargs['mask'] = None
 
+            
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Run the noise estimate
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    rms = noise_cube(cube.filled_data[:].value,
+    data = cube.filled_data[:].value
+    badmask = np.isnan(data)
+    badmask = nd.binary_dilation(badmask,
+                                 structure=nd.generate_binary_structure(3, 2))
+    data[badmask] = np.nan
+    rms = noise_cube(data, 
                      **noise_kwargs)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
