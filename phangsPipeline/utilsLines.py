@@ -27,6 +27,7 @@ line_families = {
     'hi':['hi21cm'],
     'ci':['ci10','ci21'],
     'nh3':['nh311','nh322','nh333','nh344'],
+    'cn':['cn10high','cn10low'],
     }
 
 # The line list dictionary
@@ -143,6 +144,8 @@ line_list = {
     'nh322':23.72263333,
     'nh333':23.8701296,
     'nh344':24.1394169,
+    'cn10high':113.490985,
+    'cn10low':113.144190,
     }
 
 # Run some consistency checks
