@@ -59,8 +59,11 @@ def update_metadata(projection, cube, error=False):
         mx = 0.
         mn = 0.
     else:
-        mx = np.nanmax(projection.filled_data[:].value)
-        mn = np.nanmin(projection.filled_data[:].value)
+        ind = np.isfinite(projection.filled_data[:].value)
+        mx =  np.nanmax(projection.filled_data[:].value[ind])
+        mn =  np.nanmin(projection.filled_data[:].value[ind])
+        #mx = np.nanmax(projection.filled_data[:].value)
+        #mn = np.nanmin(projection.filled_data[:].value)
         hdr['DATAMAX'] = mx
         hdr['DATAMIN'] = mn
 

@@ -28,7 +28,7 @@ pro make_clean_masks_v4 $
 
 ; ... look up the list of galaxies
 
-  readcol, '../phangsalma_keys/ms_file_key.txt', comment='#', format='A,X,A' $
+  readcol, '../../phangs_pipeline_configs/phangs-alma/phangs-alma_keys/ms_file_key.txt', comment='#', format='A,X,A' $
            , ms_file_gal, ms_file_array, /silent
 
   gals = ms_file_gal[sort(ms_file_gal)]
@@ -37,7 +37,7 @@ pro make_clean_masks_v4 $
   
 ; ... look up the cases with nonstandard directory names
 
-  readcol, '../phangsalma_keys/dir_key.txt', comment='#', format='A,A' $
+  readcol, '../../phangs_pipeline_configs/phangs-alma/phangs-alma_keys/dir_key.txt', comment='#', format='A,A' $
            , dir_key_gal, dir_key_dir, /silent
 
   dir_for_gal = gals
