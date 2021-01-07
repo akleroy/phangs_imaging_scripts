@@ -97,7 +97,7 @@ def reject_small_regions(mask, min_volume=0, min_area=0):
 
         if min_volume > 0:
             volume =  np.sum(subcube == (ii+1))
-            if pixct < min_volume:
+            if volume < min_volume:
                 mask[regions == (ii+1)] = False
             
         if min_area > 0:
@@ -207,6 +207,7 @@ def cprops_mask(data, noise=None,
                 hi_thresh=5, hi_nchan=2,
                 lo_thresh=None, lo_nchan=None,
                 min_pix=None, min_area=None,
+                min_beams=None, ppbeam=None,
                 grow_xy=None, grow_v=None, 
                 prior_hi = None,
                 prior_lo = None,
@@ -251,6 +252,13 @@ def cprops_mask(data, noise=None,
         Minimum number of pixels required in area projection for a detection.
         Default: None
 
+    min_beams : float
+        Minimum number of beams for a pixel to be rejected.  Overrides min_pix.
+        Default: None
+
+    ppbeam : float
+        Number of pixels per beam.  Required if min_beams is set
+
     grow_xy : int
         Number of iterations to grow the final mask in the xy plane.
 
@@ -291,14 +299,20 @@ def cprops_mask(data, noise=None,
         signif, thresh=hi_thresh, nchan=hi_nchan)
 
     # If requested, reject small regions from the mask
-    if (min_pix is not None) or (min_area is not None):
+    if ((min_beams is not None)
+        or (min_pix is not None)
+        or (min_area is not None)):
         
         if min_pix is None:
             min_pix = 0
 
         if min_area is None:
             min_area = 0
-        
+
+        if min_beams is not None:
+            assert ppbeam is not None
+            min_pix = min_beams * ppbeam
+
         hi_mask = reject_small_regions(
             hi_mask, min_volume=min_pix, min_area=min_area)
 
@@ -571,6 +585,15 @@ def recipe_phangs_strict_mask(
     if 'grow_v' not in mask_kwargs:
         mask_kwargs['grow_v'] = 0
 
+    if 'min_beams' in mask_kwargs:
+        apix = wcs.utils.proj_plane_pixel_area(cube.wcs) * u.deg**2
+        ppbeam = (np.pi
+                  * cube.beam.major
+                  * cube.beam.minor
+                  / (4 * np.log(2)) / apix)
+        ppbeam = ppbeam.to(u.dimensionless_unscaled).value
+        mask_kwargs['ppbeam'] = ppbeam
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Create the mask
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -580,7 +603,8 @@ def recipe_phangs_strict_mask(
         
         prior_hi = coverage_cube.filled_data[:].value > coverage_thresh
 
-    mask = cprops_mask(cube.filled_data[:].value, rms.filled_data[:].value, 
+    mask = cprops_mask(cube.filled_data[:].value,
+                       rms.filled_data[:].value, 
                        prior_hi = prior_hi,
                        **mask_kwargs)
 
