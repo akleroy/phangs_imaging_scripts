@@ -879,21 +879,35 @@ def write_tmax(cubein,
         Return products calculated in the map
     """
 
+    # hack the mask to span the spectral range of the mask but lose spatial information.
+
+    mask = cubein.get_mask_array()
+    mask_spec = np.any(mask, axis=(1,2))    
+    lo = np.min(np.where(mask_spec))
+    hi = np.max(np.where(mask_spec))
+    mask = np.zeros_like(mask,dtype='bool')
+    mask[lo:hi,:,:] = True
+    mask *= np.isfinite(cubein.unmasked_data[:])
+    new_cube = cubein.with_mask(mask, inherit_mask=False)
+
+    # spectral smoothing if desired
+
     if window is not None:
         window = u.Quantity(window)
         
         from astropy.convolution import Box1DKernel
-        dv = channel_width(cubein)
+        dv = channel_width(new_cube)
         nChan = (window / dv).to(u.dimensionless_unscaled).value
         if nChan > 1:
-            cube = cubein.spectral_smooth(Box1DKernel(nChan))
+            cube = new_cube.spectral_smooth(Box1DKernel(nChan))
             rmsfac = 1/np.sqrt(nChan)
         else:
-            cube = cubein
+            cube = new_cube
             rmsfac = 1.0
     else:
-        cube = cubein
+        cube = new_cube
         rmsfac = 1.0
+
     maxmap = cube.max(axis=0)
 
     if errorfile is not None and rms is None:
