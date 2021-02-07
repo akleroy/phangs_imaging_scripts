@@ -26,6 +26,7 @@ def writer(projection, filename, overwrite=True, dtype=np.float32):
 
     
 def update_metadata(projection, cube, error=False):
+
     keys = ['BMAJ', 'BMIN', 'BPA', 'JYTOK', 'VELREF',
             'TELESCOP', 'INSTRUME', 'ORIGIN', 'OBJECT',
             'TIMESYS','MJDREFI','MJDREFF','DATEREF']
