@@ -60,13 +60,11 @@ def update_metadata(projection, cube, error=False):
         mx = 0.
         mn = 0.
     else:
-        ind = np.isfinite(projection.filled_data[:].value)
-        mx =  np.nanmax(projection.filled_data[:].value[ind])
-        mn =  np.nanmin(projection.filled_data[:].value[ind])
-        #mx = np.nanmax(projection.filled_data[:].value)
-        #mn = np.nanmin(projection.filled_data[:].value)
-        hdr['DATAMAX'] = mx
-        hdr['DATAMIN'] = mn
+        ind = np.isfinite(projection.filled_data[:])
+        mx =  np.nanmax(projection.filled_data[ind])
+        mn =  np.nanmin(projection.filled_data[ind])
+        hdr['DATAMAX'] = mx.value
+        hdr['DATAMIN'] = mn.value
 
     if 'moment_axis' in projection.meta.keys():
         idx = projection.meta['moment_axis']
@@ -88,7 +86,7 @@ def update_metadata(projection, cube, error=False):
         del hdr['COMMENT']
     except KeyError:
         pass
-    
+
     for comm in unique_comments:
         hdr.set('COMMENT', comm)
     projection._header = hdr
@@ -785,23 +783,29 @@ def write_ew(cube,
         sigma_ew_err.fill(np.nan)
 
         rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
-
-        for x, y, slc in cube._iter_rays(0):
-            mask = np.squeeze(cube._mask.include(view=slc))
-            if not mask.any():
-                continue
+        yy, xx = np.where(np.isfinite(sigma_ew))
+        for y, x in zip(yy, xx):
+            slc = (slice(None), slice(y,y+1,None), slice(x,x+1,None))
+            mask = np.squeeze(cube.mask.include(view=slc))
             index = np.where(mask)[0]
+        #     import pdb; pdb.set_trace()
+        # for x, y, slc in cube._iter_rays(0):
+        #     mask = np.squeeze(cube._mask.include(view=slc))
+        #     if not mask.any():
+        #         continue
+        #     import pdb; pdb.set_trace()
+        #     index = np.where(mask)[0]
             rms_spec = rms.flattened(slc).value
             spec = cube.flattened(slc).value
             covar = build_covariance(spectrum=spec,
                                      rms=rms_spec,
                                      channel_correlation=channel_correlation,
                                      index=index)
-            sigma_ew_err[x, y] = (np.sum(covar) 
-                                  + (sigma_ew[x, y].value**2 
-                                     * rms_at_max[0, x, y]**2 
-                                     / maxmap[x, y].value**2))**0.5
-            sigma_ew_err /= np.sqrt(2 * np.pi)
+            sigma_ew_err[y, x] = (np.sum(covar)
+                                  + (sigma_ew[y, x].value**2
+                                     * rms_at_max[0, y, x]**2
+                                     / maxmap[y, x].value**2))**0.5
+        sigma_ew_err /= np.sqrt(2 * np.pi)
         sigma_ew_err = u.Quantity(sigma_ew_err, 
                                   cube.spectral_axis.unit, copy=False)
         if unit is not None:
@@ -811,6 +815,7 @@ def write_ew(cube,
                                             wcs=sigma_ew.wcs,
                                             header=sigma_ew.header,
                                             meta=sigma_ew.meta)
+
         if outfile is not None:
             sigma_ewerr_projection = update_metadata(
                 sigma_ewerr_projection, cube, error=True)
@@ -819,9 +824,9 @@ def write_ew(cube,
 
     # Do the conversion here to not mess up errors in units.
     if unit is not None:
-        sigma_ew = update_metadata(sigma_ew, cube)
         sigma_ew = sigma_ew.to(unit)
     if outfile is not None:
+        sigma_ew = update_metadata(sigma_ew, cube)
         writer(sigma_ew, outfile, overwrite=overwrite)
         # sigma_ew.write(outfile, overwrite=True)
 
