@@ -4,4 +4,5 @@ casa*.log
 *.pyc
 *.last
 *_noise.fits
+.idea
 #*

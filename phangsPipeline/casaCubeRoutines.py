@@ -234,10 +234,35 @@ def trim_cube(
         os.system('cp -r '+infile+' '+outfile+'.temp')
 
     # Figure out the extent of the image inside the cube
+
     myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(outfile+'.temp')
-    mask = myia.getchunk(getmask=True)    
+    myia.open(outfile + '.temp')
+    myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
     myia.close()
+
+    os.system('rm -rf ' + outfile + '.temp_deg_ordered')
+    casaStuff.imtrans(imagename=outfile + '.temp_deg', outfile=outfile + '.temp_deg_ordered',
+                      order='0132')
+
+    casaStuff.makemask(mode='copy', inpimage=outfile + '.temp_deg_ordered',
+                       inpmask=outfile + '.temp_deg_ordered:mask0',
+                       output=outfile + '.temp_mask', overwrite=True)
+
+    casaStuff.exportfits(imagename=outfile + '.temp_mask',
+                         fitsimage=outfile + '.temp.fits',
+                         stokeslast=False, overwrite=True)
+    hdu = pyfits.open(outfile + '.temp.fits')[0]
+    mask = hdu.data.T[:, :, 0, :]
+
+    os.system('rm -rf ' + outfile + '.temp_deg')
+    os.system('rm -rf ' + outfile + '.temp_deg_ordered')
+    os.system('rm -rf ' + outfile + '.temp_mask')
+    os.system('rm -rf ' + outfile + '.temp.fits')
+
+    # myia = au.createCasaTool(casaStuff.iatool)
+    # myia.open(outfile+'.temp')
+    # mask = myia.getchunk(getmask=True)
+    # myia.close()
 
     this_shape = mask.shape
 
@@ -444,24 +469,28 @@ def convolve_to_round_beam(
             return(None)            
         target_bmaj = force_beam
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(infile)
-    mask = myia.getchunk(getmask=True)
-    myia.close()
-    
-    casaStuff.imsmooth(imagename=infile,
-                  outfile=outfile,
-                  targetres=True,
-                  major=str(target_bmaj)+'arcsec',
-                  minor=str(target_bmaj)+'arcsec',
-                  pa='0.0deg',
-                  overwrite=overwrite
-                  )
+    # myia = au.createCasaTool(casaStuff.iatool)
+    # myia.open(infile)
+    # mask = myia.getchunk(getmask=True)
+    # myia.close()
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(outfile)
-    mask = myia.putregion(pixelmask=mask)
-    myia.close()
+    casaStuff.imsmooth(imagename=infile,
+                       outfile=outfile,
+                       targetres=True,
+                       major=str(target_bmaj) + 'arcsec',
+                       minor=str(target_bmaj) + 'arcsec',
+                       pa='0.0deg',
+                       overwrite=overwrite
+                       )
+
+    # myia = au.createCasaTool(casaStuff.iatool)
+    # myia.open(outfile)
+    # mask = myia.putregion(pixelmask=mask)
+    # myia.close()
+
+    # Copy over mask
+    os.system('rm -rf ' + outfile + '/mask0')
+    os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
 
     return(target_bmaj)
 
@@ -552,11 +581,23 @@ def convert_jytok(
     
     jytok = calc_jytok(hdr=hdr)
 
+    casaStuff.exportfits(imagename=target_file,
+                         fitsimage=target_file + '.fits',
+                         overwrite=True)
+    hdu = pyfits.open(target_file + '.fits')[0]
+    hdu.data *= jytok
+
+    hdu.writeto(target_file + '.fits', clobber=True)
+    casaStuff.importfits(fitsimage=target_file + '.fits',
+                         imagename=target_file,
+                         overwrite=True)
+    os.system('rm -rf ' + target_file + '.fits')
+
     myia = au.createCasaTool(casaStuff.iatool)
     myia.open(target_file)
-    vals = myia.getchunk()
-    vals *= jytok
-    myia.putchunk(vals)
+    # vals = myia.getchunk()
+    # vals *= jytok
+    # myia.putchunk(vals)
     myia.setbrightnessunit("K")
     myia.close()
 
@@ -603,11 +644,23 @@ def convert_ktojy(
     
     jytok = calc_jytok(hdr=hdr)
 
+    casaStuff.exportfits(imagename=target_file,
+                         fitsimage=target_file + '.fits',
+                         stokeslast=False, overwrite=True)
+    hdu = pyfits.open(target_file + '.fits')[0]
+    hdu.data *= 1.0 / jytok
+
+    hdu.writeto(target_file + '.fits', clobber=True)
+    casaStuff.importfits(fitsimage=target_file + '.fits',
+                         imagename=target_file,
+                         overwrite=True)
+    os.system('rm -rf ' + target_file + '.fits')
+
     myia = au.createCasaTool(casaStuff.iatool)
     myia.open(target_file)
-    vals = myia.getchunk()
-    vals *= 1.0/jytok
-    myia.putchunk(vals)
+    # vals = myia.getchunk()
+    # vals *= 1.0 / jytok
+    # myia.putchunk(vals)
     myia.setbrightnessunit("Jy/beam")
     myia.close()
 
