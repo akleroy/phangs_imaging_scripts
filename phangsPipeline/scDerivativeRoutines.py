@@ -678,39 +678,48 @@ def write_moment2(
     
     if rms is not None:
 
-        if channel_correlation is None:
-            channel_correlation = np.array([1])
-
         mom2err = np.empty(mom2.shape)
         mom2err.fill(np.nan)
         rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
         valid = np.isfinite(mom2)
-        yy, xx = np.where(valid)
-        for y, x in zip(yy, xx):
-            slc = (slice(None), slice(y,y+1,None), slice(x,x+1,None))
-            mask = np.squeeze(cube.mask.include(view=slc))
-            index = np.where(mask)[0]
 
-            rms_spec = rms.flattened(slc).value
-            spec = cube.flattened(slc).value
-            covar = build_covariance(spectrum=spec,
-                                     rms=rms_spec,
-                                     channel_correlation=channel_correlation,
-                                     index=index)
+        if channel_correlation is None:
+            sum_T = cube.sum(axis=0).value
+            mom1 = cube.moment1().value
+            vval = spaxis
+            numer = np.nansum(rms.filled_data[:].value**2
+                              * ((vval[:, np.newaxis, np.newaxis]
+                                  - mom1[np.newaxis, :, :])**2
+                                 - (mom2.value)[np.newaxis, :, :]**2)**2,
+                              axis=0)
+            mom2err = (numer / sum_T**2)**0.25
+        else:
+            yy, xx = np.where(valid)
+            for y, x in zip(yy, xx):
+                slc = (slice(None), slice(y,y+1,None), slice(x,x+1,None))
+                mask = np.squeeze(cube.mask.include(view=slc))
+                index = np.where(mask)[0]
 
-            vval = spaxis[index]
-            sum_T = np.sum(spec)
-            sum_vT = np.sum(spec * vval)
-            vbar = sum_vT / sum_T
-            vdisp = (vval - vbar)**2
-            wtvdisp = np.sum(spec * vdisp)
-            # Dear future self: There is no crossterm (error term from 
-            # vbar) since dispersion is at a minimum around vbar
-            jacobian = (vdisp / sum_T
-                        - wtvdisp / sum_T**2)
-            mom2err[y, x] = np.dot(
-                np.dot(jacobian[np.newaxis, :], covar),
-                jacobian[:, np.newaxis])**0.25
+                rms_spec = rms.flattened(slc).value
+                spec = cube.flattened(slc).value
+                covar = build_covariance(spectrum=spec,
+                                         rms=rms_spec,
+                                         channel_correlation=channel_correlation,
+                                         index=index)
+
+                vval = spaxis[index]
+                sum_T = np.sum(spec)
+                sum_vT = np.sum(spec * vval)
+                vbar = sum_vT / sum_T
+                vdisp = (vval - vbar)**2
+                wtvdisp = np.sum(spec * vdisp)
+                # Dear future self: There is no crossterm (error term from
+                # vbar) since dispersion is at a minimum around vbar
+                jacobian = (vdisp / sum_T
+                            - wtvdisp / sum_T**2)
+                mom2err[y, x] = np.dot(
+                    np.dot(jacobian[np.newaxis, :], covar),
+                    jacobian[:, np.newaxis])**0.25
         mom2err = u.Quantity(mom2err, cube.spectral_axis.unit, copy=False)
         if unit is not None:
             mom2err = mom2err.to(unit)
