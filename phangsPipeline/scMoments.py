@@ -5,6 +5,9 @@ from astropy.io import fits
 import numpy as np
 from radio_beam import Beam
 import inspect
+import warnings
+from astropy import wcs
+warnings.filterwarnings("ignore")
 
 def _nicestr(quantity):
     if quantity.value == int(quantity.value):
