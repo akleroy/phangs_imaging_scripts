@@ -143,7 +143,7 @@ def moment_generator(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Call the moment generation
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
+    # Probably not needed anymore
     theseargs = (inspect.getfullargspec(func)).args
 
     if 'context' in theseargs:
