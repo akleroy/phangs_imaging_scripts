@@ -800,29 +800,42 @@ def write_ew(cube,
             rms.filled_data[:], 
             argmaxmap[np.newaxis, :, :], 0).value
         
-        if channel_correlation is None:
-            channel_correlation = np.array([1])
 
         sigma_ew_err = np.empty(sigma_ew.shape)
         sigma_ew_err.fill(np.nan)
-
         rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
-        yy, xx = np.where(np.isfinite(sigma_ew))
-        for y, x in zip(yy, xx):
-            slc = (slice(None), slice(y,y+1,None), slice(x,x+1,None))
-            mask = np.squeeze(cube.mask.include(view=slc))
-            index = np.where(mask)[0]
-            rms_spec = rms.flattened(slc).value
-            spec = cube.flattened(slc).value
-            covar = build_covariance(spectrum=spec,
-                                     rms=rms_spec,
-                                     channel_correlation=channel_correlation,
-                                     index=index)
-            sigma_ew_err[y, x] = (np.sum(covar)
-                                  + (sigma_ew[y, x].value**2
-                                     * rms_at_max[0, y, x]**2
-                                     / maxmap[y, x].value**2))**0.5
-        sigma_ew_err /= np.sqrt(2 * np.pi)
+        dv = np.abs(spaxis[1] - spaxis[0])
+        channel_correlation = [1]
+        if channel_correlation is None:
+
+            term1 = (np.nansum((rms.filled_data[:].value)**2, axis=0) * dv**2
+                     / (2 *np.pi * maxmap.value**2))
+            term2 = (sigma_ew.value**2
+                     - sigma_ew.value * dv / np.sqrt(2*np.pi)) * np.squeeze(rms_at_max)**2
+            sigma_ew_err = (term1 + term2)**0.5
+
+        else:
+            yy, xx = np.where(np.isfinite(sigma_ew))
+            for y, x in zip(yy, xx):
+                slc = (slice(None), slice(y,y+1,None), slice(x,x+1,None))
+                mask = np.squeeze(cube.mask.include(view=slc))
+                index = np.where(mask)[0]
+                rms_spec = rms.flattened(slc).value
+                spec = cube.flattened(slc).value
+                covar = build_covariance(spectrum=spec,
+                                         rms=rms_spec,
+                                         channel_correlation=channel_correlation,
+                                         index=index)
+                sigma_ew_err[y, x] = (np.sum(covar) * dv**2
+                                      / (2 * np.pi * maxmap[y, x].value**2)
+                                      + (sigma_ew[y, x].value**2
+                                         - sigma_ew[y, x].value * dv / np.sqrt(2 * np.pi))
+                                      * rms_at_max[0, y, x]**2)**0.5
+                # sigma_ew_err[y, x] = (np.sum(covar)
+                #                       + (sigma_ew[y, x].value**2
+                #                          * rms_at_max[0, y, x]**2
+                #                          / maxmap[y, x].value**2))**0.5
+            # sigma_ew_err /= np.sqrt(2 * np.pi)
         sigma_ew_err = u.Quantity(sigma_ew_err, 
                                   cube.spectral_axis.unit, copy=False)
         if unit is not None:
