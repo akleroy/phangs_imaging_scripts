@@ -1,7 +1,5 @@
 from spectral_cube import SpectralCube, Projection
 import astropy.units as u
-# from pipelineVersion import version as pipeVer
-#from scMaskingRoutines import recipe_hybridize_mask as hybridize_mask
 import numpy as np
 from astropy.io import fits
 import inspect
@@ -19,7 +17,7 @@ logger.setLevel(logging.DEBUG)
 # Force reduction in bit-depth to save space.
 def writer(projection, filename, overwrite=True, dtype=np.float32):
     hdu = fits.PrimaryHDU(projection.hdu.data.astype(dtype),
-                          header=projection.hdu.header)
+                          header=projection._header)
     hdu.writeto(filename, overwrite=overwrite)
 
     
@@ -33,10 +31,10 @@ def update_metadata(projection, cube, error=False):
                   'write_moment1':'Moment1',
                   'write_moment2':'Moment2',
                   'write_ew':'VelDisp EW',
-                  'write_tmax':'Tmax',
+                  'write_tmax':'Tpeak',
                   'write_vmax':'Vmax',
                   'write_vquad':'Vmax',
-                  'write_moment1_hybrid':'Vmax'}
+                  'write_moment1_hybrid':'Moment1'}
     hdr = projection.header
     try:
         btype = btype_dict[calling_name]
@@ -95,6 +93,7 @@ def update_metadata(projection, cube, error=False):
 
     for comm in unique_comments:
         hdr.set('COMMENT', comm)
+
     projection._header = hdr
     return(projection)
 
