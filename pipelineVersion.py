@@ -9,6 +9,7 @@ import warnings
 
 # Update this as versions increase
 base_version = '4.0 Build '
+tableversion = '1.6'
 
 def _decode_stdio(stream):
     try:

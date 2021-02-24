@@ -10,7 +10,7 @@ import scipy.stats as ss
 from spectral_cube import SpectralCube
 import astropy.wcs as wcs
 import astropy.units as u
-# from pipelineVersion import version as pipeVer
+from pipelineVersion import version, tableversion
 from astropy.io import fits
 
 from scNoiseRoutines import mad_zero_centered
@@ -767,11 +767,13 @@ def recipe_phangs_broad_mask(
         header = mask.header
         header['DATAMAX'] = 1
         header['DATAMIN'] = 0
+        hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
+        if tableversion:
+            hdr['COMMENT'] = 'Galaxy properties from PHANGS table version' + tableversion
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
                               header=header)
         hdu.writeto(outfile, overwrite=overwrite)
 
-        # mask.write(outfile, overwrite=overwrite)
         
     if return_spectral_cube:
         return(mask)
