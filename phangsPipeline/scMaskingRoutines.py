@@ -480,8 +480,11 @@ def join_masks(orig_mask_in, new_mask_in,
     
     # Write to disk, if desired
     if outfile is not None:        
+        header = mask.header
+        header['DATAMAX'] = 1
+        header['DATAMIN'] = 0
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
-                              header=mask.header)
+                              header=header)
         hdu.writeto(outfile, overwrite=overwrite)
         # mask.write(outfile, overwrite=overwrite)
 
@@ -621,11 +624,14 @@ def recipe_phangs_strict_mask(
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
     
     # Write to disk, if desired
-    if outfile is not None:        
+    if outfile is not None:
+        header = mask.header
+        header['DATAMAX'] = 1
+        header['DATAMIN'] = 0
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
-                              header=mask.header)
+                              header=header)
         hdu.writeto(outfile, overwrite=overwrite)
-        # mask.write(outfile, overwrite=overwrite)
+
         
     if return_spectral_cube:
         return(mask)
@@ -757,9 +763,12 @@ def recipe_phangs_broad_mask(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     
     # Write to disk, if desired
-    if outfile is not None:        
+    if outfile is not None:
+        header = mask.header
+        header['DATAMAX'] = 1
+        header['DATAMIN'] = 0
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
-                              header=mask.header)
+                              header=header)
         hdu.writeto(outfile, overwrite=overwrite)
 
         # mask.write(outfile, overwrite=overwrite)
