@@ -494,7 +494,7 @@ def recipe_phangs_noise(
     header['DATAMAX'] = np.nanmax(rms)
     header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
     if tableversion:
-        header['COMMENT'] = 'Galaxy properties from PHANGS table version' + tableversion
+        header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
     rms = SpectralCube(rms, wcs=cube.wcs, header=header,
                        meta={'BUNIT':cube.header['BUNIT']})
     

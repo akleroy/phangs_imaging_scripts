@@ -767,9 +767,9 @@ def recipe_phangs_broad_mask(
         header = mask.header
         header['DATAMAX'] = 1
         header['DATAMIN'] = 0
-        hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
+        header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
         if tableversion:
-            hdr['COMMENT'] = 'Galaxy properties from PHANGS table version' + tableversion
+            header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
                               header=header)
         hdu.writeto(outfile, overwrite=overwrite)
