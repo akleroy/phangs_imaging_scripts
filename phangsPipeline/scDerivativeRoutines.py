@@ -805,7 +805,7 @@ def write_ew(cube,
         sigma_ew_err.fill(np.nan)
         rms = rms.with_mask(cube._mask.include(), inherit_mask=False)
         dv = np.abs(spaxis[1] - spaxis[0])
-        channel_correlation = [1]
+
         if channel_correlation is None:
 
             term1 = (np.nansum((rms.filled_data[:].value)**2, axis=0) * dv**2
