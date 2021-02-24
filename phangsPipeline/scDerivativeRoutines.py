@@ -831,11 +831,7 @@ def write_ew(cube,
                                       + (sigma_ew[y, x].value**2
                                          - sigma_ew[y, x].value * dv / np.sqrt(2 * np.pi))
                                       * rms_at_max[0, y, x]**2)**0.5
-                # sigma_ew_err[y, x] = (np.sum(covar)
-                #                       + (sigma_ew[y, x].value**2
-                #                          * rms_at_max[0, y, x]**2
-                #                          / maxmap[y, x].value**2))**0.5
-            # sigma_ew_err /= np.sqrt(2 * np.pi)
+
         sigma_ew_err = u.Quantity(sigma_ew_err, 
                                   cube.spectral_axis.unit, copy=False)
         if unit is not None:
