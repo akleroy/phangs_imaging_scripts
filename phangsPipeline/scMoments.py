@@ -1,10 +1,10 @@
 import scDerivativeRoutines as scdr
 from spectral_cube import SpectralCube
 import astropy.units as u
-from astropy.io import fits
 import numpy as np
-from radio_beam import Beam
 import inspect
+import warnings
+warnings.filterwarnings("ignore")
 
 def _nicestr(quantity):
     if quantity.value == int(quantity.value):
@@ -53,7 +53,7 @@ def moment_tag_known(moment_tag=None):
     """
     Test whether the programs know about a moment tag.
     """
-    func, kwargs = _funct_and_kwargs_for_moment(moment_tag)
+    func, kwargs = _func_and_kwargs_for_moment(moment_tag)
     if func is None:
         return(False)
     return(True)
@@ -88,7 +88,6 @@ def moment_generator(
         for this_kwarg in momkwargs:
             kwargs[this_kwarg] = momkwargs[this_kwarg]
 
-            
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Read in the data
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -140,8 +139,8 @@ def moment_generator(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Call the moment generation
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-
-    theseargs, _, _, _ = inspect.getargspec(func)
+    # Probably not needed anymore
+    theseargs = (inspect.getfullargspec(func)).args
 
     if 'context' in theseargs:
         moment_map, error_map = func(
