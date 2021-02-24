@@ -489,8 +489,10 @@ def recipe_phangs_noise(
         return(rms)
 
     # Recast from numpy array to spectral cube
-    
-    rms = SpectralCube(rms, wcs=cube.wcs, header=cube.header,
+    header = cube.header
+    header['DATAMIN'] = np.nanmin(rms)
+    header['DATAMAX'] = np.nanmax(rms)
+    rms = SpectralCube(rms, wcs=cube.wcs, header=header,
                        meta={'BUNIT':cube.header['BUNIT']})
     
     # Write to disk, if desired
