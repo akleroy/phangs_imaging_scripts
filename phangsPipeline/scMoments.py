@@ -144,7 +144,7 @@ def moment_generator(
     # Call the moment generation
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    theseargs, _, _, _ = inspect.getargspec(func)
+    theseargs = (inspect.getfullargspec(func)).args
 
     if 'context' in theseargs:
         moment_map, error_map = func(
