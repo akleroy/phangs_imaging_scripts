@@ -1,17 +1,17 @@
 import logging
-import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
 from scipy.signal import savgol_coeffs
 import numpy as np
-from astropy.stats import mad_std
 from astropy.convolution import convolve, Gaussian2DKernel
 import scipy.stats as ss
-
 from spectral_cube import SpectralCube
+from pipelineVersion import version, tableversion
+
 import astropy.wcs as wcs
 import astropy.units as u
-# from pipelineVersion import version as pipeVer
 from astropy.io import fits
+from astropy.stats import mad_std
+import scipy.ndimage.morphology as morph
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -489,8 +489,14 @@ def recipe_phangs_noise(
         return(rms)
 
     # Recast from numpy array to spectral cube
-    
-    rms = SpectralCube(rms, wcs=cube.wcs, header=cube.header)
+    header = cube.header
+    header['DATAMIN'] = np.nanmin(rms)
+    header['DATAMAX'] = np.nanmax(rms)
+    header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
+    if tableversion:
+        header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
+    rms = SpectralCube(rms, wcs=cube.wcs, header=header,
+                       meta={'BUNIT':cube.header['BUNIT']})
     
     # Write to disk, if desired
     if outfile is not None:
