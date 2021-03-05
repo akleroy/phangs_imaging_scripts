@@ -221,6 +221,68 @@ def stat_cube(
 
 # region Mask creation and manipulation
 
+def read_cube(infile, allow_huge=True):
+    """
+    Read cube from CASA image file. Includes a switch for large cubes, where getchunk may fail.
+    """
+
+    if allow_huge:
+        casaStuff.exportfits(imagename=infile,
+                             fitsimage=infile + '.fits',
+                             stokeslast=False, overwrite=True)
+        hdu = pyfits.open(infile + '.fits')[0]
+        cube = hdu.data.T
+
+        # Remove intermediate fits file
+        os.system('rm -rf ' + infile + '.fits')
+    else:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(infile)
+        cube = myia.getchunk()
+        myia.close()
+
+    return cube
+
+
+def write_mask(infile, outfile, mask, allow_huge=True):
+    """
+    Write a CASA mask out as a CASA image. Includes a switch for large cubes, where putchunk may fail.
+    """
+
+    os.system('rm -rf ' + outfile)
+    os.system('cp -r ' + infile + ' ' + outfile)
+
+    if allow_huge:
+        casaStuff.exportfits(imagename=outfile,
+                             fitsimage=outfile + '.fits',
+                             stokeslast=False, overwrite=True)
+        hdu = pyfits.open(outfile + '.fits')[0]
+        hdu.data = mask.T
+        hdu.header['BITPIX'] = -32
+
+        # Match up the WCS so tclean doesn't throw an error (this is some rounding to the nth decimal place...)
+        header = casaStuff.imhead(infile, mode='list')
+        wcs_names = ['cdelt1', 'cdelt2', 'cdelt3', 'cdelt4',
+                     'crval1', 'crval2', 'crval3', 'crval4']
+
+        for wcs_name in wcs_names:
+            hdu.header[wcs_name.upper()] = header[wcs_name]
+
+        hdu.writeto(outfile + '.fits', clobber=True)
+        casaStuff.importfits(fitsimage=outfile + '.fits',
+                             imagename=outfile,
+                             overwrite=True)
+
+        # Remove the intermediate fits file
+        os.system('rm -rf ' + outfile + '.fits')
+    else:
+        myia.open(outfile)
+        myia.putchunk(mask)
+        myia.close()
+
+    return True
+
+
 def signal_mask(
         cube_root=None,
         out_file=None,
@@ -258,15 +320,7 @@ def signal_mask(
         spec_axis = 3
 
     logger.info('Reading cube.')
-    # myia = au.createCasaTool(casaStuff.iatool)
-    # myia.open(cube_root + '.image' + suffix_in)
-    # cube = myia.getchunk()
-    # myia.close()
-    casaStuff.exportfits(imagename=cube_root + '.image' + suffix_in,
-                         fitsimage=cube_root + '.image' + suffix_in + '.fits',
-                         stokeslast=False, overwrite=True)
-    hdu = pyfits.open(cube_root + '.image' + suffix_in + '.fits')[0]
-    cube = hdu.data.T
+    cube = read_cube(cube_root + '.image' + suffix_in, allow_huge=True)
 
     logger.info('Building high mask.')
     if absolute:
@@ -312,14 +366,7 @@ def signal_mask(
 
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root + '.mask' + suffix_in):
-            # myia.open(cube_root + '.mask' + suffix_in)
-            # old_mask = myia.getchunk()
-            # myia.close()
-            casaStuff.exportfits(imagename=cube_root + '.mask' + suffix_in,
-                                 fitsimage=cube_root + '.mask' + suffix_in + '.fits',
-                                 stokeslast=False, overwrite=True)
-            old_hdu = pyfits.open(cube_root + '.mask' + suffix_in + '.fits')[0]
-            old_mask = old_hdu.data.T
+            old_mask = read_cube(cube_root + '.mask' + suffix_in, allow_huge=True)
         else:
             logger.info("Operation AND/OR requested but no previous mask found.")
             logger.info("... will set operation=NEW.")
@@ -342,40 +389,8 @@ def signal_mask(
 
     # Export the image to fits, put in the mask and convert back to a CASA image
     logger.info('Writing mask to disk')
-    os.system('rm -rf ' + cube_root + '.mask' + suffix_out)
-    os.system('cp -r ' + cube_root + '.image' + suffix_in + ' ' + cube_root + '.mask' + suffix_out)
-    casaStuff.exportfits(imagename=cube_root + '.mask' + suffix_out,
-                         fitsimage=cube_root + '.mask' + suffix_out + '.fits',
-                         stokeslast=False, overwrite=True)
-    hdu = pyfits.open(cube_root + '.mask' + suffix_out + '.fits')[0]
-    hdu.data = mask.T
-    hdu.header['BITPIX'] = -32
 
-    # Match up the WCS so tclean doesn't throw an error (this is some rounding to the nth decimal place...)
-    header = casaStuff.imhead(cube_root + '.image' + suffix_in, mode='list')
-    wcs_names = ['cdelt1', 'cdelt2', 'cdelt3', 'cdelt4',
-                 'crval1', 'crval2', 'crval3', 'crval4']
-
-    for wcs_name in wcs_names:
-        hdu.header[wcs_name.upper()] = header[wcs_name]
-
-    hdu.writeto(cube_root + '.mask' + suffix_out + '.fits', clobber=True)
-    casaStuff.importfits(fitsimage=cube_root + '.mask' + suffix_out + '.fits',
-                         imagename=cube_root + '.mask' + suffix_out,
-                         overwrite=True)
-
-    # Remove the intermediate fits files
-    os.system('rm -rf ' + cube_root + '.image' + suffix_in + '.fits')
-    os.system('rm -rf ' + cube_root + '.mask' + suffix_in + '.fits')
-    os.system('rm -rf ' + cube_root + '.mask' + suffix_out + '.fits')
-
-    # logger.info('Writing back to disk plane by plane.')
-    # os.system('rm -rf '+cube_root+'.mask'+suffix_out)
-    # os.system('cp -r '+cube_root+'.image'+suffix_in+' '+cube_root+'.mask'+suffix_out)
-    #
-    # myia.open(cube_root+'.mask'+suffix_out)
-    # myia.putchunk(mask)
-    # myia.close()
+    write_mask(cube_root + '.image' + suffix_in, cube_root + '.mask' + suffix_out, mask, allow_huge=True)
 
 
 def apply_additional_mask(

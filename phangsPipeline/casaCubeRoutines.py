@@ -75,6 +75,96 @@ def copy_dropdeg(
     
     return(True)
 
+
+def get_mask(infile, allow_huge=True):
+    """
+    Get a mask from a CASA image file. Includes a switch for large cubes, where getchunk can segfault.
+    """
+
+    if allow_huge:
+        os.system('rm -rf ' + infile + '.temp_deg_ordered')
+        casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
+                          order='0132')
+
+        casaStuff.makemask(mode='copy', inpimage=infile + '.temp_deg_ordered',
+                           inpmask=infile + '.temp_deg_ordered:mask0',
+                           output=infile + '.temp_mask', overwrite=True)
+
+        casaStuff.exportfits(imagename=infile + '.temp_mask',
+                             fitsimage=infile + '.temp.fits',
+                             stokeslast=False, overwrite=True)
+        hdu = pyfits.open(infile + '.temp.fits')[0]
+        mask = hdu.data.T[:, :, 0, :]
+
+        os.system('rm -rf ' + infile + '.temp_deg_ordered')
+        os.system('rm -rf ' + infile + '.temp_mask')
+        os.system('rm -rf ' + infile + '.temp.fits')
+
+    else:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(infile+'.temp_deg')
+        mask = myia.getchunk(getmask=True)
+        myia.close()
+
+    os.system('rm -rf ' + infile + '.temp_deg')
+
+    return mask
+
+
+def copy_mask(infile, outfile, allow_huge=True):
+    """
+    Copy a mask from infile to outfile. Includes a switch for large cubes, where getchunk/putchunk can segfault
+    """
+
+    if allow_huge:
+        os.system('rm -rf ' + outfile + '/mask0')
+        os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
+    else:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(infile)
+        mask = myia.getchunk(getmask=True)
+        myia.close()
+
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(outfile)
+        mask = myia.putregion(pixelmask=mask)
+        myia.close()
+
+    return True
+
+
+def multiply_cube_by_value(infile, value, brightness_unit, allow_huge=True):
+    """
+    Multiply a cube by some value, and update the brightness unit accordingly. Includes a switch for large cubes, where
+    getchunk/putchunk may fail.
+    """
+
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(infile)
+
+    if allow_huge:
+        casaStuff.exportfits(imagename=infile,
+                             fitsimage=infile + '.fits',
+                             overwrite=True)
+        hdu = pyfits.open(infile + '.fits')[0]
+        hdu.data *= value
+
+        hdu.writeto(infile + '.fits', clobber=True)
+        casaStuff.importfits(fitsimage=infile + '.fits',
+                             imagename=infile,
+                             overwrite=True)
+        os.system('rm -rf ' + infile + '.fits')
+    else:
+        vals = myia.getchunk()
+        vals *= value
+        myia.putchunk(vals)
+
+    myia.setbrightnessunit(brightness_unit)
+    myia.close()
+
+    return True
+
+
 def export_and_cleanup(
     infile=None,
     outfile=None,
@@ -240,29 +330,7 @@ def trim_cube(
     myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
     myia.close()
 
-    os.system('rm -rf ' + outfile + '.temp_deg_ordered')
-    casaStuff.imtrans(imagename=outfile + '.temp_deg', outfile=outfile + '.temp_deg_ordered',
-                      order='0132')
-
-    casaStuff.makemask(mode='copy', inpimage=outfile + '.temp_deg_ordered',
-                       inpmask=outfile + '.temp_deg_ordered:mask0',
-                       output=outfile + '.temp_mask', overwrite=True)
-
-    casaStuff.exportfits(imagename=outfile + '.temp_mask',
-                         fitsimage=outfile + '.temp.fits',
-                         stokeslast=False, overwrite=True)
-    hdu = pyfits.open(outfile + '.temp.fits')[0]
-    mask = hdu.data.T[:, :, 0, :]
-
-    os.system('rm -rf ' + outfile + '.temp_deg')
-    os.system('rm -rf ' + outfile + '.temp_deg_ordered')
-    os.system('rm -rf ' + outfile + '.temp_mask')
-    os.system('rm -rf ' + outfile + '.temp.fits')
-
-    # myia = au.createCasaTool(casaStuff.iatool)
-    # myia.open(outfile+'.temp')
-    # mask = myia.getchunk(getmask=True)
-    # myia.close()
+    mask = get_mask(outfile, allow_huge=True)
 
     this_shape = mask.shape
 
@@ -469,11 +537,6 @@ def convolve_to_round_beam(
             return(None)            
         target_bmaj = force_beam
 
-    # myia = au.createCasaTool(casaStuff.iatool)
-    # myia.open(infile)
-    # mask = myia.getchunk(getmask=True)
-    # myia.close()
-
     casaStuff.imsmooth(imagename=infile,
                        outfile=outfile,
                        targetres=True,
@@ -483,14 +546,8 @@ def convolve_to_round_beam(
                        overwrite=overwrite
                        )
 
-    # myia = au.createCasaTool(casaStuff.iatool)
-    # myia.open(outfile)
-    # mask = myia.putregion(pixelmask=mask)
-    # myia.close()
-
     # Copy over mask
-    os.system('rm -rf ' + outfile + '/mask0')
-    os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
+    copy_mask(infile, outfile, allow_huge=True)
 
     return(target_bmaj)
 
@@ -581,25 +638,7 @@ def convert_jytok(
     
     jytok = calc_jytok(hdr=hdr)
 
-    casaStuff.exportfits(imagename=target_file,
-                         fitsimage=target_file + '.fits',
-                         overwrite=True)
-    hdu = pyfits.open(target_file + '.fits')[0]
-    hdu.data *= jytok
-
-    hdu.writeto(target_file + '.fits', clobber=True)
-    casaStuff.importfits(fitsimage=target_file + '.fits',
-                         imagename=target_file,
-                         overwrite=True)
-    os.system('rm -rf ' + target_file + '.fits')
-
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(target_file)
-    # vals = myia.getchunk()
-    # vals *= jytok
-    # myia.putchunk(vals)
-    myia.setbrightnessunit("K")
-    myia.close()
+    multiply_cube_by_value(target_file, jytok, brightness_unit='K', allow_huge=True)
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
@@ -644,25 +683,7 @@ def convert_ktojy(
     
     jytok = calc_jytok(hdr=hdr)
 
-    casaStuff.exportfits(imagename=target_file,
-                         fitsimage=target_file + '.fits',
-                         stokeslast=False, overwrite=True)
-    hdu = pyfits.open(target_file + '.fits')[0]
-    hdu.data *= 1.0 / jytok
-
-    hdu.writeto(target_file + '.fits', clobber=True)
-    casaStuff.importfits(fitsimage=target_file + '.fits',
-                         imagename=target_file,
-                         overwrite=True)
-    os.system('rm -rf ' + target_file + '.fits')
-
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(target_file)
-    # vals = myia.getchunk()
-    # vals *= 1.0 / jytok
-    # myia.putchunk(vals)
-    myia.setbrightnessunit("Jy/beam")
-    myia.close()
+    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam', allow_huge=True)
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
