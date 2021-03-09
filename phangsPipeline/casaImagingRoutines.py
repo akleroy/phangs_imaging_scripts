@@ -36,6 +36,7 @@ from pipelineVersion import version as pipeVer
 
 def estimate_cell_and_imsize(
     infile=None,
+    clean_call=None,
     oversamp=5,
     force_square=False,
     ):
@@ -47,9 +48,16 @@ def estimate_cell_and_imsize(
     tclean.
     """
 
-    if os.path.isdir(infile) == False:
+    if not os.path.isdir(infile):
         logger.error('Error! The input file "'+infile+'" was not found!')
         return
+
+    # If supplied, use the clean call to determine pblevel
+
+    if not isinstance(clean_call, CleanCall):
+        pblevel = 0.2
+    else:
+        pblevel = clean_call.get_param('pblimit')
 
     # These are the CASA-preferred sizes for fast FFTs
 
@@ -57,16 +65,19 @@ def estimate_cell_and_imsize(
     for ii in range(10):
         for kk in range(3):
             for jj in range(3):
-                valid_sizes.append(2**(ii+1)*5**(jj)*3**(kk))
+                valid_sizes.append(2 ** (ii+1) * 5 ** jj * 3 ** kk)
     valid_sizes.sort()
     valid_sizes = np.array(valid_sizes)
 
     # Cell size implied by baseline distribution from analysis
     # utilities.
 
-    au_cellsize, au_imsize, au_centralField = \
-        au.pickCellSize(infile, imsize=True,
-                        npix=oversamp, intent='')
+    au_cellsize, au_imsize, _ = au.pickCellSize(infile,
+                                                imsize=True,
+                                                npix=oversamp,
+                                                intent='',
+                                                pblevel=pblevel,
+                                                )
     xextent = au_cellsize*au_imsize[0]*1.2
     yextent = au_cellsize*au_imsize[1]*1.2
 
@@ -74,15 +85,15 @@ def estimate_cell_and_imsize(
 
     if au_cellsize < 0.1:
         cell_size = au_cellsize
-    if au_cellsize >= 0.1 and au_cellsize < 0.5:
+    elif 0.1 <= au_cellsize < 0.5:
         cell_size = np.floor(au_cellsize/0.05)*0.05
-    if au_cellsize >= 0.5 and au_cellsize < 1.0:
+    elif 0.5 <= au_cellsize < 1.0:
         cell_size = np.floor(au_cellsize/0.1)*0.1
-    if au_cellsize >= 1.0 and au_cellsize < 2.0:
+    elif 1.0 <= au_cellsize < 2.0:
         cell_size = np.floor(au_cellsize/0.25)*0.25
-    if au_cellsize >= 2.0 and au_cellsize < 5.0:
+    elif 2.0 <= au_cellsize < 5.0:
         cell_size = np.floor(au_cellsize/0.5)*0.5
-    if au_cellsize >= 5.0:
+    else:
         cell_size = np.floor(au_cellsize/1.0)*0.5
 
     # Now make the image size a good number for the FFT
@@ -96,7 +107,7 @@ def estimate_cell_and_imsize(
     # If requested, force the mosaic to be square. This avoids
     # pathologies in CASA versions 5.1 and 5.3.
 
-    if force_square == True:
+    if force_square:
         if cells_y < cells_x:
             cells_y = cells_x
         if cells_x < cells_y:

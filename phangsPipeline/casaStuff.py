@@ -16,6 +16,7 @@ from imregrid import imregrid
 from imsmooth import imsmooth
 from imstat import imstat
 from imsubimage import imsubimage
+from imtrans import imtrans
 from imval import imval
 from makemask import makemask
 from mstransform import mstransform

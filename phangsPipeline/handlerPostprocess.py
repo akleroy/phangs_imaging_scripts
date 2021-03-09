@@ -367,14 +367,57 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             logger.info(str(target)+" , "+str(product)+" , "+str(config))
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
             logger.info("")
-            logger.info("Using ccr.copy_dropdeg.")
+            # logger.info("Using ccr.copy_dropdeg.")
             logger.info("Staging "+outfile)
             
             if (not self._dry_run) and casa_enabled:
-                ccr.copy_dropdeg(
-                    infile=indir+infile,
-                    outfile=outdir+outfile,
-                    overwrite=True)
+                os.system('rm -rf ' + outdir + outfile)
+                os.system('cp -r ' + indir + infile + ' ' + outdir + outfile)
+                # ccr.copy_dropdeg(
+                #     infile=indir+infile,
+                #     outfile=outdir+outfile,
+                #     overwrite=True)
+
+        return()
+
+    def task_remove_degenerate_axes(
+            self,
+            target = None,
+            product = None,
+            config = None,
+            extra_ext = '',
+            check_files = True,
+            ):
+        """
+        Remove
+        degenerate axes for target, product, config combination in postprocessing directory.
+        """
+
+        # Generate file names
+
+        file_dir = self._kh.get_postprocess_dir_for_target(target)
+        fname_dict = self._fname_dict(target=target, config=config, product=product, extra_ext=extra_ext)
+
+        # Copy the primary beam and the interferometric imaging
+
+        logger.info("Dropping degenerate axes from postprocess image/pb files.")
+
+        for this_tag in ['orig', 'pb', 'pbcorr', 'pbcorr_round']:
+
+            file_name = fname_dict[this_tag]
+
+            # Check input file existence
+            if check_files:
+                if not (os.path.isdir(file_dir+file_name)):
+                    logger.warning("Missing "+file_dir+file_name)
+                    continue
+
+            if (not self._dry_run) and casa_enabled:
+                ccr.copy_dropdeg(file_dir + file_name, file_dir + file_name + '_nodeg', overwrite=True)
+
+                os.system('rm -rf ' + file_dir + file_name)
+                os.system('cp -r ' + file_dir + file_name + '_nodeg ' + file_dir + file_name)
+                os.system('rm -rf ' + file_dir + file_name + '_nodeg')
 
         return()
 
@@ -1380,6 +1423,11 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             )
 
         self.task_round_beam(
+            target=target, config=config, product=product,
+            check_files=check_files
+            )
+
+        self.task_remove_degenerate_axes(
             target=target, config=config, product=product,
             check_files=check_files
             )
