@@ -659,37 +659,22 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # check if line product
         is_line_product = product in self._kh.get_line_products()
         
-        if is_line_product:
+        # set rolling spectral axis if is line product
+        do_roll = is_line_product
 
-            # signal_mask
-            msr.signal_mask(cube_root=fname_dict['root'],
-                            out_file=fname_dict['mask'],
-                            suffix_in=fname_dict['suffix'], 
-                            suffix_out=fname_dict['suffix'], 
-                            operation='AND',
-                            high_snr=4.0,
-                            low_snr=2.0,
-                            absolute=False)
+        # signal_mask
+        msr.signal_mask(cube_root=fname_dict['root'],
+                        out_file=fname_dict['mask'],
+                        suffix_in=fname_dict['suffix'], 
+                        suffix_out=fname_dict['suffix'], 
+                        operation='AND',
+                        high_snr=4.0,
+                        low_snr=2.0,
+                        absolute=False,
+                        do_roll=do_roll)
 
-            clean_call.set_param('usemask','user')
-            
-        else:
-            
-            # for continuum product, we need to make 2D mask
-
-            # signal_mask
-            msr.signal_mask(cube_root=fname_dict['root'],
-                            out_file=fname_dict['mask'],
-                            suffix_in=fname_dict['suffix'], 
-                            suffix_out=fname_dict['suffix'], 
-                            operation='AND',
-                            high_snr=4.0,
-                            low_snr=2.0,
-                            absolute=False, 
-                            do_roll=False)
-
-            clean_call.set_param('usemask','user')
-
+        clean_call.set_param('usemask','user')
+        
         return()
     
     @CleanCallFunctionDecorator
