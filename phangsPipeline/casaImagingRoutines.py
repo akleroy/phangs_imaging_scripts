@@ -632,6 +632,7 @@ def clean_loop(
         # turn on iterative noise estimation (Chauvenet+m.a.d. using 5
         # iterations should be quite robust).
 
+        logger.info("Computing noise cube.")
         current_noise = cmr.noise_for_cube(
             infile=working_call.get_param('imagename')+'.residual'+suffix,
             method='chauvmad', niter=5)
@@ -651,6 +652,9 @@ def clean_loop(
             threshold_string = '0.0Jy/beam'
 
         working_call.set_param('threshold', threshold_string, nowarning=True)
+        
+        logger.info("Loop %d, niter %d, cycleniter %d, cumulative_niter %d, threshold %s."%(\
+            loop, niter, cycleniter, cumulative_niter, threshold_string))
 
         # If requested mask at each step (this is experimental, we're
         # seeing if it helps to avoid divergence during the deep
