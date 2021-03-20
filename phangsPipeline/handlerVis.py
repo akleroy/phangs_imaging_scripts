@@ -658,6 +658,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = True,
             edge_for_statwt = None,
             method = "regrid_then_rebin",
+            require_full_line_coverage = False, 
             overwrite = False,
             ):
         """
@@ -814,6 +815,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 exact = exact,
                 overwrite = overwrite,
                 clear_pointing = False,
+                require_full_line_coverage = require_full_line_coverage, 
                 )
 
             if do_statwt:
