@@ -130,7 +130,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             fname_dict['image'] = imagename+'.image.tt0'
             fname_dict['model'] = imagename+'.model.tt0'
             fname_dict['residual'] = imagename+'.residual.tt0'
-            fname_dict['mask'] = imagename+'.mask.tt0'
+            fname_dict['mask'] = imagename+'.mask' # not '.mask.tt0'
             fname_dict['pb'] = imagename+'.pb.tt0'
             fname_dict['psf'] = imagename+'.psf.tt0'
             fname_dict['weight'] = imagename+'.weight.tt0'
@@ -664,8 +664,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             # signal_mask
             msr.signal_mask(cube_root=fname_dict['root'],
                             out_file=fname_dict['mask'],
-                            suffix_in=fname_dict['suffix'], 
-                            suffix_out=fname_dict['suffix'], 
+                            suffix_in=fname_dict['suffix'],
+                            suffix_out='',
                             operation='AND',
                             high_snr=4.0,
                             low_snr=2.0,
@@ -682,8 +682,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             # signal_mask
             msr.signal_mask(cube_root=fname_dict['root'],
                             out_file=fname_dict['mask'],
-                            suffix_in=fname_dict['suffix'], 
-                            suffix_out=fname_dict['suffix'], 
+                            suffix_in=fname_dict['suffix'],
+                            suffix_out='',
                             operation='AND',
                             high_snr=2.5,
                             low_snr=1.0,
@@ -908,12 +908,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 clean_call.set_param('pbmask', 0.5)
             else:
                 clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
-        else:
-            # set the clean_call mask to fname_dict['mask'] if it is empty
-            # this fixes the continuum suffix tt0 issue
-            clean_call.set_param('usemask', 'user')
-            if clean_call.get_param('mask') == '':
-                clean_call.set_param('mask', fname_dict['mask'])
 
         # AKL - propose to deprecate
         #if not do_read_clean_mask: 
