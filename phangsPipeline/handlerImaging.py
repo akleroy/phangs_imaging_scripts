@@ -659,22 +659,39 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # check if line product
         is_line_product = product in self._kh.get_line_products()
         
-        # set rolling spectral axis if is line product
-        do_roll = is_line_product
+        if is_line_product:
 
-        # signal_mask
-        msr.signal_mask(cube_root=fname_dict['root'],
-                        out_file=fname_dict['mask'],
-                        suffix_in=fname_dict['suffix'], 
-                        suffix_out=fname_dict['suffix'], 
-                        operation='AND',
-                        high_snr=4.0,
-                        low_snr=2.0,
-                        absolute=False,
-                        do_roll=do_roll)
-
+            # signal_mask
+            msr.signal_mask(cube_root=fname_dict['root'],
+                            out_file=fname_dict['mask'],
+                            suffix_in=fname_dict['suffix'], 
+                            suffix_out=fname_dict['suffix'], 
+                            operation='AND',
+                            high_snr=4.0,
+                            low_snr=2.0,
+                            absolute=False)
+            
+        else:
+            
+            # for continuum product, we need to make 2D mask 
+            # and note that the mask has a suffix .mask.tt0
+            
+            # here we also use a lower high_snr and low_snr 
+            # for continuum cleaning
+            
+            # signal_mask
+            msr.signal_mask(cube_root=fname_dict['root'],
+                            out_file=fname_dict['mask'],
+                            suffix_in=fname_dict['suffix'], 
+                            suffix_out=fname_dict['suffix'], 
+                            operation='AND',
+                            high_snr=2.5,
+                            low_snr=1.0,
+                            absolute=False,
+                            do_roll=False)
+            
         clean_call.set_param('usemask','user')
-        
+
         return()
     
     @CleanCallFunctionDecorator
@@ -891,11 +908,19 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 clean_call.set_param('pbmask', 0.5)
             else:
                 clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
+        else:
+            # set the clean_call mask to fname_dict['mask'] if it is empty
+            # this fixes the continuum suffix tt0 issue
+            clean_call.set_param('usemask', 'user')
+            if clean_call.get_param('mask') == '':
+                clean_call.set_param('mask', fname_dict['mask'])
 
         # AKL - propose to deprecate
         #if not do_read_clean_mask: 
         #    clean_call.set_param('usemask', 'pb')
         #    clean_call.set_param('pbmask', 0.2)
+        
+        # Dynamic sizing
         
         if dynamic_sizing:
             clean_call.set_param('cell',cell,nowarning=True)
