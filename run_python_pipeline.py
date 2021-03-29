@@ -14,16 +14,16 @@ pl.setup_logger(level='DEBUG', logfile=None)
 
 #sys.path.insert(1, )
 from phangsPipeline import handlerKeys as kh
-from phangsPipeline import handlerProducts as prh
+from phangsPipeline import handlerDerived as dh
 #release handler will go here
 reload(kh)
-reload(prh)
+reload(dh)
 reload(pl)
 
 # Initialize key handler
 
 this_kh = kh.KeyHandler(master_key = 'phangsalma_keys/master_key.txt')
-this_prh = prh.ProductHandler(key_handler = this_kh)
+this_dh = dh.DerivedHandler(key_handler=this_kh)
 # release handler
 
 # Set which data to process
@@ -39,9 +39,19 @@ this_prh = prh.ProductHandler(key_handler = this_kh)
 
 # Run all steps
 
-this_prh.loop_products_making(\
-        )
-        # 
+this_dh.loop_derive_products(
+    # do_all=False,
+    do_convolve=True,
+    do_noise=True,
+    do_strictmask=True,
+    do_broadmask=True,
+    do_moments=True,
+    do_secondary=True,
+    make_directories=True,
+    # extra_ext_in='',
+    # extra_ext_out='',
+    overwrite=True
+    )
 
 
 #this_rrh.loop_data_release()
