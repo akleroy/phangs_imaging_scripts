@@ -1,8 +1,8 @@
 ## README for PHANGS-ALMA Pipeline Version 2.0
 
-### EXECUTIVE SUMMARY
+### PREFACE
 
-**Contents** This is "version 2" of the PHANGS post-processing and science-ready data product pipeline. These programs use CASA, astropy, and affiliated packages (analysisutils, spectral-cube, reproject) to process data from the calibrated visibility to science-ready maps. The procedures and background for key parts of the pipeline are discussed in the Astrophysical Journal Supplements Paper "PHANGS-ALMA Data Processing and Pipeline" by Leroy, Hughes, Liu, Pety, Rosolowsky, Saito, Schinnerer, Usero, Faesi, Herrera et al.. Please consult that paper for more background and details.
+**Contents:** This is "version 2" of the PHANGS post-processing and science-ready data product pipeline. These programs use CASA, astropy, and affiliated packages (analysisutils, spectral-cube, reproject) to process data from the calibrated visibility to science-ready maps. The procedures and background for key parts of the pipeline are discussed in the Astrophysical Journal Supplements Paper "PHANGS-ALMA Data Processing and Pipeline" by Leroy, Hughes, Liu, Pety, Rosolowsky, Saito, Schinnerer, Usero, Faesi, Herrera et al.. Please consult that paper for more background and details.
 
 **Pipeline and Configuration Files:** These are the programs to run the PHANGS-ALMA pipeline. Configuration files for a large set of PHANGS projects, including the live version of the files for the PHANGS-ALMA CO survey, exist in a separate repository. We include a frozen set of files that can be used to reduce PHANGS-ALMA as examples here. If you are need access to those other repositories or need examples, please request access as needed.
 
@@ -10,7 +10,7 @@
 
 **Earlier Versions:** If you are looking for Version 1.0 of the pipeline, you can access it by changing branches to "version1.0". Note that this will mostly be for historical reasons. We suggest using Version 2.0 moving forward.
 
-### EXECUTIVE SUMMARY
+### WORKFLOW FOR MOST USERS
 
 **Procedure** A full pipeline run has four stages:
 
@@ -27,6 +27,8 @@ mosaicking.
 
 4. **Derive Produts** Convolution, noise estimation, masking, and
 calculation of science-ready data products.
+
+### CONTENTS OF THE PIPELINE IN MORE DETAIL
 
 **Architecture** The pipeline is organized and run by a series of
 "handler" objects. These handlers organize the list of targets, array
