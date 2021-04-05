@@ -12,6 +12,16 @@
 
 ### WORKFLOW FOR MOST USERS
 
+If you just want to *use* the pipeline then you will need to do three things:
+
+( 0. Run scriptForPI to apply the observatory-provided calibration to your data. The pipeline picks up from there, it does not replace the outstanding ALMA observatory calibration and flagging pipeline. )
+
+1. Make configuration files ("key files") that describe your project. Usually you can copy and modify an existing project to get a good start. We provide PHANGS-ALMA as an example.
+
+2. Put together a small script to run the pipeline. Well, really put together two small scripts: one to runt he CASA stuff and another to run the pure python stuff. In theory these could be combined or generalized, but we usually just write a few small programs.
+
+3. Run these scripts in order. The CASA stuff runs inside a CASA shell - the pipeline seems to work up through CASA 5.7 and has been heavily used in 5.4 and 5.6, In theory it should be workable in CASA 6.1+ but this isn't for sure yet. The pure python stuff expects a distribution with numpy, astropy, spectral-cube, and scipy and python 3.6+ or so.
+
 **Procedure** A full pipeline run has four stages:
 
 1. **Staging** Stage and process uv-data. This stage includes
