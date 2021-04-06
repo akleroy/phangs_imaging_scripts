@@ -12,6 +12,10 @@
 
 **Total Power:** The total power scripts and pipeline described by Herrera et al. are here: https://github.com/PhangsTeam/TP_ALMA_data_reduction/ this pipeline assumes that you have already run these to produce cubes.
 
+### TWO WAYS TO USE THE PIPELINE
+
+There are two ways that this pipeline might be useful. First, it provides an end-to-end path to process calibrated ALMA data (or VLA data) of the sort produced by scriptForPI into cubes and maps. That end-to-end approach is described in "Workflow for most users." Second, the `phangsPipeline` directory contains a number of modules for use inside and outside CASA that should have general utility. These are written without requiring any broader awareness of the pipeline infrastructure and should just be generally useful. These are files named `casaSOMENAME.py` and `scSOMEOTHERNAME.py` and, to a lesser extent, `utilsYETANOTHERNAME.py`.
+
 ### WORKFLOW FOR MOST USERS
 
 If you just want to *use* the pipeline then you will need to do three things:
