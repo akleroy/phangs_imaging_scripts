@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # 
+"""
+This "statsHandler" is a PHANGS-ALMA internal-use object and not
+intended as a general part of the pipeline. It uses the general
+handler infrastructure to loop over measurement sets and compile
+statistics, which are then dumped to JSON files for further
+analysis. Other users should feel free to adapt this to their uses,
+but it's not essential or generally integrated.
+"""
 
 from __future__ import print_function
 import os, sys, re, shutil
