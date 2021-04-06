@@ -6,7 +6,7 @@
 
 **Pipeline and Configuration Files:** These are the programs to run the PHANGS-ALMA pipeline. Configuration files for a large set of PHANGS projects, including the live version of the files for the PHANGS-ALMA CO survey, exist in a separate repository. We include a frozen set of files that can be used to reduce PHANGS-ALMA as examples here. If you are need access to those other repositories or need examples, please request access as needed.
 
-**Contact:** For issues, the preferred method is to open an issue on the github issues page. If you have specific other topics to discuss you can email the PHANGS-ALMA data reduction group at mailto:adr@phangs.groups.io . If you want to directly contact a person you can reach out to Adam Leroy, Erik Rosolowsky, or Daizhong Liu via email. But issues are better.
+**Contact:** For issues, the preferred method is to open an issue on the github issues page. If you have specific other topics to discuss you can email the PHANGS-ALMA data reduction group at adr@phangs.groups.io . If you want to directly contact a person you can reach out to Adam Leroy, Erik Rosolowsky, or Daizhong Liu via email. But issues are better.
 
 **Earlier Versions:** If you are looking for Version 1.0 of the pipeline, you can access it by changing branches to "version1.0". Note that this will mostly be for historical reasons. We suggest using Version 2.0 moving forward.
 
