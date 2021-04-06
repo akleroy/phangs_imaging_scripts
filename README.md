@@ -10,6 +10,8 @@
 
 **Earlier Versions:** If you are looking for Version 1.0 of the pipeline, you can access it by changing branches to "version1.0". Note that this will mostly be for historical reasons. We suggest using Version 2.0 moving forward.
 
+**Total Power:** The total power scripts and pipeline described by Herrera et al. are here: https://github.com/PhangsTeam/TP_ALMA_data_reduction/ this pipeline assumes that you have already run these to produce cubes.
+
 ### WORKFLOW FOR MOST USERS
 
 If you just want to *use* the pipeline then you will need to do three things:
@@ -24,19 +26,27 @@ If you just want to *use* the pipeline then you will need to do three things:
 
 **Procedure** A full pipeline run has four stages:
 
-1. **Staging** Stage and process uv-data. This stage includes
-continuum subtraction, line extraction, and regridding.
+1. **Staging (in CASA)** Stage and process uv-data. This stage includes continuum subtraction, line extraction, and spectral regridding.
 
-2. **Imaging** Image and deconvolve the uv-data. This runs in several
-stages: dirty imaging, clean mask alignment, multi-scale
-deconvolution, re-masking, and single convolution.
+2. **Imaging (in CASA)** Image and deconvolve the uv-data. This runs in several stages: dirty imaging, clean mask alignment, multi-scale deconvolution, re-masking, and single convolution.
 
-3. **Post-Process** Process deconvolved data into science-ready data
-cubes. This stage includes merging with the total power and
-mosaicking.
+3. **Post-Process (in CASA)** Process deconvolved data into science-ready data cubes. This stage includes merging with the total power and mosaicking.
 
-4. **Derive Produts** Convolution, noise estimation, masking, and
-calculation of science-ready data products.
+4. **Derive Produts (in python)** Convolution, noise estimation, masking, and calculation of science-ready data products.
+
+The simples way to run these is to write two small scripts and do the following:
+
+1. Initialize CASA
+2. Run a script that initializes a `keyHandler` object pointed at your key directory (see below). Then use this keyHandler to initialize handler objects for uv data, imaging, and postprocessing. Optionally restrict thoe objects of interest for each handler to a subset of targets, array configurations, or lines.
+3. Inside the same script, run the main loop commands for each handler object.
+
+Then exit CASA and
+
+4. Initialize a python environment with scipy, numpy, astropy, and spectral-cube installed.
+5. Run a script that initializes a `keyHandler` again pointed at your key directory, then use this keyHandler to initialize a derived poduct handler.
+6. Run the main loop for the derived product handler.
+
+we provide a pair of example scripts that do this for PHANGS-ALMA in the repository: 
 
 ### CONTENTS OF THE PIPELINE IN MORE DETAIL
 
