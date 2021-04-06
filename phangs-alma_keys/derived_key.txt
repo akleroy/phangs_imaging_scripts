@@ -1,0 +1,120 @@
+##########################################################################
+# DERIVED PRODUCT DEFINITION KEY
+##########################################################################
+
+# This key defines the derived science-ready data products produced by
+# the by the pipeline. The general format is
+
+# configuration spectral_product field values
+
+# Column 1: configuration name (e.g., 12m+7m, 7m+tp, etc.). This needs
+# to refer to a configuration defined in the config_definition.
+
+# "all" is an acceptable wildcard.
+
+# Column 2: spectral product name.  This needs to refer to a
+# configuration defined in the config_definition.
+
+# "all" is an acceptable wildcard.
+
+# Column 3: derived product field being defined. These come from a
+# list of possible fields, see below.
+
+# Column 4: values input for that field. This is read as a literal
+# dictionary, avoid spaces. Multiple lines for a single field + config
+# + spectral product combination are fine. In general, later lines
+# overwrite previous ones.
+
+# FIELDS
+
+# phys_res - target physical resolutions in parsecs. Format is a a set
+# of 'tag':value pairs in which the value is the parsec target and the
+# tag is the tag to insert into filenames. Galaxies need defined
+# distances in order to be convolved to fixed physical resolutions.
+
+# ang_res - target angular resolutions in arcseconds. Format is a a
+# set of 'tag':value pairs in which the value is the arcsecond target
+# and the tag is the tag to insert into filenames.
+
+# convolve_kw - keywords for convolution.
+
+# noise_kw - keywords for noise estimation.
+
+# strictmask_kw - keywords for generation of stict masks.
+
+# broadmask_kw - keywords for generation of broad masks.
+
+# mask_configs - the names of other configurations to link when
+# creating broad masks. All masks for all linked configurations will
+# be combined to create the broad masks.
+
+# moments - the list of moments (defined in the moment key) to
+# calculate for that that config and spectral product pair.
+
+##########################################################################
+
+all		all	convolve_kw	{}
+
+all		all	noise_kw	{'spec_box':5,'iterations':3}
+
+12m+7m+tp	all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
+12m+7m+tp	all	strictmask_kw	{'grow_xy':0,'grow_v':0}
+12m+7m+tp	all	strictmask_kw	{'min_pix':None,'min_area':None}
+
+12m+7m		all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
+12m+7m		all	strictmask_kw	{'grow_xy':0,'grow_v':0}
+12m+7m		all	strictmask_kw	{'min_pix':None,'min_area':None}
+
+all		all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
+all		all	strictmask_kw	{'grow_xy':0,'grow_v':0}
+all		all	strictmask_kw	{'min_pix':None,'min_area':None}
+
+all		all	broadmask_kw	{}
+
+12m		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0}
+12m		co21	ang_res		{'2as':2.0}
+12m		c18o21	ang_res		{'2as':2.0}
+12m		cont	ang_res		{'2as':2.0}
+12m		all	mask_configs	['12m+7m','12m+7m+tp','7m','7m+tp']
+12m		co21	moments		['strictmom0','broadmom0']
+12m		c18o21	moments		['strictmom0','broadmom0']
+
+12m+7m		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
+12m+7m		co21	ang_res		{'2as':2.0,'7p5as':7.5,'11as':11.0,'15as':15.0}
+12m+7m		c18o21	ang_res		{'2as':2.0}
+12m+7m		cont	ang_res		{'2as':2.0}
+12m+7m		all	mask_configs	['12m+7m+tp']
+12m+7m		co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
+12m+7m		co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
+12m+7m		co21	moments		['mom1wprior']
+12m+7m		c18o21	moments		['strictmom0','broadmom0']
+
+12m+7m+tp	co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
+12m+7m+tp	co21	ang_res		{'2as':2.0,'7p5as':7.5,'11as':11.0,'15as':15.0}
+12m+7m+tp	c18o21	ang_res		{'2as':2.0}
+12m+7m+tp	all	mask_configs	[]
+12m+7m+tp	co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
+12m+7m+tp	co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
+12m+7m+tp	co21	moments		['mom1wprior']
+12m+7m+tp	c18o21	moments		['strictmom0','broadmom0']
+
+7m		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
+7m		co21	ang_res		{'7p5as':7.5,'11as':11.0,'15as':15.0}
+7m		c18o21	ang_res		{'7p5as':7.5,'11as':11.0,'15as':15.0}
+7m		cont	ang_res		{'7p5as':7.5,'11as':11.0,'15as':15.0}
+7m		all	mask_configs	['7m+tp']
+7m		co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
+7m		co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
+7m		co21	moments		['mom1wprior']
+7m		c18o21	moments		['strictmom0','broadmom0']
+
+7m+tp		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
+7m+tp		co21	ang_res		{'7p5as':7.5,'11as':11.0,'15as':15.0}
+7m+tp		c18o21	ang_res		{'7p5as':7.5,'11as':11.0,'15as':15.0}
+7m+tp		co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
+7m+tp		co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
+7m+tp		co21	moments		['mom1wprior']
+7m+tp		c18o21	moments		['strictmom0','broadmom0']
+
+
+

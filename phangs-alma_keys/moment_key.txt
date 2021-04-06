@@ -1,0 +1,122 @@
+##########################################################################
+# MOMENT DEFINITION KEY
+##########################################################################
+
+# This key defines "moments" calculated by the pipeline.
+
+# Column 1: moment name (used in the derived key)
+
+# Column 2: parameter being defined. Notes:
+
+# algorithm : a tag fed to the moment routines to return the function
+# used to calculate the moment. Needs to be one of the known routines.
+
+# mask : strict or broad or none. Notes which mask to apply.
+
+# ext : the extension added to the end of the moment map file name.
+
+# ext_error : the extension added to the end of the error map file name.
+
+# round : the order of the calculation. Starts with round 1 and counts
+# up to the maximum round. Needed when subsequent calculations depnd
+# on a first round of moments (e.g., velocity field priors or
+# intensity-based prunign).
+
+# kwargs : a dictionary of kwargs passed to the moment.
+
+# Column 3: value
+
+# FIELDS
+
+##########################################################################
+
+##########################################################################
+# STRICT MASK MOMENTS
+##########################################################################
+
+strictmom0	algorithm	mom0
+strictmom0	mask		strictmask
+strictmom0	ext		_strict_mom0
+strictmom0	ext_error	_strict_emom0
+strictmom0	round		1
+strictmom0	kwargs		{}
+
+strictmom1	algorithm	mom1
+strictmom1	mask		strictmask
+strictmom1	ext		_strict_mom1
+strictmom1	ext_error	_strict_emom1
+strictmom1	round		1
+strictmom1	kwargs		{}
+
+strictvpeak	algorithm	vpeak
+strictvpeak	mask		strictmask
+strictvpeak	ext		_strict_vpeak
+strictvpeak	ext_error	_strict_evpeak
+strictvpeak	round		1
+strictvpeak	kwargs		{}
+
+strictvquad	algorithm	vquad
+strictvquad	mask		strictmask
+strictvquad	ext		_strict_vquad
+strictvquad	ext_error	_strict_evquad
+strictvquad	round		1
+strictvquad	kwargs		{}
+
+strictmom2	algorithm	mom2
+strictmom2	mask		strictmask
+strictmom2	ext		_strict_mom2
+strictmom2	ext_error	_strict_emom2
+strictmom2	round		1
+strictmom2	kwargs		{}
+
+strictew	algorithm	ew
+strictew	mask		strictmask
+strictew	ext		_strict_ew
+strictew	ext_error	_strict_eew
+strictew	round		1
+strictew	kwargs		{}
+
+##########################################################################
+# BROAD MASK MOMENTS
+##########################################################################
+
+broadmom0	algorithm	mom0
+broadmom0	mask		broadmask
+broadmom0	ext		_broad_mom0
+broadmom0	ext_error	_broad_emom0
+broadmom0	round		1
+broadmom0	kwargs		{}
+
+broadmom1	algorithm	mom1
+broadmom1	mask		broadmask
+broadmom1	ext		_broad_mom1
+broadmom1	ext_error	_broad_emom1
+broadmom1	round		1
+broadmom1	kwargs		{}
+
+broadtpeak	algorithm	tpeak
+broadtpeak	mask		broadmask
+broadtpeak	ext		_broad_tpeak
+broadtpeak	ext_error	_broad_etpeak
+broadtpeak	round		1
+broadtpeak	kwargs		{}
+
+broadtpeak12p5	algorithm	tpeak
+broadtpeak12p5	mask		broadmask
+broadtpeak12p5	ext		_broad_tpeak12p5
+broadtpeak12p5	ext_error	_broad_etpeak12p5
+broadtpeak12p5	round		1
+broadtpeak12p5	kwargs		{'window':'12.5km/s'}
+
+##########################################################################
+# SECONDARY MOMENTS - THESE DEPEND ON OTHER MAPS AS INPUT
+##########################################################################
+
+mom1wprior	algorithm	mom1wprior
+mom1wprior 	mask 		None
+mom1wprior 	round 		2
+mom1wprior 	ext 		_mom1wprior
+mom1wprior 	ext_error 	_emom1wprior
+mom1wprior	maps_to_pass	['strict_mom1','strict_emom1','broad_mom1','broad_emom1','broad_mom0','broad_emom0']
+mom1wprior 	other_exts 	{'vfield_prior':'_7m+tp_co21_15as_strict_mom1.fits'}
+mom1wprior	kwargs 		{'vfield_reject_thresh':'20km/s','mom0_thresh':2.0}
