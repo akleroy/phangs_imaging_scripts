@@ -30,13 +30,17 @@ If you just want to *use* the pipeline then you will need to do three things:
 
 **The Easiest Way** This release includes the full PHANGS-ALMA set of keys and the scripts we use to run the pipeline for PHANGS-ALMA. These are *heavily documented* - copy them to make your own script and configuration and follow the documented in those scripts to get started. To be specific:
 
-The PHANGS-ALMA imaging keys with heavy documentation are in:
+The PHANGS-ALMA keys to reduce the data end-to-end from the archive, along with heavy documentation are in: `phangs-alma_keys/`
 
-The script to run the CASA part of the pipeline is:
+The script to run the CASA part of the pipeline is: `run_casa_pipeline_phangs-alma.py`
 
-The script to create derived procuts is:
+The script to create derived procuts is: `run_derived_pipeline_phangs-alma.py`
+
+These can run the actual PHANGS-ALMA reduction, though in practice we used slightly more complex versions of a few programs to manage the workflow. Copying and modifying these is your best bet, especially following the patterns in the key files.
 
 ### A FEW DETAILS ON PROCEDURE
+
+The full procedure is described in our ApJ Supplements paper and the programs themselves are all in this repository, so we do not provide any extremely detailed docs here. Many individual routines are documented, though we also intend to improve the documentation in the future. Therefore we just note that broadly, the pipeline runs in four stages:
 
 1. **Staging (in CASA)** Stage and process uv-data. This stage includes continuum subtraction, line extraction, and spectral regridding.
 
@@ -46,7 +50,7 @@ The script to create derived procuts is:
 
 4. **Derive Produts (in python)** Convolution, noise estimation, masking, and calculation of science-ready data products.
 
-The simples way to run these is to write two small scripts and do the following:
+The simplest way to run these is to write two small scripts and do the following:
 
 1. Initialize CASA
 2. Run a script that initializes a `keyHandler` object pointed at your key directory (see below). Then use this keyHandler to initialize handler objects for uv data, imaging, and postprocessing. Optionally restrict thoe objects of interest for each handler to a subset of targets, array configurations, or lines.
@@ -58,7 +62,7 @@ Then exit CASA and
 5. Run a script that initializes a `keyHandler` again pointed at your key directory, then use this keyHandler to initialize a derived poduct handler.
 6. Run the main loop for the derived product handler.
 
-we provide a pair of example scripts that do this for PHANGS-ALMA in the repository: 
+these two scripts are the ones listed above. They are heavily annotated and should provide a good starting point.
 
 ### CONTENTS OF THE PIPELINE IN MORE DETAIL
 
