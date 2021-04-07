@@ -2,29 +2,25 @@
 # SINGLEDISH KEY
 ##########################################################################
 
-# Key to define files of user-supplied single dish FITS files.
+# Key to define files holding user-supplied single dish FITS files.
 
 # Currently (and for the foreseeable future) single dish FITS files
-# are created by an independent total power pipeline. The pipeline
-# requires that any single dish data used for feathering be provided
-# by the user. This file defines the locations of those data and maps
-# them to a target and product.
+# are created by an independent total power pipeline (see link in
+# pipeline paper and global pipeline README). The pipeline requires
+# that any single dish data used for feathering be provided by the
+# user. This file defines the locations of those data and maps them to
+# a target and product.
  
 # The syntax for the key is space or tab delimited:
 
 # Column 1: target name
-# Column 3: file name (to be searched under 'singledish_root' directory)
 # Column 2: spectral product for this single dish image cube.
+# Column 3: file name 
 
-# PHANGS-ALMA examples:
-
-#ic1954      cycle5_data/ALMA_TP.IC1954.CO21.processed.fits        co21
-#ngc3621_1   cycle5_data/ALMA_TP.NGC3621.CO21.a.image.VLSRK.fits   co21
-#ngc3621_2   cycle5_data/ALMA_TP.NGC3621.CO21.b.image.VLSRK.fits   co21
+The filename is searched for under the 'singledish_root' parent
+directory defined in the master_key.
 
 ##########################################################################
-
-# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
 
 # Cycle 3
 
