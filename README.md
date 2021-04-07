@@ -28,7 +28,15 @@ If you just want to *use* the pipeline then you will need to do three things:
 
 3. Run these scripts in order. The CASA stuff runs inside a CASA shell - the pipeline seems to work up through CASA 5.7 and has been heavily used in 5.4 and 5.6, In theory it should be workable in CASA 6.1+ but this isn't for sure yet. The pure python stuff expects a distribution with numpy, astropy, spectral-cube, and scipy and python 3.6+ or so.
 
-**Procedure** A full pipeline run has four stages:
+**The Easiest Way** This release includes the full PHANGS-ALMA set of keys and the scripts we use to run the pipeline for PHANGS-ALMA. These are *heavily documented* - copy them to make your own script and configuration and follow the documented in those scripts to get started. To be specific:
+
+The PHANGS-ALMA imaging keys with heavy documentation are in:
+
+The script to run the CASA part of the pipeline is:
+
+The script to create derived procuts is:
+
+### A FEW DETAILS ON PROCEDURE
 
 1. **Staging (in CASA)** Stage and process uv-data. This stage includes continuum subtraction, line extraction, and spectral regridding.
 
