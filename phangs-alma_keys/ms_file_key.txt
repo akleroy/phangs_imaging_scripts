@@ -2,41 +2,49 @@
 # MEASUREMENT SET FILE/INPUT KEY
 ##########################################################################
 
-# Key to define files of input visibility data.
+# Key to define the location of input visibility data be staged,
+# processed, and imaged by the pipeline.
 
 # The pipeline begins with calibrated visibility data, which are
-# defined in this file. In this key, each measurement set (column 4)
-# is mapped to an individual target, project, array tag, and numerical
-# tag ('multiobs' suffix).
+# located in this file.
+
+# In this key, each measurement set is mapped to a target, project,
+# array tag, and numerical tag. These are used to group the
+# measurement sets together and stage them for iaging.
  
 # The syntax for the key is space or tab delimited:
  
-# Column 1: target name
-# Column 2: project tag
-# Column 3: science field name ("all" is fine)
-# Column 4: array tag (7m, C, etc.)
-# Column 5: observation number
-# Column 6: file with path relative to an ms_root
+# Column 1: target name associated with the measurement set - should
+# be defined in the target definition key.
 
-# The paths are relative to ANY ms_root directory defined in the
-# master key.
+# Column 2: project tag associated with the measurement set -
+# suggested convention is the numeric code associated with the project
+# by the observatory.
+
+# Column 3: science field name - "all" is fine, in which case all
+# science targets will be selected. If the field is not all, then this
+# value is selected on during the staging of the data. Therefefore it
+# should map to the field names in the measurement set.
+
+# Column 4: array tag (7m, C, etc.). This is a tag that indicates the
+# interferometric configuration associated with the measurement
+# set. This is set by the user - that is, this is not a formal
+# definition based on baseline lengths, it's a tag. We might change
+# this in the future, but for now this adds flexibility for ALMA at
+# the expense of someonus on the user.
+
+# Column 5: observation number. This is just a nuemric flag indicating
+# the number of the observation among other observations of the same
+# target, project, and array tag.
+
+# Column 6: the file name of a calibrated measurement set. The paths
+# are relative to ANY ms_root directory defined in the master key.
 
 # The targets need to map to the target definitions, and the array
 # tags need to mesh with the config definitions.
 
-# The project tag should probably be the VLA or ALMA project code or
-# something similar.
- 
-# PHANGS-ALMA examples:
-
-#circinus_1     2018.1.01321 	all  7m	  1	2018.1.01321.S/science_goal.uid___A001_X133d_X3c35/group.uid___A001_X133d_X3c36/member.uid___A001_X133d_X3c37/calibrated/uid___A002_Xd845af_Xa5a9.ms
-
-#circinus_2     2018.1.01321	all  7m	  2	2018.1.01321.S/science_goal.uid___A001_X133d_X3c2f/group.uid___A001_X133d_X3c30/member.uid___A001_X133d_X3c31/calibrated/uid___A002_Xd845af_Xab60.ms
-
 #
 ##########################################################################
-
-# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
 
 circinus_1     2018.1.01321 	all  7m	  1	2018.1.01321.S/science_goal.uid___A001_X133d_X3c35/group.uid___A001_X133d_X3c36/member.uid___A001_X133d_X3c37/calibrated/uid___A002_Xd845af_Xa5a9.ms
 
