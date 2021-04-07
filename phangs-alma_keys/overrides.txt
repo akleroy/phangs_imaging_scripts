@@ -1,3 +1,7 @@
+# NOTE - THIS IS NOT IMPLEMENTED IN MOST OF THE PIPELINE RIGHT NOW!
+# COME BACK AND DOCUMENT CORRECTLY WHEN IMPLEMENTATION IS IN PLACE. OR
+# DEPRECATE THIS FUNCTIONALITY.
+
 ##########################################################################
 # ALGORITHMIC OVERRIDE KEY
 ##########################################################################
@@ -16,10 +20,6 @@
 # Column 1: keyword - image name or other file name
 # Column 2: parameter to override
 # Column 3: new value
-
-# NOTE - THIS IS NOT IMPLEMENTED IN MOST OF THE PIPELINE RIGHT NOW!
-# COME BACK AND DOCUMENT CORRECTLY WHEN IMPLEMENTATION IS IN PLACE. OR
-# DEPRECATE THIS FUNCTIONALITY.
 
 # Examples from the previous version of the pipeline:
 
