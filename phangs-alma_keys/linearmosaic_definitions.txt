@@ -2,6 +2,8 @@
 # LINEAR MOSAIC DEFINITIONS
 ##########################################################################
 
+# N.B. You may not need this file if you are not linearly mosaicking.
+
 # Define the mapping of imaging targets to linear mosaics. Imaging
 # targets (column 2) will be separately cleaned and deconvolved and
 # then combined into a single data product via linear mosaic in the
@@ -20,6 +22,9 @@
  
 # would merge together circinus_1 and circinus_2 into circinus during
 # linear mosaicking.
+
+# Note that BOTH the linear mosaic and the target need to be defined
+# in the target key.
 
 ##########################################################################
 

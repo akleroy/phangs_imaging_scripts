@@ -1,3 +1,21 @@
+##########################################################################
+# DISTANCE KEY
+##########################################################################
+
+# Key to map from target name to distance in Mpc
+
+# N.B. this file is automatically produced in some cases and this
+# documentation would be overwritten.
+
+# When the user requests to convolve to specific physical resolutions
+# as part of derived product creation a physical distance is
+# needed. This file provides that distance.
+
+# Column 1: target name
+# Column 2: working directory name
+
+##########################################################################
+
 # %ECSV 0.9
 # ---
 # datatype:

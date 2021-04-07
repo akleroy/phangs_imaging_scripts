@@ -4,19 +4,25 @@
 
 # The imaging pipeline builds "clean_call" objects that repeatedly
 # call tclean to build a deconvolved interferometric image. This
-# imaging recipes key links combinations of "config"uration, spectral
-# "product", and imaging step (see below) to "recipes." These recipes
-# are sets of tclean parameters similar to those written out by
-# save_input in CASA.
+# imaging recipes key links combinations of configuration ("line"),
+# spectral "product", and imaging step (see below) to "imaging
+# recipes." 
 
-# Note that some pipeline recipes overwrite some parameters, like
-# niter, scales, or (when using dynamic sizing) cell and imsize. The
-# parameters provided here serve as a base.
+# These recipes are sets of tclean parameters similar to those written
+# out by save_input in CASA. They are read in to the pipeline and then
+# passed along to tclean. So these offer a way to tune the imaging
+# behavior.
 
-# ALSO NOTE THAT ORDER IS VERY IMPORTANT HERE! The recipes are read in
-# as lists, which are applied ***in the order that they are read
-# in***. So a parameter in later recipe will override the same
-# parameter in the earlier recipe.
+# Note that some pipeline imaging calls automatically overwrite some
+# parameters, like niter, scales, or (when using dynamic sizing) cell
+# and imsize. The parameters provided here serve as a base but will
+# get clobbered.
+
+# ALSO NOTE THAT ORDER IS VERY IMPORTANT HERE! 
+
+# The recipes are read in as lists, which are applied ***in the order
+# that they are read in***. So a parameter in later recipe will
+# override the same parameter in the earlier recipe.
  
 # The columns in the file are:
 
@@ -38,7 +44,7 @@
 # Column 4: The name of the clean parameter file to be read in. Should
 # be in this keys directory.
 
-# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+##########################################################################
 
 all      co21        all           cube_mosaic.clean
 12m+7m   co21        all           cube_mosaic.clean
