@@ -4,36 +4,32 @@
 
 # Key to define the targets in a project.
 
-# In the ms_key each measurement set is mapped to a target. This key
-# defined targets according to their phase center, systemic velocity
-# and velocity width. These are used in processing the u-v data and
-# then imaging the data.
+# In the ms_key each measurement set is mapped to a "target", which
+# has an associated position, velocity, and velocity width. These are
+# defined in this file. In cases where linear mosaicking is desired,
+# this file should also define targets for the combined linear
+# mosaics.
 
 # The syntax for the key is space or tab delimited:
 
-# Column 1: target name
-# Column 2: phase center r.a. string
-# Column 3: phase center dec string
-# Column 4: source velocity [km/s]
-# Column 5: velocity width [km/s]
+# Column 1: target name. This can be anything but needs to be used
+# consistently across all of the key files.
+
+# Column 2: phase center r.a. string. Used in imaging.
+
+# Column 3: phase center dec string. Used in imaging.
+
+# Column 4: source velocity [km/s] currently assumes LSRK radio
+# convention.
+
+# Column 5: velocity width [km/s] used for imaging and continuum
+# subtraction and u-v data staging.
 
 # Note that the phase center isn't the same as the object center. This
 # is an importnat distinction mainly in the case of mosaics that cover
-# only part of the object (our linear mosaic cases..
-
-# PHANGS-ALMA examples:
-
-#circinus     14h13m10.0s   -65d20m21s    429    700
-#circinus_1   14h12m58.4s   -65d21m43s    429    700
-#circinus_2   14h13m17.1s   -65d19m24s    429    700
-#ic1954       03h31m31.4s   -51d54m17s    1062   500
-#ngc3621      11h18m16.5s   -32d48m51s    730    700
-#ngc3621_1    11h18m18.3s   -32d49m47s    730    700
-#ngc3621_2    11h18m15.0s   -32d48m06s    730    700
+# only part of the object (e.g., the PHANGS-ALMA linear mosaic cases).
 
 ##########################################################################
-
-# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
 
 circinus	14h13m10.0s   -65d20m21s	429	700
 circinus_1  	14h12m58.4s   -65d21m43s	429	700
