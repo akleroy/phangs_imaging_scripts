@@ -2,14 +2,16 @@
 # MASTER KEY
 ##########################################################################
 
-# VERY IMPORTANT! The pipeline (currently) operates on absolute path
-# definitions. Even if you are using an otherwise already set up
-# project, please set these absolute file paths to be appropriate to
-# for your system before running the pipeline!
-
 # The master key defines the directory structure for the project and
 # links to the other keys that define configurations, targets, uv
-# data, algorithmic choices, etc. for the project.
+# data, algorithmic choices, etc. for the project. The master key is
+# the key input to the pipeline that links all of the keys to the
+# handler objects.
+
+# VERY IMPORTANT! The pipeline (currently) operates on absolute path
+# definitions. Even if you are using keys an otherwise already set up
+# project, please set these absolute file paths to be appropriate to
+# for your system before running the pipeline!
 
 # ------------------------------------------------------------------------
 # DIRECTORIES
@@ -24,71 +26,56 @@
 
 # is any directory in which the calibrated measurement sets (listed in
 # the ms_key below) are located. These directories are pre-pended to
-# the file paths in ms_key to identify the locations of the uv data.
+# the file paths in ms_key to identify the locations of the uv
+# data. Often this will be the root of the tree where you unpack and
+# calibrate your data.
 
-# You can set more than one 'ms_root' below to have multiple search
-# paths for the measurement sets defined in the 'ms_key' below.
- 
-# 'cleanmask_root' 
+# You can set more than one 'ms_root' in order to have multiple search
+# paths for the measurement sets defined in the 'ms_key'.
 
-# is the root directory storing all the clean mask FITS
-# cubes. Currently clean masks are treated as an external input to the
-# process. This is likely to change in the near future.
- 
-# 'singledish_root' 
-
-# is the root directory storing all the single dish imaged FITS
-# cubes. Currently single dish data are treated as an external input
-# to the process. For PHANGS-ALMA these are output by the separate
-# total power pipeline. This is might change at some point in the
-# future, but not the near term.
-
-# You can set more than one 'singledish_root' below to have multiple
-# search paths for the measurement sets defined in the
-# 'singledish_key' below.
- 
 # 'imaging_root' 
 
 # is the root directory for staging and process the visibility data
 # and imaging. Each individual target will have a subdirectory of this
 # imaging directory where processing for that target occurs.
+
+# 'cleanmask_root' 
+
+# is the root directory for the clean mask FITS cubes. These are
+# inputs for imaging.
+
+# This is optional. You only need this if you are using clean masks.
  
 # 'postprocess_root' 
 
-# is the root directory for processing the imaged cube, including
+# is the root directory for processing the imaged cubes, including
 # feathering and linear mosaicking. Each individual target will have a
 # subdirectory of this imaging directory where processing for that
 # target occurs.
 
-# 'product_root' 
+# 'singledish_root' 
 
-# is the root directory for creating data products, like moment maps
-# and masks from the postprocessed image cubes. Each individual target
-# will have a subdirectory of this imaging directory where processing
-# for that target occurs.
+# is the root directory storing all the single dish imaged FITS
+# cubes. These are inputs for feathering and postprcoessing.
+
+# You can set more than one 'singledish_root' below to have multiple
+# search paths for the measurement sets defined in the
+# 'singledish_key'.
+
+# This is optional, you only need this if you are feathering with
+# short spacing data.
+
+# 'derived_root' 
+
+# is the root directory for creating derived data products, like
+# moment maps and masks from the postprocessed image cubes. Each
+# individual target will have a subdirectory of this parent derived
+# directory where processing for that target occurs.
  
-# 'release_root' 
-
-# is the root directory for creating a distributed release. Currently,
-# each individual target will have a subdirectory of this imaging
-# directory where processing for that target occurs, though this may
-# change.
-
-# PHANGS-ALMA examples:
-
-#key_dir              /PATH/EXAMPLE/phangsalma_keys/
-#ms_root              /PATH/EXAMPLE/uvdata/
-#cleanmask_root       /PATH/EXAMPLE/reduction/cleanmasks/
-#singledish_root      /PATH/EXAMPLE/reduction/singledish/
-#imaging_root         /PATH/EXAMPLE/reduction/imaging/
-#postprocess_root     /PATH/EXAMPLE/reduction/postprocess/
-#product_root         /PATH/EXAMPLE/reduction/product/
-#release_root         /PATH/EXAMPLE/reduction/release/
-
 # ------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------
-# FILES GIVING LOCATIONS OF INPUT DATA
+# KEY FILES GIVING LOCATIONS OF INPUT DATA
 # ------------------------------------------------------------------------
  
 # These are files giving the location of input data to be processed by
@@ -124,12 +111,6 @@
 # product to a clean mask. This may be deprecated in the near future
 # as algorithic clean mask creation is migrated into the pipeline.
 
-# PHANGS-ALMA examples:
-
-#ms_key               ms_file_key.txt
-#singledish_key       singledish_key.txt
-#cleanmask_key        cleanmask_key.txt
-
 # ------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------
@@ -153,7 +134,7 @@
 # position information can be taken as the phase center of the image
 # during imaging.
 
-# linmos_key
+# linmos_key (optional)
 
 # This file maps targets to linear mosaics. Linear mosaics combine
 # individual targets into a single image as part of
@@ -162,11 +143,11 @@
 # mosaicked, so the keys both exist but look very similar. In
 # principle, the same file could be assigned to both.
 
-# dir_key
+# dir_key (optional)
 
-# The (optional) mapping between target and directory within the
-# working directory. Use this, e.g., to image and process target
-# 'ngc3627_1' in the directory 'ngc3627'.
+# The mapping between target and directory within the working
+# directory. Use this, e.g., to image and process target 'ngc3627_1'
+# in the directory 'ngc3627'.
  
 # imaging_key
 
@@ -176,26 +157,14 @@
 # that config/product combination, they are then modified by the
 # imaging scripts and cleaning procedures.
 
-# override_key
+# override_key (optional, mostly not recommended)
 
 # This file contains by hand overrides for the post-processing and
-# imaging steps. These are specific things and not required, but,
-# e.g., allow a different weighting or cell size for specific data
-# sets. Most of these capabilities are currently not implemented.
-
-# PHANGS-ALMA examples:
-
-#config_key           config_definitions.txt
-#target_key           target_definitions.txt
-#linmos_key           linearmosaic_definitions.txt
-#dir_key              dir_key.txt
-#imaging_key          imaging_recipes.txt
-#derived_key	      derived_key.txt
-#override_key         overrides.txt
+# imaging steps. These are specific capabilities mostly just used as
+# debugging tools and not required and most of these capabilities are
+# currently not implemented.
 
 #   ------------------------------------------------------------------------
-
-# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
 
 # Locations
 
