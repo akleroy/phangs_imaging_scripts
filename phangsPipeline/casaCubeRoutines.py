@@ -22,8 +22,8 @@ import analysisUtils as au
 # CASA stuff
 import casaStuff
 
-# Pipeline versionining
-from pipelineVersion import version as pipeVer
+# Pipeline versioning
+from pipelineVersion import version
 
 #endregion
 
@@ -265,9 +265,11 @@ def export_and_cleanup(
                 else:
                     logger.info("Beam too asymmetric to round.")
                     logger.info("... fractional deviation: "+str(frac_dev))
-    
-    # Overwrite
 
+    # Never forget where you came from
+    hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
+
+    # Overwrite
     hdu.writeto(outfile, clobber=True)
         
     return()

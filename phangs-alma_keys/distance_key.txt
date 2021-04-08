@@ -1,0 +1,116 @@
+##########################################################################
+# DISTANCE KEY
+##########################################################################
+
+# Key to map from target name to distance in Mpc
+
+# N.B. this file is automatically produced in some cases and this
+# documentation would be overwritten.
+
+# When the user requests to convolve to specific physical resolutions
+# as part of derived product creation a physical distance is
+# needed. This file provides that distance.
+
+# Column 1: target name
+# Column 2: working directory name
+
+##########################################################################
+
+# %ECSV 0.9
+# ---
+# datatype:
+# - {name: target, datatype: string}
+# - {name: dist, datatype: float32}
+# delimiter: ','
+# schema: astropy-2.0
+target,dist
+circinus,4.2
+ic1954,12.8
+ic5273,14.18
+ic5332,9.01
+ngc0247,3.71
+ngc0253,3.7
+ngc0300,2.09
+ngc0628,9.84
+ngc0685,19.94
+ngc1068,13.97
+ngc1087,15.85
+ngc1097,13.58
+ngc1300,18.99
+ngc1313,4.32
+ngc1317,19.11
+ngc1365,19.57
+ngc1385,17.22
+ngc1433,18.63
+ngc1511,15.28
+ngc1512,18.83
+ngc1546,17.69
+ngc1559,19.44
+ngc1566,17.69
+ngc1637,11.7
+ngc1672,19.4
+ngc1792,16.2
+ngc1809,19.95
+ngc2090,11.75
+ngc2283,13.68
+ngc2566,23.44
+ngc2775,23.15
+ngc2835,12.22
+ngc2903,10.0
+ngc2997,14.06
+ngc3059,20.23
+ngc3137,16.37
+ngc3239,10.86
+ngc3351,9.96
+ngc3489,11.86
+ngc3507,23.55
+ngc3511,13.94
+ngc3521,13.24
+ngc3596,11.3
+ngc3599,19.86
+ngc3621,7.06
+ngc3626,20.05
+ngc3627,11.32
+ngc4207,15.78
+ngc4254,13.1
+ngc4293,15.76
+ngc4298,14.92
+ngc4303,16.99
+ngc4321,15.21
+ngc4424,16.2
+ngc4457,15.1
+ngc4459,15.85
+ngc4476,17.54
+ngc4477,15.76
+ngc4496a,14.86
+ngc4535,15.77
+ngc4536,16.25
+ngc4540,15.76
+ngc4548,16.22
+ngc4569,15.76
+ngc4571,14.9
+ngc4579,21.0
+ngc4596,15.76
+ngc4654,21.98
+ngc4689,15.0
+ngc4694,15.76
+ngc4731,13.28
+ngc4781,11.31
+ngc4826,4.41
+ngc4941,15.0
+ngc4945,3.47
+ngc4951,15.0
+ngc5042,16.78
+ngc5068,5.20
+ngc5128,3.69
+ngc5134,19.92
+ngc5248,14.87
+ngc5236,4.89
+ngc5530,12.27
+ngc5643,12.68
+ngc6300,11.58
+ngc6744,9.39
+ngc7456,15.7
+ngc7496,18.72
+ngc7743,20.32
+ngc7793,3.62

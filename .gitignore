@@ -5,4 +5,5 @@ casa*.log
 *.last
 *_noise.fits
 .idea
+*.json
 #*

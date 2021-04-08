@@ -1,0 +1,153 @@
+##########################################################################
+# CONFIG_DEFINITIONS KEY
+##########################################################################
+
+# This file defines the file defines the spectral "products" and array
+# "configurations" that to be processed and combined by the
+# pipeline. Here, the user provides detailed parameters for each
+# product and config. The file has three columns:
+ 
+# Column 1: type of field (see below)
+
+# Column 2: name (this can be anything, it will appear in file names
+# and be used by the handlers and keys)
+
+# Column 3: parameters (write as literal dictionaries with no spaces)
+ 
+# ------------------------------------------------------------------------
+# Column 1 : "type of field"
+# ------------------------------------------------------------------------
+
+# This must be one of the following:
+
+# "line_product" : a spectral line imaging product (e.g., "lowresCO21")
+
+# "cont_product" : a continuum imaging product (e.g., "mmcont")
+
+# "interf_config" : a configuration containing only interferometric data (e.g., "VLAC")
+
+# "feather_config" : a configuration combining single dish and
+#  interferometric data (e.g., "7m+tp")
+
+# ------------------------------------------------------------------------
+# Column 2 : "name"
+# ------------------------------------------------------------------------
+
+# This can be anything, but should not have any spaces or _ characters
+# to avoid confusion.
+
+# ------------------------------------------------------------------------
+# Column 3 : "parameters"
+# ------------------------------------------------------------------------
+
+# This is evaluated as a literal dictionary (i.e., the line is fed to
+# python). Please avoid spaces and follow the fields required below.
+
+# N.B. Configuration definitions can repeat multiple lines, in which
+# case the dictionary parameters are accumulated across all
+# lines. Don't repeat parameters, but if you do then in theory the
+# later lines will overwrite the earlier ones.
+
+##########################################################################
+
+# ------------------------------------------------------------------------
+# line_product : a spectral line data product
+# ------------------------------------------------------------------------
+
+# This defines a spectral line product, which will be produced by
+# clean using specmode='cube'. The name can be anything, it does not
+# have to be the line name, e.g., "lowresco" is fine.
+
+# The parameters need to include:
+
+# 'line_tag' : this is the line tag we use in our pipeline and should
+# agree with the line names in our "utilsLines.py" module. If this is
+# missing, then you should add the line to your utilsLines module (and
+# maybe file an issue).
+
+# 'channel_kms', this is the target channel width of our output image
+# cubes in units of km/s. Depending on the chosen regridding algorithm
+# this may be the exact channel width or an approximate target.
+
+# ------------------------------------------------------------------------
+# cont_product : a continuum data product
+# ------------------------------------------------------------------------
+
+# This defines a continuum product, which will be produced by clean
+# using specmode='mfs'. The name can be anything, e.g., '850umcont'.
+
+# These parameters need to be included (use [] for none):
+
+# 'lines_to_flag' : these are the spectral line families (for groups
+# of lines) or spectral line tags (for individual lines) to exclude
+# (at the velocity and bandwidth of the source) from continuum
+# imaging. They need to be known by our utilsLines.py. If they are not
+# known, then you can add them to your version.
+
+# ------------------------------------------------------------------------
+# interferometry configuation
+# ------------------------------------------------------------------------
+
+# This defines an interferometric configuration, which is a collection
+# of data from interferometric arrays. These will eventually be
+# combined into a single visibility file and imaged together. The name
+# can be anything, e.g., 'BCD' or '12m+7m'.
+
+# These parameters need to be included:
+ 
+# 'array_tags' : defines a list of "array_tag"s to be concatenated
+# into this config. These array tags are assigned to each measurement
+# set in the "ms_file_key.txt", which lists the visibility data. Thus,
+# they only mean anything inasmuch as they agree with those defined in
+# that file. The natural mapping is, e.g., VLA config, ALMA array, and
+# maybe a code roughly indicating the ALMA subarray (e.g.,
+# "12mext"). This is fundamentally up to the user to decide. Despite
+# the names used by PHANGS-ALMA (12m, 7m) the pipeline does NOT
+# attempt to detect and assign data to arrays on its own.
+ 
+# 'clean_scales_arcsec' : These are the scales used for multiscale
+# cleaning of data from this array. The units are arcseconds.
+
+# ------------------------------------------------------------------------
+# feathering configuation (combining single dish and interferometry data)
+# ------------------------------------------------------------------------
+
+# This defines a "feather configuration," which is a combination of an
+# interferometric configuration and total power data. The name can be
+# anything, e.g., 'BCD+tp' or '12m+7m+tp'.
+
+# These parameters need to be included:
+ 
+# 'interf_config' : each feather config needs to map back to an
+# interferometric config. This mapping is used to carry out the
+# feathering process. This field defines the interf_config
+# corresponding to this feather config. When data from that
+# interf_config is feathered it produces data labeled with this
+# feather_config.
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
+line_product    co21      {'line_tag':'co21','channel_kms':2.6,'statwt_edge_kms':50.0}
+line_product    co21      {'fitorder':0,'combinespw':False,'lines_to_flag':['co21']}
+line_product    13co21    {'line_tag':'13co21','channel_kms':2.6,'statwt_edge_kms':50.0}
+line_product    13co21    {'fitorder':0,'combinespw':False,'lines_to_flag':['13co21','c18o21']}
+line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0,'statwt_edge_kms':100.0}
+line_product    c18o21    {'fitorder':0,'combinespw':False,'lines_to_flag':['c18o21','13co21']}
+
+cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
+
+interf_config   12m       {'array_tags':['12m']}
+interf_config   12m       {'clean_scales_arcsec':[0,1,2.5,5.0]}
+
+interf_config   12m+7m    {'array_tags':['12m','7m']}
+interf_config   12m+7m    {'clean_scales_arcsec':[0,1,2.5,5.0,10.0]}
+
+interf_config   7m        {'array_tags':['7m']}
+interf_config   7m        {'clean_scales_arcsec':[0,5.0,10.0]}
+
+feather_config  12m+7m+tp   {'interf_config':'12m+7m'}
+
+feather_config  7m+tp       {'interf_config':'7m'}
+
