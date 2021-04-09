@@ -29,13 +29,14 @@ os.chdir(pipedir)
 # save to a logfile with the keyword.
 
 from phangsPipeline import phangsLogger as pl
+
 # reloads are useful for debugging but can be commented out
 importlib.reload(pl)
 pl.setup_logger(level='DEBUG', logfile=None)
 
 # Imports
 
-#sys.path.insert(1, )
+# sys.path.insert(1, )
 from phangsPipeline import handlerKeys as kh
 from phangsPipeline import handlerDerived as der
 
@@ -49,12 +50,12 @@ importlib.reload(der)
 # data, into the other handlers (here DerivedHandler), which run the
 # actual pipeline using the project definitions from the KeyHandler.
 
-this_kh = kh.KeyHandler(master_key = key_file)
-this_der = der.DerivedHandler(key_handler= this_kh)
+this_kh = kh.KeyHandler(master_key=key_file)
+this_der = der.DerivedHandler(key_handler=this_kh)
 
 # Make missing directories
 
-this_kh.make_missing_directories(imaging=True,derived=True,postprocess=True,release=True)
+this_kh.make_missing_directories(imaging=True, derived=True, postprocess=True, release=True)
 
 ##############################################################################
 # Set up what we do this run
@@ -82,7 +83,7 @@ this_kh.make_missing_directories(imaging=True,derived=True,postprocess=True,rele
 # something similar.
 
 this_der.set_targets()
-#this_der.set_targets(only=['ngc1809'])
+# this_der.set_targets(only=['ngc1809'])
 
 this_der.set_interf_configs(only=['12m+7m'])
 this_der.set_feather_configs(only=['12m+7m+tp'])
@@ -112,45 +113,45 @@ do_secondary = True
 # physical resolutions specified in the keys.
 
 if do_convolve:
-    this_der.loop_derive_products(do_convolve = True, do_noise = False, 
-                                  do_strictmask = False, do_broadmask = False,
-                                  do_moments = False, do_secondary = False)
+    this_der.loop_derive_products(do_convolve=True, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False)
 
 # Estimate the noise from the signal-free regions of the data to
 # produce a three-dimensional noise model for each cube.
 
 if do_noise:
-    this_der.loop_derive_products(do_convolve = False, do_noise = True, 
-                                  do_strictmask = False, do_broadmask = False,
-                                  do_moments = False, do_secondary = False)
+    this_der.loop_derive_products(do_convolve=False, do_noise=True,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False)
 
 # Construct "strict masks" for each cube at each resolution.
 
 if do_strictmask:
-    this_der.loop_derive_products(do_convolve = False, do_noise = False, 
-                                  do_strictmask = True, do_broadmask = False,
-                                  do_moments = False, do_secondary = False)
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=True, do_broadmask=False,
+                                  do_moments=False, do_secondary=False)
 
 # Combine the strict masks across all linked resolutions to form
 # "broad masks" that have high completeness.
 
 if do_broadmask:
-    this_der.loop_derive_products(do_convolve = False, do_noise = False, 
-                                  do_strictmask = False, do_broadmask = True,
-                                  do_moments = False, do_secondary = False)
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=True,
+                                  do_moments=False, do_secondary=False)
 
 # Apply the masks and use the cubes and noise models to produce moment
 # maps with associated uncertainty.
 
 if do_moments:
-    this_der.loop_derive_products(do_convolve = False, do_noise = False, 
-                                  do_strictmask = False, do_broadmask = False,
-                                  do_moments = True, do_secondary = False)
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=True, do_secondary=False)
 
 # Run a second round of moment calculations. This enables claculation
 # of moments that depend on other, earlier moment map calculations
 
 if do_secondary:
-    this_der.loop_derive_products(do_convolve = False, do_noise = False, 
-                                  do_strictmask = False, do_broadmask = False,
-                                  do_moments = False, do_secondary = True)
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=True)
