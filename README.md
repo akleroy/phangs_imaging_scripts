@@ -24,7 +24,7 @@ If you just want to *use* the pipeline then you will need to do three things:
 
 1. Make configuration files ("key files") that describe your project. Usually you can copy and modify an existing project to get a good start. We provide PHANGS-ALMA as an example.
 
-2. Put together a small script to run the pipeline. Well, really put together two small scripts: one to runt he CASA stuff and another to run the pure python stuff. In theory these could be combined or generalized, but we usually just write a few small programs.
+2. Put together a small script to run the pipeline. Well, really put together two small scripts: one to run the CASA stuff and another to run the pure python stuff. In theory these could be combined or generalized, but we usually just write a few small programs.
 
 3. Run these scripts in order. The CASA stuff runs inside a CASA shell - the pipeline seems to work up through CASA 5.7 and has been heavily used in 5.4 and 5.6, In theory it should be workable in CASA 6.1+ but this isn't for sure yet. The pure python stuff expects a distribution with numpy, astropy, spectral-cube, and scipy and python 3.6+ or so.
 
@@ -34,7 +34,7 @@ The PHANGS-ALMA keys to reduce the data end-to-end from the archive, along with 
 
 The script to run the CASA part of the pipeline is: `run_casa_pipeline_phangs-alma.py`
 
-The script to create derived procuts is: `run_derived_pipeline_phangs-alma.py`
+The script to create derived products is: `run_derived_pipeline_phangs-alma.py`
 
 These can run the actual PHANGS-ALMA reduction, though in practice we used slightly more complex versions of a few programs to manage the workflow. Copying and modifying these is your best bet, especially following the patterns in the key files.
 
@@ -59,14 +59,14 @@ The simplest way to run these is to write two small scripts and do the following
 Then exit CASA and
 
 4. Initialize a python environment with scipy, numpy, astropy, and spectral-cube installed.
-5. Run a script that initializes a `keyHandler` again pointed at your key directory, then use this keyHandler to initialize a derived poduct handler.
+5. Run a script that initializes a `keyHandler` again pointed at your key directory, then use this keyHandler to initialize a derived product handler.
 6. Run the main loop for the derived product handler.
 
 these two scripts are the ones listed above. They are heavily annotated and should provide a good starting point.
 
 ### CONTENTS OF THE PIPELINE IN MORE DETAIL
 
-**Architecture** The pipeline is organized and run by a series of
+**Architecture**: The pipeline is organized and run by a series of
 "handler" objects. These handlers organize the list of targets, array
 configurations, spectral products, and derived moments and execute
 loops.
@@ -82,6 +82,6 @@ A project is defined by a series of text key files in a
 configurations, spectral line products, moments, and derived
 products. 
 
-**User Control** For the most part the user's job is to *define the
+**User Control**: For the most part the user's job is to *define the
 key files* and to run some scripts.
 

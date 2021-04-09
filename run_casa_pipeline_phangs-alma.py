@@ -7,7 +7,7 @@
 # wrapper to the PHANGS-ALMA pipeline.
 
 # This script loads the project data, constructs the PHANGS pipeline
-# ahndlers, and then executes each step: staging, imaging,
+# handlers, and then executes each step: staging, imaging,
 # postprocessing. The user has control over which targets, spectral
 # products, and steps run.
 
@@ -50,13 +50,14 @@ if not casa_enabled:
 # save to a logfile with the keyword.
 
 from phangsPipeline import phangsLogger as pl
+
 # reloads are useful for debugging but can be commented out
 reload(pl)
 pl.setup_logger(level='DEBUG', logfile=None)
 
 # Imports
 
-#sys.path.insert(1, )
+# sys.path.insert(1, )
 from phangsPipeline import handlerKeys as kh
 from phangsPipeline import handlerVis as uvh
 from phangsPipeline import handlerImaging as imh
@@ -76,14 +77,14 @@ reload(pph)
 # PostProcessHandler), which run the actual pipeline using the project
 # definitions from the KeyHandler.
 
-this_kh = kh.KeyHandler(master_key = key_file)
-this_uvh = uvh.VisHandler(key_handler = this_kh)
-this_imh = imh.ImagingHandler(key_handler = this_kh)
-this_pph = pph.PostProcessHandler(key_handler= this_kh)
+this_kh = kh.KeyHandler(master_key=key_file)
+this_uvh = uvh.VisHandler(key_handler=this_kh)
+this_imh = imh.ImagingHandler(key_handler=this_kh)
+this_pph = pph.PostProcessHandler(key_handler=this_kh)
 
 # Make any missing directories
 
-this_kh.make_missing_directories(imaging=True,derived=True,postprocess=True,release=True)
+this_kh.make_missing_directories(imaging=True, derived=True, postprocess=True, release=True)
 
 ##############################################################################
 # Set up what we do this run
@@ -99,7 +100,7 @@ this_kh.make_missing_directories(imaging=True,derived=True,postprocess=True,rele
 
 # Set the configs. Set both interf_configs and feather_configs just to
 # determine which cubes will be processed. The only effect in this
-# derive product calculation is to determin which cubes get fed into
+# derive product calculation is to determine which cubes get fed into
 # the calculation.
 
 # Set the line products. Similarly, this just determines which cubes
@@ -119,19 +120,19 @@ this_kh.make_missing_directories(imaging=True,derived=True,postprocess=True,rele
 # cubes.
 
 this_uvh.set_targets()
-#this_uvh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
+# this_uvh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
 this_uvh.set_interf_configs(only=['12m+7m'])
 this_uvh.set_line_products()
 this_uvh.set_no_cont_products(False)
 
 this_imh.set_targets()
-#this_imh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
+# this_imh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
 this_imh.set_interf_configs(only=['12m+7m'])
 this_imh.set_no_cont_products(True)
 this_imh.set_line_products(only=['co21'])
 
 this_pph.set_targets()
-#this_pph.set_targets(only=['ngc3489','ngc3599','ngc4476'])
+# this_pph.set_targets(only=['ngc3489','ngc3599','ngc4476'])
 this_pph.set_interf_configs(only=['12m+7m'])
 this_pph.set_feather_configs(only=['12m+7m+tp'])
 
@@ -153,23 +154,22 @@ do_stats = True
 # concatenation into a single measurement set.
 
 if do_staging:
-
-    this_uvh.loop_stage_uvdata(do_copy=True, do_contsub=True, 
+    this_uvh.loop_stage_uvdata(do_copy=True, do_contsub=True,
                                do_extract_line=False, do_extract_cont=False,
                                do_remove_staging=False, overwrite=True)
-    
-    this_uvh.loop_stage_uvdata(do_copy=False, do_contsub=False, 
+
+    this_uvh.loop_stage_uvdata(do_copy=False, do_contsub=False,
                                do_extract_line=True, do_extract_cont=False,
                                do_remove_staging=False, overwrite=True)
-    
-    this_uvh.loop_stage_uvdata(do_copy=False, do_contsub=False, 
+
+    this_uvh.loop_stage_uvdata(do_copy=False, do_contsub=False,
                                do_extract_line=False, do_extract_cont=True,
                                do_remove_staging=False, overwrite=True)
-    
-    this_uvh.loop_stage_uvdata(do_copy=False, do_contsub=False, 
+
+    this_uvh.loop_stage_uvdata(do_copy=False, do_contsub=False,
                                do_extract_line=False, do_extract_cont=False,
                                do_remove_staging=True, overwrite=True)
-    
+
 ##############################################################################
 # Step through imaging
 ##############################################################################
@@ -181,8 +181,7 @@ if do_staging:
 # the imaging loop call but this call does everything.
 
 if do_imaging:
-
-    this_imh.loop_imaging(do_all = True)
+    this_imh.loop_imaging(do_all=True)
 
 ##############################################################################
 # Step through postprocessing
@@ -193,6 +192,5 @@ if do_imaging:
 # units, and some downsampling to save space.
 
 if do_postprocess:
-
-    this_pph.loop_postprocess(do_prep = True, do_feather = True, 
-                              do_mosaic = True, do_cleanup = True)
+    this_pph.loop_postprocess(do_prep=True, do_feather=True,
+                              do_mosaic=True, do_cleanup=True)
