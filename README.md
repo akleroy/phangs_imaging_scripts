@@ -62,7 +62,7 @@ The full procedure is described in our ApJ Supplements paper and the programs th
 
 3. **Post-Process (in CASA)** Process deconvolved data into science-ready data cubes. This stage includes merging with the total power and mosaicking.
 
-4. **Derive Produts (in python)** Convolution, noise estimation, masking, and calculation of science-ready data products.
+4. **Derive Products (in python)** Convolution, noise estimation, masking, and calculation of science-ready data products.
 
 The simplest way to run these is to write two small scripts and do the following:
 
