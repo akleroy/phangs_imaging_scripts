@@ -4,7 +4,7 @@
 
 **Contents:** This is "version 2" of the PHANGS post-processing and science-ready data product pipeline. These programs use CASA, astropy, and affiliated packages (analysisutils, spectral-cube, reproject) to process data from the calibrated visibility to science-ready maps. The procedures and background for key parts of the pipeline are discussed in the Astrophysical Journal Supplements Paper "PHANGS-ALMA Data Processing and Pipeline" by Leroy, Hughes, Liu, Pety, Rosolowsky, Saito, Schinnerer, Usero, Faesi, Herrera et al. [LINK](https://ui.adsabs.harvard.edu). Please consult that paper for more background and details.
 
-**Pipeline and Configuration Files:** These are the programs to run the PHANGS-ALMA pipeline. Configuration files for a large set of PHANGS projects, including the live version of the files for the PHANGS-ALMA CO survey, exist in a separate repository. We include a frozen set of files that can be used to reduce PHANGS-ALMA as examples here. If you are need access to those other repositories or need examples, please request access as needed.
+**Pipeline and Configuration Files:** These are the programs to run the PHANGS-ALMA pipeline. Configuration files for a large set of PHANGS projects, including the live version of the files for the PHANGS-ALMA CO survey, exist in a separate repository. We include a frozen set of files that can be used to reduce PHANGS-ALMA as examples here. If you need access to those other repositories or need examples, please request access as needed.
 
 **Contact:** For issues, the preferred method is to open an issue on the github issues page. If you have specific other topics to discuss you should reach out to Adam Leroy, Erik Rosolowsky, or Daizhong Liu via email. But opening issues is better.
 
@@ -62,12 +62,12 @@ The full procedure is described in our ApJ Supplements paper and the programs th
 
 3. **Post-Process (in CASA)** Process deconvolved data into science-ready data cubes. This stage includes merging with the total power and mosaicking.
 
-4. **Derive Products (in python)** Convolution, noise estimation, masking, and calculation of science-ready data products.
+4. **Derived Products (in python)** Convolution, noise estimation, masking, and calculation of science-ready data products.
 
 The simplest way to run these is to write two small scripts and do the following:
 
 1. Initialize CASA
-2. Run a script that initializes a `keyHandler` object pointed at your key directory (see below). Then use this keyHandler to initialize handler objects for uv data, imaging, and postprocessing. Optionally restrict thoe objects of interest for each handler to a subset of targets, array configurations, or lines.
+2. Run a script that initializes a `keyHandler` object pointed at your key directory (see below). Then use this keyHandler to initialize handler objects for uv data, imaging, and postprocessing. Optionally restrict those objects of interest for each handler to a subset of targets, array configurations, or lines.
 3. Inside the same script, run the main loop commands for each handler object.
 
 Then exit CASA and
