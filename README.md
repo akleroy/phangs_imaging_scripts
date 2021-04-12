@@ -2,7 +2,7 @@
 
 ### PREFACE
 
-**Contents:** This is "version 2" of the PHANGS post-processing and science-ready data product pipeline. These programs use CASA, astropy, and affiliated packages (analysisutils, spectral-cube, reproject) to process data from the calibrated visibility to science-ready maps. The procedures and background for key parts of the pipeline are discussed in the Astrophysical Journal Supplements Paper "PHANGS-ALMA Data Processing and Pipeline" by Leroy, Hughes, Liu, Pety, Rosolowsky, Saito, Schinnerer, Usero, Faesi, Herrera et al. [LINK](https://ui.adsabs.harvard.edu). Please consult that paper for more background and details.
+**Contents:** This is "version 2" of the PHANGS post-processing and science-ready data product pipeline. These programs use CASA, as well as the Python package astropy and other affiliated packages (analysisutils, spectral-cube, reproject), to process data from calibrated visibilities to science-ready spectral cubes and maps. The procedures and background for key parts of the pipeline are discussed in the Astrophysical Journal Supplements Paper "PHANGS-ALMA Data Processing and Pipeline" by Leroy, Hughes, Liu, Pety, Rosolowsky, Saito, Schinnerer, Usero, Faesi, Herrera et al. [LINK](https://ui.adsabs.harvard.edu). Please consult that paper for more background and details.
 
 **Pipeline and Configuration Files:** These are the programs to run the PHANGS-ALMA pipeline. Configuration files for a large set of PHANGS projects, including the live version of the files for the PHANGS-ALMA CO survey, exist in a separate repository. We include a frozen set of files that can be used to reduce PHANGS-ALMA as examples here. If you need access to those other repositories or need examples, please request access as needed.
 
@@ -10,7 +10,7 @@
 
 **Earlier Versions:** If you are looking for Version 1.0 of the pipeline, you can access it by changing branches to "version1.0". Note that this will mostly be for historical reasons. We suggest using Version 2.0 moving forward.
 
-**Total Power:** The total power scripts and pipeline described by Herrera et al. are here: https://github.com/PhangsTeam/TP_ALMA_data_reduction/ this pipeline assumes that you have already run these to produce cubes.
+**Total Power:** The pipeline can feather interferometer data with complementary Total Power observations. However, as of version 2.0 it cannot process Total Power data on its own and assumes that a Total Power cube has been produced by other means. For the PHANGS-ALMA data release, these Total Power cubes were produced with the scripts and pipeline described by Herrera et al. here: https://github.com/PhangsTeam/TP_ALMA_data_reduction/ .
 
 ### REQUIREMENTS
 
@@ -28,7 +28,7 @@ We recommend a standard [anaconda](https://www.anaconda.com/) distribution for p
 
 ### TWO WAYS TO USE THE PIPELINE
 
-There are two ways that this pipeline might be useful. First, it provides an end-to-end path to process calibrated ALMA data (or VLA data) of the sort produced by scriptForPI into cubes and maps. That end-to-end approach is described in "Workflow for most users." Second, the `phangsPipeline` directory contains a number of modules for use inside and outside CASA that should have general utility. These are written without requiring any broader awareness of the pipeline infrastructure and should just be generally useful. These are files named `casaSOMENAME.py` and `scSOMEOTHERNAME.py` and, to a lesser extent, `utilsYETANOTHERNAME.py`.
+There are two ways that this pipeline might be useful. First, it provides an end-to-end path to process calibrated ALMA data (or VLA data) of the sort produced by the scriptForPI script distributed by ALMA into spectral cubes and maps. That end-to-end approach is described in "Workflow for most users." Second, the `phangsPipeline` directory contains a number of modules for use inside and outside CASA that should have general utility. These are written without requiring any broader awareness of the pipeline infrastructure and should just be generally useful. These are files named `casaSOMENAME.py` and `scSOMEOTHERNAME.py` and, to a lesser extent, `utilsYETANOTHERNAME.py`.
 
 ### WORKFLOW FOR MOST USERS
 
