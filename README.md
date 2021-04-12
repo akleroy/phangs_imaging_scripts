@@ -10,7 +10,7 @@
 
 **Earlier Versions:** If you are looking for Version 1.0 of the pipeline, you can access it by changing branches to "version1.0". Note that this will mostly be for historical reasons. We suggest using Version 2.0 moving forward.
 
-**Total Power:** The pipeline can feather interferometer data with complementary Total Power observations. However, as of version 2.0 it cannot process Total Power data on its own and assumes that a Total Power cube has been produced by other means. For the PHANGS-ALMA data release, these Total Power cubes were produced with the scripts and pipeline described by Herrera et al. here: https://github.com/PhangsTeam/TP_ALMA_data_reduction/ .
+**Total Power:** The pipeline can feather interferometer data with complementary Total Power observations. However, as of Version 2.0 it cannot process Total Power data on its own and assumes that a Total Power cube has been produced by other means. For the PHANGS-ALMA data release, these Total Power cubes were produced with the scripts and pipeline described by Herrera et al. here: https://github.com/PhangsTeam/TP_ALMA_data_reduction/ .
 
 ### REQUIREMENTS
 
