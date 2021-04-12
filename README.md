@@ -76,7 +76,7 @@ Then exit CASA and
 5. Run a script that initializes a `keyHandler` again pointed at your key directory, then use this keyHandler to initialize a derived product handler.
 6. Run the main loop for the derived product handler.
 
-these two scripts are the ones listed above. They are heavily annotated and should provide a good starting point.
+These two scripts are the ones listed above. They are heavily annotated and should provide a good starting point.
 
 ### CONTENTS OF THE PIPELINE IN MORE DETAIL
 
