@@ -3,8 +3,7 @@
 # Run this script INSIDE CASA or with CASA available.
 # 
 
-# This is the PHANGS ALMA staging and imaging script, which is a
-# wrapper to the PHANGS-ALMA pipeline.
+# This is the PHANGS ALMA staging and imaging script.
 
 # This script loads the project data, constructs the PHANGS pipeline
 # handlers, and then executes each step: staging, imaging,
@@ -50,9 +49,6 @@ if not casa_enabled:
 # save to a logfile with the keyword.
 
 from phangsPipeline import phangsLogger as pl
-
-# reloads are useful for debugging but can be commented out
-reload(pl)
 pl.setup_logger(level='DEBUG', logfile=None)
 
 # Imports
@@ -62,13 +58,6 @@ from phangsPipeline import handlerKeys as kh
 from phangsPipeline import handlerVis as uvh
 from phangsPipeline import handlerImaging as imh
 from phangsPipeline import handlerPostprocess as pph
-
-# reloads are useful for debugging but can be commented out
-
-reload(kh)
-reload(uvh)
-reload(imh)
-reload(pph)
 
 # Initialize the various handler objects. First initialize the
 # KeyHandler, which reads the master key and the files linked in the
@@ -120,19 +109,21 @@ this_kh.make_missing_directories(imaging=True, derived=True, postprocess=True, r
 # cubes.
 
 this_uvh.set_targets()
-# this_uvh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
 this_uvh.set_interf_configs(only=['12m+7m'])
 this_uvh.set_line_products()
 this_uvh.set_no_cont_products(False)
 
+# e.g., could be to be more selective:
+# this_uvh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
+# this_uvh.set_interf_configs(only=['12m+7m'])
+# this_uvh.set_line_products(only=['co21'])
+
 this_imh.set_targets()
-# this_imh.set_targets(only=['ngc3489','ngc3599','ngc4476'])
 this_imh.set_interf_configs(only=['12m+7m'])
 this_imh.set_no_cont_products(True)
 this_imh.set_line_products(only=['co21'])
 
 this_pph.set_targets()
-# this_pph.set_targets(only=['ngc3489','ngc3599','ngc4476'])
 this_pph.set_interf_configs(only=['12m+7m'])
 this_pph.set_feather_configs(only=['12m+7m+tp'])
 
@@ -151,7 +142,8 @@ do_stats = True
 # "Stage" the visibility data. This involves copying the original
 # calibrated measurement set, continuum subtracting (if requested),
 # extraction of requested lines and continuum data, regridding and
-# concatenation into a single measurement set.
+# concatenation into a single measurement set. The overwrite=True flag
+# is needed to ensure that previous runs can be overwritten.
 
 if do_staging:
     this_uvh.loop_stage_uvdata(do_copy=True, do_contsub=True,
