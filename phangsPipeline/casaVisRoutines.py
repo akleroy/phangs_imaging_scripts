@@ -569,6 +569,9 @@ def find_spws_for_science(
     # Call the analysisUtil version.
 
     spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET*')
+    if spw_string is None or len(spw_string) == 0:
+        spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET#ON_SOURCE')
+    
     spw_list = []
     for this_spw_string in spw_string.split(','):
         spw_list.append(int(this_spw_string))
