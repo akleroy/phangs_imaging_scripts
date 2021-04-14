@@ -101,8 +101,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         statwt_cont = True,
         collapse_cont = True,
         timebin = None,
-        just_projects=None,
-        strict_config=True,
+        just_projects = None,
+        strict_config = True,
+        require_full_line_coverage = False,
         overwrite = False,
         ):
         """
@@ -110,6 +111,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         to run the uv data processing. Toggle the parts of the loop
         using the do_XXX booleans. Other choices affect the algorithms
         used.
+        
+        The strict_config option sets whether to require that a target has data
+        from ALL arrays that make up the configuration (True) or not (False).
+        
+        The require_full_line_coverage option sets whether to require a measurement set 
+        to completely cover a given line's frequency range (True) or not (False). 
         """
 
         if make_directories:
@@ -153,7 +160,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             obsnum = this_obsnum,
                             product = this_product,
                             timebin = timebin,
-                            overwrite = overwrite,
+                            require_full_line_coverage = require_full_line_coverage, 
+                            overwrite = overwrite, 
                             )
 
                     # Run custom processing. Not currently used.
@@ -208,6 +216,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             extra_ext_in = "",
                             contsub = "prefer",
                             # could add algorithm flags here
+                            require_full_line_coverage = require_full_line_coverage, 
                             overwrite = overwrite,
                             )
 
@@ -278,6 +287,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = False,
             timebin = None,
             use_symlink = True,
+            require_full_line_coverage = False, 
             overwrite = False,
             ):
         """
@@ -366,7 +376,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         spw = cvr.find_spws_for_line(
                             infile = infile, line = this_line,
                             max_chanwidth_kms = max_chanwidth_kms,
-                            vsys_kms = vsys, vwidth_kms = vwidth)
+                            vsys_kms = vsys, vwidth_kms = vwidth,
+                            require_full_line_coverage = require_full_line_coverage)
 
                     if spw is None or len(spw) == 0:
                         logger.warning("... No SPWs meet the selection criteria. Skipping.")
@@ -647,6 +658,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = True,
             edge_for_statwt = None,
             method = "regrid_then_rebin",
+            require_full_line_coverage = False, 
             overwrite = False,
             ):
         """
@@ -803,6 +815,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 exact = exact,
                 overwrite = overwrite,
                 clear_pointing = False,
+                require_full_line_coverage = require_full_line_coverage, 
                 )
 
             if do_statwt:
