@@ -17,8 +17,8 @@
 # Column 2: spectral product for this single dish image cube.
 # Column 3: file name 
 
-The filename is searched for under the 'singledish_root' parent
-directory defined in the master_key.
+# The filename is searched for under the 'singledish_root' parent
+# directory defined in the master_key.
 
 ##########################################################################
 
