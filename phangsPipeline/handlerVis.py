@@ -33,29 +33,18 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
-
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    import casaVisRoutines as cvr
-    reload(cvr) #<TODO><DEBUG>#
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
 
 import handlerTemplate
-
-try:
-    import utilsFilenames as fnames
-except ImportError:
-    from phangsPipeline import utilsFilenames as fnames
-
-# Spectral lines
+import utilsFilenames as fnames
 import utilsLines as lines
 
 class VisHandler(handlerTemplate.HandlerTemplate):
@@ -75,8 +64,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             dry_run = False,):
         """
         """
-        # Can't use super and keep python2/3 agnostic
-        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+        
+        # inherit template class
+        handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
+        
+        # import necessary modules
+        if not self._dry_run:
+            global cvr
+            import casaVisRoutines as cvr
 
 
 #region Loops
@@ -369,7 +364,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                 logger.info("... combinespw: "+str(combinespw))
 
-                if not self._dry_run and casa_enabled:
+                if not self._dry_run:
                     if combinespw:
                         spw = cvr.find_spws_for_science(infile = infile)
                     else:
@@ -394,7 +389,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.split_science_targets(
                 infile = infile,
@@ -535,7 +530,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         # Concatenate the measurement sets
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.concat_ms(infile_list = staged_ms_list,
                           outfile = outfile,
@@ -623,7 +618,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.contsub(infile = infile,
                         # outfile is not an option right now, comes out ".contsub"
@@ -803,7 +798,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.batch_extract_line(
                 infile_list = infile_list,
@@ -918,7 +913,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.batch_extract_continuum(
                 infile_list = infile_list,

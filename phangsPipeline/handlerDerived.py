@@ -33,24 +33,20 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
 
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# import phangs pipeline stuff
-import utilsResolutions
-import utilsFilenames
-import utilsLines
 import handlerTemplate
+import utilsLines
+import utilsFilenames
+import utilsResolutions
 
 from scConvolution import smooth_cube
 from scNoiseRoutines import recipe_phangs_noise
@@ -75,7 +71,8 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
             self,
             key_handler = None,
             dry_run = False,
-    ):
+        ):
+        
         # inherit template class
         handlerTemplate.HandlerTemplate.__init__(self,
                                                  key_handler = key_handler,
@@ -148,7 +145,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     config=this_config,product=this_product)
                 res_list = list(res_dict)
                 if len(res_list) > 0:
-                    res_list.sort()
+                    res_list = sorted(res_list)
                 for this_res_tag in res_list:
                     this_res_value = res_dict[this_res_tag]
                     self.task_convolve(
@@ -160,7 +157,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     config=this_config,product=this_product)
                 res_list = list(res_dict)
                 if len(res_list) > 0:
-                    res_list.sort()
+                    res_list = sorted(res_list)
                 for this_res_tag in res_list:
                     this_res_value = res_dict[this_res_tag]
                     self.task_convolve(
@@ -187,7 +184,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     config=this_config,product=this_product)
                 res_list = list(res_dict)
                 if len(res_list) > 0:
-                    res_list.sort()
+                    res_list = sorted(res_list)
                 for this_res_tag in res_list:
 
                     self.task_estimate_noise(
@@ -198,7 +195,7 @@ class DerivedHandler(handlerTemplate.HandlerTemplate):
                     config=this_config,product=this_product)
                 res_list = list(res_dict)
                 if len(res_list) > 0:
-                    res_list.sort()
+                    res_list = sorted(res_list)
                 for this_res_tag in res_list:
 
                     self.task_estimate_noise(

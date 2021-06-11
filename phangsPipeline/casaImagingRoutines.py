@@ -66,7 +66,7 @@ def estimate_cell_and_imsize(
         for kk in range(3):
             for jj in range(3):
                 valid_sizes.append(2 ** (ii+1) * 5 ** jj * 3 ** kk)
-    valid_sizes.sort()
+    valid_sizes = sorted(valid_sizes)
     valid_sizes = np.array(valid_sizes)
 
     # Cell size implied by baseline distribution from analysis

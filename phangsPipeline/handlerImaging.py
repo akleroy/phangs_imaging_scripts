@@ -58,28 +58,28 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
 
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    import casaImagingRoutines as imr
-    import casaMaskingRoutines as msr
-    reload(imr)
-    reload(msr)
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import handlerTemplate
+import utilsLines as lines
+import utilsFilenames
 
 from clean_call import CleanCall, CleanCallFunctionDecorator
 
-import utilsLines as lines
-import handlerTemplate
-import utilsFilenames
+try:
+    import casaImagingRoutines as imr
+    import casaMaskingRoutines as msr
+except:
+    logger.warning('Module could not be imported: casaImagingRoutines and casaMaskingRoutines.')
+
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
@@ -97,7 +97,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         ):
         
         # inherit template class
-        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+        handlerTemplate.HandlerTemplate.__init__(self, 
+                                                 key_handler = key_handler, 
+                                                 dry_run = dry_run)
     
     ###############
     # _fname_dict #

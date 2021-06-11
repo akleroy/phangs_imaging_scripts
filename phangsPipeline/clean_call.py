@@ -149,7 +149,7 @@ class CleanCall:
             this_scale_pix = this_scale_arcsec/cell_in_pix
             scales_in_pix.append(this_scale_pix)
 
-        scales_in_pix.sort()
+        scales_in_pix = sorted(scales_in_pix)
         self.clean_params['scales'] = [int(t) for t in scales_in_pix]
 
     def set_round_uvtaper_arcsec(self, taper=0.0):

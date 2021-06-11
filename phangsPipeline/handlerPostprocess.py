@@ -20,29 +20,28 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-
-# Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
-
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    import casaCubeRoutines as ccr
-    import casaMosaicRoutines as cmr
-    import casaFeatherRoutines as cfr
-    reload(ccr)
-    reload(cmr)
-    reload(cfr)
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
 
 import handlerTemplate
 import utilsFilenames
 import utilsResolutions
+        
+# import casa environment modules, which will be used when not in dry-run mode
+try:
+    import casaCubeRoutines as ccr
+    import casaMosaicRoutines as cmr
+    import casaFeatherRoutines as cfr
+except:
+    logger.warning('Module could not be imported: casaImagingRoutines and casaMaskingRoutines.')
+
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):
     """
@@ -56,8 +55,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         key_handler = None,
         dry_run = False,
         ):
-        # Can't use super and keep python2/3 agnostic
-        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+        
+        # inherit template class
+        handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
 
 #region File name routines
 
@@ -370,7 +370,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             # logger.info("Using ccr.copy_dropdeg.")
             logger.info("Staging "+outfile)
             
-            if (not self._dry_run) and casa_enabled:
+            if not self._dry_run:
                 os.system('rm -rf ' + outdir + outfile)
                 os.system('cp -r ' + indir + infile + ' ' + outdir + outfile)
                 # ccr.copy_dropdeg(
@@ -412,7 +412,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                     logger.warning("Missing "+file_dir+file_name)
                     continue
 
-            if (not self._dry_run) and casa_enabled:
+            if not self._dry_run:
                 ccr.copy_dropdeg(file_dir + file_name, file_dir + file_name + '_nodeg', overwrite=True)
 
                 os.system('rm -rf ' + file_dir + file_name)
@@ -474,7 +474,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Correcting from "+infile)
         logger.info("Correcting using "+pbfile)
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.primary_beam_correct(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -536,7 +536,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         if force_beam_as is not None:
             logger.info("Forcing beam to "+str(force_beam_as))
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.convolve_to_round_beam(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -600,7 +600,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Original file "+infile)
         logger.info("Using interferometric template "+template)
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cfr.prep_sd_for_feather(
                 sdfile_in=indir+infile,
                 sdfile_out=outdir+outfile,
@@ -672,7 +672,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Based off of primary beam file "+infile)
         logger.info("Measuring noise from file "+image_file)
                         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.generate_weight_file(
                 image_file = indir+image_file,
                 input_file = indir+infile,
@@ -733,7 +733,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Making weight file "+outfile)
         logger.info("Measuring noise from file "+image_file)
             
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.generate_weight_file(
                 image_file = indir+image_file,
                 input_value = 1.0,
@@ -823,7 +823,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
             logger.info("Apodizing using file "+apod_file)
 
-            if (not self._dry_run) and casa_enabled:
+            if not self._dry_run:
                 cfr.feather_two_cubes(
                     interf_file=indir+interf_file,
                     sd_file=indir+sd_file,
@@ -836,7 +836,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 
         else:
             
-            if (not self._dry_run) and casa_enabled:                                
+            if not self._dry_run:
                 cfr.feather_two_cubes(
                     interf_file=indir+interf_file,
                     sd_file=indir+sd_file,
@@ -868,7 +868,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
                 logger.info("Copying from "+interf_weight_file)
                 logger.info("Copying to "+out_weight_file)
-                if (not self._dry_run) and casa_enabled:
+                if not self._dry_run:
                     ccr.copy_dropdeg(infile=indir+interf_weight_file, 
                                      outfile=outdir+out_weight_file, 
                                      overwrite=True)
@@ -929,7 +929,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Producing "+outfile+" using ccr.trim_cube.")
         logger.info("Trimming from original file "+infile)
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.trim_cube(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -966,7 +966,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Aligning to produce output file "+outfile_pb)
         logger.info("Aligning to template "+template)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.align_to_target(
                 infile=indir+infile_pb,
                 outfile=outdir+outfile_pb,
@@ -1025,7 +1025,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Creating "+outfile)
         logger.info("Converting from original file "+infile)
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.convert_jytok(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -1086,7 +1086,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Export to "+outfile)
         logger.info("Writing from input cube "+infile)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.export_and_cleanup(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -1115,7 +1115,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Writing from primary beam "+infile_pb)
         logger.info("Writing output primary beam "+outfile_pb)
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.export_and_cleanup(
                 infile=indir+infile_pb,
                 outfile=outdir+outfile_pb,
@@ -1196,7 +1196,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # TBD - check override dict for target
         # resolution and (maybe?) pixel padding.
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.common_res_for_mosaic(
                 infile_list = infile_list,
                 outfile_list = outfile_list,
@@ -1287,7 +1287,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         delta_ra = None 
         delta_dec = None
         
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.common_grid_for_mosaic(
                 infile_list = infile_list,
                 outfile_list = outfile_list,
