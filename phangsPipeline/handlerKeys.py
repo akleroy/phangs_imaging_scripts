@@ -2084,9 +2084,9 @@ class KeyHandler:
                 return(True)
         else:
             if has_any:
-                return(False)
-            else:
                 return(True)
+            else:
+                return(False)
 
         return(False)
 
