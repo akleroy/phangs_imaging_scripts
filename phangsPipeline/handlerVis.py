@@ -425,6 +425,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         obsnum = None,
         product = None,
         extra_ext = '',
+        strict_config = True,
         ):
         """
         Remove 'staged' visibility products, which are intermediate
