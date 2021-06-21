@@ -197,7 +197,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_line=True,just_interf=True):
 
+
                 if strict_config:
+                    # this seems like it doesn't do anything - do we
+                    # actually want a test here and if we do shouldn't
+                    # it be checking if this is false then
+                    # continuing? In theory this is checked above.
                     self._kh.has_data_for_config(
                         target=this_target,
                         config=this_config,
@@ -218,12 +223,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             # could add algorithm flags here
                             require_full_line_coverage = require_full_line_coverage, 
                             overwrite = overwrite,
+                            strict_config = strict_config,
                             )
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_cont=True,just_interf=True):
-
+            
+                # Same as above - check / revise
                 if strict_config:
                     self._kh.has_data_for_config(
                         target=this_target,
@@ -242,6 +249,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             do_statwt = statwt_cont,
                             do_collapse = collapse_cont,
                             overwrite = overwrite,
+                            strict_config = strict_config,
                             )
 
         # Clean up the staged measurement sets. They cost time to
@@ -264,6 +272,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             array_tag = this_array_tag,
                             obsnum = this_obsnum,
                             product = this_product,
+                            strict_config = strict_config,
                             )
 
         return()
@@ -470,6 +479,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = '',
             extra_ext_out = '',
             overwrite = False,
+            strict_config = True,
             ):
 
         """
@@ -498,7 +508,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         staged_ms_list = []
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=target, config=config,
-                                            project=just_projects):
+                                            project=just_projects,
+                                            strict_config=strict_config):
 
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag,
@@ -660,6 +671,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             method = "regrid_then_rebin",
             require_full_line_coverage = False, 
             overwrite = False,
+            strict_config = True,
             ):
         """
         Extract spectral line data from ms data for the input target,
@@ -702,9 +714,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(target=[target],
-                                            config=[config],
-                                            project=None):
+                self._kh.loop_over_input_ms(
+                    target=[target], config=[config], project=None,
+                    strict_config=strict_config):
 
                 # The name of the staged measurement set with this
                 # combination of target, project, array, obsnum.
@@ -837,6 +849,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = True,
             do_collapse = True,
             overwrite = False,
+            strict_config = True,
             ):
         """
         Extract continuum data from ms data for the input target, config and product.
@@ -860,9 +873,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(target=[target],
-                                            config=[config],
-                                            project=None):
+                self._kh.loop_over_input_ms(
+                    target=[target], config=[config], project=None,
+                    strict_config=strict_config):
 
                 # The name of the staged measurement set with this
                 # combination of target, project, array, obsnum.
