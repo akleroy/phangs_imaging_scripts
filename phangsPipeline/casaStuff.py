@@ -25,7 +25,34 @@ from statwt import statwt
 from tclean import tclean
 from uvcontsub import uvcontsub
 from visstat import visstat
+from importasdm import importasdm
+from listobs import listobs
+from flagcmd import flagcmd
+from flagdata import flagdata
+
+try:
+    from sdsave import sdsave
+    from sdlist import sdlist
+    from sdcal2 import sdcal2
+    from sdscale import sdscale
+    from sdplot import sdplot
+except:
+    pass
+
+from plotms import plotms
+from viewer import viewer
+from gencal import gencal
+from plotbandpass import plotbandpass
+from sdbaseline import sdbaseline
+from sdimaging import sdimaging
+from sdcal import sdcal
+#from taskinit import msmdtool
+#from taskinit import tbtool
+from recipes.almahelpers import tsysspwmap
 
 # Version
 
-simple_version = '.'.join((casa['version'].split('.'))[0:2])
+#try:
+#    casa
+#    if 'version' in casa:
+#        simple_version = '.'.join((casa['version'].split('.'))[0:2])

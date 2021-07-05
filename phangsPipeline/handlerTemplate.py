@@ -38,16 +38,20 @@ class HandlerTemplate:
         self._interf_configs_only = None
         self._feather_configs_skip = None
         self._feather_configs_only = None
+        self._singledish_configs_skip = None
+        self._singledish_configs_only = None
 
         self._targets_list = []
         self._line_products_list = []
         self._cont_products_list = []
         self._interf_configs_list = []
         self._feather_configs_list = []
+        self._singledish_configs_list = []
 
         # Initialize switches on config types
         self._no_interf = False
         self._no_feather = False
+        self._no_singledish = False
 
         # Initialize switches on product types
         self._no_cont = False
@@ -64,6 +68,7 @@ class HandlerTemplate:
 
         self.set_interf_configs(nobuild=True)
         self.set_feather_configs(nobuild=True)
+        self.set_singledish_configs(nobuild=True)
 
         # Build the lists
         self._build_lists()
@@ -238,6 +243,31 @@ class HandlerTemplate:
             self._build_lists()
         return(None)
 
+    def set_singledish_configs(
+        self, 
+        skip=[], 
+        only=[],
+        nobuild=False,
+        ):
+        """
+        Set conditions on the list of singledish configurations
+        to be considered when a loop is run. By default, consider
+        all configurations.
+        """
+        if np.isscalar(skip):
+            self._singledish_configs_skip = [skip]
+        else:
+            self._singledish_configs_skip = skip
+
+        if np.isscalar(only):
+            self._singledish_configs_only = [only]
+        else:
+            self._singledish_configs_only = only
+
+        if not nobuild:
+            self._build_lists()
+        return(None)
+
     def set_no_line_products(
         self,
         no_line = False):
@@ -276,6 +306,16 @@ class HandlerTemplate:
         loop is run.
         """
         self._no_feather = no_feather
+        self._build_lists()
+
+    def set_no_singledish_configs(
+        self,
+        no_singledish = False):
+        """
+        Toggle the program to skip all singledish configurations when a
+        loop is run.
+        """
+        self._no_singledish = no_singledish
         self._build_lists()
 
     def _build_lists(
@@ -330,6 +370,14 @@ class HandlerTemplate:
             self._feather_configs_list = self._kh.get_feather_configs(
                 only = self._feather_configs_only,
                 skip = self._feather_configs_skip,
+                )
+        
+        if self._no_singledish:
+            self._singledish_configs_list = []
+        else:
+            self._singledish_configs_list = self._kh.get_singledish_configs(
+                only = self._singledish_configs_only,
+                skip = self._singledish_configs_skip,
                 )
 
         return()
@@ -413,6 +461,17 @@ class HandlerTemplate:
         else:
             return(self._feather_configs_list)
 
+    def get_singledish_configs(
+        self
+        ):
+        """
+        Return the list of singledish configs to consider.
+        """
+        if self._singledish_configs_list is None:
+            return([])
+        else:
+            return(self._singledish_configs_list)
+
     def get_all_configs(
         self
         ):    
@@ -451,6 +510,7 @@ class HandlerTemplate:
         do_configs=True,
         just_interf=False,
         just_feather=False,
+        just_singledish=False,
         ):
         """
         Return (target, product, config) tuples for all selected
@@ -474,7 +534,9 @@ class HandlerTemplate:
         if just_interf and not just_feather:
             config_list = self.get_interf_configs()
         if just_feather and not just_interf:
-            config_list = self.get_feather_configs()        
+            config_list = self.get_feather_configs()
+        if just_singledish:
+            config_list = self.get_singledish_configs()      
 
         # All three quantities
 
