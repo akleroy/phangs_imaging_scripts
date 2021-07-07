@@ -29,6 +29,7 @@ Still need to do (probably outdated):
   - Work on errors when files are not found, where asdm import did not work fine, etc.
   - Add timer (suggestion by CF)
   - Add GET_SOURCENAME in main script to call the right source name. DONE CMF 21.09.2020.
+  - 2021-07-05 can not split with ant='0&0' ? if no split, can not obtain a reasonable final fits image cube?!
 
 """
 
@@ -157,25 +158,65 @@ def getDataColumnName(inputms):
     mytb.close()
     return(data_query)
 
-def getDataColumnForSplit(vis):
+def getDataColumnForSDBaseline(vis):
     """
-    Returns the names of the data columns (data, model, corrected) in a measurement set.
-    -Todd Hunter
-    
-    -- from the dataColumns() function in the newest version of the analysisUtils.py
+    Returns the names of the corrected data columns (corrected) in a measurement set.
     """
     mytb = au.createCasaTool(casaStuff.tbtool)
     mytb.open(vis)
     names = mytb.colnames()
     mytb.close()
     columns = []
-    for i in ['DATA','FLOAT_DATA','MODEL_DATA','CORRECTED_DATA']:
+    for i in ['DATA','FLOAT_DATA','CORRECTED_DATA']:
         if i in names:
             columns.append(i)
+    logger.debug('getDataColumnForSDBaseline: vis = %r'%(vis))
+    logger.debug('getDataColumnForSDBaseline: colnames = %s'%(names))
+    logger.debug('getDataColumnForSDBaseline: columns = %s'%(columns))
     if 'CORRECTED_DATA' in columns:
-        return 'CORRECTED_DATA'
+        return 'corrected'
+    elif 'FLOAT_DATA' in columns:
+        return 'float_data'
     else:
-        return 'DATA'
+        return 'data'
+
+def getDataColumnForPlotMS(vis):
+    return getDataColumnForSDBaseline(vis)
+
+def getDataColumnForSplit(vis):
+    return getDataColumnForSDBaseline(vis)
+
+def check_data_dir_being_touched(filename, clear_failed_run = False):
+    if os.path.exists(filename+'.touch'):
+        if clear_failed_run:
+            rm_data_dir(filename, check_being_touched = False)
+            rm_data_dir(filename+'.touch', check_being_touched = False)
+        else:
+            logger.error("Found "+filename+'.touch! Seems something is still running or failed? Please delete the *.touch dir to start over:\n'+os.path.abspath(filename+'.touch'))
+            raise Exception("Found "+filename+'.touch! Seems something is still running or failed? Please delete the *.touch dir to start over:\n'+os.path.abspath(filename+'.touch'))
+
+def rm_data_dir(filename, check_being_touched = True):
+    if check_being_touched:
+        check_data_dir_being_touched(filename)
+    if os.path.exists(filename):
+        logger.info('Deleting '+filename)
+        shutil.rmtree(filename)
+    if os.path.exists(filename+'.flagversions'):
+        logger.info('Deleting '+filename+'.flagversions')
+        shutil.rmtree(filename+'.flagversions')
+
+def cp_data_dir(filename_in, filename_out, check_being_touched = True, log_copied_from = False):
+    if not os.path.exists(filename_in):
+        logger.error("Data dir not found! Please check: "+os.path.abspath(filename_in))
+        raise Exception("Data dir not found! Please check: "+os.path.abspath(filename_in))
+    rm_data_dir(filename_out, check_being_touched = check_being_touched)
+    logger.info('Copying '+filename_in+' to '+filename_out)
+    shutil.copytree(filename_in, filename_out)
+    if os.path.exists(filename_in+'.flagversions'):
+        shutil.copytree(filename_in+'.flagversions', filename_out+'.flagversions')
+    if log_copied_from:
+        with open(filename_out+'.copied.from.txt', 'w') as fp:
+            fp.write(filename_in+'\n')
 
 # by ALMA
 def scaleAutocorr(vis, scale=1., antenna='', spw='', field='', scan=''):
@@ -229,20 +270,41 @@ def scaleAutocorr(vis, scale=1., antenna='', spw='', field='', scan=''):
     
     mymsmd.close()
     
-    datacolumn = getDataColumnName(vis)
+    if precasa5: 
+        datacolumn = getDataColumnName(vis)
     
-    logger.info("Multiplying %s to the dataset %s column %s." % (str(scale), vis, datacolumn))
-    logger.info("The selection criteria are '%s'." % (" && ".join(conditions)))
-    
-    mytb.open(vis, nomodify=False)
-    subtb = mytb.query(" && ".join(conditions))
-    try:
-        data = subtb.getcol(datacolumn)
-        logger.info("Dimension of the selected data: %s" % str(data.shape))
-        subtb.putcol(datacolumn, data*scale)
-    except:
-        logger.info("An error occurred upon reading/writing the data.")
-    finally:
+        logger.info("Multiplying %s to the dataset %s column %s." % (str(scale), vis, datacolumn))
+        logger.info("The selection criteria are '%s'." % (" && ".join(conditions)))
+        
+        mytb.open(vis, nomodify=False)
+        subtb = mytb.query(" && ".join(conditions))
+        try:
+            data = subtb.getcol(datacolumn)
+            logger.info("Dimension of the selected data: %s" % str(data.shape))
+            subtb.putcol(datacolumn, data*scale)
+        except:
+            logger.info("An error occurred upon reading/writing the data.")
+        finally:
+            logger.info("Closing the table.")
+            mytb.flush()
+            subtb.close()
+            mytb.close()
+    else:
+        
+        logger.info("Opening the table "+vis)
+        mytb.open(vis, nomodify=False)
+        subtb = mytb.query(" && ".join(conditions))
+        datacolumns = []
+        for datacolumn in subtb.colnames(): 
+            if datacolumn in ['DATA','FLOAT_DATA','MODEL_DATA','CORRECTED_DATA']:
+                datacolumns.append(datacolumn)
+        for datacolumn in datacolumns:
+            try:
+                data = subtb.getcol(datacolumn)
+                logger.info("Dimension of the selected data: %s" % str(data.shape))
+                subtb.putcol(datacolumn, data*scale)
+            except:
+                logger.info("An error occurred upon reading/writing the data column "+datacolumn+"! The scaleAutocorr function may have failed!")
         logger.info("Closing the table.")
         mytb.flush()
         subtb.close()
@@ -659,7 +721,7 @@ def check_exists(filename):
 #*-*-*-*-*-*_*-*-*-*-*-*
 # Step 1  Import data 
 #*-*-*-*-*-*-*-*-*-*-*
-def import_and_split_ant(filename,precycle7=True,doplots=False):
+def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=True, doplots=True):
     """Import and split antenna for single dish raw data.
     
     We will copy the raw "*.asdm.sdm" data from original place to working place. 
@@ -668,6 +730,7 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
         filename (str): The data name for output with suffix ".ms". Does not include the file path, which should be defined in the global variable `path_raw`.
         precycle7 (bool): Whether the data is taken pre-Cycle7, i.e., Cycle 0-6. 
         precasa5 (bool): Whether using pre-CASA5 versions, i.e., CASA 3.X.X-4.X.X. 
+        doallants (bool): Whether making an MS data with all antennae in it. 
     """
     # <TODO> Can we be more smart on defining the precycle7 variable?
     
@@ -690,12 +753,8 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
     logger.info("1.1 Importing from ASDM to MS")
     
     # clear up previous failed runs if *.touch exists
-    if os.path.exists(filename) and os.path.exists(filename+'.touch'):
-        shutil.rmtree(filename)
-        if os.path.exists(filename+'.flagversions'): 
-            shutil.rmtree(filename+'.flagversions')
-        os.rmdir(filename+'.touch')
-        
+    check_data_dir_being_touched(filename, clear_failed_run=True)
+    
     if not os.path.exists(filename):
         
         # mark the current running with a *.touch directory
@@ -704,15 +763,7 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
         # copy raw data to filename0, then run importasdm
         filename0 = filename[0:filename.find('.ms')] # remove the suffix ".ms"
         if not (os.path.exists(filename0) and os.path.isfile(filename0+'.copied.from.txt')):
-            if os.path.exists(filename0):
-                logger.info('Deleting '+filename0)
-                shutil.rmtree(filename0)
-            
-            logger.info('Copying '+path_raw+filename0+'.asdm.sdm'+' to '+filename0)
-            shutil.copytree(path_raw+filename0+'.asdm.sdm', filename0)
-            
-            with open(filename0+'.copied.from.txt', 'w') as outlogfile:
-                outlogfile.write(path_raw+filename0+'.asdm.sdm\n')
+            cp_data_dir(path_raw+filename0+'.asdm.sdm', filename0, log_copied_from = True)
         
         if precycle7:
             bdfflags=False
@@ -767,7 +818,7 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
         
     else:
         
-        logger.info('Found imported data: '+filename)
+        logger.info('Found imported data: '+filename+' - Steps 1.2 and 1.3 are skipped.')
     
     # If there are, flag 7m antennas
     vec_ants = read_ants_names(filename)
@@ -780,15 +831,19 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
                  antenna = str_ants,
                  action = 'apply')
     
-    if precasa5:
-        
+    # if doallants, make an MS with all antennae in it
+    if doallants:
+        cp_data_dir(filename, filename+'.allant'+fsuffix)
+    
+    # if dosplitants, make an MS for each antenna, with a file name like filename+'.'+ant+fsuffix
+    if dosplitants:
         # 1.4 Split by antenna 
         logger.info("1.4 Splitting the file by antennas")
 
         vec_ants_t = read_ants_names(filename)
         vec_ants = [s for s in vec_ants_t if any(xs in s for xs in ['PM','DV'])]
-        for ant in vec_ants :
-            shutil.rmtree(filename+'.'+ant+fsuffix)
+        for ant in vec_ants:
+            rm_data_dir(filename+'.'+ant+fsuffix)
         if precasa5:
             casaStuff.sdsave(infile = filename, 
                 splitant = True, 
@@ -806,12 +861,35 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
         
         else:
             
-            #<TODO># delete these. for casa5 and after we now try to not split by antenna.
-            for ant in vec_ants :
+            for ant in vec_ants:
+                logger.info('Running split to make '+filename+'.'+ant+fsuffix+'.autocorr'+', datacolumn is '+getDataColumnForSplit(filename))
                 casaStuff.split(vis = filename, 
-                    outputvis = filename+'.'+ant+fsuffix, 
-                    antenna = '%s&%s'%(ant, ant), 
+                    outputvis = filename+'.'+ant+fsuffix+'.autocorr', 
+                    antenna = '%s&&&'%(ant), 
                     datacolumn = getDataColumnForSplit(filename))
+                    #<TODO># CASA split with antenna = '0&0' does not work! A bug?
+                # 
+                filename_in = filename
+                filename_out = filename+'.'+ant+fsuffix+'.tmp'
+                cp_data_dir(filename_in, filename_out)
+                # 
+                other_ants = copy.copy(vec_ants)
+                other_ants.remove(ant)
+                str_other_ants = ';'.join(other_ants)
+                logger.info('Running flagdata to flag '+str_other_ants+' in '+filename_out)
+                casaStuff.flagdata(vis = filename_out,
+                                   mode = 'manual',
+                                   antenna = str_other_ants,
+                                   action = 'apply')
+                # 
+                filename_in = filename+'.'+ant+fsuffix+'.tmp'
+                filename_out = filename+'.'+ant+fsuffix
+                rm_data_dir(filename_out)
+                logger.info('Running split to make '+filename_out+', datacolumn is '+getDataColumnForSplit(filename_in))
+                casaStuff.split(vis = filename_in, 
+                                outputvis = filename_out, 
+                                keepflags = False, 
+                                datacolumn = getDataColumnForSplit(filename_in))
             
             #1.5 sdlist
             logger.info("1.5 Create listobs for each splitted file.")
@@ -820,11 +898,6 @@ def import_and_split_ant(filename,precycle7=True,doplots=False):
                     os.remove('obs_lists/'+filename+'.'+ant+fsuffix+'.listobs.txt')
                 casaStuff.listobs(vis = filename+'.'+ant+fsuffix+'',
                     listfile = 'obs_lists/'+filename+'.'+ant+fsuffix+'.listobs.txt')
-    
-    else:
-        
-        logger.info('Copying '+filename+' to '+filename+'.allant'+fsuffix)
-        shutil.copytree(filename, filename+'.allant'+fsuffix)
         
     
     with open('done_step_1_for_'+filename[0:-3], 'w') as outlogfile:
@@ -857,32 +930,32 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     # 2.1 Generation of the Tsys cal table
     logger.info(" 2.1 Generating Tsys calibration table")
     
-    if os.path.exists(filename+'.tsys'):
-        logger.info('Deleting '+filename+'.tsys')
-        shutil.rmtree(filename+'.tsys')
+    rm_data_dir(filename+'.tsys')
     
     logger.info('Running gencal to make '+filename+'.tsys')
-    casaStuff.gencal(vis = filename, caltable = filename+'.tsys', caltype = 'tsys')
+    casaStuff.gencal(vis = filename, 
+                     caltable = filename+'.tsys', 
+                     caltype = 'tsys')
     
     # 2.2 Create png plots of CASA Tsys and bandpass solution
     logger.info(" 2.2 Create plots of Tsys and bandpass solution")
     
-    if doplots == True:
+    if doplots:
         if os.path.exists('plots/'+filename+'.tsys.plots.overlayTime/'+filename+'.tsys'):
             os.system('rm -Rf plots/'+filename+'.tsys.plots.overlayTime/'+filename+'.tsys')
         
         casaStuff.plotbandpass(caltable=filename+'.tsys', 
-                     overlay='time',
-                     xaxis='freq', yaxis='amp', 
-                     subplot=22, 
-                     buildpdf=False, 
-                     interactive=False,
-                     showatm=True,
-                     pwv='auto',
-                     chanrange='92.1875%',
-                     showfdm=True,
-                     field='', 
-                     figfile='plots/'+filename+'.tsys.plots.overlayTime/'+filename+'.tsys')
+                               overlay='time',
+                               xaxis='freq', yaxis='amp', 
+                               subplot=22, 
+                               buildpdf=False, 
+                               interactive=False,
+                               showatm=True,
+                               pwv='auto',
+                               chanrange='92.1875%',
+                               showfdm=True,
+                               field='', 
+                               figfile='plots/'+filename+'.tsys.plots.overlayTime/'+filename+'.tsys')
         
         # Create png plots for Tsys per source with antennas
         es.checkCalTable(filename+'.tsys', msName=filename, interactive=False)
@@ -896,7 +969,6 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     if os.path.exists(path_script+'file_flags.py'): 
         execfile(path_script+'file_flags.py')    #<TODO><DZLIU># 
     
-    
     # 2.4 Create Tsys map 
     logger.info("2.4 Creating Tsysmaps" )
     # Read spws and frquencies for science and tsys
@@ -905,8 +977,8 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     #from recipes.almahelpers import tsysspwmap
     tsysmap = casaStuff.tsysspwmap(vis = filename, tsystable = filename+'.tsys', trim = False)
     
-    logger.info("Spectral windows for science are: ",spws_scie,freq_rep_scie)
-    logger.info("Spectral windows for tsys are   : ",spws_tsys,freq_rep_tsys)
+    logger.info("Spectral windows for science are: %s, %s"%(spws_scie, freq_rep_scie))
+    logger.info("Spectral windows for tsys are   : %s, %s"%(spws_tsys, freq_rep_tsys))
     logger.info("Original map between science and tsys spws: (they should have the same frequency)")
     for i in range(len(spws_scie)): 
         logger.info('%s, %s'%(spws_scie[i],tsysmap[spws_scie[i]]))
@@ -920,7 +992,7 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
         spwmap[tsysmap[i]].append(i)
     
     with open(filename+'.spwmap.json', 'w') as fp:
-        json.dump(spwmap, fp, sort_keys=True, indent=4)
+        json.dump(spwmap, fp, sort_keys=True, indent=4) # write spwmap to json file
     
     with open('done_step_2_for_'+filename[0:-3], 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
@@ -982,9 +1054,7 @@ def counts2kelvin(filename, ant_list=None, spws_info=None, spwmap=None, doplots=
             filename_in  = filename+'.allant'+fin
             filename_out = filename+'.allant'+finout
         
-        if os.path.exists(filename_out):
-            logger.info('Deleting '+filename_out)
-            shutil.rmtree(filename_out)
+        rm_data_dir(filename_out)
         
         if precasa5:
             
@@ -999,10 +1069,11 @@ def counts2kelvin(filename, ant_list=None, spws_info=None, spwmap=None, doplots=
             
             if doplots == True:
                 es.SDcheckSpectra(filename_out, spwIds=spws_scie_str, interactive=False)
-        
+            
         else:
             
-            shutil.copytree(filename_in, filename_out)
+            cp_data_dir(filename_in, filename_out)
+            
             logger.info('Running sdcal to make '+filename_out)
             casaStuff.sdcal(infile = filename_out,
                     calmode = 'ps,tsys,apply',
@@ -1023,6 +1094,8 @@ def counts2kelvin(filename, ant_list=None, spws_info=None, spwmap=None, doplots=
             if doplots == True:
                 es.SDcheckSpectra(filename_out, msName=filename_out, spwIds=spws_scie_str, interactive=False)
                 # must use new analysisUtils.py with getCasaVersion()
+                # this will create plot files in directory filename_out+'.plots'
+                # note that these plots are uncalibrated
         
         
         apply_nl = check_date_nonlinearity(filename)
@@ -1036,6 +1109,8 @@ def counts2kelvin(filename, ant_list=None, spws_info=None, spwmap=None, doplots=
             else:
                 #raise Exception('Data need pre-CASA-5 version for sdscale!')
                 pass #<TODO># this is for debug, uncomment this!
+        
+        # end for ant loop
     
     with open('done_step_3_for_'+filename[0:-3], 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
@@ -1120,12 +1195,14 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
                 else:
                     logger.info('Running plotms to make '+plotfile)
                     casaStuff.plotms(vis=filename_in, 
+                        ydatacolumn=getDataColumnForPlotMS(filename_in), 
+                        intent='OBSERVE_TARGET#ON_SOURCE',
                         field=source, spw=str(spw_line), 
                         averagedata=True, avgtime='86400', avgscan=True, 
-                        xaxis='vel', yaxis='amp', coloraxis='ant1', 
+                        xaxis='vel', yaxis='amp', coloraxis='ant1', showlegend=True, 
                         iteraxis='corr', xselfscale=True, xsharedaxis=True, gridrows=2, 
                         highres=True, dpi=300, showmajorgrid=True, majorstyle='dot', 
-                        plotfile=plotfile, 
+                        plotfile=plotfile, overwrite=True, 
                         )
         
         # Get the string of the channels to be extracted from the original cube
@@ -1135,9 +1212,7 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
         
         logger.info("4.2 Extracting a cube with the line")
         
-        if os.path.exists(filename_out):
-            logger.info('Deleting '+filename_out)
-            shutil.rmtree(filename_out)
+        rm_data_dir(filename_out)
         
         if precasa5:
             logger.info('Running sdsave to make '+filename_out)
@@ -1155,12 +1230,12 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
                    outfile=listfile)
         
         else:
-            logger.info('Running split to make '+filename_out)
+            logger.info('Running split to make '+filename_out+', datacolumn is '+getDataColumnForSplit(filename_in))
             casaStuff.split(vis=filename_in,
                    field=source,
                    spw=spw_extr,
                    outputvis=filename_out,
-                   datacolumn=getDataColumnForSplit(filename))
+                   datacolumn=getDataColumnForSplit(filename_in))
             
             listfile = 'obs_list/'+filename_out+'.listobs.txt'
             if os.path.exists(listfile):
@@ -1190,13 +1265,17 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
             else:
                 logger.info('Running plotms to make '+plotfile)
                 casaStuff.plotms(vis=filename_out, 
+                    ydatacolumn=getDataColumnForPlotMS(filename_out), 
+                    intent='OBSERVE_TARGET#ON_SOURCE',
                     restfreq=str(freq_rest)+'MHz', 
                     averagedata=True, avgtime='86400', avgscan=True, 
-                    xaxis='vel', yaxis='amp', coloraxis='ant1', 
+                    xaxis='vel', yaxis='amp', coloraxis='ant1', showlegend=True, 
                     iteraxis='corr', xselfscale=True, xsharedaxis=True, gridrows=2, 
                     highres=True, dpi=300, showmajorgrid=True, majorstyle='dot', 
-                    plotfile=plotfile, 
+                    plotfile=plotfile, overwrite=True, 
                     )
+        
+        # end for ant loop
     
     with open('done_step_4_for_'+filename[0:-3], 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
@@ -1261,17 +1340,17 @@ def baseline(filename, source, ant_list=None, freq_rest=None, spws_info=None, ve
         spw_extr = str_spw4baseline(filename_in,freq_rest,vel_line,spw_line,coords)
         
         # Subtracting the baseline
-        if os.path.exists(filename_out):
-            logger.info('Deleting '+filename_out)
-            shutil.rmtree(filename_out)
+        rm_data_dir(filename_out)
+        
         logger.info('Running sdbaseline to make '+filename_out+', spw = '+str(spw_extr)+', order = '+str(bl_order))
-        casaStuff.sdbaseline(infile = filename_in,
-               spw = spw_extr,
-               maskmode = 'list',
-               blfunc = 'poly',
-               order = bl_order,
-               outfile = filename_out,
-               overwrite = True)  
+        casaStuff.sdbaseline(infile = filename_in, 
+                             datacolumn = getDataColumnForSDBaseline(filename_in), 
+                             spw = spw_extr,
+                             maskmode = 'list',
+                             blfunc = 'poly',
+                             order = bl_order,
+                             outfile = filename_out,
+                             overwrite = True)  
         
         if doplots:
             # PLotting the result from the baseline correction. Spectra avergarfed in time  
@@ -1290,16 +1369,20 @@ def baseline(filename, source, ant_list=None, freq_rest=None, spws_info=None, ve
                     polaverage=True)
             else:
                 logger.info('Running plotms to make '+plotfile)
-                casaStuff.plotms(vis=filename_out,
+                casaStuff.plotms(vis=filename_out, 
+                    ydatacolumn=getDataColumnForPlotMS(filename_out), 
+                    intent='OBSERVE_TARGET#ON_SOURCE',
                     restfreq=str(freq_rest)+'MHz', 
                     averagedata=True, avgtime='86400', avgscan=True, 
-                    xaxis='vel', yaxis='amp', coloraxis='ant1', 
+                    xaxis='vel', yaxis='amp', coloraxis='ant1', showlegend=True, 
                     iteraxis='corr', xselfscale=True, xsharedaxis=True, gridrows=2, 
                     highres=True, dpi=300, showmajorgrid=True, majorstyle='dot', 
-                    plotfile=plotfile, 
+                    plotfile=plotfile, overwrite=True, 
                     )
         
         os.system('mv  *blparam.txt  obs_lists/')
+        
+        # end for ant loop
     
     with open('done_step_5_for_'+filename[0:-3], 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
@@ -1349,8 +1432,7 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
         for ant in ant_list:
             filename_in = filename+'.'+ant+fin
             filename_out = filename+'.'+ant+finout
-            if os.path.exists(filename_out):
-                shutil.rmtree(filename_out)
+            rm_data_dir(filename_out)
             if precasa5:
                 # Converting from ASAP to MS
                 logger.info("6.1 Converting from ASAP to MS")
@@ -1359,69 +1441,61 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
                     outfile = filename_out,
                     outform='MS2')
             else:
-                logger.info('Copying '+filename_in+' to '+filename_out)
-                shutil.copytree(f, filout) # they are all *.ms, just copy it over
+                cp_data_dir(filename_in, filename_out) # they are all *.ms, just copy it over
             lis_fils.append(filename_out)
         # Concatenation
         logger.info("6.2 Concatenating antennas")
         #lis_fils = [f for f in os.listdir(".") if f.endswith('.ms.5') and f.startswith(filename)]
-        if os.path.exists(filename+'.cal'):
-            logger.info('Deleting '+filename+'.cal')
-            shutil.rmtree(filename+'.cal')
+        rm_data_dir(filename+'.cal')
         logger.info('Running concat to make '+filename+'.cal')
         casaStuff.concat(vis = lis_fils, concatvis = filename+'.cal')
     else:
         filename_in  = filename+'.allant'+fin
         filename_out = filename+'.allant'+finout
-        if os.path.exists(filename_out):
-            logger.info('Deleting '+filename_out)
-            shutil.rmtree(filename_out)
-        logger.info('Copying '+filename_in+' to '+filename_out)
-        shutil.copytree(filename_in, filename_out)
-        
-        if os.path.exists(filename+'.cal'):
-            logger.info('Deleting '+filename+'.cal')
-            shutil.rmtree(filename+'.cal')
-        logger.info('Copying '+filename_out+' to '+filename+'.cal')
-        shutil.copytree(filename_out, filename+'.cal')
+        cp_data_dir(filename_in, filename_out)
+        cp_data_dir(filename_out, filename+'.cal')
+    
+    
+    # Convert the Science Target Units from Kelvin to Jansky   
+    logger.info("6.3 Convert the Science Target Units from Kelvin to Jansky")
+    spw_line = get_spw_line(vel_source, freq_rest, spws_info) # get the original spw ID
+    jyperk = extract_jyperk(filename, spw_line, pipeline)
+    
+    cp_data_dir(filename+'.cal', filename+'.cal.jy')
+    
+    logger.info('Running scaleAutocorr on '+filename+'.cal.jy')
+    for ant in jyperk.keys():
+        logger.info('ant: %s, spw_line: %s, jyperk[ant][spw_line][\'mean\']: %s'%(ant, spw_line, jyperk[ant][spw_line]['mean']))
+        if precasa5:
+            scaleAutocorr(vis=filename+'.cal.jy', scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=spw_line) # in asap spw number does not change after split?
+        else:
+            scaleAutocorr(vis=filename+'.cal.jy', scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=0) # spw is always 0
+    
     
     # Rename line spw to spw=0
+    logger.info("6.4 Renaming spw of line "+str(spw_line)+" to 0")
+    fin = '.cal.jy'
+    finout = '.cal.jy.tmp'
+    cp_data_dir(filename+fin, filename+finout)
+    
+    fin = '.cal.jy.tmp'
+    finout = '.cal.jy'
+    rm_data_dir(filename+finout)
+    logger.info('Running split to make '+filename+finout+', datacolumn is '+getDataColumnForSplit(filename+fin))
     if precasa5:
-        logger.info("6.3 Renaming spw of line, "+str(spw_line)+" to 0")
-        fin = '.cal'
-        finout = '.cal.tmp'
-        if os.path.exists(filename+finout):
-            shutil.rmtree(filename+finout)
-        shutil.copytree(filename+fin, filename+finout)
-        
-        fin = '.cal.tmp'
-        finout = '.cal'
         casaStuff.split(vis=filename+fin,
              outputvis=filename+finout,
              datacolumn='all')
-        
-        #if os.path.exists(filename+fin):
-        #    shutil.rmtree(filename+fin)
+    else:
+        casaStuff.split(vis=filename+fin,
+             outputvis=filename+finout,
+             datacolumn=getDataColumnForSplit(filename+fin))
+    
     
     # listobs
     if os.path.exists(filename+finout+'.listobs.txt'):
         os.remove(filename+finout+'.listobs.txt')
     casaStuff.listobs(vis=filename+finout, listfile=filename+finout+'.listobs.txt')
-    
-    
-    # Convert the Science Target Units from Kelvin to Jansky   
-    logger.info(" 6.4 Convert the Science Target Units from Kelvin to Jansky")
-    spw_line = get_spw_line(vel_source, freq_rest, spws_info) # get the original spw ID
-    jyperk = extract_jyperk(filename, spw_line, pipeline)
-    
-    if os.path.exists(filename+'.cal.jy'):
-        shutil.rmtree(filename+'.cal.jy')
-    
-    shutil.copytree(filename+'.cal', filename+'.cal.jy')
-    
-    for ant in jyperk.keys():
-        logger.info('ant: %s, spw_line: %s, jyperk[ant][spw_line][\'mean\']: %s'%(ant, spw_line, jyperk[ant][spw_line]['mean']))
-        scaleAutocorr(vis=filename+'.cal.jy', scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=0) # spw is always 0
     
     
     with open('done_step_6_for_'+filename[0:-3], 'w') as outlogfile:
@@ -1430,7 +1504,7 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
 #-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 # Step 7 - Imaging
 #-*-*-*-*-*-*-*-*-*-*
-def imaging(source,name_line,phcenter,vel_source,source_vel_kms,vwidth_kms,chan_dv_kms,freq_rest_im,
+def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms, chan_dv_kms, freq_rest_im,
         joint_imaging_dir='', doplots=False):
     
     logger.info("====================")
@@ -1461,7 +1535,7 @@ def imaging(source,name_line,phcenter,vel_source,source_vel_kms,vwidth_kms,chan_
         Msnames = Msnames+Msnames2
     logger.info('Msnames: %s'%(Msnames))
     # Definition of parameters for imaging
-    xSampling,ySampling,maxsize = au.getTPSampling(Msnames[0],showplot=False)
+    xSampling, ySampling, maxsize = au.getTPSampling(Msnames[0], showplot=False, plotfile=True) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
     
     # Read frequency
     #msmd.open(Msnames[0])
@@ -1504,7 +1578,7 @@ def imaging(source,name_line,phcenter,vel_source,source_vel_kms,vwidth_kms,chan_
     nchans_vel     = int(round(vwidth_kms/chan_dv_kms))
     
     if os.path.exists('ALMA_TP.'+source+'.'+name_line+'.image'):
-        os.system('rm -Rf ALMA_TP.'+source+'.'+name_line+'.image')
+        shutil.rmtree('ALMA_TP.'+source+'.'+name_line+'.image')
     
     logger.info("Start imaging")
     logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
