@@ -164,15 +164,15 @@ def getDataColumnForSDBaseline(vis):
     """
     mytb = au.createCasaTool(casaStuff.tbtool)
     mytb.open(vis)
-    names = mytb.colnames()
+    names = copy.copy(mytb.colnames())
     mytb.close()
     columns = []
     for i in ['DATA','FLOAT_DATA','CORRECTED_DATA']:
         if i in names:
             columns.append(i)
-    logger.debug('getDataColumnForSDBaseline: vis = %r'%(vis))
-    logger.debug('getDataColumnForSDBaseline: colnames = %s'%(names))
-    logger.debug('getDataColumnForSDBaseline: columns = %s'%(columns))
+    #logger.debug('getDataColumnForSDBaseline: vis = %r'%(vis))
+    #logger.debug('getDataColumnForSDBaseline: colnames = %s'%(names))
+    #logger.debug('getDataColumnForSDBaseline: columns = %s'%(columns))
     if 'CORRECTED_DATA' in columns:
         return 'corrected'
     elif 'FLOAT_DATA' in columns:
@@ -835,6 +835,10 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
     if doallants:
         cp_data_dir(filename, filename+'.allant'+fsuffix)
     
+    # if precasa5, always dosplitants
+    if precasa5:
+        dosplitants = True 
+    
     # if dosplitants, make an MS for each antenna, with a file name like filename+'.'+ant+fsuffix
     if dosplitants:
         # 1.4 Split by antenna 
@@ -862,34 +866,39 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
         else:
             
             for ant in vec_ants:
-                logger.info('Running split to make '+filename+'.'+ant+fsuffix+'.autocorr'+', datacolumn is '+getDataColumnForSplit(filename))
-                casaStuff.split(vis = filename, 
-                    outputvis = filename+'.'+ant+fsuffix+'.autocorr', 
-                    antenna = '%s&&&'%(ant), 
-                    datacolumn = getDataColumnForSplit(filename))
-                    #<TODO># CASA split with antenna = '0&0' does not work! A bug?
-                # 
-                filename_in = filename
-                filename_out = filename+'.'+ant+fsuffix+'.tmp'
-                cp_data_dir(filename_in, filename_out)
-                # 
-                other_ants = copy.copy(vec_ants)
-                other_ants.remove(ant)
-                str_other_ants = ';'.join(other_ants)
-                logger.info('Running flagdata to flag '+str_other_ants+' in '+filename_out)
-                casaStuff.flagdata(vis = filename_out,
-                                   mode = 'manual',
-                                   antenna = str_other_ants,
-                                   action = 'apply')
-                # 
-                filename_in = filename+'.'+ant+fsuffix+'.tmp'
-                filename_out = filename+'.'+ant+fsuffix
-                rm_data_dir(filename_out)
-                logger.info('Running split to make '+filename_out+', datacolumn is '+getDataColumnForSplit(filename_in))
-                casaStuff.split(vis = filename_in, 
-                                outputvis = filename_out, 
-                                keepflags = False, 
-                                datacolumn = getDataColumnForSplit(filename_in))
+                use_casa_split_antenna = True
+                if use_casa_split_antenna:
+                    logger.info('Running split to make '+filename+'.'+ant+fsuffix+', datacolumn is '+getDataColumnForSplit(filename))
+                    casaStuff.split(vis = filename, 
+                        outputvis = filename+'.'+ant+fsuffix, 
+                        antenna = '%s&&&'%(ant), 
+                        datacolumn = getDataColumnForSplit(filename))
+                        #<Note># CASA split with antenna = '0&0' does not work, should use '0&&&' to get only autocorrelations, 
+                        #        see https://casa.nrao.edu/docs/taskref/split-task.html
+                else:
+                    #<TODO># these are not well tested
+                    # this is an alternative way to split single antenna autocorr data
+                    filename_in = filename
+                    filename_out = filename+'.'+ant+fsuffix+'.tmp'
+                    cp_data_dir(filename_in, filename_out)
+                    # 
+                    other_ants = copy.copy(vec_ants)
+                    other_ants.remove(ant)
+                    str_other_ants = ';'.join(other_ants)
+                    logger.info('Running flagdata to flag '+str_other_ants+' in '+filename_out)
+                    casaStuff.flagdata(vis = filename_out,
+                                       mode = 'manual',
+                                       antenna = str_other_ants,
+                                       action = 'apply')
+                    # 
+                    filename_in = filename+'.'+ant+fsuffix+'.tmp'
+                    filename_out = filename+'.'+ant+fsuffix
+                    rm_data_dir(filename_out)
+                    logger.info('Running split to make '+filename_out+', datacolumn is '+getDataColumnForSplit(filename_in))
+                    casaStuff.split(vis = filename_in, 
+                                    outputvis = filename_out, 
+                                    keepflags = False, 
+                                    datacolumn = getDataColumnForSplit(filename_in))
             
             #1.5 sdlist
             logger.info("1.5 Create listobs for each splitted file.")
@@ -1689,6 +1698,7 @@ def run_ALMA_TP_tools(
         path_galaxy = '', 
         flag_file = '', 
         doplots = True, 
+        dosplitants = True, 
         bl_order = 1, 
         source = '', 
         freq_rest = np.nan, 
@@ -1752,7 +1762,9 @@ def run_ALMA_TP_tools(
         # 
         if file_exists == True:
             if 1 in do_step: 
-                import_and_split_ant(filename, doplots=doplots)          # Import and split data per antenna
+                import_and_split_ant(filename, 
+                                     doplots=doplots, 
+                                     dosplitants=dosplitants)            # Import and split data per antenna
             source = get_sourcename(filename)                            # read the source name directly from the ms
             vec_ants_t = read_ants_names(filename)                       # Read vector with name of all antennas
             vec_ants   = [s for s in vec_ants_t if any(xs in s for xs in ['PM','DV'])] # Get only 12m antennas.
@@ -1765,8 +1777,9 @@ def run_ALMA_TP_tools(
                                         flag_file='', 
                                         doplots=doplots)
             # 
-            if not precasa5:
-                vec_ants = None
+            if not dosplitants:
+                if not precasa5:
+                    vec_ants = None
             # 
             if 3 in do_step: 
                 counts2kelvin(filename, ant_list=vec_ants, 
