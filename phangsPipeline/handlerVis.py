@@ -34,28 +34,43 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+#try:
+#    import taskinit
+#    casa_enabled = True
+#except ImportError:
+#    casa_enabled = False
+#
+#if casa_enabled:
+#    logger.debug('casa_enabled = True')
+#    import casaVisRoutines as cvr
+#    reload(cvr) #<TODO><DEBUG>#
+#else:
+#    logger.debug('casa_enabled = False')
+#    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+#
+#import handlerTemplate
+#
+#try:
+#    import utilsFilenames as fnames
+#except ImportError:
+#    from phangsPipeline import utilsFilenames as fnames
+#
+## Spectral lines
+#import utilsLines as lines
 
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    import casaVisRoutines as cvr
-    reload(cvr) #<TODO><DEBUG>#
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
 
 import handlerTemplate
-
-try:
-    import utilsFilenames as fnames
-except ImportError:
-    from phangsPipeline import utilsFilenames as fnames
-
-# Spectral lines
+import utilsFilenames as fnames
 import utilsLines as lines
 
 class VisHandler(handlerTemplate.HandlerTemplate):
@@ -75,8 +90,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             dry_run = False,):
         """
         """
-        # Can't use super and keep python2/3 agnostic
-        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+        
+        # inherit template class
+        handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
+        
+        # import necessary modules
+        if not self._dry_run:
+            global cvr
+            import casaVisRoutines as cvr
 
 
 #region Loops
@@ -343,6 +364,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("... output: "+outfile)
 
+        # Check existence of output data and abort if found and overwrite is off
+
+        if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+            if not overwrite:
+                logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
+                return()
+
         # If the user doesn't override the time bin, get it from the
         # key handler.
 
@@ -369,7 +397,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                 logger.info("... combinespw: "+str(combinespw))
 
-                if not self._dry_run and casa_enabled:
+                if not self._dry_run:
                     if combinespw:
                         spw = cvr.find_spws_for_science(infile = infile)
                     else:
@@ -394,7 +422,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.split_science_targets(
                 infile = infile,
@@ -535,7 +563,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         # Concatenate the measurement sets
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.concat_ms(infile_list = staged_ms_list,
                           outfile = outfile,
@@ -623,7 +651,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.contsub(infile = infile,
                         # outfile is not an option right now, comes out ".contsub"
@@ -700,6 +728,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
+        logger.debug('')
+        logger.debug('task_extract_line')
+        logger.debug('loop_over_input_ms')
+        logger.debug('target=%s'%(str([target])))
+        logger.debug('config=%s'%(str([config])))
+        #<TODO># we have not excluded the combined interf config '12m+7m'
+        
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=[target],
@@ -708,11 +743,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                 # The name of the staged measurement set with this
                 # combination of target, project, array, obsnum.
-
+                
                 this_infile = fnames.get_staged_msname(
                     target=this_target, project=this_project,
                     array_tag=this_array_tag, obsnum=this_obsnum,
                     product=product, ext=extra_ext_in)
+                logger.debug('this_infile=%s'%(this_infile))
 
                 # Check for existence of original data and continuum
                 # subtraction.
@@ -803,7 +839,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
-        if not self._dry_run and casa_enabled:
+        # Check existence of output data and abort if found and overwrite is off
+
+        if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+            if not overwrite:
+                logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
+                return()
+
+        if not self._dry_run:
 
             cvr.batch_extract_line(
                 infile_list = infile_list,
@@ -858,6 +901,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
+        logger.debug('')
+        logger.debug('task_extract_continuum')
+        logger.debug('loop_over_input_ms')
+        logger.debug('target=%s'%(str([target])))
+        logger.debug('config=%s'%(str([config])))
+        logger.debug('product=%s'%(product))
+        #<TODO># we have not excluded the combined interf config '12m+7m'
+        
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=[target],
@@ -878,6 +929,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 infile_dict[this_infile] = {}
                 infile_dict[this_infile]['present'] = \
                     os.path.isdir(this_infile)
+
+        # If no ms data found for the given target, then just return.
+        # This could happen if the target name is a mosaic target, 
+        # and each ms data will be named by the mosaic parts.
+        
+        if len(infile_dict) == 0:
+            return
 
         infile_list = []
         for this_infile in infile_dict.keys():
@@ -918,7 +976,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         this_imaging_dir = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.batch_extract_continuum(
                 infile_list = infile_list,

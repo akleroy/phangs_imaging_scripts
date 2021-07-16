@@ -841,7 +841,7 @@ class KeyHandler:
             return
 
         self._target_list = list(self._target_dict.keys())
-        self._target_list.sort()
+        self._target_list = sorted(self._target_list)
 
         self._missing_targets = []
 
@@ -926,7 +926,7 @@ class KeyHandler:
                 if this_part in self._whole_target_list:
                     self._whole_target_list.remove(this_part)
 
-        self._whole_target_list.sort()
+        self._whole_target_list = sorted(self._whole_target_list)
 
         logger.info("Total of "+str(len(self._whole_target_list))+" 'whole' targets.")
 
@@ -1124,7 +1124,7 @@ class KeyHandler:
                 if target in current_targets:
                     continue
                 current_targets.append(target)
-                current_targets.sort()
+                current_targets = sorted(current_targets)
                 self._targets_for_dir[this_dir] = current_targets
             else:
                 self._targets_for_dir[this_dir] = [target]
@@ -1915,7 +1915,7 @@ class KeyHandler:
 
         # Loop over targets
         target_list = self._ms_dict.keys()
-        target_list.sort()
+        target_list = sorted(target_list)
         for this_target in target_list:
 
             # if user has input targets, match it
@@ -1963,7 +1963,7 @@ class KeyHandler:
 
             # loop over projects
             project_list = self._ms_dict[this_target].keys()
-            project_list.sort()
+            project_list = sorted(project_list)
             for this_project in project_list:
 
                 if len(just_projects) > 0:
@@ -1972,7 +1972,7 @@ class KeyHandler:
 
                 # loop over array tags
                 arraytag_list = self._ms_dict[this_target][this_project].keys()
-                arraytag_list.sort()
+                arraytag_list = sorted(arraytag_list)
                 for this_arraytag in arraytag_list:
 
                     if len(just_arraytags) > 0:
@@ -1986,7 +1986,7 @@ class KeyHandler:
                     # loop over obs nums
 
                     obsnum_list = self._ms_dict[this_target][this_project][this_arraytag].keys()
-                    obsnum_list.sort()
+                    obsnum_list = sorted(obsnum_list)
                     for this_obsnum in obsnum_list:
 
                         yield this_target, this_project, this_arraytag, this_obsnum

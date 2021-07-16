@@ -26,23 +26,38 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+#try:
+#    import taskinit
+#    casa_enabled = True
+#except ImportError:
+#    casa_enabled = False
+#
+#if casa_enabled:
+#    logger.debug('casa_enabled = True')
+#else:
+#    logger.debug('casa_enabled = False')
+#    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+#
+#import utils
+#import utilsResolutions
+#import utilsFilenames
+#import utilsLines
+#import handlerTemplate
 
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
 
-import utils
-import utilsResolutions
-import utilsFilenames
-import utilsLines
 import handlerTemplate
+import utilsLines
+import utilsFilenames
+import utilsResolutions
 
 
 class ReleaseHandler(handlerTemplate.HandlerTemplate):
@@ -61,7 +76,7 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
 	    ):
 	    
 	    # inherit template class
-	    handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+	    handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
 
 
 
