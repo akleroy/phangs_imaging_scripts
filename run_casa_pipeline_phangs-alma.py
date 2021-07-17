@@ -11,7 +11,7 @@
 # products, and steps run.
 
 # This is a documented version that we provide with the main pipeline
-# repository as an example tou users. You should be able to modify
+# repository as an example to users. You should be able to modify
 # this script to get a good start on your own wrapper to the pipeline.
 
 
