@@ -687,6 +687,18 @@ def clean_loop(
         copy_imaging(
             input_root=working_call.get_param('imagename'),
             output_root=working_call.get_param('imagename')+'_prev')
+    
+        # Check user-preset mask parameter, disable it if a *.mask already exists
+        
+        if (loop > 0) and \
+           (working_call.get_param('usemask') == "user") and \
+           (working_call.get_param('mask') is not None) and \
+           (working_call.get_param('mask') != ''):
+            if os.path.isdir(working_call.get_param('imagename')+'.mask'+suffix):
+                logger.debug("Found clean mask \"%s\", will not re-use the mask \"%s\" in the clean parameter file."%(\
+                    working_call.get_param('imagename')+'.mask'+suffix, 
+                    working_call.get_param('mask')))
+                working_call.set_param('mask', '')
 
         # Execute the clean call.
 

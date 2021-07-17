@@ -850,7 +850,11 @@ def batch_extract_line(
                 # os.system('rm -rf '+this_outfile+'/POINTING')
 
                 # This zaps the whole table:
-                au.clearPointingTable(this_outfile)
+                if os.path.exists(this_outfile+os.sep+'POINTING'):
+                    au.clearPointingTable(this_outfile)
+                else:
+                    copy_pointing = False
+                    #logger.debug('Warning! Failed to run au.clearPointingTable(%r)'%(this_outfile))
 
     # Concatenate and combine the output data sets
 
@@ -1699,7 +1703,11 @@ def batch_extract_continuum(
         # all SPWs except the first one.
 
         if clear_pointing:
-            au.clearPointingTable(this_outfile)
+            if os.path.exists(this_outfile+os.sep+'POINTING'):
+                au.clearPointingTable(this_outfile)
+            else:
+                copy_pointing = False
+                #logger.debug('Warning! Failed to run au.clearPointingTable(%r)'%(this_outfile))
 
     # Concatenate and combine the output data sets
 

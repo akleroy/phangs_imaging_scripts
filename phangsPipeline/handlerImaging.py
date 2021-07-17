@@ -919,12 +919,16 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
         if os.path.isdir(fname_dict['mask']) == False:
             logger.warning("I looked for this and did not find it: "+fname_dict['mask'])
-            logger.warning("No mask found, we will use a pblimit mask.")
-            clean_call.set_param('usemask', 'pb')
-            if clean_call.get_param('pblimit') is None:
-                clean_call.set_param('pbmask', 0.5)
+            if (clean_call.get_param('usemask') == "user") and (clean_call.get_param('mask') is not None) and (clean_call.get_param('mask') != ''):
+                logger.debug("Using the user mask \"%s\" as defined in the clean parameter file."%(clean_call.get_param('mask')))
             else:
-                clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
+                logger.warning("No mask found, we will use a pblimit mask.")
+                clean_call.set_param('usemask', 'pb')
+                if clean_call.get_param('pblimit') is None:
+                    clean_call.set_param('pbmask', 0.5)
+                else:
+                    clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
+                
 
         # AKL - propose to deprecate
         #if not do_read_clean_mask: 
