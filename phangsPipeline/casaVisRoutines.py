@@ -775,7 +775,7 @@ def batch_extract_line(
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     method = 'regrid_then_rebin',
     exact = False,
-    freqtol = '0.5MHz',
+    freqtol = '',
     clear_pointing = True, 
     require_full_line_coverage = False, 
     overwrite = False,
