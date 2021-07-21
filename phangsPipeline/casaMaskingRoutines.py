@@ -365,8 +365,8 @@ def signal_mask(
     # created.
 
     if operation == 'AND' or operation == 'OR':
-        if os.path.isdir(cube_root + '.mask' + suffix_in):
-            old_mask = read_cube(cube_root + '.mask' + suffix_in, allow_huge=True)
+        if os.path.isdir(cube_root + '.mask' + suffix_out):
+            old_mask = read_cube(cube_root + '.mask' + suffix_out, allow_huge=True)
         else:
             logger.info("Operation AND/OR requested but no previous mask found.")
             logger.info("... will set operation=NEW.")

@@ -101,8 +101,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         statwt_cont = True,
         collapse_cont = True,
         timebin = None,
-        just_projects=None,
-        strict_config=True,
+        just_projects = None,
+        strict_config = True,
+        require_full_line_coverage = False,
         overwrite = False,
         ):
         """
@@ -110,6 +111,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         to run the uv data processing. Toggle the parts of the loop
         using the do_XXX booleans. Other choices affect the algorithms
         used.
+        
+        The strict_config option sets whether to require that a target has data
+        from ALL arrays that make up the configuration (True) or not (False).
+        
+        The require_full_line_coverage option sets whether to require a measurement set 
+        to completely cover a given line's frequency range (True) or not (False). 
         """
 
         if make_directories:
@@ -153,7 +160,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             obsnum = this_obsnum,
                             product = this_product,
                             timebin = timebin,
-                            overwrite = overwrite,
+                            require_full_line_coverage = require_full_line_coverage, 
+                            overwrite = overwrite, 
                             )
 
                     # Run custom processing. Not currently used.
@@ -189,7 +197,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_line=True,just_interf=True):
 
+
                 if strict_config:
+                    # this seems like it doesn't do anything - do we
+                    # actually want a test here and if we do shouldn't
+                    # it be checking if this is false then
+                    # continuing? In theory this is checked above.
                     self._kh.has_data_for_config(
                         target=this_target,
                         config=this_config,
@@ -208,13 +221,16 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             extra_ext_in = "",
                             contsub = "prefer",
                             # could add algorithm flags here
+                            require_full_line_coverage = require_full_line_coverage, 
                             overwrite = overwrite,
+                            strict_config = strict_config,
                             )
 
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_cont=True,just_interf=True):
-
+            
+                # Same as above - check / revise
                 if strict_config:
                     self._kh.has_data_for_config(
                         target=this_target,
@@ -233,6 +249,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             do_statwt = statwt_cont,
                             do_collapse = collapse_cont,
                             overwrite = overwrite,
+                            strict_config = strict_config,
                             )
 
         # Clean up the staged measurement sets. They cost time to
@@ -255,6 +272,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             array_tag = this_array_tag,
                             obsnum = this_obsnum,
                             product = this_product,
+                            strict_config = strict_config,
                             )
 
         return()
@@ -278,6 +296,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = False,
             timebin = None,
             use_symlink = True,
+            require_full_line_coverage = False, 
             overwrite = False,
             ):
         """
@@ -366,7 +385,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         spw = cvr.find_spws_for_line(
                             infile = infile, line = this_line,
                             max_chanwidth_kms = max_chanwidth_kms,
-                            vsys_kms = vsys, vwidth_kms = vwidth)
+                            vsys_kms = vsys, vwidth_kms = vwidth,
+                            require_full_line_coverage = require_full_line_coverage)
 
                     if spw is None or len(spw) == 0:
                         logger.warning("... No SPWs meet the selection criteria. Skipping.")
@@ -405,6 +425,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         obsnum = None,
         product = None,
         extra_ext = '',
+        strict_config = True,
         ):
         """
         Remove 'staged' visibility products, which are intermediate
@@ -459,6 +480,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = '',
             extra_ext_out = '',
             overwrite = False,
+            strict_config = True,
             ):
 
         """
@@ -487,7 +509,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         staged_ms_list = []
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=target, config=config,
-                                            project=just_projects):
+                                            project=just_projects,
+                                            strict_config=strict_config):
 
                 this_staged_ms = fnames.get_staged_msname(
                     target=this_target, project=this_project, array_tag=this_array_tag,
@@ -647,7 +670,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = True,
             edge_for_statwt = None,
             method = "regrid_then_rebin",
+            require_full_line_coverage = False, 
             overwrite = False,
+            strict_config = True,
             ):
         """
         Extract spectral line data from ms data for the input target,
@@ -690,9 +715,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(target=[target],
-                                            config=[config],
-                                            project=None):
+                self._kh.loop_over_input_ms(
+                    target=[target], config=[config], project=None,
+                    strict_config=strict_config):
 
                 # The name of the staged measurement set with this
                 # combination of target, project, array, obsnum.
@@ -803,6 +828,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 exact = exact,
                 overwrite = overwrite,
                 clear_pointing = False,
+                require_full_line_coverage = require_full_line_coverage, 
                 )
 
             if do_statwt:
@@ -824,6 +850,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = True,
             do_collapse = True,
             overwrite = False,
+            strict_config = True,
             ):
         """
         Extract continuum data from ms data for the input target, config and product.
@@ -847,9 +874,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
-                self._kh.loop_over_input_ms(target=[target],
-                                            config=[config],
-                                            project=None):
+                self._kh.loop_over_input_ms(
+                    target=[target], config=[config], project=None,
+                    strict_config=strict_config):
 
                 # The name of the staged measurement set with this
                 # combination of target, project, array, obsnum.

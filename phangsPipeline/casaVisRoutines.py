@@ -430,6 +430,7 @@ def find_spws_for_line(
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     max_chanwidth_kms = None,
     require_data = False,
+    require_full_line_coverage = False, 
     exit_on_error = True, 
     as_list = False,
     ):
@@ -495,6 +496,8 @@ def find_spws_for_line(
     # SPWs one at a time.
 
     spw_list = []
+    spw_lowest_ghz = None
+    spw_highest_ghz = None
     
     logger.debug("... vm = au.ValueMapping(infile) ...")
     vm = au.ValueMapping(infile)
@@ -522,12 +525,23 @@ def find_spws_for_line(
                 continue
 
         spw_list.append(this_spw)
+        
+        if spw_lowest_ghz is None:
+            spw_lowest_ghz = spw_low_ghz
+        else:
+            spw_lowest_ghz = min(spw_lowest_ghz, spw_low_ghz)
+        
+        if spw_highest_ghz is None:
+            spw_highest_ghz = spw_high_ghz
+        else:
+            spw_highest_ghz = max(spw_highest_ghz, spw_high_ghz)
 
     # If we don't find the line in this data set, issue a warning and
     # return.
 
     if len(spw_list) == 0:
         logger.warning('No spectral windows contain the input line.')
+        spw_list = []
         spw_list_string = None # can't be '', that selects all
     else:
         
@@ -536,7 +550,16 @@ def find_spws_for_line(
 
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
-     
+    
+    # check if the spws in this measurement set completely covers the given line frequency range
+    if not (spw_lowest_ghz <= line_low_ghz and spw_highest_ghz >= line_high_ghz):
+        logger.warning('The spectral windows in this measurement set "%s" (%.6f -- %.6f) does not cover the full "%s" line frequency range (%.6f -- %.6f).'%(\
+                        infile, spw_lowest_ghz, spw_highest_ghz, line, line_low_ghz, line_high_ghz))
+        if require_full_line_coverage:
+            spw_list = []
+            spw_list_string = None # can't be '', that selects all
+    
+    # return
     if as_list:
         return(spw_list)
     else:
@@ -569,6 +592,9 @@ def find_spws_for_science(
     # Call the analysisUtil version.
 
     spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET*')
+    if spw_string is None or len(spw_string) == 0:
+        spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET#ON_SOURCE')
+    
     spw_list = []
     for this_spw_string in spw_string.split(','):
         spw_list.append(int(this_spw_string))
@@ -686,6 +712,7 @@ def compute_common_chanwidth(
     vwidth_kms = None, 
     vlow_kms = None, 
     vhigh_kms = None, 
+    require_full_line_coverage = False, 
     ): 
     """
     Calculates the coarsest channel width among all spectral windows
@@ -717,7 +744,8 @@ def compute_common_chanwidth(
     coarsest_channel = None
     for this_infile in infile_list:
         # Find spws for line
-        spw_list_string = find_spws_for_line(this_infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms)
+        spw_list_string = find_spws_for_line(this_infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms, 
+            require_full_line_coverage = require_full_line_coverage)
         
         chan_widths_hz = au.getChanWidths(this_infile, spw_list_string)
 
@@ -748,7 +776,8 @@ def batch_extract_line(
     method = 'regrid_then_rebin',
     exact = False,
     freqtol = '',
-    clear_pointing = True,
+    clear_pointing = True, 
+    require_full_line_coverage = False, 
     overwrite = False,
     ):
     """
@@ -803,6 +832,7 @@ def batch_extract_line(
 
             this_scheme['outfile'] = this_outfile
             this_scheme['overwrite'] = overwrite
+            this_scheme['require_full_line_coverage'] = require_full_line_coverage
             split_file_list.append(this_outfile)
 
             # Execute line extraction
@@ -1039,6 +1069,7 @@ def extract_line(
     target_chan_kms = None,
     nchan = None,
     binfactor = None,
+    require_full_line_coverage = False, 
     overwrite = False, 
     ):
     """
@@ -1130,9 +1161,10 @@ def extract_line(
         spw_list = find_spws_for_line(
             infile = line, restfreq_ghz = restfreq_ghz,
             vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
-            require_data = True, exit_on_error = True, as_list = True,
+            require_data = True, require_full_line_coverage = require_full_line_coverage, 
+            exit_on_error = True, as_list = True,
             )
-        if spw_list is None:
+        if spw_list is None or len(spw_list) == 0:
             logging.error("No SPWs for selected line and velocity range.")
             return()
         spw = spw_list.join(',')
@@ -1158,7 +1190,9 @@ def extract_line(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
             vstart_kms=vstart_kms, vwidth_kms=vwidth_kms,
             target_chan_kms=target_chan_kms, nchan=nchan, 
-            method='regrid')
+            method='regrid', 
+            require_full_line_coverage=require_full_line_coverage,
+            )
                                
     if method == 'just_rebin' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
@@ -1167,12 +1201,16 @@ def extract_line(
 
         rebin_params, rebin_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
-            binfactor=binfactor, method='rebin')
+            binfactor=binfactor, method='rebin', 
+            require_full_line_coverage=require_full_line_coverage,
+            )
 
     if multiple_spws:
         combine_params, combine_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
-            method='combine')
+            method='combine', 
+            require_full_line_coverage=require_full_line_coverage,
+            )
 
     # ............................................
     # string the calls together in the desired order
@@ -1287,6 +1325,7 @@ def build_mstransform_call(
     target_chan_kms = None,
     nchan = None,
     binfactor = None,
+    require_full_line_coverage = False, 
     overwrite = False, 
     ):
     """    
@@ -1323,8 +1362,9 @@ def build_mstransform_call(
     if spw is None:
         if restfreq_ghz is not None:
             spw = find_spws_for_line(
-                infile=infile, restfreq_ghz = restfreq_ghz,
-                vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+                infile=infile, restfreq_ghz=restfreq_ghz,
+                vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+                require_full_line_coverage=require_full_line_coverage)
 
             # Exit if no SPWs contain the line.
             if spw is None:
