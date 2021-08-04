@@ -66,7 +66,7 @@ def estimate_cell_and_imsize(
         for kk in range(3):
             for jj in range(3):
                 valid_sizes.append(2 ** (ii+1) * 5 ** jj * 3 ** kk)
-    valid_sizes.sort()
+    valid_sizes = sorted(valid_sizes)
     valid_sizes = np.array(valid_sizes)
 
     # Cell size implied by baseline distribution from analysis
@@ -687,6 +687,18 @@ def clean_loop(
         copy_imaging(
             input_root=working_call.get_param('imagename'),
             output_root=working_call.get_param('imagename')+'_prev')
+    
+        # Check user-preset mask parameter, disable it if a *.mask already exists
+        
+        if (loop > 0) and \
+           (working_call.get_param('usemask') == "user") and \
+           (working_call.get_param('mask') is not None) and \
+           (working_call.get_param('mask') != ''):
+            if os.path.isdir(working_call.get_param('imagename')+'.mask'+suffix):
+                logger.debug("Found clean mask \"%s\", will not re-use the mask \"%s\" in the clean parameter file."%(\
+                    working_call.get_param('imagename')+'.mask'+suffix, 
+                    working_call.get_param('mask')))
+                working_call.set_param('mask', '')
 
         # Execute the clean call.
 

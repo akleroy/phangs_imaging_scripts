@@ -59,27 +59,50 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+#try:
+#    import taskinit
+#    casa_enabled = True
+#except ImportError:
+#    casa_enabled = False
+#
+#if casa_enabled:
+#    logger.debug('casa_enabled = True')
+#    import casaImagingRoutines as imr
+#    import casaMaskingRoutines as msr
+#    reload(imr)
+#    reload(msr)
+#else:
+#    logger.debug('casa_enabled = False')
+#    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+#
+#from clean_call import CleanCall, CleanCallFunctionDecorator
+#
+#import utilsLines as lines
+#import handlerTemplate
+#import utilsFilenames
 
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    import casaImagingRoutines as imr
-    import casaMaskingRoutines as msr
-    reload(imr)
-    reload(msr)
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# adding phangsPipeline to sys.path and import packages
+if ','.join(sys.path).count('phangsPipeline') == 0:
+    try:
+        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
+                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
+            if not (path_to_add in sys.path):
+                sys.path.append(path_to_add)
+    except:
+        pass
+
+import handlerTemplate
+import utilsLines as lines
+import utilsFilenames
 
 from clean_call import CleanCall, CleanCallFunctionDecorator
 
-import utilsLines as lines
-import handlerTemplate
-import utilsFilenames
+try:
+    import casaImagingRoutines as imr
+    import casaMaskingRoutines as msr
+except:
+    logger.warning('Module could not be imported: casaImagingRoutines and casaMaskingRoutines.')
+
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
@@ -97,7 +120,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         ):
         
         # inherit template class
-        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+        handlerTemplate.HandlerTemplate.__init__(self, 
+                                                 key_handler = key_handler, 
+                                                 dry_run = dry_run)
     
     ###############
     # _fname_dict #
@@ -394,7 +419,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
         
         # Call the estimating routine
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cell, imsize = \
                 imr.estimate_cell_and_imsize(vis_file, 
                                              oversamp,
@@ -453,7 +478,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             imr.make_dirty_image(clean_call)
             if backup:
                 imr.copy_imaging(
@@ -482,7 +507,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
             
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             imr.copy_imaging(
                 input_root=clean_call.get_param('imagename')+'_'+tag,
                 output_root=clean_call.get_param('imagename'),
@@ -535,9 +560,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         
         if self._dry_run:
             return()
-        if not casa_enabled:
-            return()
-
+        
         # Get fname dict
         fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
         
@@ -580,9 +603,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             
         if self._dry_run:
             return()
-        if not casa_enabled:
-            return()
-
+        
         imr.clean_loop(clean_call=clean_call, 
                        record_file=clean_call.get_param('imagename')+'_multiscale_record.txt',
                        niter_base_perchan = 10,
@@ -653,8 +674,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             
         if self._dry_run:
             return()
-        if not casa_enabled:
-            return()
         
         # check if line product
         is_line_product = product in self._kh.get_line_products()
@@ -724,9 +743,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             
         if self._dry_run:
             return()
-        if not casa_enabled:
-            return()
-
+        
         imr.clean_loop(clean_call=clean_call, 
                        record_file=clean_call.get_param('imagename')+'_singlescale_record.txt',
                        niter_base_perchan = 10,
@@ -782,7 +799,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
                     
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             imr.export_imaging_to_fits(image_root)
         
         return()
@@ -902,12 +919,16 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         fname_dict = self._fname_dict(product = product, imagename = clean_call.get_param('imagename'))
         if os.path.isdir(fname_dict['mask']) == False:
             logger.warning("I looked for this and did not find it: "+fname_dict['mask'])
-            logger.warning("No mask found, we will use a pblimit mask.")
-            clean_call.set_param('usemask', 'pb')
-            if clean_call.get_param('pblimit') is None:
-                clean_call.set_param('pbmask', 0.5)
+            if (clean_call.get_param('usemask') == "user") and (clean_call.get_param('mask') is not None) and (clean_call.get_param('mask') != ''):
+                logger.debug("Using the user mask \"%s\" as defined in the clean parameter file."%(clean_call.get_param('mask')))
             else:
-                clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
+                logger.warning("No mask found, we will use a pblimit mask.")
+                clean_call.set_param('usemask', 'pb')
+                if clean_call.get_param('pblimit') is None:
+                    clean_call.set_param('pbmask', 0.5)
+                else:
+                    clean_call.set_param('pbmask', clean_call.get_param('pblimit'))
+                
 
         # AKL - propose to deprecate
         #if not do_read_clean_mask: 

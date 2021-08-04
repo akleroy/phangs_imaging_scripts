@@ -379,8 +379,8 @@ def signal_mask(
         mask = (mask + old_mask) > 0
     if operation == 'NEW':
         mask = mask
-
-    del old_mask
+    else:
+        del old_mask
 
     logger.info('Recasting as an int.')
     # this might be better: mask.astype(np.int, copy=False)
