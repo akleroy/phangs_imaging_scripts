@@ -179,7 +179,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         kwargs = {}
         kwargs['path_galaxy'] = path_galaxy                            # 
         kwargs['flag_file']  = ''                                      # 
-        kwargs['doplots']    = True                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
+        kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
         kwargs['bl_order']   = 1                                       # Order for the baseline fitting
         kwargs['source']     = target                                  # Source name
         kwargs['freq_rest']  = freq_rest_MHz                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))

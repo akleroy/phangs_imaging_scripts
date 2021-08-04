@@ -552,7 +552,7 @@ def find_spws_for_line(
         spw_list_string = ','.join(np.array(spw_list).astype(str))
     
     # check if the spws in this measurement set completely covers the given line frequency range
-    if not (spw_lowest_ghz <= line_low_ghz and spw_highest_ghz >= line_high_ghz):
+    if not (spw_lowest_ghz <= line_low_ghz and spw_highest_ghz >= line_high_ghz) and spw_list_string is not None:
         logger.warning('The spectral windows in this measurement set "%s" (%.6f -- %.6f) does not cover the full "%s" line frequency range (%.6f -- %.6f).'%(\
                         infile, spw_lowest_ghz, spw_highest_ghz, line, line_low_ghz, line_high_ghz))
         if require_full_line_coverage:

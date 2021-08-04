@@ -802,11 +802,12 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
         
         # 1.3 A priori flagging: e.g., mount is off source, calibration device is not in correct position, power levels are not optimized, WCA not loaded...
         logger.info("1.3 Applying a priori flagging, check plots/"+filename+".flagcmd.png plot to see these flags.")
-        casaStuff.flagcmd(vis = filename,
-            inpmode = 'table',
-            useapplied = True,
-            action = 'plot',
-            plotfile = 'plots/'+filename+'.flagcmd.png')
+        if doplots:
+            casaStuff.flagcmd(vis = filename,
+                inpmode = 'table',
+                useapplied = True,
+                action = 'plot',
+                plotfile = 'plots/'+filename+'.flagcmd.png')
         
         casaStuff.flagcmd(vis = filename,
             inpmode = 'table',
@@ -1211,7 +1212,7 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
                         xaxis='vel', yaxis='amp', coloraxis='ant1', showlegend=True, 
                         iteraxis='corr', xselfscale=True, xsharedaxis=True, gridrows=2, 
                         highres=True, dpi=300, showmajorgrid=True, majorstyle='dot', 
-                        plotfile=plotfile, overwrite=True, 
+                        plotfile=plotfile, overwrite=True,
                         )
         
         # Get the string of the channels to be extracted from the original cube
@@ -1534,6 +1535,11 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     # Search for files already calibrated
     path = '.'
     Msnames = [f for f in os.listdir(path) if f.endswith('.cal.jy')]
+
+    if doplots:
+        plotfile = True
+    else:
+        plotfile = ''
     
     # If 2 SGs have to be imaged together, look for *cal.jy files for the second part of the galaxy 
     if joint_imaging_dir != '': 
@@ -1544,7 +1550,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         Msnames = Msnames+Msnames2
     logger.info('Msnames: %s'%(Msnames))
     # Definition of parameters for imaging
-    xSampling, ySampling, maxsize = au.getTPSampling(Msnames[0], showplot=False, plotfile=True) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
+    xSampling, ySampling, maxsize = au.getTPSampling(Msnames[0], showplot=False, plotfile=plotfile) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
     
     # Read frequency
     #msmd.open(Msnames[0])
@@ -1791,7 +1797,8 @@ def run_ALMA_TP_tools(
             # 
             if 5 in do_step: 
                 baseline(filename, source, ant_list=vec_ants, 
-                                freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, vel_line=vel_line, bl_order=bl_order)   
+                                freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, vel_line=vel_line, bl_order=bl_order,
+                         doplots=doplots)
             # 
             if 6 in do_step: 
                 # concat ants and convert flux unit to Jy
