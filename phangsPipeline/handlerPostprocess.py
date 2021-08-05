@@ -16,6 +16,8 @@ import os, sys, re, shutil
 import glob
 import numpy as np
 
+from clean_call import CleanCall
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -470,6 +472,11 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict_out = self._fname_dict(
             target=target, config=config, product=product, extra_ext=extra_ext_out)
 
+        # Pull in the pblimit for setting the cutoff
+        recipe_list = self._kh.get_imaging_recipes(config=config, product=product)
+        clean_call = CleanCall(recipe_list)
+        cutoff = clean_call.get_param('pblimit')
+
         infile = fname_dict_in[in_tag]
         outfile = fname_dict_out[out_tag]
         pbfile = fname_dict_in['pb']
@@ -503,6 +510,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 infile=indir+infile,
                 outfile=outdir+outfile,
                 pbfile=indir+pbfile,
+                cutoff=cutoff,
                 overwrite=True)
 
         return()
