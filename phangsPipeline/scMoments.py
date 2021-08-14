@@ -1,9 +1,12 @@
-import scDerivativeRoutines as scdr
-from spectral_cube import SpectralCube
-import astropy.units as u
-import numpy as np
 import inspect
 import warnings
+
+import numpy as np
+import astropy.units as u
+from spectral_cube import SpectralCube
+
+from . import scDerivativeRoutines as scdr
+
 warnings.filterwarnings("ignore")
 
 def _nicestr(quantity):

@@ -52,9 +52,10 @@ Notes:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -67,19 +68,19 @@ except ImportError:
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    import casaImagingRoutines as imr
-    import casaMaskingRoutines as msr
+    from . import casaImagingRoutines as imr
+    from . import casaMaskingRoutines as msr
     reload(imr)
     reload(msr)
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from clean_call import CleanCall, CleanCallFunctionDecorator
+from .clean_call import CleanCall, CleanCallFunctionDecorator
 
-import utilsLines as lines
-import handlerTemplate
-import utilsFilenames
+from . import utilsLines as lines
+from . import handlerTemplate
+from . import utilsFilenames
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """

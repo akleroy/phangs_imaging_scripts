@@ -5,37 +5,19 @@ structure, etc. This part is pure python.
 """
 
 import os, sys, re
-import glob
 import ast
-import numpy as np
+import glob
+import logging
 from math import floor
 
-try:
-    import utilsLines as ll
-except ImportError:
-    from phangsPipeline import utilsLines as ll
+import numpy as np
 
-try:
-    import utilsLists as list_utils
-except ImportError:
-    from phangsPipeline import utilsLists as list_utils
+from . import utilsLines as ll
+from . import utilsLists as list_utils
+from . import utilsKeyReaders as key_readers
+from . import utilsFilenames as fnames
+from . import utilsResolutions
 
-try:
-    import utilsKeyReaders as key_readers
-except ImportError:
-    from phangsPipeline import utilsKeyReaders as key_readers
-
-try:
-    import utilsFilenames as fnames
-except ImportError:
-    from phangsPipeline import utilsFilenames as fnames
-
-try:
-    import utilsResolutions
-except ImportError:
-    from phangsPipeline import utilsResolutions
-
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 

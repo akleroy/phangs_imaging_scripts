@@ -1,9 +1,9 @@
-# Imports
-from phangsPipeline import phangsLogger as pl
-from phangsPipeline import handlerKeys as kh
-
 # Analysis utilities
 import analysisUtils as au
+
+# Imports
+from . import phangsLogger as pl
+from . import handlerKeys as kh
 
 # Set the logging level
 pl.setup_logger(level='DEBUG', logfile=None)

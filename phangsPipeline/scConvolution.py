@@ -1,16 +1,15 @@
-from spectral_cube import SpectralCube, LazyMask
-from radio_beam import Beam
+import logging
 
+import numpy as np
 import astropy.units as u
 from astropy.io import fits
 from astropy.convolution import Box1DKernel
 from astropy.convolution import convolve, convolve_fft
+from radio_beam import Beam
+from spectral_cube import SpectralCube, LazyMask
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-import numpy as np
 
 def coverage_collapser(coveragecube,
                        coverage2dfile=None,
