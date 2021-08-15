@@ -27,9 +27,10 @@ Example:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -42,21 +43,17 @@ except ImportError:
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    import casaVisRoutines as cvr
+    from . import casaVisRoutines as cvr
     reload(cvr) #<TODO><DEBUG>#
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import handlerTemplate
-
-try:
-    import utilsFilenames as fnames
-except ImportError:
-    from phangsPipeline import utilsFilenames as fnames
+from . import handlerTemplate
+from . import utilsFilenames as fnames
 
 # Spectral lines
-import utilsLines as lines
+from . import utilsLines as lines
 
 class VisHandler(handlerTemplate.HandlerTemplate):
     """

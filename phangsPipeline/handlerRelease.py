@@ -19,9 +19,10 @@ Example:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -38,11 +39,11 @@ else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import utils
-import utilsResolutions
-import utilsFilenames
-import utilsLines
-import handlerTemplate
+from . import utils
+from . import utilsResolutions
+from . import utilsFilenames
+from . import utilsLines
+from . import handlerTemplate
 
 
 class ReleaseHandler(handlerTemplate.HandlerTemplate):
