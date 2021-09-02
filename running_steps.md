@@ -1,0 +1,14 @@
+The basic steps to run the PHANGS version 2 script. The PHANGS_v2 scripts processing can be divided into 4 steps: staging, imaging, processing and derving the data products. The detailed description for these 4 steps is in README.md. Here is the detailed description of steps to use PHANGS v2 scripts to product images.  
+- Generate the key folder by running `python start_project.py`
+    - You will go through bunch of questions which are quite straightforward. 
+    - You will also specify the location of [keys/](keys) directory in which you have bunch of files containning the parameter settings for staging and imaging
+- Run `touch keys/distance_key.txt`. Somehow the [start_project.py](start_project.py) doesn't create this file. 
+- Edit the script [run_casa_pipeline.py](run_casa_pipeline.py) 
+    - Comment out the imaging portion in order to just create the staged files.
+    - start up the CASA and then execute the script with command `execfile run_casa_pipeline.py`
+- Check the staged data in [Reduction/](Reduction) folder
+    - Keep only the measurement set that will be imaged in the [Reduction/](Reduction) folder and move other data sets to some other directories
+- Run the "run_casa_pipeline.py" for imaging.
+    - Comment out the staging block and uncomment the imaging blocks
+    - Run `execfile run_casapipeline.py`
+- Check the image in the [Reduction/](Reduction) folder. 

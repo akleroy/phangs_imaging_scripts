@@ -52,3 +52,8 @@ products.
 **User Control** For the most part the user's job is to *define the
 key files* and to run some scripts.
 
+### Notes from Hao He
+1. Hao modified the scripts [handlerVis.py](phangsPipeline/handlerVis.py) and [casaVisRoutines.py](phangsPipeline/casaVisRoutines.py) so you can bin the continuum measurement set to a certain channels width by specifying the number of bins
+    1. To do that, you need to set `collpase_cont=True` and `cont_width= [num of bins]` in `this_uvh.loop_stage_uvdata()` function in [run_pipeline_casa.py](run_pipeline_casa.py). 
+2. Previously the continuum processing does not produce the appropriate mask. This is because the input image name is wrong for the command to generate the mask. Hao modified scripts  [handlerVis.py](phangsPipeline/handlerVis.py) and [casaVisRoutines.py](phangsPipeline/casaVisRoutines.py) and now it can properly generate the mask for image cleaning. 
+3. Hao has added [running_steps.md](running_steps.md) to describe the general steps to produce continuum image using PHANGS version 2 scripts. 
