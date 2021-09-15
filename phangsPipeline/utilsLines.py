@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 
-import .utilsLists as lists
+import phangsPipeline.utilsLists as lists
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
