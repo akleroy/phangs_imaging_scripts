@@ -823,7 +823,7 @@ class KeyHandler:
             return
 
         self._target_list = list(self._target_dict.keys())
-        self._target_list.sort()
+        self._target_list = sorted(self._target_list)
 
         self._missing_targets = []
 
@@ -908,7 +908,7 @@ class KeyHandler:
                 if this_part in self._whole_target_list:
                     self._whole_target_list.remove(this_part)
 
-        self._whole_target_list.sort()
+        self._whole_target_list = sorted(self._whole_target_list)
 
         logger.info("Total of "+str(len(self._whole_target_list))+" 'whole' targets.")
 
@@ -1106,7 +1106,7 @@ class KeyHandler:
                 if target in current_targets:
                     continue
                 current_targets.append(target)
-                current_targets.sort()
+                current_targets = sorted(current_targets)
                 self._targets_for_dir[this_dir] = current_targets
             else:
                 self._targets_for_dir[this_dir] = [target]
@@ -1173,7 +1173,7 @@ class KeyHandler:
     def _get_dir_for_target(self, target=None, changeto=False,
                             imaging=False, postprocess=False,
                             derived=False, release=False,
-                            cleanmask=False):
+                            cleanmask=False, singledish=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -1207,6 +1207,8 @@ class KeyHandler:
             this_dir = self._release_root + self._dir_for_target[target]+'/'
         elif cleanmask:
             this_dir = self._cleanmask_roots[-1] + self._dir_for_target[target]+'/'
+        elif singledish:
+            this_dir = self._sd_roots[-1] + self._dir_for_target[target]+'/'
         else:
             logging.error("Pick a type of directory. None found.")
             return(None)
@@ -1253,6 +1255,13 @@ class KeyHandler:
         changeto is true, then change directory to that location.
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, cleanmask=True))
+
+    def get_singledish_dir_for_target(self, target=None, changeto=False):
+        """
+        Return the release working directory given a target name. If
+        changeto is true, then change directory to that location.
+        """
+        return(self._get_dir_for_target(target=target, changeto=changeto, singledish=True))
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1349,6 +1358,22 @@ class KeyHandler:
         feather_configs = self._config_dict['feather_config'].keys()
         this_list = \
             list_utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
+        return(this_list)
+
+    def get_singledish_configs(self, only=None, skip=None):
+        """
+        Get a list of singledish configruations.
+
+        Modified by keywords only, skip. Will only return targets in
+        only, skip targets in skip.
+        """
+        if type(self._config_dict) != type({}):
+            return(None)
+        if 'singledish_config' not in self._config_dict.keys():
+            return(None)
+        singledish_configs = self._config_dict['singledish_config'].keys()
+        this_list = \
+            list_utils.select_from_list(singledish_configs, skip=skip, only=only, loose=True)
         return(this_list)
 
     def get_all_configs(self):
@@ -1763,6 +1788,13 @@ class KeyHandler:
                 if 'array_tags' in self._config_dict['interf_config'][config]:
                     return self._config_dict['interf_config'][config]['array_tags']
 
+        if 'singledish_config' in self._config_dict:
+            if config in self._config_dict['singledish_config']:
+                if 'array_tags' in self._config_dict['singledish_config'][config]:
+                    return self._config_dict['singledish_config'][config]['array_tags']
+                else:
+                    return [config] 
+
         return None
 
     def get_timebin_for_array_tag(self, array_tag=None):
@@ -1865,7 +1897,7 @@ class KeyHandler:
 
         # Loop over targets
         target_list = self._ms_dict.keys()
-        target_list.sort()
+        target_list = sorted(target_list)
         for this_target in target_list:
 
             # if user has input targets, match it
@@ -1913,7 +1945,7 @@ class KeyHandler:
 
             # loop over projects
             project_list = self._ms_dict[this_target].keys()
-            project_list.sort()
+            project_list = sorted(project_list)
             for this_project in project_list:
 
                 if len(just_projects) > 0:
@@ -1922,7 +1954,7 @@ class KeyHandler:
 
                 # loop over array tags
                 arraytag_list = self._ms_dict[this_target][this_project].keys()
-                arraytag_list.sort()
+                arraytag_list = sorted(arraytag_list)
                 for this_arraytag in arraytag_list:
 
                     if len(just_arraytags) > 0:
@@ -1936,7 +1968,7 @@ class KeyHandler:
                     # loop over obs nums
 
                     obsnum_list = self._ms_dict[this_target][this_project][this_arraytag].keys()
-                    obsnum_list.sort()
+                    obsnum_list = sorted(obsnum_list)
                     for this_obsnum in obsnum_list:
 
                         yield this_target, this_project, this_arraytag, this_obsnum
@@ -2152,6 +2184,7 @@ class KeyHandler:
         self,
         target=None,
         product=None,
+        nocheck=False,
         ):
         """
         Return the single dish filename for a target and product combination.
@@ -2184,7 +2217,7 @@ class KeyHandler:
         last_found_file = None
         for this_root in self._sd_roots:
             this_fname = this_root + this_dict[product]
-            if os.path.isfile(this_fname) or os.path.isdir(this_fname):
+            if os.path.isfile(this_fname) or os.path.isdir(this_fname) or nocheck:
                 found = True
                 found_count += 1
                 last_found_file = this_fname
@@ -2461,6 +2494,27 @@ class KeyHandler:
             return(None)
 
         return(self._moment_dict[moment])
+
+    def get_params_for_singledish(
+        self,
+        singledish_config=None
+        ):
+        """
+        Return parameter dictionary for a singledish config.
+        """
+
+        if singledish_config is None:
+            return None
+
+        if 'singledish_config' not in self._config_dict.keys():
+            return None
+
+        singledish_config_dict = self._config_dict['singledish_config']
+
+        if singledish_config not in singledish_config_dict.keys():
+            return None
+
+        return singledish_config_dict[singledish_config]
 
     def print_configs(
         self

@@ -62,7 +62,7 @@ class ReleaseHandler(handlerTemplate.HandlerTemplate):
 	    ):
 	    
 	    # inherit template class
-	    handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
+	    handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
 
 
 
