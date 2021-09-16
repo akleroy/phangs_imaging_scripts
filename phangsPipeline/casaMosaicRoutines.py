@@ -6,25 +6,26 @@ in CASA.
 #region Imports and definitions
 
 import os
+import glob
+import logging
+
 import numpy as np
 import pyfits # CASA has pyfits, not astropy
-import glob
-
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 # Analysis utilities
 import analysisUtils as au
 
-# CASA stuff
-import casaStuff
-
-# Other pipeline stuff
-import casaMaskingRoutines as cma
-
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
+
+# CASA stuff
+from . import casaStuff
+
+# Other pipeline stuff
+from . import casaMaskingRoutines as cma
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #endregion
 

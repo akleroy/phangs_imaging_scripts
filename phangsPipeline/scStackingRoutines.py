@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.ndimage as nd
 import astropy.units as u
-from spectral_cube import SpectralCube
 import astropy.wcs as wcs
+from spectral_cube import SpectralCube
 
 def channelShiftVec(x, ChanShift):
     # Shift an array of spectra (x) by a set number of Channels (array)

@@ -14,9 +14,10 @@ calls to CASA from this class.
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -54,18 +55,21 @@ if ','.join(sys.path).count('phangsPipeline') == 0:
     except:
         pass
 
-import handlerTemplate
-import utilsFilenames
-import utilsResolutions
-        
-# import casa environment modules, which will be used when not in dry-run mode
-try:
-    import casaCubeRoutines as ccr
-    import casaMosaicRoutines as cmr
-    import casaFeatherRoutines as cfr
-except:
-    logger.warning('Module could not be imported: casaImagingRoutines and casaMaskingRoutines.')
+if casa_enabled:
+    logger.debug('casa_enabled = True')
+    from . import casaCubeRoutines as ccr
+    from . import casaMosaicRoutines as cmr
+    from . import casaFeatherRoutines as cfr
+    reload(ccr)
+    reload(cmr)
+    reload(cfr)
+else:
+    logger.debug('casa_enabled = False')
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from . import handlerTemplate
+from . import utilsFilenames
+from . import utilsResolutions
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):
     """

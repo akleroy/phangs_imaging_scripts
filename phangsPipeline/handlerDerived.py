@@ -22,14 +22,15 @@ Example:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
+import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
-import astropy.units as u
 from spectral_cube import SpectralCube, Projection
 from spectral_cube.masks import BooleanArrayMask
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -57,17 +58,17 @@ if ','.join(sys.path).count('phangsPipeline') == 0:
         pass
 
 # import phangs pipeline stuff
-import utilsResolutions
-import utilsFilenames
-import utilsLines
-import handlerTemplate
+from . import utilsResolutions
+from . import utilsFilenames
+from . import utilsLines
+from . import handlerTemplate
 
-from scConvolution import smooth_cube
-from scNoiseRoutines import recipe_phangs_noise
-from scMaskingRoutines import recipe_phangs_strict_mask, recipe_phangs_broad_mask
+from .scConvolution import smooth_cube
+from .scNoiseRoutines import recipe_phangs_noise
+from .scMaskingRoutines import recipe_phangs_strict_mask, recipe_phangs_broad_mask
 
-#import scDerivativeRoutines as scderiv
-from scMoments import moment_generator
+#from . import scDerivativeRoutines as scderiv
+from .scMoments import moment_generator
 
 class DerivedHandler(handlerTemplate.HandlerTemplate):
     """

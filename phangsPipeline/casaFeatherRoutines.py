@@ -6,25 +6,26 @@ combination using CASA's feather.
 #region Imports and definitions
 
 import os
-import numpy as np
-import pyfits # CASA has pyfits, not astropy
 import glob
-
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
+import numpy as np
+import pyfits  # CASA has pyfits, not astropy
 
 # Analysis utilities
 import analysisUtils as au
 
-# CASA stuff
-import casaStuff
-
-# Other pipeline stuff
-import casaCubeRoutines as ccr
-
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
+
+# CASA stuff
+from . import casaStuff
+
+# Other pipeline stuff
+from . import casaCubeRoutines as ccr
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #endregion
 

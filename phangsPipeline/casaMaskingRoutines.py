@@ -12,26 +12,25 @@ mask manipulation steps in CASA.
 # region Imports and definitions
 
 import os
-import numpy as np
-from scipy.special import erfc
-import scipy.ndimage as ndimage
-import pyfits  # CASA has pyfits, not astropy
 import glob
-
 import logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import numpy as np
+import scipy.ndimage as ndimage
+from scipy.special import erfc
+import pyfits  # CASA has pyfits, not astropy
 
 # Analysis utilities
 import analysisUtils as au
 
-# CASA stuff
-import casaStuff
-
 # Pipeline versionining
 from pipelineVersion import version as pipeVer
 
+# CASA stuff
+from . import casaStuff
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # endregion
 

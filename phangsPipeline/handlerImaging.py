@@ -52,9 +52,10 @@ Notes:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -91,18 +92,21 @@ if ','.join(sys.path).count('phangsPipeline') == 0:
     except:
         pass
 
-import handlerTemplate
-import utilsLines as lines
-import utilsFilenames
+if casa_enabled:
+    logger.debug('casa_enabled = True')
+    from . import casaImagingRoutines as imr
+    from . import casaMaskingRoutines as msr
+    reload(imr)
+    reload(msr)
+else:
+    logger.debug('casa_enabled = False')
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from clean_call import CleanCall, CleanCallFunctionDecorator
+from .clean_call import CleanCall, CleanCallFunctionDecorator
 
-try:
-    import casaImagingRoutines as imr
-    import casaMaskingRoutines as msr
-except:
-    logger.warning('Module could not be imported: casaImagingRoutines and casaMaskingRoutines.')
-
+from . import utilsLines as lines
+from . import handlerTemplate
+from . import utilsFilenames
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
