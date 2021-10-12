@@ -1,20 +1,21 @@
 import logging
+from functools import reduce
+
+import numpy as np
 import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
-from scipy.signal import savgol_coeffs
-import numpy as np
-from astropy.stats import mad_std
-from astropy.convolution import convolve, Gaussian2DKernel
 import scipy.stats as ss
-
-from spectral_cube import SpectralCube
+from scipy.signal import savgol_coeffs
 import astropy.wcs as wcs
 import astropy.units as u
-from pipelineVersion import version, tableversion
+from astropy.stats import mad_std
+from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
+from spectral_cube import SpectralCube
 
-from scNoiseRoutines import mad_zero_centered
-from functools import reduce
+from pipelineVersion import version, tableversion
+from .scNoiseRoutines import mad_zero_centered
+
 np.seterr(divide='ignore', invalid='ignore')
 
 mad_to_std_fac = 1.482602218505602

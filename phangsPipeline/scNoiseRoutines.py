@@ -1,17 +1,18 @@
 import logging
-import scipy.ndimage as nd
-from scipy.signal import savgol_coeffs
-import numpy as np
-from astropy.convolution import convolve, Gaussian2DKernel
-import scipy.stats as ss
-from spectral_cube import SpectralCube
-from pipelineVersion import version, tableversion
 
+import numpy as np
+import scipy.ndimage as nd
+import scipy.ndimage.morphology as morph
+import scipy.stats as ss
+from scipy.signal import savgol_coeffs
 import astropy.wcs as wcs
 import astropy.units as u
+from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
 from astropy.stats import mad_std
-import scipy.ndimage.morphology as morph
+from spectral_cube import SpectralCube
+
+from pipelineVersion import version, tableversion
 
 np.seterr(divide='ignore', invalid='ignore')
 
