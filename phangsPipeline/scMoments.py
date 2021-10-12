@@ -63,7 +63,7 @@ def moment_generator(
         moment=None, momkwargs=None,
         outfile=None, errorfile=None,
         channel_correlation=None,
-        context=None):
+        context=None, assignkunits=False):
 
     """
     Generate one moment map from input cube, noise, and masks.
@@ -102,7 +102,7 @@ def moment_generator(
         raise NotImplementedError
 
     cube.allow_huge_operations = True
-
+        
     # Force Kelvin. We will be unit agnostic later.
     cube = cube.to(u.K)
     
