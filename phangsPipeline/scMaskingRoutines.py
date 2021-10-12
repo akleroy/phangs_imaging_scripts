@@ -13,8 +13,8 @@ from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
 from spectral_cube import SpectralCube
 
-from pipelineVersion import version, tableversion
-from scNoiseRoutines import mad_zero_centered
+from .pipelineVersion import version, tableversion
+from .scNoiseRoutines import mad_zero_centered
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -729,13 +729,13 @@ def recipe_phangs_broad_mask(
         mask = join_masks(mask, other_mask, operation='sum'
                           , order='fast_nearest_neighbor')
 
-    if recipe is 'anyscale':
+    if recipe == 'anyscale':
         mask_values = mask.filled_data[:].value > 0
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
                             , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
         mask.allow_huge_operations = True
 
-    if recipe is 'somescales':
+    if recipe == 'somescales':
         mask_values = mask.filled_data[:].value > (fraction_of_scales
                                                   * len(list_of_masks))
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header

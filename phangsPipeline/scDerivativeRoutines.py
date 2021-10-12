@@ -6,7 +6,7 @@ import astropy.units as u
 from astropy.io import fits
 from spectral_cube import SpectralCube, Projection
 
-from pipelineVersion import version, tableversion
+from .pipelineVersion import version, tableversion
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

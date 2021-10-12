@@ -24,7 +24,7 @@ import pyfits  # CASA has pyfits, not astropy
 import analysisUtils as au
 
 # Pipeline versionining
-from pipelineVersion import version as pipeVer
+from .pipelineVersion import version as pipeVer
 
 # CASA stuff
 from . import casaStuff

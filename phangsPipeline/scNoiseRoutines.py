@@ -12,7 +12,7 @@ from astropy.io import fits
 from astropy.stats import mad_std
 from spectral_cube import SpectralCube
 
-from pipelineVersion import version, tableversion
+from .pipelineVersion import version, tableversion
 
 np.seterr(divide='ignore', invalid='ignore')
 

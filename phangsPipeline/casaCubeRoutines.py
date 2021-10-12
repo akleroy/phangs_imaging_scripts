@@ -18,7 +18,7 @@ import pyfits  # CASA has pyfits, not astropy
 import analysisUtils as au
 
 # Pipeline versioning
-from pipelineVersion import version
+from .pipelineVersion import version as pipeVer
 
 # CASA stuff
 from . import casaStuff
@@ -268,7 +268,7 @@ def export_and_cleanup(
                     logger.info("... fractional deviation: "+str(frac_dev))
 
     # Never forget where you came from
-    hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
+    hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + pipeVer
 
     # Overwrite
     hdu.writeto(outfile, clobber=True)
