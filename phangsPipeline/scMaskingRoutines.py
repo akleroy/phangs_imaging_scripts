@@ -14,7 +14,7 @@ from astropy.io import fits
 from spectral_cube import SpectralCube
 
 from pipelineVersion import version, tableversion
-from .scNoiseRoutines import mad_zero_centered
+from scNoiseRoutines import mad_zero_centered
 
 np.seterr(divide='ignore', invalid='ignore')
 
