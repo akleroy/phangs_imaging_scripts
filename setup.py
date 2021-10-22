@@ -74,5 +74,5 @@ except Exception:
     version = '{version}'
 """.lstrip()
 
-setup(use_scm_version={'write_to': os.path.join('phangs_imaging_pipeline', 'version.py'),
+setup(use_scm_version={'write_to': os.path.join('phangsPipeline', 'version.py'),
                        'write_to_template': VERSION_TEMPLATE})
