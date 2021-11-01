@@ -26,11 +26,11 @@ logger.setLevel(logging.DEBUG)
 
 
 # Check casa environment by importing CASA-only packages
-#try:
-#    import taskinit
-#    casa_enabled = True
-#except ImportError:
-#    casa_enabled = False
+try:
+   import taskinit
+   casa_enabled = True
+except ImportError:
+   casa_enabled = False
 #
 #if casa_enabled:
 #    logger.debug('casa_enabled = True')
