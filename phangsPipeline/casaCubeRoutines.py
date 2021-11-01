@@ -7,23 +7,24 @@ but also may be of general utility.
 #region Imports and definitions
 
 import os
+import glob
+import logging
+
 import numpy as np
 import scipy.ndimage as nd
-import pyfits # CASA has pyfits, not astropy
-import glob
-
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import pyfits  # CASA has pyfits, not astropy
 
 # Analysis utilities
 import analysisUtils as au
 
-# CASA stuff
-import casaStuff
-
 # Pipeline versioning
-from pipelineVersion import version
+from .pipelineVersion import version as pipeVer
+
+# CASA stuff
+from . import casaStuff
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #endregion
 
@@ -267,7 +268,7 @@ def export_and_cleanup(
                     logger.info("... fractional deviation: "+str(frac_dev))
 
     # Never forget where you came from
-    hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
+    hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + pipeVer
 
     # Overwrite
     hdu.writeto(outfile, clobber=True)

@@ -7,26 +7,27 @@ Standalone routines to analyze and manipulate visibilities.
 #region Imports and definitions
 
 import os, sys, re, shutil, inspect, copy
+import glob
+import logging
+
 import numpy as np
 from scipy.ndimage import label
-#import pyfits # CASA has pyfits, not astropy
-import glob
-
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+#import pyfits  # CASA has pyfits, not astropy
 
 # Analysis utilities
 import analysisUtils as au
 
+# Pipeline versionining
+from .pipelineVersion import version as pipeVer
+
 # CASA stuff
-import casaStuff
+from . import casaStuff
 
 # Spectral lines
-import utilsLines as lines
+from . import utilsLines as lines
 
-# Pipeline versionining
-from pipelineVersion import version as pipeVer
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #endregion
 

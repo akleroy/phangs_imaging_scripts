@@ -14,6 +14,8 @@ calls to CASA from this class.
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
 from clean_call import CleanCall
@@ -46,27 +48,21 @@ logger.setLevel(logging.DEBUG)
 #import utilsFilenames
 #import utilsResolutions
 
-# adding phangsPipeline to sys.path and import packages
-if ','.join(sys.path).count('phangsPipeline') == 0:
-    try:
-        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
-                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
-            if not (path_to_add in sys.path):
-                sys.path.append(path_to_add)
-    except:
-        pass
+if casa_enabled:
+    logger.debug('casa_enabled = True')
+    from . import casaCubeRoutines as ccr
+    from . import casaMosaicRoutines as cmr
+    from . import casaFeatherRoutines as cfr
+    reload(ccr)
+    reload(cmr)
+    reload(cfr)
+else:
+    logger.debug('casa_enabled = False')
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import handlerTemplate
-import utilsFilenames
-import utilsResolutions
-        
-# import casa environment modules, which will be used when not in dry-run mode
-try:
-    import casaCubeRoutines as ccr
-    import casaMosaicRoutines as cmr
-    import casaFeatherRoutines as cfr
-except:
-    logger.warning('Module could not be imported: casaImagingRoutines and casaMaskingRoutines.')
+from . import handlerTemplate
+from . import utilsFilenames
+from . import utilsResolutions
 
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):

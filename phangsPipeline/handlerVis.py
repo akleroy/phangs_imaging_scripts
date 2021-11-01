@@ -27,9 +27,10 @@ Example:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -58,20 +59,19 @@ logger.setLevel(logging.DEBUG)
 ## Spectral lines
 #import utilsLines as lines
 
+if casa_enabled:
+    logger.debug('casa_enabled = True')
+    from . import casaVisRoutines as cvr
+    reload(cvr) #<TODO><DEBUG>#
+else:
+    logger.debug('casa_enabled = False')
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# adding phangsPipeline to sys.path and import packages
-if ','.join(sys.path).count('phangsPipeline') == 0:
-    try:
-        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
-                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
-            if not (path_to_add in sys.path):
-                sys.path.append(path_to_add)
-    except:
-        pass
+from . import handlerTemplate
+from . import utilsFilenames as fnames
 
-import handlerTemplate
-import utilsFilenames as fnames
-import utilsLines as lines
+# Spectral lines
+from . import utilsLines as lines
 
 class VisHandler(handlerTemplate.HandlerTemplate):
     """

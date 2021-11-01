@@ -9,29 +9,30 @@ directory.
 #region Imports and definitions
 
 import os
+import glob
+import logging
+
 import numpy as np
 from scipy.special import erfc
 import pyfits # CASA has pyfits, not astropy
-import glob
-
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 # Analysis utilities
 import analysisUtils as au
 
-# CASA stuff
-import casaStuff
-
 # Pipeline versionining
-from pipelineVersion import version as pipeVer
+from .pipelineVersion import version as pipeVer
+
+# CASA stuff
+from . import casaStuff
 
 # Pipeline CASA routines
-import casaCubeRoutines as ccr
-import casaMaskingRoutines as cma
-import casaMosaicRoutines as cmr
-import casaFeatherRoutines as cfr
+from . import casaCubeRoutines as ccr
+from . import casaMaskingRoutines as cma
+from . import casaMosaicRoutines as cmr
+from . import casaFeatherRoutines as cfr
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #endregion
 

@@ -19,9 +19,10 @@ Example:
 
 import os, sys, re, shutil
 import glob
+import logging
+
 import numpy as np
 
-import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -54,10 +55,11 @@ if ','.join(sys.path).count('phangsPipeline') == 0:
     except:
         pass
 
-import handlerTemplate
-import utilsLines
-import utilsFilenames
-import utilsResolutions
+from . import utils
+from . import utilsResolutions
+from . import utilsFilenames
+from . import utilsLines
+from . import handlerTemplate
 
 
 class ReleaseHandler(handlerTemplate.HandlerTemplate):

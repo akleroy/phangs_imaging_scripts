@@ -1,11 +1,14 @@
 # This is the line list.
 
 import re
-import numpy as np
 import logging
+
+import numpy as np
+
+from . import utilsLists as lists
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-import phangsPipeline.utilsLists as lists
 
 # Drawn from Splatalogue at http://www.cv.nrao.edu/php/splat/
 

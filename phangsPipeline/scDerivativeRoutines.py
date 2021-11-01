@@ -1,11 +1,13 @@
-from spectral_cube import SpectralCube, Projection
-import astropy.units as u
-import numpy as np
-from astropy.io import fits
 import inspect
-from pipelineVersion import version, tableversion
-
 import logging
+
+import numpy as np
+import astropy.units as u
+from astropy.io import fits
+from spectral_cube import SpectralCube, Projection
+
+from .pipelineVersion import version, tableversion
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 

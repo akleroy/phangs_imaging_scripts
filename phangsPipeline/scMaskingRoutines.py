@@ -1,20 +1,21 @@
 import logging
+from functools import reduce
+
+import numpy as np
 import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
-from scipy.signal import savgol_coeffs
-import numpy as np
-from astropy.stats import mad_std
-from astropy.convolution import convolve, Gaussian2DKernel
 import scipy.stats as ss
-
-from spectral_cube import SpectralCube
+from scipy.signal import savgol_coeffs
 import astropy.wcs as wcs
 import astropy.units as u
-from pipelineVersion import version, tableversion
+from astropy.stats import mad_std
+from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
+from spectral_cube import SpectralCube
 
-from scNoiseRoutines import mad_zero_centered
-from functools import reduce
+from .pipelineVersion import version, tableversion
+from .scNoiseRoutines import mad_zero_centered
+
 np.seterr(divide='ignore', invalid='ignore')
 
 mad_to_std_fac = 1.482602218505602
@@ -728,13 +729,13 @@ def recipe_phangs_broad_mask(
         mask = join_masks(mask, other_mask, operation='sum'
                           , order='fast_nearest_neighbor')
 
-    if recipe is 'anyscale':
+    if recipe == 'anyscale':
         mask_values = mask.filled_data[:].value > 0
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
                             , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
         mask.allow_huge_operations = True
 
-    if recipe is 'somescales':
+    if recipe == 'somescales':
         mask_values = mask.filled_data[:].value > (fraction_of_scales
                                                   * len(list_of_masks))
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
