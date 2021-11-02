@@ -31,22 +31,6 @@ try:
    casa_enabled = True
 except ImportError:
    casa_enabled = False
-#
-#if casa_enabled:
-#    logger.debug('casa_enabled = True')
-#    import casaCubeRoutines as ccr
-#    import casaMosaicRoutines as cmr
-#    import casaFeatherRoutines as cfr
-#    reload(ccr)
-#    reload(cmr)
-#    reload(cfr)
-#else:
-#    logger.debug('casa_enabled = False')
-#    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-#
-#import handlerTemplate
-#import utilsFilenames
-#import utilsResolutions
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
