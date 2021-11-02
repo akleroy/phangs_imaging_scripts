@@ -35,29 +35,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-#try:
-#    import taskinit
-#    casa_enabled = True
-#except ImportError:
-#    casa_enabled = False
-#
-#if casa_enabled:
-#    logger.debug('casa_enabled = True')
-#    import casaVisRoutines as cvr
-#    reload(cvr) #<TODO><DEBUG>#
-#else:
-#    logger.debug('casa_enabled = False')
-#    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-#
-#import handlerTemplate
-#
-#try:
-#    import utilsFilenames as fnames
-#except ImportError:
-#    from phangsPipeline import utilsFilenames as fnames
-#
-## Spectral lines
-#import utilsLines as lines
+try:
+   import taskinit
+   casa_enabled = True
+except ImportError:
+   casa_enabled = False
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
