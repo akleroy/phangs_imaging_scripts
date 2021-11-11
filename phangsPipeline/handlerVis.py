@@ -36,7 +36,7 @@ logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
 try:
-    import taskinit
+    import casatasks
     casa_enabled = True
 except ImportError:
     casa_enabled = False
@@ -108,12 +108,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         to run the uv data processing. Toggle the parts of the loop
         using the do_XXX booleans. Other choices affect the algorithms
         used.
-        
+
         The strict_config option sets whether to require that a target has data
         from ALL arrays that make up the configuration (True) or not (False).
-        
-        The require_full_line_coverage option sets whether to require a measurement set 
-        to completely cover a given line's frequency range (True) or not (False). 
+
+        The require_full_line_coverage option sets whether to require a measurement set
+        to completely cover a given line's frequency range (True) or not (False).
         """
 
         if make_directories:
@@ -157,8 +157,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             obsnum = this_obsnum,
                             product = this_product,
                             timebin = timebin,
-                            require_full_line_coverage = require_full_line_coverage, 
-                            overwrite = overwrite, 
+                            require_full_line_coverage = require_full_line_coverage,
+                            overwrite = overwrite,
                             )
 
                     # Run custom processing. Not currently used.
@@ -218,7 +218,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             extra_ext_in = "",
                             contsub = "prefer",
                             # could add algorithm flags here
-                            require_full_line_coverage = require_full_line_coverage, 
+                            require_full_line_coverage = require_full_line_coverage,
                             overwrite = overwrite,
                             strict_config = strict_config,
                             )
@@ -226,13 +226,13 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         for this_target, this_product, this_config in \
                 self.looper(do_targets=True,do_products=True,do_configs=True,
                             just_cont=True,just_interf=True):
-            
+
                 # Same as above - check / revise
                 if strict_config:
                     self._kh.has_data_for_config(
                         target=this_target,
                         config=this_config,
-                        strict=True)                    
+                        strict=True)
 
                 if do_extract_cont:
 
@@ -293,7 +293,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = False,
             timebin = None,
             use_symlink = True,
-            require_full_line_coverage = False, 
+            require_full_line_coverage = False,
             overwrite = False,
             ):
         """
@@ -393,6 +393,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             if product in self._kh.get_continuum_products():
 
                 spw = cvr.find_spws_for_science(infile = infile)
+
+        print(argh)
 
         logger.info("... extracting spws :"+str(spw))
 
@@ -667,7 +669,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_statwt = True,
             edge_for_statwt = None,
             method = "regrid_then_rebin",
-            require_full_line_coverage = False, 
+            require_full_line_coverage = False,
             overwrite = False,
             strict_config = True,
             ):
@@ -825,7 +827,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 exact = exact,
                 overwrite = overwrite,
                 clear_pointing = False,
-                require_full_line_coverage = require_full_line_coverage, 
+                require_full_line_coverage = require_full_line_coverage,
                 )
 
             if do_statwt:
