@@ -43,32 +43,32 @@ sol_kms = 2.99792458e5
 ##########################################
 # Split, copy, combine measurement sets. #
 ##########################################
-    
+
 def copy_ms(
-    infile = None, 
-    outfile = None, 
-    use_symlink = True, 
-    overwrite = False, 
+    infile = None,
+    outfile = None,
+    use_symlink = True,
+    overwrite = False,
     ):
     """
     Copy a measurement set, optionally using symlink instead of
     actually copying.
     """
-        
+
     # Check inputs
 
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
-    
+
     if outfile is None:
         logging.error("Please specify outfile.")
         raise Exception("Please specify outfile.")
-    
+
     if not os.path.isdir(infile):
         logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')    
-     
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
+
     # Check for presence of existing outfile and abort if it is found
     # without overwrite permission.
 
@@ -83,29 +83,29 @@ def copy_ms(
         if os.path.islink(outfile+suffix):
             os.unlink(outfile+suffix)
             logger.debug('os.unlink "'+outfile+'"')
-            
+
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
 
     if use_symlink:
-        
+
         # Make links
-        
+
         if os.path.isdir(infile):
             os.symlink(infile, outfile)
             logger.debug('os.symlink "'+infile+'", "'+outfile+'"')
-            
+
         if os.path.isdir(infile+'.flagversions'):
             os.symlink(infile+'.flagversions', outfile+'.flagversions')
             logger.debug('os.symlink "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
-            
+
         # Check
-            
+
         if not os.path.islink(outfile):
             logger.error('Failed to link the uv data to '+os.path.abspath(outfile)+'!')
             logger.error('Please check your file system writing permission or system breaks.')
             raise Exception('Failed to link the uv data to the imaging directory.')
-        
+
         return()
 
     else:
@@ -124,7 +124,7 @@ def copy_ms(
                 if os.path.isdir(outfile+suffix):
                     shutil.rmtree(outfile+suffix)
                     logger.debug('shutil.rmtree "'+outfile+suffix+'"')
-                        
+
         # copy the data (.touch directory is a temporary flagpost)
 
         if not os.path.isdir(outfile+'.touch'):
@@ -139,10 +139,10 @@ def copy_ms(
             logger.debug('shutil.copytree "'+infile+'.flagversions'+'", "'+outfile+'.flagversions'+'"')
 
         if os.path.isdir(outfile+'.touch'):
-            os.rmdir(outfile+'.touch')            
-             
+            os.rmdir(outfile+'.touch')
+
         # check copied_file, make sure copying was done
-        
+
         if not os.path.isdir(outfile) or \
                 os.path.isdir(outfile+'.touch'):
             logger.error('Failed to copy the uv data to '+os.path.abspath(oufile)+'!')
@@ -154,60 +154,60 @@ def copy_ms(
     return()
 
 def split_science_targets(
-    infile = None, 
-    outfile = None, 
-    field = '', 
-    intent = 'OBSERVE_TARGET*', 
+    infile = None,
+    outfile = None,
+    field = '',
+    intent = 'OBSERVE_TARGET*',
     spw = '',
     timebin = '0s',
-    do_statwt = False, 
-    overwrite = False, 
+    do_statwt = False,
+    overwrite = False,
     ):
     """
     Split science targets from the input ALMA measurement set to form
     a new, science-only measurement set. Optionally reweight the data
-    using statwt. 
+    using statwt.
 
     Relatively thin wrapper to split that smooths out some things like
     handling of flagversions and which data tables to use.
-    
+
     Args:
 
     infile (str): The input measurement set data.
-    
+
     outfile (str): The output measurement set data.
 
     field, spw, intent (str): The field, spw, intent used for selection.
-                
+
     timebin: The time bin applied.
 
     overwrite (bool): Set to True to overwrite existing output
     data. The default is False, not overwriting anything.
-    
+
     Inputs:
 
     infile: ALMA measurement set data folder.
-    
+
     Outputs:
 
     outfile: ALMA measurement set data folder.
-    
+
     """
-        
+
     # Check inputs
 
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
-    
+
     if outfile is None:
         logging.error("Please specify outfile.")
         raise Exception("Please specify outfile.")
-    
+
     if not os.path.isdir(infile):
         logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
-        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')    
-     
+        raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
+
     # Check for presence of existing outfile and abort if it is found
     # without overwrite permission.
 
@@ -222,7 +222,7 @@ def split_science_targets(
         if os.path.islink(outfile+suffix):
             os.unlink(outfile+suffix)
             logger.debug('os.unlink "'+outfile+'"')
-            
+
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
 
@@ -231,7 +231,7 @@ def split_science_targets(
     logger.info("I will split out the data.")
     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
     logger.info("")
-        
+
     logger.info('Splitting from '+infile+' to '+outfile)
 
     # Verify the column to use. If present, we use the corrected
@@ -246,66 +246,66 @@ def split_science_targets(
         logger.info("Data lacks a CORRECTED column. Will use DATA column.")
         use_column = 'DATA'
     casaStuff.tb.close()
-        
+
     logger.info('... intent: '+intent)
     logger.info('... field: '+field)
     logger.info('... spw: '+spw)
-    
+
     if not os.path.isdir(outfile+'.touch'):
         os.mkdir(outfile+'.touch') # mark the beginning of our processing
-        
-    split_params = {'vis':infile, 'intent':intent, 'field':field, 'spw':spw, 
-                    'datacolumn':use_column, 'outputvis':outfile, 
+
+    split_params = {'vis':infile, 'intent':intent, 'field':field, 'spw':spw,
+                    'datacolumn':use_column, 'outputvis':outfile,
                     'keepflags':False, 'timebin':timebin}
-    
+
     logger.info("... running CASA "+'split('+', '.join("{!s}={!r}".format(k, split_params[k]) for k in split_params.keys())+')')
-    
+
     casaStuff.split(**split_params)
-    
+
     # Re-weight the data if desired.
-    
+
     if do_statwt:
         logger.info("Using statwt to re-weight the data.")
         statwt_params = {'vis':outfile, 'datacolumn':'DATA'}
         logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(k, statwt_params[k]) for k in statwt_params.keys())+')')
-        casaStuff.statwt(vis = outfile, 
+        casaStuff.statwt(vis = outfile,
                          datacolumn = 'DATA')
-    
+
     if os.path.isdir(outfile+'.touch'):
         os.rmdir(outfile+'.touch') # mark the end of our processing
 
     return()
 
 def concat_ms(
-    infile_list=None,  
-    outfile=None,  
+    infile_list=None,
+    outfile=None,
     freqtol='',
     dirtol='',
     copypointing=True,
-    overwrite = False, 
+    overwrite = False,
     ):
     """
     Concatenate a list of measurement sets into one measurement set. A
     thin wrapper to concat. Thin wrapper to concat. Might build out in
     the future.
-    
+
     Args:
-        infile_list (list or str): The input list of measurement sets. 
+        infile_list (list or str): The input list of measurement sets.
         outfile (str): The output measurement set data with suffix ".ms".
-    
+
     Inputs:
         infile: ALMA measurement set data folder.
-    
+
     Outputs:
         outfile: ALMA measurement set data folder.
-    
+
     """
     # Check inputs
 
     if infile_list is None:
         logging.error("Please specify infile_list.")
         raise Exception("Please specify infile_list.")
-    
+
     if outfile is None:
         logging.error("Please specify outfile.")
         raise Exception("Please specify outfile.")
@@ -313,13 +313,13 @@ def concat_ms(
     # make sure the input infile_list is a list
     if np.isscalar(infile_list):
         infile_list = [infile_list]
-    
+
     # check file existence
     for this_infile in infile_list:
         if not os.path.isdir(this_infile):
             logger.error('Error! The input measurement set "'+this_infile+'" not found')
             raise Exception('Error! The input measurement set "'+this_infile+'" not found')
-        
+
     # Quit if output data are present and overwrite is off.
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
@@ -336,12 +336,12 @@ def concat_ms(
     if freqtol is not None and freqtol != '': concat_params['freqtol'] = freqtol
     if dirtol is not None and dirtol != '': concat_params['dirtol'] = dirtol
     logger.info("... running CASA "+'concat('+', '.join("{!s}={!r}".format(k, concat_params[k]) for k in concat_params.keys())+')')
-    
+
     if not os.path.isdir(outfile+'.touch'):
         os.mkdir(outfile+'.touch') # mark the beginning of our processing
-    
+
     casaStuff.concat(**concat_params)
-    
+
     if os.path.isdir(outfile+'.touch'):
         os.rmdir(outfile+'.touch') # mark the end of our processing
 
@@ -352,26 +352,26 @@ def concat_ms(
 ##########################
 
 def contsub(
-    infile = None, 
+    infile = None,
     outfile = None,
     ranges_to_exclude = [],
     solint = 'int',
     fitorder = 0,
     combine = '',
-    overwrite = False, 
+    overwrite = False,
     ):
     """
     Carry out uv continuum subtraction on a measurement set. First
     figures out channels corresponding to spectral lines for a
     provided suite of bright lines.
     """
-        
+
     # Error and file existence checking
 
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
-    
+
     if outfile is None:
         outfile = infile+'.contsub'
 
@@ -394,7 +394,7 @@ def contsub(
     # find_spw_channels_for_lines
 
     spw_flagging_string = spw_string_for_freq_ranges(
-        infile = infile, 
+        infile = infile,
         freq_ranges_ghz = ranges_to_exclude,
         fail_on_empty = True,
         )
@@ -404,8 +404,8 @@ def contsub(
         return()
 
     # uvcontsub, this outputs infile+'.contsub'
-    
-    uvcontsub_params = {'vis':infile, 'fitspw':spw_flagging_string, 'excludechans':True, 'combine':combine, 
+
+    uvcontsub_params = {'vis':infile, 'fitspw':spw_flagging_string, 'excludechans':True, 'combine':combine,
                         'fitorder':fitorder, 'solint':solint, 'want_cont':False}
     logger.info("... running CASA "+'uvcontsub('+', '.join("{!s}={!r}".format(k, uvcontsub_params[k]) for k in uvcontsub_params.keys())+')')
 
@@ -426,13 +426,13 @@ def contsub(
 ##########################################################
 
 def find_spws_for_line(
-    infile = None, 
+    infile = None,
     line = None, restfreq_ghz = None,
     vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
     max_chanwidth_kms = None,
     require_data = False,
-    require_full_line_coverage = False, 
-    exit_on_error = True, 
+    require_full_line_coverage = False,
+    exit_on_error = True,
     as_list = False,
     ):
     """
@@ -443,7 +443,7 @@ def find_spws_for_line(
     """
 
     # Check inputs
-    
+
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
@@ -451,13 +451,13 @@ def find_spws_for_line(
     if line is None:
         logging.error("Please specify an input line.")
         raise Exception("Please specify an input line.")
-        
+
     # Verify file existence
 
     if not os.path.isdir(infile):
         logger.error('Error! The input uv data measurement set "'+infile+'"does not exist!')
         raise Exception('Error! The input uv data measurement set "'+infile+'"does not exist!')
- 
+
     # Get the line name and rest-frame frequency in the line_list
     # module for the input line
 
@@ -471,7 +471,7 @@ def find_spws_for_line(
     # Work out the frequencies at the line edes.
 
     line_low_ghz, line_high_ghz = \
-        lines.get_ghz_range_for_line(restfreq_ghz=restfreq_ghz, 
+        lines.get_ghz_range_for_line(restfreq_ghz=restfreq_ghz,
                                      vsys_kms=vsys_kms, vwidth_kms=vwidth_kms
                                      , vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
     logger.debug("... line: %s, line freq: %.6f - %.6f, rest-freq: %.6f"%(line, line_low_ghz, line_high_ghz, restfreq_ghz))
@@ -499,13 +499,13 @@ def find_spws_for_line(
     spw_list = []
     spw_lowest_ghz = None
     spw_highest_ghz = None
-    
+
     logger.debug("... vm = au.ValueMapping(infile) ...")
     vm = au.ValueMapping(infile)
     logger.debug("... vm = au.ValueMapping(infile) done")
 
     for this_spw in vm.spwInfo.keys():
-        
+
         spw_high_ghz = np.max(vm.spwInfo[this_spw]['edgeChannels'])/1e9
         spw_low_ghz = np.min(vm.spwInfo[this_spw]['edgeChannels'])/1e9
         logger.debug("... spw: %s, freq: %.6f - %.6f GHz"%(this_spw, spw_low_ghz, spw_high_ghz))
@@ -515,7 +515,7 @@ def find_spws_for_line(
 
         if spw_low_ghz > line_high_ghz:
             continue
-        
+
         if max_chanwidth_ghz is not None:
             spw_chanwidth_ghz = abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
             if spw_chanwidth_ghz > max_chanwidth_ghz:
@@ -526,12 +526,12 @@ def find_spws_for_line(
                 continue
 
         spw_list.append(this_spw)
-        
+
         if spw_lowest_ghz is None:
             spw_lowest_ghz = spw_low_ghz
         else:
             spw_lowest_ghz = min(spw_lowest_ghz, spw_low_ghz)
-        
+
         if spw_highest_ghz is None:
             spw_highest_ghz = spw_high_ghz
         else:
@@ -545,13 +545,13 @@ def find_spws_for_line(
         spw_list = []
         spw_list_string = None # can't be '', that selects all
     else:
-        
+
         # sort and remove duplicates
         spw_list = sorted(list(set(spw_list)))
 
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
-    
+
     # check if the spws in this measurement set completely covers the given line frequency range
     if not (spw_lowest_ghz <= line_low_ghz and spw_highest_ghz >= line_high_ghz):
         logger.warning('The spectral windows in this measurement set "%s" (%.6f -- %.6f) does not cover the full "%s" line frequency range (%.6f -- %.6f).'%(\
@@ -559,7 +559,7 @@ def find_spws_for_line(
         if require_full_line_coverage:
             spw_list = []
             spw_list_string = None # can't be '', that selects all
-    
+
     # return
     if as_list:
         return(spw_list)
@@ -567,9 +567,9 @@ def find_spws_for_line(
         return(spw_list_string)
 
 def find_spws_for_science(
-    infile = None, 
+    infile = None,
     require_data = False,
-    exit_on_error = True, 
+    exit_on_error = True,
     as_list = False,
     ):
     """
@@ -579,7 +579,7 @@ def find_spws_for_science(
     """
 
     # Check inputs
-    
+
     if infile is None:
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
@@ -595,11 +595,11 @@ def find_spws_for_science(
     spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET*')
     if spw_string is None or len(spw_string) == 0:
         spw_string = au.getScienceSpws(infile, intent = 'OBSERVE_TARGET#ON_SOURCE')
-    
+
     spw_list = []
     for this_spw_string in spw_string.split(','):
         spw_list.append(int(this_spw_string))
-    
+
     # Shouldn't get here, I think, because of the analysisUtils logic
 
     if require_data:
@@ -609,37 +609,37 @@ def find_spws_for_science(
             if len(vm.scansForSpw[spw]) == 0:
                 spw_list.remove(spw)
     # Return
-    
+
     if len(spw_list) == 0:
         logger.warning('No science spectral windows found.')
         spw_list_string = None # can't be '', that selects all
     else:
-        
+
         # sort and remove duplicates
         spw_list = sorted(list(set(spw_list)))
 
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
-     
+
     if as_list:
         return(spw_list)
     else:
         return(spw_list_string)
 
 def spw_string_for_freq_ranges(
-    infile = None, 
+    infile = None,
     freq_ranges_ghz = [],
     just_spw = [],
     complement = False,
     fail_on_empty = False,
     ):
     """
-    Given an input measurement set, return the spectral 
+    Given an input measurement set, return the spectral
     List the spectral window and channels corresponding to the input
     lines in the input ms data.  Galaxy system velocity (vsys) and
     velocity width (vwidth) in units of km/s are needed.
     """
-    
+
     # Check file existence
 
     if infile is None:
@@ -650,7 +650,7 @@ def spw_string_for_freq_ranges(
         logger.error('The input measurement set "'+infile+'"does not exist.')
         raise Exception('The input measurement set "'+infile+'"does not exist.')
 
-    # Make sure that we have a list 
+    # Make sure that we have a list
     if type(freq_ranges_ghz) != type([]):
         freq_ranges_ghz = [freq_ranges_ghz]
 
@@ -663,7 +663,7 @@ def spw_string_for_freq_ranges(
     spw_flagging_string = ''
     first_string = True
     for this_spw in vm.spwInfo:
-        
+
         if len(just_spw) > 0:
             if this_spw not in just_spw:
                 continue
@@ -674,20 +674,20 @@ def spw_string_for_freq_ranges(
         mask_axis = np.zeros_like(chan_axis,dtype='bool')
 
         for this_freq_range in freq_ranges_ghz:
-            
+
             low_freq_hz = this_freq_range[0]*1e9
             high_freq_hz = this_freq_range[1]*1e9
 
             ind = ((freq_axis-half_chan) >= low_freq_hz)*((freq_axis+half_chan) <= high_freq_hz)
             mask_axis[ind] = True
-            
+
         if complement:
-            mask_axis = np.invert(mask_axis) 
+            mask_axis = np.invert(mask_axis)
 
         if fail_on_empty:
             if np.sum(np.invert(mask_axis)) == 0:
                 return(None)
-        
+
         regions = (label(mask_axis))[0]
         max_reg = np.max(regions)
         for ii in range(1,max_reg+1):
@@ -700,31 +700,31 @@ def spw_string_for_freq_ranges(
                 first_string = False
             else:
                 spw_flagging_string += ','+this_spw_string
-        
+
     logger.info("... returning SPW selection string:")
     logger.info(spw_flagging_string)
-    
+
     return(spw_flagging_string)
 
 def compute_common_chanwidth(
-    infile_list = None, 
-    line = None, 
-    vsys_kms = None, 
-    vwidth_kms = None, 
-    vlow_kms = None, 
-    vhigh_kms = None, 
-    require_full_line_coverage = False, 
-    ): 
+    infile_list = None,
+    line = None,
+    vsys_kms = None,
+    vwidth_kms = None,
+    vlow_kms = None,
+    vhigh_kms = None,
+    require_full_line_coverage = False,
+    ):
     """
     Calculates the coarsest channel width among all spectral windows
     in the input measurement set that contain the input line.
-    
+
     Args:
-    
+
     Returns:
-    
+
     """
-        
+
     if infile_list is None:
         logging.error("Please specify one or more input files via infile_list.")
         Exception("Please specify one or more input files via infile_list.")
@@ -739,15 +739,15 @@ def compute_common_chanwidth(
     line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
         line=line_name, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
         vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
-    
+
     line_freq_ghz = (line_high_ghz+line_low_ghz)/2.0
 
     coarsest_channel = None
     for this_infile in infile_list:
         # Find spws for line
-        spw_list_string = find_spws_for_line(this_infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms, 
+        spw_list_string = find_spws_for_line(this_infile, line, vsys_kms = vsys_kms, vwidth_kms = vwidth_kms,
             require_full_line_coverage = require_full_line_coverage)
-        
+
         chan_widths_hz = au.getChanWidths(this_infile, spw_list_string)
 
         # Convert to km/s and return
@@ -777,8 +777,8 @@ def batch_extract_line(
     method = 'regrid_then_rebin',
     exact = False,
     freqtol = '',
-    clear_pointing = True, 
-    require_full_line_coverage = False, 
+    clear_pointing = True,
+    require_full_line_coverage = False,
     overwrite = False,
     ):
     """
@@ -793,13 +793,13 @@ def batch_extract_line(
 
     # Check existence of output data and abort if found and overwrite is off
 
-    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
             return()
 
     # Else, clear all previous files and temporary files
-    
+
     for suffix in ['', '.flagversions', '.touch', '.temp*']:
         if not (suffix.find('*') >= 0):
             if os.path.isdir(outfile+suffix):
@@ -810,7 +810,7 @@ def batch_extract_line(
                 if os.path.isdir(temp_outfile):
                     logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
                     shutil.rmtree(temp_outfile)
-    
+
     # Feed directly to generate an extraction scheme. This does a lot
     # of the error checking.
 
@@ -818,13 +818,13 @@ def batch_extract_line(
         infile_list = infile_list,
         target_chan_kms = target_chan_kms, method = method, exact = exact,
         restfreq_ghz = restfreq_ghz, line = line,
-        vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,        
+        vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
         )
 
     # Execute the extraction scheme
     split_file_list = []
     for this_infile in schemes.keys():
-        
+
         for this_spw in schemes[this_infile].keys():
             this_scheme = schemes[this_infile][this_spw]
 
@@ -837,7 +837,7 @@ def batch_extract_line(
             split_file_list.append(this_outfile)
 
             # Execute line extraction
-            
+
             del this_scheme['chan_width_kms']
             del this_scheme['chan_width_ghz']
             extract_line(**this_scheme)
@@ -859,19 +859,19 @@ def batch_extract_line(
         copy_pointing = False
     else:
         copy_pointing = True
-    
+
     concat_ms(
         infile_list = split_file_list,
         outfile = outfile,
         overwrite = overwrite,
-        freqtol = freqtol, 
+        freqtol = freqtol,
         copypointing = copy_pointing)
 
     # Clean up, deleting intermediate files
 
     for this_file in split_file_list:
         shutil.rmtree(this_file)
-    
+
     return()
 
 def choose_common_res(
@@ -903,15 +903,15 @@ def suggest_extraction_scheme(
     """
 
     # Check inputs
-    
+
     if infile_list is None:
         logging.error("Please specify a list of infiles.")
         raise Exception("Please specify a list of infiles.")
 
     # make sure the input infile_list is a list
-    
+
     if np.isscalar(infile_list):
-        infile_list = [infile_list]    
+        infile_list = [infile_list]
 
     # Require a valid method choice
 
@@ -927,7 +927,7 @@ def suggest_extraction_scheme(
         if line is None:
             logging.error("Specify a line name or provide a rest frequency in GHz.")
             raise Exception("No rest frequency specified.")
-        
+
         restfreq_ghz = (lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
 
     # Work out the frequencies at the line edes.
@@ -935,7 +935,7 @@ def suggest_extraction_scheme(
     line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
         restfreq_ghz=restfreq_ghz,  vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
         vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
-    
+
     line_freq_ghz = 0.5*(line_low_ghz+line_high_ghz)
 
     # ----------------------------------------------------------------
@@ -949,27 +949,27 @@ def suggest_extraction_scheme(
     for this_infile in infile_list:
 
         vm = au.ValueMapping(this_infile)
-        
+
         spw_list = vm.spwInfo.keys()
-        
+
         scheme[this_infile] = {}
 
         for this_spw in spw_list:
 
-            if len(vm.scansForSpw[this_spw]) == 0: 
+            if len(vm.scansForSpw[this_spw]) == 0:
                 continue
-            
+
             chan_width_ghz = np.abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
 
             # Using RADIO convention:
             chan_width_kms = chan_width_ghz/restfreq_ghz * sol_kms
             # using the old relative convention was this (can delete eventually)
-            #chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms 
+            #chan_width_kms = chan_width_ghz/line_freq_ghz * sol_kms
 
             if chan_width_kms > target_chan_kms:
                 logger.warning("Channel too big for SPW "+str(this_spw))
                 continue
-            
+
             chan_width_list.append(chan_width_kms)
             this_binfactor = int(np.floor(target_chan_kms/chan_width_kms))
             binfactor_list.append(this_binfactor)
@@ -987,7 +987,7 @@ def suggest_extraction_scheme(
             scheme[this_infile][this_spw]['vsys_kms'] = vsys_kms
             scheme[this_infile][this_spw]['vwidth_kms'] = vwidth_kms
 
-            # Record method information            
+            # Record method information
             scheme[this_infile][this_spw]['method'] = method
             scheme[this_infile][this_spw]['binfactor'] = this_binfactor
             scheme[this_infile][this_spw]['target_chan_kms'] = None
@@ -999,7 +999,7 @@ def suggest_extraction_scheme(
     # ----------------------------------------------------------------
     # Figure out the strategy
     # ----------------------------------------------------------------
-    
+
     # ... for rebinning, just do the naive division of floor(target / current)
     if method == 'just_rebin':
         return(scheme)
@@ -1013,7 +1013,7 @@ def suggest_extraction_scheme(
                 else:
                     # Could revise this ... not positive of the correct choice
                     scheme[this_infile][this_spw]['target_chan_kms'] = target_chan_kms
-    
+
     # ... for rebin-then-regrid, first rebin by the naive amount. Then
     # regrid either to the final value (if exact) or to a common
     # resolution determined by the actual channels and rebinnning.
@@ -1032,7 +1032,7 @@ def suggest_extraction_scheme(
                     #print("binfactor_list: ", binfactor_list)
                     #print("common res/target channel: ", common_res)
 
-    # ... for regrid-then-rebin        
+    # ... for regrid-then-rebin
 
     if method == 'regrid_then_rebin':
         for this_infile in scheme.keys():
@@ -1055,23 +1055,23 @@ def suggest_extraction_scheme(
     # Return
 
     return(scheme)
-    
+
 def extract_line(
-    infile = None, 
-    outfile = None, 
+    infile = None,
+    outfile = None,
     spw = None,
     restfreq_ghz = None,
-    line = 'co21', 
+    line = 'co21',
     vlow_kms = None,
     vhigh_kms = None,
     vsys_kms = None,
-    vwidth_kms = None, 
+    vwidth_kms = None,
     method = 'regrid_then_rebin',
     target_chan_kms = None,
     nchan = None,
     binfactor = None,
-    require_full_line_coverage = False, 
-    overwrite = False, 
+    require_full_line_coverage = False,
+    overwrite = False,
     ):
     """
     Line extraction routine. Takes infile, outfile, line of interest,
@@ -1079,7 +1079,7 @@ def extract_line(
     """
 
     # Check the method
-    
+
     valid_methods = ['regrid_then_rebin','rebin_then_regrid','just_regrid','just_rebin']
     if method.lower().strip() not in valid_methods:
         logger.error("Not a valid line extraction medod - "+str(method))
@@ -1101,7 +1101,7 @@ def extract_line(
 
     # Check existence of output data and abort if found and overwrite is off
 
-    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
             return()
@@ -1120,11 +1120,11 @@ def extract_line(
                 if os.path.isdir(temp_outfile):
                     logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
                     shutil.rmtree(temp_outfile)
-    
+
     # Create touch file to mark that we are processing this data
     if not os.path.isdir(outfile+'.touch'):
         os.mkdir(outfile+'.touch')
-    
+
     # Get the line name and rest-frame frequency in the line_list
     # module for the input line.
 
@@ -1136,7 +1136,7 @@ def extract_line(
         restfreq_ghz = (lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
 
     # Handle velocity windows, etc.
-            
+
     if vsys_kms is None and vwidth_kms is None:
         if vlow_kms is not None and vhigh_kms is not None:
             vsys_kms = 0.5*(vhigh_kms+vlow_kms)
@@ -1162,7 +1162,7 @@ def extract_line(
         spw_list = find_spws_for_line(
             infile = line, restfreq_ghz = restfreq_ghz,
             vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
-            require_data = True, require_full_line_coverage = require_full_line_coverage, 
+            require_data = True, require_full_line_coverage = require_full_line_coverage,
             exit_on_error = True, as_list = True,
             )
         if spw_list is None or len(spw_list) == 0:
@@ -1177,7 +1177,7 @@ def extract_line(
     # ............................................
     # Initialize the calls
     # ............................................
-        
+
     if method == 'just_regrid' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
 
@@ -1190,11 +1190,11 @@ def extract_line(
         regrid_params, regrid_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
             vstart_kms=vstart_kms, vwidth_kms=vwidth_kms,
-            target_chan_kms=target_chan_kms, nchan=nchan, 
-            method='regrid', 
+            target_chan_kms=target_chan_kms, nchan=nchan,
+            method='regrid',
             require_full_line_coverage=require_full_line_coverage,
             )
-                               
+
     if method == 'just_rebin' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
 
@@ -1202,14 +1202,14 @@ def extract_line(
 
         rebin_params, rebin_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
-            binfactor=binfactor, method='rebin', 
+            binfactor=binfactor, method='rebin',
             require_full_line_coverage=require_full_line_coverage,
             )
 
     if multiple_spws:
         combine_params, combine_msg =  build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
-            method='combine', 
+            method='combine',
             require_full_line_coverage=require_full_line_coverage,
             )
 
@@ -1264,7 +1264,7 @@ def extract_line(
         else:
             this_params['vis'] = outfile+'.temp%d'%(kk)
             this_params['outputvis'] = outfile+'.temp%d'%(kk+1)
-         
+
         if os.path.isdir(this_params['outputvis']):
             shutil.rmtree(this_params['outputvis'])
         #if os.path.isdir(this_params['outputvis']+'.touch'):
@@ -1279,19 +1279,19 @@ def extract_line(
         logger.info("... "+this_msg)
 
         # in the case where we are in subsequent split, we expect a
-        # single SPW and to use the data column. 
+        # single SPW and to use the data column.
 
         if kk > 0:
             this_params['spw']=''
             this_params['datacolumn']='DATA'
-        
+
         logger.info("... running CASA "+'mstransform('+', '.join("{!s}={!r}".format(t, this_params[t]) for t in this_params.keys())+')')
 
         if not os.path.isdir(this_params['outputvis']+'.touch'):
             os.mkdir(this_params['outputvis']+'.touch') # mark the beginning of our processing
-        
+
         casaStuff.mstransform(**this_params)
-        
+
         if os.path.isdir(this_params['outputvis']+'.touch') and this_params['outputvis'] != outfile:
             os.rmdir(this_params['outputvis']+'.touch') # mark the end of our processing
 
@@ -1307,16 +1307,16 @@ def extract_line(
             for suffix in ['.temp%d'%(kk), '.temp%d.flagversions'%(kk), '.temp%d.touch'%(kk)]:
                 if os.path.isdir(outfile+suffix):
                     shutil.rmtree(outfile+suffix)
-    
+
     # Remove touch file to mark that we are have done the processing of this data
     if os.path.isdir(outfile+'.touch'):
         os.rmdir(outfile+'.touch')
-    
+
     return()
 
 def build_mstransform_call(
-    infile = None, 
-    outfile = None, 
+    infile = None,
+    outfile = None,
     restfreq_ghz = None,
     spw = None,
     vstart_kms = None,
@@ -1326,14 +1326,14 @@ def build_mstransform_call(
     target_chan_kms = None,
     nchan = None,
     binfactor = None,
-    require_full_line_coverage = False, 
-    overwrite = False, 
+    require_full_line_coverage = False,
+    overwrite = False,
     ):
-    """    
+    """
     Extract a spectral line from a measurement set and regrid onto a
     new velocity grid with the desired spacing. There are some minor
     subtleties here related to regridding and rebinning.
-    
+
     """
 
     # ............................................
@@ -1346,7 +1346,7 @@ def build_mstransform_call(
     if method.lower().strip() not in valid_methods:
         logger.error("Not a valid line extraction medod - "+str(method))
         raise Exception("Please specify a valid line extraction method.")
-    
+
     # Check input
 
     if infile is None:
@@ -1359,7 +1359,7 @@ def build_mstransform_call(
 
     # If not supplied by the user, find which SPWs should be included
     # in the processing.
-    
+
     if spw is None:
         if restfreq_ghz is not None:
             spw = find_spws_for_line(
@@ -1393,17 +1393,17 @@ def build_mstransform_call(
     # ............................................
 
     params = {'vis': infile, 'outputvis': outfile, 'datacolumn':datacolumn,
-              'spw': spw, 
+              'spw': spw,
               }
 
     # ............................................
     # Regridding
     # ............................................
-    
+
     if method == 'regrid':
 
         # Check that we are provided a rest frequency or line name
-        
+
         if restfreq_ghz is None:
             logger.error("Please specify a rest frequency in GHz.")
             raise Exception("No rest frequency specified.")
@@ -1413,9 +1413,9 @@ def build_mstransform_call(
 
         if vstart_kms is None:
             logger.error("Please specify a starting velocity in km/s.")
-            raise Exception("No starting velocity specified.")        
+            raise Exception("No starting velocity specified.")
         start_vel_string =  ("{:12.8f}".format(vstart_kms)+'km/s').strip()
-        
+
         # Check that we have a velocity width
 
         if vwidth_kms is None:
@@ -1426,12 +1426,12 @@ def build_mstransform_call(
                 vwidth_kms = nchan*target_chan_kms
 
         # Figure out the current channel spacing
-        
+
         line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
-            restfreq_ghz=restfreq_ghz, 
+            restfreq_ghz=restfreq_ghz,
             vlow_kms=vstart_kms, vhigh_kms=vstart_kms+vwidth_kms)
         line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
-        
+
         max_chan_ghz = np.max(np.abs(au.getChanWidths(infile, spw)))/1e9
 
         # Using RADIO velocity convention:
@@ -1439,7 +1439,7 @@ def build_mstransform_call(
 
         # Old approach using the relative/high-z convention was:
         #current_chan_kms = max_chan_ghz/line_freq_ghz*sol_kms
-        
+
         skip_width = False
         if target_chan_kms is None:
             logger.warning('Target channel not set. Using current channel.')
@@ -1457,13 +1457,13 @@ def build_mstransform_call(
 
         if nchan is None:
             nchan = int(np.max(np.ceil(vwidth_kms / target_chan_kms)))
-        
+
         params.update(
             {'combinespws': False, 'regridms': True, 'chanaverage': False,
-             'mode': 'velocity', 'interpolation': 'cubic', 
-             'outframe': 'lsrk', 'veltype': 'radio', 'restfreq': restfreq_string, 
+             'mode': 'velocity', 'interpolation': 'cubic',
+             'outframe': 'lsrk', 'veltype': 'radio', 'restfreq': restfreq_string,
              'start': start_vel_string, 'nchan': nchan, 'width': chanwidth_string })
-                      
+
         if skip_width:
             del params['width']
 
@@ -1472,10 +1472,10 @@ def build_mstransform_call(
     # ............................................
     # Rebin
     # ............................................
-        
+
     if method == 'rebin':
 
-        params.update({'combinespws': False, 'regridms': False, 'chanaverage' : True, 
+        params.update({'combinespws': False, 'regridms': False, 'chanaverage' : True,
                        'chanbin': binfactor })
 
         if binfactor == 1:
@@ -1486,28 +1486,28 @@ def build_mstransform_call(
     # ............................................
     # Combine SPWs
     # ............................................
-    
+
     if method == 'combine':
-        
-        params.update({'combinespws': True, 'regridms': False, 'chanaverage' : False, 
+
+        params.update({'combinespws': True, 'regridms': False, 'chanaverage' : False,
                        'keepflags': False })
-        
+
         message = '... combine attempting to merge spectral windows.'
 
     return(params, message)
 
 def reweight_data(
-    infile = None, 
+    infile = None,
     edge_kms = None,
     edge_chans = None,
-    overwrite = False, 
+    overwrite = False,
     datacolumn = None,
     ):
     """
     Use statwt to empirically re-weight data (mostly for
     lines). Accepts an "edge" definition in either channels or km/s.
     """
-    
+
     # Check input
 
     if infile is None:
@@ -1560,7 +1560,7 @@ def reweight_data(
                 logger.warning("... be aware that (only) statwt uses the high-z velocity convention.")
                 logger.warning("... the rest of the pipleine uses radio convention.")
                 mean_chanwidth_kms = spw_chanwidth_ghz/mean_freq_ghz*sol_kms
-                
+
                 edge_chans = int(np.ceil(edge_kms / mean_chanwidth_kms))
 
             nchan = vm.spwInfo[this_spw]['numChannels']
@@ -1586,9 +1586,9 @@ def reweight_data(
             if first:
                 exclude_str += str(this_spw)+':'+str(low)+'~'+str(high)
                 first=False
-            else:                
+            else:
                 exclude_str += ','+str(this_spw)+':'+str(low)+'~'+str(high)
-    
+
     if exclude_str != '':
         logger.info("... running statwt with exclusion: "+exclude_str)
 
@@ -1600,25 +1600,25 @@ def reweight_data(
             excludechans = False
         else:
             excludechans = True
-        statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                         'statalg': 'classic', 'datacolumn': datacolumn, 
+        statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw',
+                         'statalg': 'classic', 'datacolumn': datacolumn,
                          'fitspw': exclude_str, 'excludechans': excludechans}
     else:
         # CASA version <= 5.4.1
-        statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw', 
-                         'statalg': 'classic', 'datacolumn': datacolumn, 
+        statwt_params = {'vis': infile, 'timebin': '0.001s', 'slidetimebin': False, 'chanbin': 'spw',
+                         'statalg': 'classic', 'datacolumn': datacolumn,
                          'excludechans': exclude_str}
-    
+
     # Run the call
     if not os.path.isdir(infile+'.touch'):
         os.mkdir(infile+'.touch') # no overwrite checks here
-    
+
     logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
-    
+
     casaStuff.statwt(**statwt_params)
-    
+
     logger.info("... statwt done")
-    
+
     if os.path.isdir(infile+'.touch'):
         os.rmdir(infile+'.touch') # no overwrite checks here
 
@@ -1633,10 +1633,10 @@ def batch_extract_continuum(
     outfile = None,
     ranges_to_exclude = [],
     lines_to_flag = [],
-    vsys_kms=None, vwidth_kms=None, 
-    vlow_kms=None, vhigh_kms=None,    
-    do_statwt = False, 
-    do_collapse = True, 
+    vsys_kms=None, vwidth_kms=None,
+    vlow_kms=None, vhigh_kms=None,
+    do_statwt = False,
+    do_collapse = True,
     clear_pointing = True,
     overwrite = False,
     ):
@@ -1652,7 +1652,7 @@ def batch_extract_continuum(
 
     # Check existence of output data and abort if found and overwrite is off
 
-    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+    if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
             return()
@@ -1668,13 +1668,13 @@ def batch_extract_continuum(
                 if os.path.isdir(temp_outfile):
                     shutil.rmtree(temp_outfile)
                     logger.debug('... shutil.rmtree(%r)'%(temp_outfile))
-    
+
     # Create touch file to mark that we are processing this data
     if not os.path.isdir(outfile+'.touch'):
         os.mkdir(outfile+'.touch')
-    
-    # 
-    
+
+    #
+
     split_file_list = []
     for this_infile in infile_list:
 
@@ -1682,17 +1682,17 @@ def batch_extract_continuum(
         this_outfile = this_infile+'.temp_cont'
 
         split_file_list.append(this_outfile)
-        
+
         extract_continuum(
-            infile = this_infile, 
-            outfile = this_outfile, 
+            infile = this_infile,
+            outfile = this_outfile,
             ranges_to_exclude = ranges_to_exclude,
             lines_to_flag = lines_to_flag,
-            vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, 
-            vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,    
+            vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+            vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
             do_statwt = do_statwt,
-            do_collapse = do_collapse, 
-            overwrite = overwrite, 
+            do_collapse = do_collapse,
+            overwrite = overwrite,
             )
 
         # Deal with pointing table - testing shows it to be a
@@ -1708,7 +1708,7 @@ def batch_extract_continuum(
         copy_pointing = False
     else:
         copy_pointing = True
-    
+
     # ... concat
 
     concat_ms(
@@ -1716,9 +1716,9 @@ def batch_extract_continuum(
         outfile = outfile,
         overwrite = overwrite,
         copypointing = copy_pointing)
-    
+
     # ... statwt
-    
+
     #if do_statwt:
     #    statwt_params = {'vis':outfile, 'timebin':'0.001s', 'slidetimebin':False, 'chanbin':'spw', 'statalg':'classic'}
     #    logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
@@ -1728,45 +1728,45 @@ def batch_extract_continuum(
 
     for this_file in split_file_list:
         shutil.rmtree(this_file)
-    
+
     # Remove touch file to mark that we are have done the processing of this data
     if os.path.isdir(outfile+'.touch'):
         os.rmdir(outfile+'.touch')
-    
+
     return()
 
 ########################################
 # Extract a continuum measurement set. #
 ########################################
-                      
+
 def extract_continuum(
-    infile = None, 
-    outfile = None, 
-    ranges_to_exclude = [],    
+    infile = None,
+    outfile = None,
+    ranges_to_exclude = [],
     lines_to_flag = [],
-    vsys_kms=None, vwidth_kms=None, 
-    vlow_kms=None, vhigh_kms=None,    
-    do_statwt = False, 
-    do_collapse = True, 
-    overwrite = False, 
+    vsys_kms=None, vwidth_kms=None,
+    vlow_kms=None, vhigh_kms=None,
+    do_statwt = False,
+    do_collapse = True,
+    overwrite = False,
     ):
     """
     Extract continuum uv data from a measurement set. Optionally
     reweights and collapses the data to a single channel per spw.
-        
+
     Args:
-    
+
     infile (str): The input measurement set data with suffix ".ms".
     outfile (str): The output measurement set data with suffix ".ms".
-    do_statwt (bool): 
+    do_statwt (bool):
     do_collapse (bool): Always True to produce the single-channel continuum data.
-    
+
     Inputs:
-    
+
     Outputs:
-    
+
     """
-    
+
     # Check input
 
     if infile is None:
@@ -1782,7 +1782,7 @@ def extract_continuum(
         raise Exception('The input measurement set "'+infile+'"does not exist.')
 
     # Check existing output data
-    
+
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning('Found existing output data "'+outfile+'", will not overwrite it.')
@@ -1792,20 +1792,20 @@ def extract_continuum(
     # use those. If not but we do have line and velocity data, use
     # those to generate frequency ranges to flag.
 
-    if len(ranges_to_exclude) == 0 and len(lines_to_flag) > 0: 
+    if len(ranges_to_exclude) == 0 and len(lines_to_flag) > 0:
         vsys_method = (vsys_kms is not None) and (vwidth_kms is not None)
         vlow_method = (vlow_kms is not None) and (vhigh_kms is not None)
 
         if vsys_method or vlow_method:
             ranges_to_exclude = lines.get_ghz_range_for_list(
-                line_list=lines_to_exclude, 
+                line_list=lines_to_exclude,
                 vsys_kms=vsys, vwidth_kms=vwidth, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
 
     # if overwrite, then delete existing output data.
 
     for suffix in ['', '.flagversions', '.touch',
-                   '.temp', '.temp.flagversions', 
-                   '.temp_copy', '.temp_copy.flagversions', 
+                   '.temp', '.temp.flagversions',
+                   '.temp_copy', '.temp_copy.flagversions',
                    ]:
         if os.path.isdir(outfile+suffix):
             shutil.rmtree(outfile+suffix)
@@ -1813,13 +1813,13 @@ def extract_continuum(
     # find_spw_channels_for_provided frequency ranges
 
     spw_flagging_string = spw_string_for_freq_ranges(
-        infile = infile, 
+        infile = infile,
         freq_ranges_ghz = ranges_to_exclude,
         fail_on_empty = True,
         )
 
     # Make a copy of the data
-    
+
     if not os.path.isdir(outfile+'.touch'):
         os.mkdir(outfile+'.touch')
     shutil.copytree(infile, outfile)
@@ -1872,12 +1872,12 @@ def extract_continuum(
 
     if do_collapse:
         logger.info("... Collapsing each continuum SPW to a single channel.")
-        
+
         if os.path.isdir(outfile):
             shutil.move(outfile, outfile+'.temp_copy')
         if os.path.isdir(outfile+'.flagversions'):
             shutil.move(outfile+'.flagversions', outfile+'.temp_copy'+'.flagversions')
-        
+
         if not os.path.isdir(outfile+'.touch'):
             os.mkdir(outfile+'.touch')
 
@@ -1919,16 +1919,16 @@ def noise_spectrum(
     start_chan=None,
     stop_chan=None):
     """
-    Calculates the u-v based noise spectrum and returns it as an array. 
+    Calculates the u-v based noise spectrum and returns it as an array.
     """
-    
+
     # This function is not used for now.
-    
+
     if vis == None:
         return None
-    
+
     # Note the number of channels in SPW 0
-    
+
     vm = au.ValueMapping(vis)
     nchan = vm.spwInfo[0]['numChannels']
     spec = np.zeros(nchan)
@@ -1948,7 +1948,7 @@ def noise_spectrum(
             logger.debug("Skipping channel.")
             continue
         spec[ii] = result[result.keys()[0]][stat_name]
-        
+
     return spec
 
 

@@ -35,16 +35,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-try:
-    import casatasks
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
     from . import casaVisRoutines as cvr
-    reload(cvr) #<TODO><DEBUG>#
+    # reload(cvr) #<TODO><DEBUG>#
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -393,8 +390,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             if product in self._kh.get_continuum_products():
 
                 spw = cvr.find_spws_for_science(infile = infile)
-
-        print(argh)
 
         logger.info("... extracting spws :"+str(spw))
 

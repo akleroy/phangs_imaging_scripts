@@ -9,7 +9,11 @@ import glob, copy, inspect
 import logging
 
 import numpy as np
-import pyfits  # CASA has pyfits, not astropy
+
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
@@ -653,7 +657,7 @@ def clean_loop(
             threshold_string = '0.0Jy/beam'
 
         working_call.set_param('threshold', threshold_string, nowarning=True)
-        
+
         logger.info("Loop %d, niter %d, cycleniter %d, cumulative_niter %d, threshold %s."%(\
             loop, niter, cycleniter, cumulative_niter, threshold_string))
 
@@ -788,7 +792,7 @@ def calc_residual_statistics(
     ):
     """
     """
-    
+
     if os.path.isdir(resid_name) == False:
         logger.error('Error! The input file "'+resid_name+'" was not found!')
         return
@@ -796,15 +800,15 @@ def calc_residual_statistics(
     if os.path.isdir(mask_name) == False:
         logger.error('Error! The input file "'+mask_name+'" was not found!')
         return
-    
+
     myia = au.createCasaTool(casaStuff.iatool)
 
     myia.open(mask_name)
-    mask = myia.getchunk()    
+    mask = myia.getchunk()
     myia.close()
 
     myia.open(resid_name)
-    resid = myia.getchunk()    
+    resid = myia.getchunk()
     myia.close()
 
     vec = resid[((mask == 1)*np.isfinite(resid))]
@@ -814,7 +818,7 @@ def calc_residual_statistics(
     current_noise = cmr.noise_for_cube(
         infile=resid_name,
         method='chauvmad', niter=5)
-    
+
     out_dict = {
         'cubename':resid_name,
         'maskname':mask_name,
@@ -824,7 +828,7 @@ def calc_residual_statistics(
         'p90':np.percentile(vec,90),
         'noise':current_noise,
         }
-    
+
     return(out_dict)
-    
-    
+
+
