@@ -50,12 +50,13 @@ from . import handlerTemplate
 
 try:
     import astropy
-    has_astropy = True
+    import spectral_cube
+    has_astropy_speccube = True
 except ImportError:
     logger.debug("astropy not installed.")
-    has_astropy = False
+    has_astropy_speccube = False
 
-if has_astropy:
+if has_astropy_speccube:
     import astropy.units as u
     from astropy.io import fits
     from astropy.wcs import WCS
