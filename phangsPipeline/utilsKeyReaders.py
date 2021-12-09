@@ -539,6 +539,13 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_list':[]
                 }
             
+        if this_type == "singledish_config":
+            expected_params = {
+                'bl_order':1,
+                'chan_dv_kms':2.5,
+                'do_step':[]
+                }
+
         if this_type == "line_product":
             expected_params = {
                 'line_tag':'',
