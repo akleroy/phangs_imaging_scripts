@@ -24,6 +24,7 @@ Last modifications:
                 are not needed for Cycle 7 data. 
   - 01.07.2021: Adapted to phangs alma pipeline, renamed the code as casaSingleDishRoutines, by D. Liu.
   - 02.07.2021: Trying to adapt for CASA 5, renamed the code as casaSingleDishNewRoutines, by D. Liu.
+  - 14.12.2021: Debugging NGC253 2019.2.* singledish processing. D. Liu.
 
 Still need to do (probably outdated):
   - Work on errors when files are not found, where asdm import did not work fine, etc.
@@ -78,8 +79,25 @@ import tarfile
 import imp
 
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+#logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
+class custom_logger(): #<20211214>#
+    def __init__(self, name, level = logging.DEBUG):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(level)
+        this_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        this_filehandler = logging.FileHandler("casaSingleDishRoutines-%s.log"%(datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
+        this_filehandler.setFormatter(this_formatter)
+        self.logger.addHandler(this_filehandler)
+    def info(self, msg, *args, **kwargs):
+        self.logger.info(msg, *args, **kwargs)
+    def debug(self, msg, *args, **kwargs):
+        self.logger.debug(msg, *args, **kwargs)
+    def warning(self, msg, *args, **kwargs):
+        self.logger.warning(msg, *args, **kwargs)
+    def error(self, msg, *args, **kwargs):
+        self.logger.error(msg, *args, **kwargs)
+logger = custom_logger(__name__) #<20211214>#
 
 # Analysis utilities
 import analysisUtils as au
@@ -765,25 +783,45 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
         if not (os.path.exists(filename0) and os.path.isfile(filename0+'.copied.from.txt')):
             cp_data_dir(path_raw+filename0+'.asdm.sdm', filename0, log_copied_from = True)
         
-        if precycle7:
+        # get alma cycle
+        cycle_str = au.surmiseCycleFromASDM(filename0)
+        logger.info("Getting ALMA Cycle number for the input ASDM %r: %s"%(filename0, cycle_str))
+        try:
+            cycle = int(cycle_str)
+        except:
+            cycle = int(cycle_str.split(',')[0])
+        if not (cycle > 0):
+            raise Exception('Error! Incorrect ALMA Cycle number is deduced from the ASDM data? `au.surmiseCycleFromASDM(filename0)` returns %r'%(cycle_str))
+
+        #if precycle7: #<20211213>#
+        if cycle <= 2:
+            # according to https://casaguides.nrao.edu/index.php?title=M100_Band3_SingleDish_5.7 
+            # for cycle <= 2, we need to run importasdm bdfflags=False then run
+            # $CASAPATH//bin/bdflags2MS -f "COR DELA INT MIS SIG SYN TFB WVR ZER" filename0 filename.ms
             bdfflags=False
         else:
             bdfflags=True
         
         logger.info('Running CASA importasdm: '+filename0+' -> '+filename)
+        #applyflags = False #<20211213># now we directly apply flags when importing the ASDM data.
+        applyflags = True #<TODO># 
         casaStuff.importasdm(filename0, 
-            asis='Antenna Station Receiver Source CalAtmosphere CalWVR CorrelatorMode SBSummary', 
+            asis='Antenna Station Receiver Source Feed CalAtmosphere CalWVR CorrelatorMode SBSummary', #<20211213># adding Feed 
             bdfflags=bdfflags, 
+            applyflags=applyflags, 
             process_caldevice=False, 
             with_pointing_correction=True)
         
-        if precycle7 and precasa5:
+        #if precycle7 and precasa5: #<20211213>#
+        if cycle <= 2:
             
             # Transfer specific flags (BDF flags) from the ADSM to the MS file
             logger.info(os.environ['CASAPATH'].split()[0]+'/bin/bdflags2MS -f "COR DELA INT MIS SIG SYN TFB WVR ZER" '+filename0+' '+filename)
             os.system(os.environ['CASAPATH'].split()[0]+'/bin/bdflags2MS -f "COR DELA INT MIS SIG SYN TFB WVR ZER" '+filename0+' '+filename)
             
             # Check for known issue, CSV-2555: Inconsistency in FIELD_ID, SOURCE_ID and Spw_ID in single dish data
+            # According to https://safe.nrao.edu/wiki/bin/view/ALMA/HowToRunThePipeline
+            # es.fixforCSV2555: for Cy2 data taken during a certain period of time
             es.fixForCSV2555(filename)
         
         # 1.2 Listobs
@@ -796,22 +834,59 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
         
         if doplots == True: 
             logger.info("Running au.getTPSampling, saving plots to "+'plots/'+filename+'.sampling.png')
+            # need to make sure mymsmd.timesforintent(intent) returns obs scan times
+            intent = ''
+            pickFirstRaster = True
+            if au.casadef.casa_version < '4.3.0': #<20211213># in analysisUtils.py def getTPSampling, the intent is needed
+                pass
+            else:
+                mymsmd = au.createCasaTool(casaStuff.msmdtool)
+                mymsmd.open(filename)
+                if len(mymsmd.timesforintent('OBSERVE_TARGET*')) > 0:
+                    intent = 'OBSERVE_TARGET*'
+                elif len(mymsmd.timesforintent('OBSERVE_TARGET#ON_SOURCE')) > 0:
+                    intent = 'OBSERVE_TARGET#ON_SOURCE'
+                else:
+                    raise Exception('Error! Could not get times by calling ' + "mymsmd.timesforintent('OBSERVE_TARGET*')" + '')
+                onSourceTimes = mymsmd.timesforintent(intent)
+                #nantennas = mymsmd.nantennas()
+                #antennanames = mymsmd.antennanames(range(nantennas))
+                mytb  = au.createCasaTool(casaStuff.tbtool)
+                mytb.open(filename+'/POINTING')
+                alltimes = mytb.getcol('TIME')
+                antenna_ids = mytb.getcol('ANTENNA_ID')
+                mytb.close()
+                antenna = 0
+                matches = np.where(antenna_ids == antenna)[0]
+                times = alltimes[matches]
+                idx1_ignoreOffPosition = np.nonzero(np.in1d(times, onSourceTimes))
+                if len(idx1_ignoreOffPosition) == 0:
+                    pickFirstRaster = False
+                elif len(idx1_ignoreOffPosition[0]) == 0:
+                    pickFirstRaster = False
+                mymsmd.close()
+                print('pickFirstRaster: ' + str(pickFirstRaster))
+            pickFirstRaster = False
+            # 
             au.getTPSampling(vis = filename, 
-            showplot = True, 
-            plotfile = 'plots/'+filename+'.sampling.png')
+            showplot = True,
+            plotfile = 'plots/'+filename+'.sampling.png', 
+            intent = intent, 
+            pickFirstRaster = pickFirstRaster)
         
         # 1.3 A priori flagging: e.g., mount is off source, calibration device is not in correct position, power levels are not optimized, WCA not loaded...
         logger.info("1.3 Applying a priori flagging, check plots/"+filename+".flagcmd.png plot to see these flags.")
-        casaStuff.flagcmd(vis = filename,
-            inpmode = 'table',
-            useapplied = True,
-            action = 'plot',
-            plotfile = 'plots/'+filename+'.flagcmd.png')
-        
-        casaStuff.flagcmd(vis = filename,
-            inpmode = 'table',
-            useapplied = True,
-            action = 'apply')
+        if not applyflags:
+            casaStuff.flagcmd(vis = filename,
+                inpmode = 'table',
+                useapplied = True,
+                action = 'plot',
+                plotfile = 'plots/'+filename+'.flagcmd.png')
+            
+            casaStuff.flagcmd(vis = filename,
+                inpmode = 'table',
+                useapplied = True,
+                action = 'apply')
         
         # mark the current running as finished by deleting the *.touch directory
         os.rmdir(filename+'.touch')

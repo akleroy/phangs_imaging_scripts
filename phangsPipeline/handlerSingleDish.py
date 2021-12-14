@@ -158,22 +158,24 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         name_line = line_name.upper() + '_%.0fkmsres'%(max_chanwidth_kms)
         
         # copy raw data over
-        path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_'+target + os.sep
+        path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_' + target + extra_ext_out + os.sep
         path_galaxy = os.path.abspath(path_galaxy) + os.sep
         input_raw_data = os.path.abspath(input_raw_data) + os.sep
+        input_raw_datadir = os.path.abspath(input_raw_data) + os.sep # os.path.dirname(os.path.dirname(input_raw_data)) + os.sep
         if not os.path.isdir(path_galaxy):
             os.makedirs(path_galaxy)
         for dir_to_copy in ['calibration', 'raw', 'script', 'qa']:
+            # check the target processing directory, if it exists and contains less files than the input (probably due to failed copying) then we delete it.
             if os.path.isdir(os.path.join(path_galaxy, dir_to_copy)):
-                input_raw_data_files = glob.glob(os.path.join(input_raw_data, dir_to_copy))
+                input_raw_data_files = glob.glob(os.path.join(input_raw_datadir, dir_to_copy))
                 copied_raw_data_files = glob.glob(os.path.join(path_galaxy, dir_to_copy))
                 if len(input_raw_data_files) > len(copied_raw_data_files):
                     logger.info("  cleaning up: "+str(os.path.join(path_galaxy, dir_to_copy)))
                     shutil.rmtree(glob.glob(os.path.join(path_galaxy, dir_to_copy)))
             if not os.path.isdir(os.path.join(path_galaxy, dir_to_copy)):
-                logger.info("  copying raw data: "+str(os.path.join(input_raw_data, dir_to_copy)))
+                logger.info("  copying raw data: "+str(os.path.join(input_raw_datadir, dir_to_copy)))
                 logger.info("  to processing dir: "+str(os.path.join(path_galaxy, dir_to_copy)))
-                shutil.copytree(os.path.join(input_raw_data, dir_to_copy), \
+                shutil.copytree(os.path.join(input_raw_datadir, dir_to_copy), \
                                 os.path.join(path_galaxy, dir_to_copy))
         
         kwargs = {}
