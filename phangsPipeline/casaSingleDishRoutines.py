@@ -794,17 +794,19 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
             raise Exception('Error! Incorrect ALMA Cycle number is deduced from the ASDM data? `au.surmiseCycleFromASDM(filename0)` returns %r'%(cycle_str))
 
         #if precycle7: #<20211213>#
-        if cycle <= 2:
-            # according to https://casaguides.nrao.edu/index.php?title=M100_Band3_SingleDish_5.7 
+        if cycle < 7:
+            # According to https://casaguides.nrao.edu/index.php?title=M100_Band3_SingleDish_5.7 
             # for cycle <= 2, we need to run importasdm bdfflags=False then run
             # $CASAPATH//bin/bdflags2MS -f "COR DELA INT MIS SIG SYN TFB WVR ZER" filename0 filename.ms
+            # 
+            # Here we do this for all cycle < 7 data?
             bdfflags=False
+            applyflags=False
         else:
             bdfflags=True
+            applyflags=True #<20211213># now we directly apply flags when importing the ASDM data.
         
         logger.info('Running CASA importasdm: '+filename0+' -> '+filename)
-        #applyflags = False #<20211213># now we directly apply flags when importing the ASDM data.
-        applyflags = True #<TODO># 
         casaStuff.importasdm(filename0, 
             asis='Antenna Station Receiver Source Feed CalAtmosphere CalWVR CorrelatorMode SBSummary', #<20211213># adding Feed 
             bdfflags=bdfflags, 
@@ -813,7 +815,8 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
             with_pointing_correction=True)
         
         #if precycle7 and precasa5: #<20211213>#
-        if cycle <= 2:
+        # do we need precasa5? does casa6 still has $CASAPATH/bin/bdflags2MS?
+        if cycle < 7:
             
             # Transfer specific flags (BDF flags) from the ADSM to the MS file
             logger.info(os.environ['CASAPATH'].split()[0]+'/bin/bdflags2MS -f "COR DELA INT MIS SIG SYN TFB WVR ZER" '+filename0+' '+filename)
@@ -834,12 +837,22 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
         
         if doplots == True: 
             logger.info("Running au.getTPSampling, saving plots to "+'plots/'+filename+'.sampling.png')
-            # need to make sure mymsmd.timesforintent(intent) returns obs scan times
+            # Running au.getTPSampling could be problematic.
+            # We need to make sure mymsmd.timesforintent(intent) returns obs scan times, 
+            # because it is used in au.getTPSampling. 
+            # In CASA 5.4 or some version the wildcard in intent does not work somehow, 
+            # so we have to specify intent = 'OBSERVE_TARGET#ON_SOURCE'
+            # In au.getTPSampling function, there is an if au.casadef.casa_version < '4.3.0', 
+            # in that case, the mymsmd.timesforintent(intent) is not called, so 
+            # we also do this 'if'. 
             intent = ''
             pickFirstRaster = True
-            if au.casadef.casa_version < '4.3.0': #<20211213># in analysisUtils.py def getTPSampling, the intent is needed
+            if au.casadef.casa_version < '4.3.0': #<20211213># same as in analysisUtils.py def getTPSampling, we do this 'if'
                 pass
             else:
+                # To make sure analysisUtils.py getTPSampling function can call mymsmd.timesforintent(intent) correctly, 
+                # we need to input a correct intent. 
+                # We just try to call mymsmd.timesforintent(intent) to see which intent string can return a non-zero list. 
                 mymsmd = au.createCasaTool(casaStuff.msmdtool)
                 mymsmd.open(filename)
                 if len(mymsmd.timesforintent('OBSERVE_TARGET*')) > 0:
@@ -848,6 +861,13 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
                     intent = 'OBSERVE_TARGET#ON_SOURCE'
                 else:
                     raise Exception('Error! Could not get times by calling ' + "mymsmd.timesforintent('OBSERVE_TARGET*')" + '')
+                # There is also a 'pickFirstRaster' parameter which is used in analysisUtils.py getTPSampling. 
+                # When it is True, analysisUtils.py getTPSampling will try to compute an 'idx1_ignoreOffPosition', 
+                # but it does not check if it will be empty or not, and directly raise Exception. 
+                # So here we have to check 'idx1_ignoreOffPosition' in advance and set 'pickFirstRaster' properly. 
+                # TODO: Can we just set 'pickFirstRaster' to False? What's the meaning of this parameter? 
+                # Note that all these stuff related to au.getTPSampling is just about plotting. If we do not do plotting, 
+                # then these stuff are meaningless. 
                 onSourceTimes = mymsmd.timesforintent(intent)
                 #nantennas = mymsmd.nantennas()
                 #antennanames = mymsmd.antennanames(range(nantennas))
@@ -869,10 +889,10 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
             pickFirstRaster = False
             # 
             au.getTPSampling(vis = filename, 
-            showplot = True,
-            plotfile = 'plots/'+filename+'.sampling.png', 
-            intent = intent, 
-            pickFirstRaster = pickFirstRaster)
+                showplot = True,
+                plotfile = 'plots/'+filename+'.sampling.png', 
+                intent = intent, 
+                pickFirstRaster = pickFirstRaster)
         
         # 1.3 A priori flagging: e.g., mount is off source, calibration device is not in correct position, power levels are not optimized, WCA not loaded...
         logger.info("1.3 Applying a priori flagging, check plots/"+filename+".flagcmd.png plot to see these flags.")
