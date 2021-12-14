@@ -161,7 +161,11 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_' + target + extra_ext_out + os.sep
         path_galaxy = os.path.abspath(path_galaxy) + os.sep
         input_raw_data = os.path.abspath(input_raw_data) + os.sep
-        input_raw_datadir = os.path.abspath(input_raw_data) + os.sep # os.path.dirname(os.path.dirname(input_raw_data)) + os.sep
+        input_raw_datadir = os.path.abspath(input_raw_data) + os.sep
+        # We want the input directory '.*/science.*/group.*/member.*' where sub-directories ['calibration', 'raw', 'script', 'qa'] are in it. 
+        # If the user inputs a path to the Measurement Set in the 'calibration' sub-directory, then we strip the path. 
+        if re.match('.*/science.*/group.*/member.*/calibration/uid___.*', input_raw_data):
+            input_raw_datadir = os.path.dirname(os.path.dirname(input_raw_data)) + os.sep
         if not os.path.isdir(path_galaxy):
             os.makedirs(path_galaxy)
         for dir_to_copy in ['calibration', 'raw', 'script', 'qa']:
