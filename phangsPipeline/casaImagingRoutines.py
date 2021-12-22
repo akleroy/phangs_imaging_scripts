@@ -2,7 +2,7 @@
 Standalone routines related to CASA imaging.
 """
 
-#region Imports and definitions
+# region Imports and definitions
 
 import os
 import glob, copy, inspect
@@ -27,20 +27,21 @@ from .clean_call import CleanCall
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-#endregion
+
+# endregion
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to set up imaging
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-#region Setting up imaging
+# region Setting up imaging
 
 def estimate_cell_and_imsize(
-    infile=None,
-    clean_call=None,
-    oversamp=5,
-    force_square=False,
-    ):
+        infile=None,
+        clean_call=None,
+        oversamp=5,
+        force_square=False,
+):
     """
     Pick a cell and image size for a measurement set. Requests an
     oversampling factor, which is by default 5. Will pick a good size
@@ -50,7 +51,7 @@ def estimate_cell_and_imsize(
     """
 
     if not os.path.isdir(infile):
-        logger.error('Error! The input file "'+infile+'" was not found!')
+        logger.error('Error! The input file "' + infile + '" was not found!')
         return
 
     # If supplied, use the clean call to determine pblevel
@@ -66,7 +67,7 @@ def estimate_cell_and_imsize(
     for ii in range(10):
         for kk in range(3):
             for jj in range(3):
-                valid_sizes.append(2 ** (ii+1) * 5 ** jj * 3 ** kk)
+                valid_sizes.append(2 ** (ii + 1) * 5 ** jj * 3 ** kk)
     valid_sizes = sorted(valid_sizes)
     valid_sizes = np.array(valid_sizes)
 
@@ -79,23 +80,23 @@ def estimate_cell_and_imsize(
                                                 intent='',
                                                 pblevel=pblevel,
                                                 )
-    xextent = au_cellsize*au_imsize[0]*1.2
-    yextent = au_cellsize*au_imsize[1]*1.2
+    xextent = au_cellsize * au_imsize[0] * 1.2
+    yextent = au_cellsize * au_imsize[1] * 1.2
 
     # Make the cell size a nice round number
 
     if au_cellsize < 0.1:
         cell_size = au_cellsize
     elif 0.1 <= au_cellsize < 0.5:
-        cell_size = np.floor(au_cellsize/0.05)*0.05
+        cell_size = np.floor(au_cellsize / 0.05) * 0.05
     elif 0.5 <= au_cellsize < 1.0:
-        cell_size = np.floor(au_cellsize/0.1)*0.1
+        cell_size = np.floor(au_cellsize / 0.1) * 0.1
     elif 1.0 <= au_cellsize < 2.0:
-        cell_size = np.floor(au_cellsize/0.25)*0.25
+        cell_size = np.floor(au_cellsize / 0.25) * 0.25
     elif 2.0 <= au_cellsize < 5.0:
-        cell_size = np.floor(au_cellsize/0.5)*0.5
+        cell_size = np.floor(au_cellsize / 0.5) * 0.5
     else:
-        cell_size = np.floor(au_cellsize/1.0)*0.5
+        cell_size = np.floor(au_cellsize / 1.0) * 0.5
 
     # Now make the image size a good number for the FFT
 
@@ -115,21 +116,22 @@ def estimate_cell_and_imsize(
             cells_x = cells_y
 
     image_size = [int(cells_x), int(cells_y)]
-    cell_size_string = str(cell_size)+'arcsec'
+    cell_size_string = str(cell_size) + 'arcsec'
 
     return cell_size_string, image_size
 
-#endregion
+
+# endregion
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Routines to set manipulate files associated with imaging
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-#region Input and output of imaging products
+# region Input and output of imaging products
 
 def wipe_imaging(
-    image_root=None,
-    ):
+        image_root=None,
+):
     """
     Wipe files associated with a cube or continuum imaging. Tries to
     delete all images and supporting products, including the output of
@@ -139,56 +141,57 @@ def wipe_imaging(
     if image_root == None:
         return
 
-    logger.debug('wipe_imaging under "'+os.getcwd()+'"')
+    logger.debug('wipe_imaging under "' + os.getcwd() + '"')
     cmd_list = [
-        'rm -rf '+image_root+'.image',
-        'rm -rf '+image_root+'.model',
-        'rm -rf '+image_root+'.mask',
-        'rm -rf '+image_root+'.pb',
-        'rm -rf '+image_root+'.psf',
-        'rm -rf '+image_root+'.residual',
-        'rm -rf '+image_root+'.weight',
-        'rm -rf '+image_root+'.sumwt',
-        'rm -rf '+image_root+'.alpha',
-        'rm -rf '+image_root+'.alpha.error',
-        'rm -rf '+image_root+'.beta',
-        'rm -rf '+image_root+'.beta.error',
-        'rm -rf '+image_root+'.image.tt0',
-        'rm -rf '+image_root+'.image.tt1',
-        'rm -rf '+image_root+'.image.tt2',
-        'rm -rf '+image_root+'.model.tt0',
-        'rm -rf '+image_root+'.model.tt1',
-        'rm -rf '+image_root+'.model.tt2',
-        'rm -rf '+image_root+'.mask.tt0',
-        'rm -rf '+image_root+'.mask.tt1',
-        'rm -rf '+image_root+'.mask.tt2',
-        'rm -rf '+image_root+'.pb.tt0',
-        'rm -rf '+image_root+'.pb.tt1',
-        'rm -rf '+image_root+'.pb.tt2',
-        'rm -rf '+image_root+'.psf.tt0',
-        'rm -rf '+image_root+'.psf.tt1',
-        'rm -rf '+image_root+'.psf.tt2',
-        'rm -rf '+image_root+'.residual.tt0',
-        'rm -rf '+image_root+'.residual.tt1',
-        'rm -rf '+image_root+'.residual.tt2',
-        'rm -rf '+image_root+'.weight.tt0',
-        'rm -rf '+image_root+'.weight.tt1',
-        'rm -rf '+image_root+'.weight.tt2',
-        'rm -rf '+image_root+'.sumwt.tt0',
-        'rm -rf '+image_root+'.sumwt.tt1',
-        'rm -rf '+image_root+'.sumwt.tt2',
-        ]
+        'rm -rf ' + image_root + '.image',
+        'rm -rf ' + image_root + '.model',
+        'rm -rf ' + image_root + '.mask',
+        'rm -rf ' + image_root + '.pb',
+        'rm -rf ' + image_root + '.psf',
+        'rm -rf ' + image_root + '.residual',
+        'rm -rf ' + image_root + '.weight',
+        'rm -rf ' + image_root + '.sumwt',
+        'rm -rf ' + image_root + '.alpha',
+        'rm -rf ' + image_root + '.alpha.error',
+        'rm -rf ' + image_root + '.beta',
+        'rm -rf ' + image_root + '.beta.error',
+        'rm -rf ' + image_root + '.image.tt0',
+        'rm -rf ' + image_root + '.image.tt1',
+        'rm -rf ' + image_root + '.image.tt2',
+        'rm -rf ' + image_root + '.model.tt0',
+        'rm -rf ' + image_root + '.model.tt1',
+        'rm -rf ' + image_root + '.model.tt2',
+        'rm -rf ' + image_root + '.mask.tt0',
+        'rm -rf ' + image_root + '.mask.tt1',
+        'rm -rf ' + image_root + '.mask.tt2',
+        'rm -rf ' + image_root + '.pb.tt0',
+        'rm -rf ' + image_root + '.pb.tt1',
+        'rm -rf ' + image_root + '.pb.tt2',
+        'rm -rf ' + image_root + '.psf.tt0',
+        'rm -rf ' + image_root + '.psf.tt1',
+        'rm -rf ' + image_root + '.psf.tt2',
+        'rm -rf ' + image_root + '.residual.tt0',
+        'rm -rf ' + image_root + '.residual.tt1',
+        'rm -rf ' + image_root + '.residual.tt2',
+        'rm -rf ' + image_root + '.weight.tt0',
+        'rm -rf ' + image_root + '.weight.tt1',
+        'rm -rf ' + image_root + '.weight.tt2',
+        'rm -rf ' + image_root + '.sumwt.tt0',
+        'rm -rf ' + image_root + '.sumwt.tt1',
+        'rm -rf ' + image_root + '.sumwt.tt2',
+    ]
 
     for this_cmd in cmd_list:
         logger.debug(this_cmd)
-        os.system(this_cmd+' 2>/dev/null')
+        os.system(this_cmd + ' 2>/dev/null')
 
-    return()
+    return ()
+
 
 def copy_imaging(
-    input_root=None,
-    output_root=None,
-    wipe_first=True):
+        input_root=None,
+        output_root=None,
+        wipe_first=True):
     """
     Copy all of the files from a cube or continuum imaging output by
     clean to have a new root name. Most commonly used to make a backup
@@ -200,92 +203,93 @@ def copy_imaging(
     if wipe_first:
         wipe_imaging(output_root)
 
-    logger.debug('Copying imaging from root '+input_root+' to root '+output_root)
+    logger.debug('Copying imaging from root ' + input_root + ' to root ' + output_root)
     cmd_list = [
-        'cp -r '+input_root+'.image '+output_root+'.image',
-        'cp -r '+input_root+'.model '+output_root+'.model',
-        'cp -r '+input_root+'.residual '+output_root+'.residual',
-        'cp -r '+input_root+'.mask '+output_root+'.mask',
-        'cp -r '+input_root+'.pb '+output_root+'.pb',
-        'cp -r '+input_root+'.psf '+output_root+'.psf',
-        'cp -r '+input_root+'.weight '+output_root+'.weight',
-        'cp -r '+input_root+'.sumwt '+output_root+'.sumwt',
-        'cp -r '+input_root+'.alpha '+output_root+'.alpha',
-        'cp -r '+input_root+'.alpha.error '+output_root+'.alpha.error',
-        'cp -r '+input_root+'.beta '+output_root+'.beta',
-        'cp -r '+input_root+'.beta.error '+output_root+'.beta.error',
-        'cp -r '+input_root+'.image.tt0 '+output_root+'.image.tt0',
-        'cp -r '+input_root+'.image.tt1 '+output_root+'.image.tt1',
-        'cp -r '+input_root+'.image.tt2 '+output_root+'.image.tt2',
-        'cp -r '+input_root+'.model.tt0 '+output_root+'.model.tt0',
-        'cp -r '+input_root+'.model.tt1 '+output_root+'.model.tt1',
-        'cp -r '+input_root+'.model.tt2 '+output_root+'.model.tt2',
-        'cp -r '+input_root+'.residual.tt0 '+output_root+'.residual.tt0',
-        'cp -r '+input_root+'.residual.tt1 '+output_root+'.residual.tt1',
-        'cp -r '+input_root+'.residual.tt2 '+output_root+'.residual.tt2',
-        'cp -r '+input_root+'.mask.tt0 '+output_root+'.mask.tt0',
-        'cp -r '+input_root+'.mask.tt1 '+output_root+'.mask.tt1',
-        'cp -r '+input_root+'.mask.tt2 '+output_root+'.mask.tt2',
-        'cp -r '+input_root+'.pb.tt0 '+output_root+'.pb.tt0',
-        'cp -r '+input_root+'.pb.tt1 '+output_root+'.pb.tt1',
-        'cp -r '+input_root+'.pb.tt2 '+output_root+'.pb.tt2',
-        'cp -r '+input_root+'.psf.tt0 '+output_root+'.psf.tt0',
-        'cp -r '+input_root+'.psf.tt1 '+output_root+'.psf.tt1',
-        'cp -r '+input_root+'.psf.tt2 '+output_root+'.psf.tt2',
-        'cp -r '+input_root+'.weight.tt0 '+output_root+'.weight.tt0',
-        'cp -r '+input_root+'.weight.tt1 '+output_root+'.weight.tt1',
-        'cp -r '+input_root+'.weight.tt2 '+output_root+'.weight.tt2',
-        'cp -r '+input_root+'.sumwt.tt0 '+output_root+'.sumwt.tt0',
-        'cp -r '+input_root+'.sumwt.tt1 '+output_root+'.sumwt.tt1',
-        'cp -r '+input_root+'.sumwt.tt2 '+output_root+'.sumwt.tt2',
-        ]
+        'cp -r ' + input_root + '.image ' + output_root + '.image',
+        'cp -r ' + input_root + '.model ' + output_root + '.model',
+        'cp -r ' + input_root + '.residual ' + output_root + '.residual',
+        'cp -r ' + input_root + '.mask ' + output_root + '.mask',
+        'cp -r ' + input_root + '.pb ' + output_root + '.pb',
+        'cp -r ' + input_root + '.psf ' + output_root + '.psf',
+        'cp -r ' + input_root + '.weight ' + output_root + '.weight',
+        'cp -r ' + input_root + '.sumwt ' + output_root + '.sumwt',
+        'cp -r ' + input_root + '.alpha ' + output_root + '.alpha',
+        'cp -r ' + input_root + '.alpha.error ' + output_root + '.alpha.error',
+        'cp -r ' + input_root + '.beta ' + output_root + '.beta',
+        'cp -r ' + input_root + '.beta.error ' + output_root + '.beta.error',
+        'cp -r ' + input_root + '.image.tt0 ' + output_root + '.image.tt0',
+        'cp -r ' + input_root + '.image.tt1 ' + output_root + '.image.tt1',
+        'cp -r ' + input_root + '.image.tt2 ' + output_root + '.image.tt2',
+        'cp -r ' + input_root + '.model.tt0 ' + output_root + '.model.tt0',
+        'cp -r ' + input_root + '.model.tt1 ' + output_root + '.model.tt1',
+        'cp -r ' + input_root + '.model.tt2 ' + output_root + '.model.tt2',
+        'cp -r ' + input_root + '.residual.tt0 ' + output_root + '.residual.tt0',
+        'cp -r ' + input_root + '.residual.tt1 ' + output_root + '.residual.tt1',
+        'cp -r ' + input_root + '.residual.tt2 ' + output_root + '.residual.tt2',
+        'cp -r ' + input_root + '.mask.tt0 ' + output_root + '.mask.tt0',
+        'cp -r ' + input_root + '.mask.tt1 ' + output_root + '.mask.tt1',
+        'cp -r ' + input_root + '.mask.tt2 ' + output_root + '.mask.tt2',
+        'cp -r ' + input_root + '.pb.tt0 ' + output_root + '.pb.tt0',
+        'cp -r ' + input_root + '.pb.tt1 ' + output_root + '.pb.tt1',
+        'cp -r ' + input_root + '.pb.tt2 ' + output_root + '.pb.tt2',
+        'cp -r ' + input_root + '.psf.tt0 ' + output_root + '.psf.tt0',
+        'cp -r ' + input_root + '.psf.tt1 ' + output_root + '.psf.tt1',
+        'cp -r ' + input_root + '.psf.tt2 ' + output_root + '.psf.tt2',
+        'cp -r ' + input_root + '.weight.tt0 ' + output_root + '.weight.tt0',
+        'cp -r ' + input_root + '.weight.tt1 ' + output_root + '.weight.tt1',
+        'cp -r ' + input_root + '.weight.tt2 ' + output_root + '.weight.tt2',
+        'cp -r ' + input_root + '.sumwt.tt0 ' + output_root + '.sumwt.tt0',
+        'cp -r ' + input_root + '.sumwt.tt1 ' + output_root + '.sumwt.tt1',
+        'cp -r ' + input_root + '.sumwt.tt2 ' + output_root + '.sumwt.tt2',
+    ]
 
     for this_cmd in cmd_list:
         logger.debug(this_cmd)
-        os.system(this_cmd+' 2>/dev/null')
+        os.system(this_cmd + ' 2>/dev/null')
+
 
 def export_imaging_to_fits(
-    image_root=None,
-    bitpix=-32,
-    just_image=False):
+        image_root=None,
+        bitpix=-32,
+        just_image=False):
     """
     Export the products associated with a CASA imaging run to FITS.
     """
 
     ext_map = {
-        '.alpha':'_alpha.fits',
-        '.alpha.error':'_alpha_error.fits',
-        '.beta':'_beta.fits',
-        '.beta.error':'_beta_error.fits',
-        '.image.tt0':'.fits',
-        '.image.tt1':'_tt1.fits',
-        '.image.tt2':'_tt2.fits',
-        '.model.tt0':'_model.fits',
-        '.model.tt1':'_model_tt1.fits',
-        '.model.tt2':'_model_tt2.fits',
-        '.residual.tt0':'_residual.fits',
-        '.residual.tt1':'_residual_tt1.fits',
-        '.residual.tt2':'_residual_tt2.fits',
-        '.mask.tt0':'_mask.fits',
-        '.mask.tt1':'_mask_tt1.fits',
-        '.mask.tt2':'_mask_tt2.fits',
-        '.pb.tt0':'_pb.fits',
-        '.pb.tt1':'_pb_tt1.fits',
-        '.pb.tt2':'_pb_tt2.fits',
-        '.psf.tt0':'_psf.fits',
-        '.psf.tt1':'_psf_tt1.fits',
-        '.psf.tt2':'_psf_tt2.fits',
-        '.weight.tt0':'_weight.fits',
-        '.weight.tt1':'_weight_tt1.fits',
-        '.weight.tt2':'_weight_tt2.fits',
-        '.image':'.fits',
-        '.model':'_model.fits',
-        '.residual':'_residual.fits',
-        '.mask':'_mask.fits',
-        '.pb':'_pb.fits',
-        '.psf':'_psf.fits',
-        '.weight':'_weight.fits',
-        }
+        '.alpha': '_alpha.fits',
+        '.alpha.error': '_alpha_error.fits',
+        '.beta': '_beta.fits',
+        '.beta.error': '_beta_error.fits',
+        '.image.tt0': '.fits',
+        '.image.tt1': '_tt1.fits',
+        '.image.tt2': '_tt2.fits',
+        '.model.tt0': '_model.fits',
+        '.model.tt1': '_model_tt1.fits',
+        '.model.tt2': '_model_tt2.fits',
+        '.residual.tt0': '_residual.fits',
+        '.residual.tt1': '_residual_tt1.fits',
+        '.residual.tt2': '_residual_tt2.fits',
+        '.mask.tt0': '_mask.fits',
+        '.mask.tt1': '_mask_tt1.fits',
+        '.mask.tt2': '_mask_tt2.fits',
+        '.pb.tt0': '_pb.fits',
+        '.pb.tt1': '_pb_tt1.fits',
+        '.pb.tt2': '_pb_tt2.fits',
+        '.psf.tt0': '_psf.fits',
+        '.psf.tt1': '_psf_tt1.fits',
+        '.psf.tt2': '_psf_tt2.fits',
+        '.weight.tt0': '_weight.fits',
+        '.weight.tt1': '_weight_tt1.fits',
+        '.weight.tt2': '_weight_tt2.fits',
+        '.image': '.fits',
+        '.model': '_model.fits',
+        '.residual': '_residual.fits',
+        '.mask': '_mask.fits',
+        '.pb': '_pb.fits',
+        '.psf': '_psf.fits',
+        '.weight': '_weight.fits',
+    }
 
     for this_ext in ext_map.keys():
         if just_image and ((this_ext != '.tt0') and this_ext != '.image'):
@@ -299,26 +303,27 @@ def export_imaging_to_fits(
             continue
         fits_image = image_root + this_fits_ext
 
-        logger.debug('exportfits from '+casa_image+' to '+fits_image)
+        logger.debug('exportfits from ' + casa_image + ' to ' + fits_image)
         casaStuff.exportfits(imagename=casa_image,
                              fitsimage=fits_image,
                              velocity=True, overwrite=True, dropstokes=True,
                              dropdeg=True, bitpix=bitpix)
 
-    return()
+    return ()
 
-#endregion
+
+# endregion
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Execute a clean call
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-#region clean call execution
+# region clean call execution
 
 def execute_clean_call(
-    clean_call = None,
-    reset = False,
-    ):
+        clean_call=None,
+        reset=False,
+):
     """
     Execute a clean call object, optionally deleting previous versions
     of the imaging first.
@@ -338,13 +343,13 @@ def execute_clean_call(
         logger.error("No imagename defined in clean_call. Returning.")
         return
 
-    #<TODO><DEBUG><DL># this will not overwrite existing data
-    #if os.path.isdir(clean_call.get_param('imagename')+'.image') and not os.path.isdir(clean_call.get_param('imagename')+'.image'+'.touch'):
+    # <TODO><DEBUG><DL># this will not overwrite existing data
+    # if os.path.isdir(clean_call.get_param('imagename')+'.image') and not os.path.isdir(clean_call.get_param('imagename')+'.image'+'.touch'):
     #    logger.info('Found existing data "'+clean_call.get_param('imagename')+'.image'+'". Will not overwrite.')
     #    return
 
     if not os.path.isdir(clean_call.get_param('vis')):
-        logger.error("Visibility file not found: "+clean_call.get_param('vis'))
+        logger.error("Visibility file not found: " + clean_call.get_param('vis'))
         return
 
     if clean_call.logfile != None:
@@ -355,16 +360,15 @@ def execute_clean_call(
         logger.debug("Wiping previous versions of the cube.")
         wipe_imaging(clean_call.get_param('imagename'))
 
-
     # a simple way to slightly solve the compatible issue is to check
     # the list of expected_kwargs and only return keys inside it.
-    logger.debug("Running CASA "+str(clean_call))
+    logger.debug("Running CASA " + str(clean_call))
     clean_kwargs = clean_call.kwargs_for_clean()
     expected_kwargs = inspect.getargspec(casaStuff.tclean)[0]
-    active_kwargs = {} # kwarg dict
+    active_kwargs = {}  # kwarg dict
     if expected_kwargs is not None:
-        missing_kwargs = [] # list
-        unused_kwargs = [] # list
+        missing_kwargs = []  # list
+        unused_kwargs = []  # list
         for k in expected_kwargs:
             if k in clean_kwargs:
                 active_kwargs[k] = clean_kwargs[k]
@@ -374,9 +378,10 @@ def execute_clean_call(
             if not (k in expected_kwargs):
                 unused_kwargs.append(k)
         if len(unused_kwargs) > 0:
-            logger.warning('Unused key arguments for clean: '+str(unused_kwargs))
+            logger.warning('Unused key arguments for clean: ' + str(unused_kwargs))
         if len(missing_kwargs) > 0:
-            logger.warning('Missing key arguments for clean: '+str(missing_kwargs)+'. Caution that CASA will use some default values depending on the CASA version.')
+            logger.warning('Missing key arguments for clean: ' + str(
+                missing_kwargs) + '. Caution that CASA will use some default values depending on the CASA version.')
     else:
         active_kwargs = copy.deepcopy(clean_kwargs)
 
@@ -388,30 +393,31 @@ def execute_clean_call(
         if active_kwargs['pblimit'] > active_kwargs['pbmask']:
             active_kwargs['pbmask'] = active_kwargs['pblimit']
 
-    #print(active_kwargs)
+    # print(active_kwargs)
 
-    #os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
+    # os.mkdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
     casaStuff.tclean(**active_kwargs)
-    #os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
+    # os.rmdir(clean_call.get_param('imagename')+'.image'+'.touch') #<TODO><DEBUG><DL>#
 
     if clean_call.logfile != None:
         casaStuff.casalog.setlogfile(oldlogfile)
 
     return
 
-#endregion
+
+# endregion
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Run a clean call with NITER=0 to make a dirty image
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 def make_dirty_image(
-    clean_call = None,
-    ):
+        clean_call=None,
+):
     """
     Create a dirty image using the provided clean call. Forces number
-    of iterations to zero before excuting the clean call and enforces
-    psf and residual caculation but otherwise leaves the clean_call
+    of iterations to zero before executing the clean call and enforces
+    psf and residual calculation but otherwise leaves the clean_call
     unchanged. Making a dirty image also forces a reset, wiping any
     previous version of the imaging. Avoids mutating the clean_call.
     """
@@ -423,12 +429,12 @@ def make_dirty_image(
     dirty_clean_call = copy.deepcopy(clean_call)
 
     dirty_clean_call.set_param('niter', 0)
-    dirty_clean_call.set_param('calcres',True)
-    dirty_clean_call.set_param('calcpsf',True)
+    dirty_clean_call.set_param('calcres', True)
+    dirty_clean_call.set_param('calcpsf', True)
 
     execute_clean_call(dirty_clean_call, reset=True)
 
-    return()
+    return ()
 
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -436,13 +442,13 @@ def make_dirty_image(
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 def eval_niter(
-    loopnum=1,
-    baseval=10,
-    model='geometric',
-    factor=2.0,
-    saturation=1000,
-    other_input=None,
-    ):
+        loopnum=1,
+        baseval=10,
+        model='geometric',
+        factor=2.0,
+        saturation=1000,
+        other_input=None,
+):
     """
     Helper function to evaluate the number of iterations.
     """
@@ -457,18 +463,18 @@ def eval_niter(
     # factor each time.
 
     if model.lower() == 'geometric':
-        niter = baseval*factor**(loopnum)
+        niter = baseval * factor ** (loopnum)
 
     # A linear model starts at the base value and increases by
     # baseval*(factor*loopnum) each time.
 
     if model.lower() == 'linear':
-        niter = baseval*(1.0+factor*loopnum)
+        niter = baseval * (1.0 + factor * loopnum)
 
     # Experimental/untested: a sequence of iterations
     if model.lower() == 'sequence':
         if loopnum >= len(other_input):
-            index = len(other_input)-1
+            index = len(other_input) - 1
         else:
             index = loopnum
         niter = other_input[loopnum]
@@ -484,34 +490,35 @@ def eval_niter(
 
     return int(niter)
 
+
 def clean_loop(
-    clean_call=None,
-    record_file=None,
-    suffix='',
-    log_ext=None,
-    niter_base_perchan = 10,
-    niter_growth_model = 'geometric',
-    niter_growth_factor = 2.0,
-    niter_saturation_perchan = 1000,
-    niter_other_input = None,
-    cycleniter_base = 100,
-    cycleniter_growth_model='linear',
-    cycleniter_growth_factor = 1.0,
-    cycleniter_saturation_value = 1000,
-    cycleniter_other_input = None,
-    threshold_type = 'snr',
-    threshold_value = 4.0,
-    min_loops = 0,
-    max_loops = 20,
-    max_total_niter = None,
-    convergence_fracflux=0.02,
-    convergence_totalflux=None,
-    convergence_fluxperniter=None,
-    use_absolute_delta=True,
-    stop_at_negative=True,
-    remask_each_loop=False,
-    force_dirty_image=False,
-    ):
+        clean_call=None,
+        record_file=None,
+        suffix='',
+        log_ext=None,
+        niter_base_perchan=10,
+        niter_growth_model='geometric',
+        niter_growth_factor=2.0,
+        niter_saturation_perchan=1000,
+        niter_other_input=None,
+        cycleniter_base=100,
+        cycleniter_growth_model='linear',
+        cycleniter_growth_factor=1.0,
+        cycleniter_saturation_value=1000,
+        cycleniter_other_input=None,
+        threshold_type='snr',
+        threshold_value=4.0,
+        min_loops=0,
+        max_loops=20,
+        max_total_niter=None,
+        convergence_fracflux=0.02,
+        convergence_totalflux=None,
+        convergence_fluxperniter=None,
+        use_absolute_delta=True,
+        stop_at_negative=True,
+        remask_each_loop=False,
+        force_dirty_image=False,
+):
     """
     Carry out an iterative clean until a convergence criteria is
     met. The loop releases progressively more iterations to the
@@ -547,23 +554,23 @@ def clean_loop(
             if clean_call.get_param('specmode') == 'mfs':
                 suffix = '.tt0'
 
-    valid_model_types = ['fixed', 'geometric','linear','sequence','expr']
+    valid_model_types = ['fixed', 'geometric', 'linear', 'sequence', 'expr']
     for growth_model in [niter_growth_model.lower(), cycleniter_growth_model.lower()]:
         if growth_model not in valid_model_types:
             logger.warning("Growth model not recognized: ", growth_model)
-            return()
+            return ()
 
-    valid_threshold_types = ['snr','absolute']
+    valid_threshold_types = ['snr', 'absolute']
     if threshold_type.lower() not in valid_threshold_types:
         logger.warning("Threshold type not recognized: ", threshold_type)
-        return()
+        return ()
 
     # Check if a residual image exists. If not, then build the dirty
     # image. Also build the dirty image if the flag to
     # force_dirt_image is set to True.
 
     missing_image = True
-    if os.path.isdir(clean_call.get_param('imagename')+'.residual'+suffix):
+    if os.path.isdir(clean_call.get_param('imagename') + '.residual' + suffix):
         missing_image = False
 
     if missing_image or force_dirty_image:
@@ -573,8 +580,8 @@ def clean_loop(
     # input version call.
 
     working_call = copy.deepcopy(clean_call)
-    working_call.set_param('calcres',False)
-    working_call.set_param('calcpsf',False)
+    working_call.set_param('calcres', False)
+    working_call.set_param('calcpsf', False)
 
     # Note the number of channels, which is used in setting the number
     # of iterations that we give to an individual clean call.
@@ -612,15 +619,15 @@ def clean_loop(
         # iterations per major cycle (cycleniter) released to clean
         # during this call.
 
-        niter = eval_niter(loopnum = loop,
-                           baseval = niter_base_perchan*nchan,
+        niter = eval_niter(loopnum=loop,
+                           baseval=niter_base_perchan * nchan,
                            model=niter_growth_model, factor=niter_growth_factor,
-                           saturation = niter_saturation_perchan*nchan,
+                           saturation=niter_saturation_perchan * nchan,
                            other_input=niter_other_input)
 
-        cycleniter = eval_niter(loopnum = loop, baseval = cycleniter_base,
+        cycleniter = eval_niter(loopnum=loop, baseval=cycleniter_base,
                                 model=cycleniter_growth_model, factor=cycleniter_growth_factor,
-                                saturation = cycleniter_saturation_value,
+                                saturation=cycleniter_saturation_value,
                                 other_input=cycleniter_other_input)
 
         working_call.set_param('niter', niter, nowarning=True)
@@ -635,7 +642,7 @@ def clean_loop(
 
         logger.info("Computing noise cube.")
         current_noise = cmr.noise_for_cube(
-            infile=working_call.get_param('imagename')+'.residual'+suffix,
+            infile=working_call.get_param('imagename') + '.residual' + suffix,
             method='chauvmad', niter=5)
 
         # Set the threshold for the clean call. Clean expects a value
@@ -643,18 +650,18 @@ def clean_loop(
         # and attach it to the clean call.
 
         if threshold_type == 'snr':
-            threshold_string = str(current_noise*threshold_value)+'Jy/beam'
+            threshold_string = str(current_noise * threshold_value) + 'Jy/beam'
         elif threshold_type == 'absolute':
             if type(threshold_value) == type(0.0):
-                threshold_string = str(threshold_value)+'Jy/beam'
+                threshold_string = str(threshold_value) + 'Jy/beam'
             else:
                 threshold_string = threshold_value
         else:
             threshold_string = '0.0Jy/beam'
 
         working_call.set_param('threshold', threshold_string, nowarning=True)
-        
-        logger.info("Loop %d, niter %d, cycleniter %d, cumulative_niter %d, threshold %s."%(\
+
+        logger.info("Loop %d, niter %d, cycleniter %d, cumulative_niter %d, threshold %s." % ( \
             loop, niter, cycleniter, cumulative_niter, threshold_string))
 
         # If requested mask at each step (this is experimental, we're
@@ -667,19 +674,19 @@ def clean_loop(
             logger.info("")
             signal_mask(
                 cube_root=working_call.get_param('imagename'),
-                out_file=working_call.get_param('imagename')+'.mask'+suffix,
+                out_file=working_call.get_param('imagename') + '.mask' + suffix,
                 suffix_in=suffix,
                 suffix_out=suffix,
                 operation='AND',
                 high_snr=4.0,
                 low_snr=2.0,
                 absolute=False)
-            working_call.usemask='user'
+            working_call.usemask = 'user'
 
         # Set the log file (revisit this)
 
         if log_ext is not None:
-            working_call.logfile = working_call.get_param('imagename')+"_loop_"+str(loop)+"_"+log_ext+".log"
+            working_call.logfile = working_call.get_param('imagename') + "_loop_" + str(loop) + "_" + log_ext + ".log"
         else:
             working_call.logfile = None
 
@@ -687,17 +694,17 @@ def clean_loop(
 
         copy_imaging(
             input_root=working_call.get_param('imagename'),
-            output_root=working_call.get_param('imagename')+'_prev')
-    
+            output_root=working_call.get_param('imagename') + '_prev')
+
         # Check user-preset mask parameter, disable it if a *.mask already exists
-        
+
         if (loop > 0) and \
-           (working_call.get_param('usemask') == "user") and \
-           (working_call.get_param('mask') is not None) and \
-           (working_call.get_param('mask') != ''):
-            if os.path.isdir(working_call.get_param('imagename')+'.mask'+suffix):
-                logger.debug("Found clean mask \"%s\", will not re-use the mask \"%s\" in the clean parameter file."%(\
-                    working_call.get_param('imagename')+'.mask'+suffix, 
+                (working_call.get_param('usemask') == "user") and \
+                (working_call.get_param('mask') is not None) and \
+                (working_call.get_param('mask') != ''):
+            if os.path.isdir(working_call.get_param('imagename') + '.mask' + suffix):
+                logger.debug("Found clean mask \"%s\", will not re-use the mask \"%s\" in the clean parameter file." % ( \
+                    working_call.get_param('imagename') + '.mask' + suffix,
                     working_call.get_param('mask')))
                 working_call.set_param('mask', '')
 
@@ -708,12 +715,12 @@ def clean_loop(
         # Calculate the new model flux and the change relative to the
         # previous step, normalized by current flux and by iterations.
 
-        model_stats = cmr.stat_cube(working_call.get_param('imagename')+'.model'+suffix)
+        model_stats = cmr.stat_cube(working_call.get_param('imagename') + '.model' + suffix)
 
         previous_flux = current_flux
         current_flux = model_stats['sum'][0]
 
-        delta_flux = (current_flux-previous_flux)
+        delta_flux = (current_flux - previous_flux)
         if use_absolute_delta:
             delta_flux = abs(delta_flux)
 
@@ -756,14 +763,14 @@ def clean_loop(
         # Generate a record line and print the current status to the screen
 
         this_record = ''
-        this_record += str(loop)+', '
-        this_record += str(working_call.get_param('deconvolver'))+', '
-        this_record += str(working_call.get_param('niter'))+', '
-        this_record += str(working_call.get_param('cycleniter'))+', '
-        this_record += str(working_call.get_param('threshold'))+', '
-        this_record += str(current_noise)+'Jy/beam, '
-        this_record += str(current_flux)+'Jy*chan, '
-        this_record += str(frac_delta_flux)+''
+        this_record += str(loop) + ', '
+        this_record += str(working_call.get_param('deconvolver')) + ', '
+        this_record += str(working_call.get_param('niter')) + ', '
+        this_record += str(working_call.get_param('cycleniter')) + ', '
+        this_record += str(working_call.get_param('threshold')) + ', '
+        this_record += str(current_noise) + 'Jy/beam, '
+        this_record += str(current_flux) + 'Jy*chan, '
+        this_record += str(frac_delta_flux) + ''
         this_record += '\n'
 
         # Print the current record to the screen
@@ -772,7 +779,7 @@ def clean_loop(
         for line in record:
             print(line)
 
-        logger.info("... proceeding? "+str(proceed))
+        logger.info("... proceeding? " + str(proceed))
 
         if proceed == False:
             break
@@ -782,61 +789,60 @@ def clean_loop(
     # ... if requested also write this to a file.
 
     if record_file != None:
-        f = open(record_file,'w')
+        f = open(record_file, 'w')
         f.writelines(record)
         f.close()
 
-    return()
+    return ()
 
-#endregion
+
+# endregion
 
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Evaluate the output of imaging
 # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 def calc_residual_statistics(
-    resid_name=None,
-    mask_name=None,
-    ):
+        resid_name=None,
+        mask_name=None,
+):
     """
     """
-    
+
     if os.path.isdir(resid_name) == False:
-        logger.error('Error! The input file "'+resid_name+'" was not found!')
+        logger.error('Error! The input file "' + resid_name + '" was not found!')
         return
 
     if os.path.isdir(mask_name) == False:
-        logger.error('Error! The input file "'+mask_name+'" was not found!')
+        logger.error('Error! The input file "' + mask_name + '" was not found!')
         return
-    
+
     myia = au.createCasaTool(casaStuff.iatool)
 
     myia.open(mask_name)
-    mask = myia.getchunk()    
+    mask = myia.getchunk()
     myia.close()
 
     myia.open(resid_name)
-    resid = myia.getchunk()    
+    resid = myia.getchunk()
     myia.close()
 
-    vec = resid[((mask == 1)*np.isfinite(resid))]
+    vec = resid[((mask == 1) * np.isfinite(resid))]
     del mask
     del resid
 
     current_noise = cmr.noise_for_cube(
         infile=resid_name,
         method='chauvmad', niter=5)
-    
+
     out_dict = {
-        'cubename':resid_name,
-        'maskname':mask_name,
-        'max':np.max(vec),
-        'p99':np.percentile(vec,99),
-        'p95':np.percentile(vec,95),
-        'p90':np.percentile(vec,90),
-        'noise':current_noise,
-        }
-    
-    return(out_dict)
-    
-    
+        'cubename': resid_name,
+        'maskname': mask_name,
+        'max': np.max(vec),
+        'p99': np.percentile(vec, 99),
+        'p95': np.percentile(vec, 95),
+        'p90': np.percentile(vec, 90),
+        'noise': current_noise,
+    }
+
+    return (out_dict)
