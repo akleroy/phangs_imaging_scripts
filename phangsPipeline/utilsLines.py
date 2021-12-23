@@ -335,7 +335,7 @@ def get_line_names_in_line_family(line, exit_on_error=True):
 
 def is_line_family(line_tag=''):
     line_tag_cleaned = re.sub(r'[^0-9a-zA-Z]', r'', line_tag.lower())
-    return(line_tag_cleaned in line_families.keys())
+    return (line_tag_cleaned in line_families.keys())
 
 
 def get_ghz_range_for_line(
