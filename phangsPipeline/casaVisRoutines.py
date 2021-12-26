@@ -480,7 +480,7 @@ def find_spws_for_line(
     # implied channel width requirement in GHz.
 
     if max_chanwidth_kms is not None:
-        line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
+        #line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
 
         # Using RADIO convention for velocities:
 
@@ -522,7 +522,7 @@ def find_spws_for_line(
                 continue
 
         if require_data:
-            if len(vm.scansForSpw[spw]) == 0:
+            if len(vm.scansForSpw[this_spw]) == 0:
                 continue
 
         spw_list.append(this_spw)
@@ -936,7 +936,7 @@ def suggest_extraction_scheme(
         restfreq_ghz=restfreq_ghz,  vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
         vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
     
-    line_freq_ghz = 0.5*(line_low_ghz+line_high_ghz)
+    #line_freq_ghz = 0.5*(line_low_ghz+line_high_ghz)
 
     # ----------------------------------------------------------------
     # Loop over infiles and spectral windows and record information
@@ -950,15 +950,16 @@ def suggest_extraction_scheme(
 
         vm = au.ValueMapping(this_infile)
         
-        spw_list = vm.spwInfo.keys()
+        spw_list = find_spws_for_line(
+            this_infile, line,
+            vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+            vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+            require_data=True, as_list=True)
         
         scheme[this_infile] = {}
 
         for this_spw in spw_list:
 
-            if len(vm.scansForSpw[this_spw]) == 0: 
-                continue
-            
             chan_width_ghz = np.abs(vm.spwInfo[this_spw]['chanWidth'])/1e9
 
             # Using RADIO convention:
@@ -1160,7 +1161,7 @@ def extract_line(
 
     if spw is None:
         spw_list = find_spws_for_line(
-            infile = line, restfreq_ghz = restfreq_ghz,
+            infile = infile, line = line, restfreq_ghz = restfreq_ghz,
             vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
             require_data = True, require_full_line_coverage = require_full_line_coverage, 
             exit_on_error = True, as_list = True,
@@ -1243,7 +1244,7 @@ def extract_line(
 
     if multiple_spws:
         params_list.append(combine_params)
-        msg_lis.append(combine_msg)
+        msg_list.append(combine_msg)
 
     # ............................................
     # Execute the list of mstransform calls
@@ -1364,8 +1365,9 @@ def build_mstransform_call(
         if restfreq_ghz is not None:
             spw = find_spws_for_line(
                 infile=infile, restfreq_ghz=restfreq_ghz,
-                vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+                vlow_kms=vstart_kms, vhigh_kms=vstart_kms+vwidth_kms,
                 require_full_line_coverage=require_full_line_coverage)
+            # 20211226: the above call is not working (missing 'line' keyword)
 
             # Exit if no SPWs contain the line.
             if spw is None:
@@ -1430,7 +1432,7 @@ def build_mstransform_call(
         line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
             restfreq_ghz=restfreq_ghz, 
             vlow_kms=vstart_kms, vhigh_kms=vstart_kms+vwidth_kms)
-        line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
+        #line_freq_ghz = (line_low_ghz+line_high_ghz)*0.5
         
         max_chan_ghz = np.max(np.abs(au.getChanWidths(infile, spw)))/1e9
 
@@ -1633,8 +1635,7 @@ def batch_extract_continuum(
     outfile = None,
     clear_pointing = True,
     overwrite = False,
-    **kwargs,
-    ):
+    **kwargs):
     """
     Run a batch continuum extraction.
     """
@@ -1682,8 +1683,7 @@ def batch_extract_continuum(
             infile = this_infile, 
             outfile = this_outfile, 
             overwrite = overwrite, 
-            **kwargs,
-            )
+            **kwargs)
 
         # Deal with pointing table - testing shows it to be a
         # duplicate for each SPW here, so we remove all rows for
@@ -1729,7 +1729,7 @@ def extract_continuum(
     lines_to_flag = [],
     vsys_kms=None, vwidth_kms=None, 
     vlow_kms=None, vhigh_kms=None,    
-    do_statwt = False, 
+    do_statwt = True, 
     do_collapse = True, 
     target_chan_kms=None,
     min_nchan_per_spw=None,
@@ -1783,8 +1783,9 @@ def extract_continuum(
 
         if vsys_method or vlow_method:
             ranges_to_exclude = lines.get_ghz_range_for_list(
-                line_list=lines_to_exclude, 
-                vsys_kms=vsys, vwidth_kms=vwidth, vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+                line_list=lines_to_flag,
+                vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+                vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
 
     # if overwrite, then delete existing output data.
 
@@ -1879,11 +1880,11 @@ def extract_continuum(
         # calculate the binning 
         if min_nchan_per_spw is None:
             min_nchan_per_spw = 1
-        max_width = np.ceil(
+        max_width = np.floor(
             np.array(au.getScienceSpwNChannels(outfile+'.temp_copy')) /
             float(min_nchan_per_spw)).astype('int')
         if target_chan_kms is None:
-            width = max_width
+            width = list(max_width)
         else:
             current_chan_ghz = np.array(
                 au.getScienceSpwChanwidths(outfile+'.temp_copy')) / 1e9
@@ -1891,7 +1892,7 @@ def extract_continuum(
                 au.getScienceFrequencies(outfile+'.temp_copy')) / 1e9
             current_chan_kms = current_chan_ghz / sci_freq_ghz * sol_kms
             width = np.floor(target_chan_kms / current_chan_kms).astype('int')
-            width = np.min([width, max_width], axis=0)
+            width = list(np.min([width, max_width], axis=0))
 
         casaStuff.split(vis=outfile+'.temp_copy',
                         outputvis=outfile,
@@ -1942,10 +1943,10 @@ def noise_spectrum(
             if ii > stop_chan:
                 continue
         logger.debug("Channel "+str(ii)+" / "+str(nchan))
-        result = visstat(vis=vis,
-                         axis='amp',
-                         spw='0:'+str(ii),
-                         )
+        result = casaStuff.visstat(vis=vis,
+                                   axis='amp',
+                                   spw='0:'+str(ii),
+                                   )
         if result == None:
             logger.debug("Skipping channel.")
             continue

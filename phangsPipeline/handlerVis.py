@@ -86,7 +86,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         self,
         do_all = False,
         do_copy = False,
-        do_concat = False,
         do_remove_staging = False,
         do_custom = False,
         do_contsub = False,
@@ -124,7 +123,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             do_custom = True
             do_extract_line = True
             do_extract_cont = True
-            do_concat = True
             do_remove_staging = True
 
         target_list = self.get_targets()
@@ -243,8 +241,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             config = this_config,
                             strict_config = strict_config,
                             overwrite = overwrite,
-                            **extract_cont_kw,
-                            )
+                            **extract_cont_kw)
 
         # Clean up the staged measurement sets. They cost time to
         # re-split, but have a huge disk imprint and are redundant
@@ -842,8 +839,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             extra_ext_in = '',
             extra_ext_out = '',
             strict_config = True,
-            **kwargs,
-            ):
+            **kwargs):
         """
         Extract continuum data from ms data for the input target, config and product.
         """
@@ -930,8 +926,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 infile_list = infile_list,
                 outfile = outfile,
                 ranges_to_exclude = ranges_to_exclude,
-                **kwargs,
-                )
+                clear_pointing = False,
+                **kwargs)
 
         return()
 
