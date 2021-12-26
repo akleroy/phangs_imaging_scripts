@@ -95,8 +95,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         extra_ext = '',
         make_directories = True,
         statwt_line = True,
-        statwt_cont = True,
-        collapse_cont = True,
+        extract_cont_kw={},
         timebin = None,
         just_projects = None,
         strict_config = True,
@@ -242,11 +241,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             target = this_target,
                             product = this_product,
                             config = this_config,
-                            extra_ext_in = "",
-                            do_statwt = statwt_cont,
-                            do_collapse = collapse_cont,
-                            overwrite = overwrite,
                             strict_config = strict_config,
+                            overwrite = overwrite,
+                            **extract_cont_kw,
                             )
 
         # Clean up the staged measurement sets. They cost time to
@@ -844,10 +841,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             config = None,
             extra_ext_in = '',
             extra_ext_out = '',
-            do_statwt = True,
-            do_collapse = True,
-            overwrite = False,
             strict_config = True,
+            **kwargs,
             ):
         """
         Extract continuum data from ms data for the input target, config and product.
@@ -935,9 +930,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 infile_list = infile_list,
                 outfile = outfile,
                 ranges_to_exclude = ranges_to_exclude,
-                do_statwt = do_statwt,
-                do_collapse = do_collapse,
-                overwrite = overwrite,
+                **kwargs,
                 )
 
         return()

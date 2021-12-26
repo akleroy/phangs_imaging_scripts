@@ -1631,14 +1631,9 @@ def reweight_data(
 def batch_extract_continuum(
     infile_list = [],
     outfile = None,
-    ranges_to_exclude = [],
-    lines_to_flag = [],
-    vsys_kms=None, vwidth_kms=None, 
-    vlow_kms=None, vhigh_kms=None,    
-    do_statwt = False, 
-    do_collapse = True, 
     clear_pointing = True,
     overwrite = False,
+    **kwargs,
     ):
     """
     Run a batch continuum extraction.
@@ -1686,13 +1681,8 @@ def batch_extract_continuum(
         extract_continuum(
             infile = this_infile, 
             outfile = this_outfile, 
-            ranges_to_exclude = ranges_to_exclude,
-            lines_to_flag = lines_to_flag,
-            vsys_kms=vsys_kms, vwidth_kms=vwidth_kms, 
-            vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,    
-            do_statwt = do_statwt,
-            do_collapse = do_collapse, 
             overwrite = overwrite, 
+            **kwargs,
             )
 
         # Deal with pointing table - testing shows it to be a
@@ -1717,13 +1707,6 @@ def batch_extract_continuum(
         overwrite = overwrite,
         copypointing = copy_pointing)
     
-    # ... statwt
-    
-    #if do_statwt:
-    #    statwt_params = {'vis':outfile, 'timebin':'0.001s', 'slidetimebin':False, 'chanbin':'spw', 'statalg':'classic'}
-    #    logger.info("... running CASA "+'statwt('+', '.join("{!s}={!r}".format(t, statwt_params[t]) for t in statwt_params.keys())+')')
-    #    casaStuff.statwt(**statwt_params)
-
     # Clean up, deleting intermediate files
 
     for this_file in split_file_list:
@@ -1748,6 +1731,8 @@ def extract_continuum(
     vlow_kms=None, vhigh_kms=None,    
     do_statwt = False, 
     do_collapse = True, 
+    target_chan_kms=None,
+    min_nchan_per_spw=None,
     overwrite = False, 
     ):
     """
@@ -1871,7 +1856,7 @@ def extract_continuum(
     # collapse
 
     if do_collapse:
-        logger.info("... Collapsing each continuum SPW to a single channel.")
+        logger.info("... Collapsing each continuum SPW to a smaller number of channels.")
         
         if os.path.isdir(outfile):
             shutil.move(outfile, outfile+'.temp_copy')
@@ -1891,9 +1876,26 @@ def extract_continuum(
             datacolumn = 'DATA'
         casaStuff.tb.close()
 
+        # calculate the binning 
+        if min_nchan_per_spw is None:
+            min_nchan_per_spw = 1
+        max_width = np.ceil(
+            np.array(au.getScienceSpwNChannels(outfile+'.temp_copy')) /
+            float(min_nchan_per_spw)).astype('int')
+        if target_chan_kms is None:
+            width = max_width
+        else:
+            current_chan_ghz = np.array(
+                au.getScienceSpwChanwidths(outfile+'.temp_copy')) / 1e9
+            sci_freq_ghz = np.array(
+                au.getScienceFrequencies(outfile+'.temp_copy')) / 1e9
+            current_chan_kms = current_chan_ghz / sci_freq_ghz * sol_kms
+            width = np.floor(target_chan_kms / current_chan_kms).astype('int')
+            width = np.min([width, max_width], axis=0)
+
         casaStuff.split(vis=outfile+'.temp_copy',
                         outputvis=outfile,
-                        width=100000,
+                        width=width,
                         datacolumn=datacolumn,
                         keepflags=False)
                         #<TODO><20200210># num_chan or width
