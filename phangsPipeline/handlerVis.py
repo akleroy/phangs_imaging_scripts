@@ -90,11 +90,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             extra_ext='',
             make_directories=True,
             statwt_line=True,
-            extract_cont_kw={},
+            statwt_cont=True,
             timebin=None,
             just_projects=None,
             strict_config=True,
             require_full_line_coverage=False,
+            require_full_cont_coverage=False,
             overwrite=False):
         """
         Loops over the full set of targets, products, and configurations
@@ -240,9 +241,11 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         target=this_target,
                         product=this_product,
                         config=this_config,
-                        strict_config=strict_config,
+                        exact=False,
+                        do_statwt=statwt_cont,
+                        require_full_cont_coverage=require_full_cont_coverage,
                         overwrite=overwrite,
-                        **extract_cont_kw)
+                        strict_config=strict_config)
 
         # Clean up the staged measurement sets. They cost time to
         # re-split, but have a huge disk imprint and are redundant
@@ -803,7 +806,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             'regrid_then_rebin', 'rebin_then_regrid',
             'just_regrid', 'just_rebin']
         if method.lower().strip() not in valid_methods:
-            logger.error("Not a valid line extraction medod - "+str(method))
+            logger.error("Not a valid line extraction method - "+str(method))
             raise Exception("Please specify a valid line extraction method.")
 
         target_chanwidth = self._kh.get_channel_width_for_line_product(product)
@@ -828,7 +831,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 target_chan_kms=target_chanwidth,
                 line=line_to_extract,
                 vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
-                method='regrid_then_rebin',
+                method=method,
                 exact=exact,
                 overwrite=overwrite,
                 clear_pointing=False,
@@ -848,10 +851,14 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target=None,
             product=None,
             config=None,
+            exact=False,
             extra_ext_in='',
             extra_ext_out='',
-            strict_config=True,
-            **kwargs):
+            do_statwt=True,
+            method="regrid_then_rebin",
+            require_full_cont_coverage=False,
+            overwrite=False,
+            strict_config=True):
         """
         Extract continuum data from ms data for the input target, config,
         and product.
@@ -905,44 +912,59 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target=target, config=config, product=product,
             ext=extra_ext_out, suffix=None)
 
-        # get target vsys and vwidth
-        # use the parent vsys, vwidth when part of a linear mosaic.
-        # useful when spectral chunks are defined
-        vsys, vwidth = \
+        # Extract necessary information for flagging lines
+        # get target vsys and vwidth use the parent vsys, vwidth
+        # when part of a linear mosaic. useful when spectral chunks are defined
+        vsys_kms, vwidth_kms = \
             self._kh.get_system_velocity_and_velocity_width_for_target(
                 target, check_parent=True)
-
-        # get lines to flag as defined in keys
         lines_to_flag = self._kh.get_lines_to_flag(product=product)
 
-        if len(lines_to_flag) > 0:
-            ranges_to_exclude = lines.get_ghz_range_for_list(
-                line_list=lines_to_flag, vsys_kms=vsys, vwidth_kms=vwidth)
-        else:
-            ranges_to_exclude = []
+        # Extract the spectral information needed for the regrid/rebin
+        ranges_to_extract = self._kh.get_freq_ranges_for_cont_product(product)
+        target_chanwidth = self._kh.get_channel_width_for_cont_product(product)
 
-        # Pick up here - need to update extract_continuum to a batch
-        # process in casaVisRoutines
+        valid_methods = [
+            'regrid_then_rebin', 'rebin_then_regrid',
+            'just_regrid', 'just_rebin']
+        if method.lower().strip() not in valid_methods:
+            logger.error(
+                "Not a valid continuum extraction method - "+str(method))
+            raise Exception(
+                "Please specify a valid continuum extraction method.")
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Extracting continuum product:")
-        logger.info("... from files: "+str(infile_list))
-        logger.info("... to file: "+str(outfile))
-        logger.info("... flagging ranges: "+str(ranges_to_exclude))
+        logger.info("... Extracting ranges: "+str(ranges_to_extract))
+        logger.info("... Lines to flag: "+str(lines_to_flag))
+        logger.info("... Target channel width: "+str(target_chanwidth))
+        logger.info("... Method: "+str(method))
+        logger.info("... From files: "+str(infile_list))
+        logger.info("... To file: "+str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-
-        _ = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
         if not self._dry_run and casa_enabled:
 
             cvr.batch_extract_continuum(
                 infile_list=infile_list,
                 outfile=outfile,
-                ranges_to_exclude=ranges_to_exclude,
+                ranges_to_extract=ranges_to_extract,
+                target_chan_ghz=target_chanwidth,
+                lines_to_flag=lines_to_flag,
+                vsys_kms=vsys_kms,
+                vwidth_kms=vwidth_kms,
+                method=method,
+                exact=exact,
+                overwrite=overwrite,
                 clear_pointing=False,
-                **kwargs)
+                require_full_cont_coverage=require_full_cont_coverage)
+
+            if do_statwt:
+
+                # not sure if we need this here
+                pass
 
         return()
 

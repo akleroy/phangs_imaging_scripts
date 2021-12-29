@@ -5,8 +5,6 @@ Standalone routines to analyze and manipulate visibilities.
 # 20200226: introduced os.mkdir(outfile+'.touch') os.rmdir(outfile+'.touch')
 # 20200226: to make sure we can handle sudden system break.
 
-#region Imports and definitions
-
 import os
 import shutil
 import inspect
@@ -30,14 +28,6 @@ from . import utilsLines as lines
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-#endregion
-
-#region Routines for basic characterization
-
-#endregion
-
-#region Routines to analyze and extract lines in measurement sets
 
 # Physical constants
 sol_kms = 2.99792458e5
@@ -429,12 +419,18 @@ def contsub(
     # find_spw_channels_for_lines
 
     spw_flagging_string = spw_string_for_freq_ranges(
-        infile=infile, freq_ranges_ghz=ranges_to_exclude, fail_on_empty=True)
+        infile=infile, freq_ranges_ghz=ranges_to_exclude,
+        # fail_on_empty=True)
+        )
 
-    if spw_flagging_string is None:
-        logger.error(
-            "All data are masked in at least one spectral window. Returning.")
-        return()
+    # <JS> Not sure why one would want fail_on_empty=True here...
+    # <JS> Entirely masked SPWs should be allowed especially if combine="spw".
+    # <JS> Commented out for now.
+
+    # if spw_flagging_string is None:
+    #     logger.error(
+    #         "All data are masked in at least one spectral window. Returning")
+    #     return()
 
     # uvcontsub, this outputs infile+'.contsub'
 
@@ -491,10 +487,6 @@ def find_spws_for_line(
         logging.error("Please specify infile.")
         raise Exception("Please specify infile.")
 
-    if line is None:
-        logging.error("Please specify an input line.")
-        raise Exception("Please specify an input line.")
-
     # Verify file existence
 
     if not os.path.isdir(infile):
@@ -513,7 +505,6 @@ def find_spws_for_line(
             logging.error(
                 "Specify a line name or provide a rest frequency in GHz.")
             raise Exception("No rest frequency specified.")
-
         restfreq_ghz = (
             lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
 
@@ -583,6 +574,10 @@ def find_spws_for_line(
             if len(vm.scansForSpw[this_spw]) == 0:
                 continue
 
+        if require_full_line_coverage and not (
+                spw_high_ghz > line_high_ghz and spw_low_ghz < line_low_ghz):
+            continue
+
         spw_list.append(this_spw)
 
         if spw_lowest_ghz is None:
@@ -599,9 +594,11 @@ def find_spws_for_line(
     # return.
 
     if len(spw_list) == 0:
+
         logger.warning('No spectral windows contain the input line.')
         spw_list = []
         spw_list_string = None  # can't be '', that selects all
+
     else:
 
         # sort and remove duplicates
@@ -610,19 +607,24 @@ def find_spws_for_line(
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
 
-    # check if the spws in this measurement set completely covers
-    # the given line frequency range
-    if not (spw_lowest_ghz <= line_low_ghz and
-            spw_highest_ghz >= line_high_ghz):
-        logger.warning(
-            'The spectral windows in this measurement set "%s" (%.6f -- %.6f) '
-            'does not cover the full "%s" line frequency range (%.6f -- %.6f)'
-            '.' % (
-                infile, spw_lowest_ghz, spw_highest_ghz,
-                line, line_low_ghz, line_high_ghz))
-        if require_full_line_coverage:
-            spw_list = []
-            spw_list_string = None  # can't be '', that selects all
+    # <JS> The lines below are not doing what they are supposed to do.
+    # <JS> I have commented them out and then repurposed the
+    # <JS> 'require_full_line_coverage' parameter to check for *individual*
+    # <JS> SPWs that fully cover the line frequency range
+
+    # # check if the spws in this measurement set completely covers
+    # # the given line frequency range
+    # if not (spw_lowest_ghz <= line_low_ghz and
+    #         spw_highest_ghz >= line_high_ghz):
+    #     logger.warning(
+    #         'The spectral windows in this ms "%s" (%.6f -- %.6f) '
+    #         'doesn't cover the full "%s" line frequency range (%.6f -- %.6f)'
+    #         '.' % (
+    #             infile, spw_lowest_ghz, spw_highest_ghz,
+    #             line, line_low_ghz, line_high_ghz))
+    #     if require_full_line_coverage:
+    #         spw_list = []
+    #         spw_list_string = None  # can't be '', that selects all
 
     # return
     if as_list:
@@ -882,7 +884,13 @@ def batch_extract_line(
         infile_list=infile_list, target_chan_kms=target_chan_kms,
         method=method, exact=exact, restfreq_ghz=restfreq_ghz, line=line,
         vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
-        vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
+        vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+        require_full_line_coverage=require_full_line_coverage)
+    for this_infile in schemes.keys():
+        logger.info(
+            "For this line ({}), I will extract SPWs {} "
+            "from infile {}".format(
+                line, schemes[this_infile].keys(), this_infile))
 
     # Execute the extraction scheme
     split_file_list = []
@@ -919,14 +927,9 @@ def batch_extract_line(
 
     # Concatenate and combine the output data sets
 
-    if clear_pointing:
-        copy_pointing = False
-    else:
-        copy_pointing = True
-
     concat_ms(
-        infile_list=split_file_list, outfile=outfile,
-        overwrite=overwrite, freqtol=freqtol, copypointing=copy_pointing)
+        infile_list=split_file_list, outfile=outfile, freqtol=freqtol,
+        overwrite=overwrite, copypointing=(not clear_pointing))
 
     # Clean up, deleting intermediate files
 
@@ -952,7 +955,8 @@ def choose_common_res(
 def suggest_extraction_scheme(
         infile_list=[], target_chan_kms=None, restfreq_ghz=None, line=None,
         vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
-        method='regrid_then_rebin', exact=False):
+        method='regrid_then_rebin', exact=False,
+        require_full_line_coverage=False):
     """
     Recommend extraction parameters given an input list of files, a
     desired target channel width, and a preferred algorithm. Returns a
@@ -975,7 +979,7 @@ def suggest_extraction_scheme(
     valid_methods = [
         'regrid_then_rebin', 'rebin_then_regrid', 'just_regrid', 'just_rebin']
     if method.lower().strip() not in valid_methods:
-        logger.error("Not a valid line extraction medod - "+str(method))
+        logger.error("Not a valid line extraction method - "+str(method))
         raise Exception("Please specify a valid line extraction method.")
 
     # Get the line name and rest-frame frequency in the line_list
@@ -986,16 +990,13 @@ def suggest_extraction_scheme(
             logging.error(
                 "Specify a line name or provide a rest frequency in GHz.")
             raise Exception("No rest frequency specified.")
-
         restfreq_ghz = (
             lines.get_line_name_and_frequency(line, exit_on_error=True))[1]
 
-    # Work out the frequencies at the line edes.
-
-    line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
-        restfreq_ghz=restfreq_ghz,  vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
-        vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
-
+    # # Work out the frequencies at the line edes.
+    # line_low_ghz, line_high_ghz = lines.get_ghz_range_for_line(
+    #     restfreq_ghz=restfreq_ghz, vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+    #     vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
     # line_freq_ghz = 0.5*(line_low_ghz+line_high_ghz)
 
     # ----------------------------------------------------------------
@@ -1011,10 +1012,11 @@ def suggest_extraction_scheme(
         vm = au.ValueMapping(this_infile)
 
         spw_list = find_spws_for_line(
-            this_infile, line,
+            this_infile, restfreq_ghz=restfreq_ghz,
             vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
             vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
-            require_data=True, as_list=True)
+            require_data=True, as_list=True,
+            require_full_line_coverage=require_full_line_coverage)
 
         scheme[this_infile] = {}
 
@@ -1066,7 +1068,7 @@ def suggest_extraction_scheme(
         return(scheme)
 
     # ... for regridding, just regrid to the desired width
-    if method == 'just_regrid':
+    elif method == 'just_regrid':
         for this_infile in scheme.keys():
             for this_spw in scheme[this_infile].keys():
                 if exact:
@@ -1081,18 +1083,16 @@ def suggest_extraction_scheme(
     # regrid either to the final value (if exact) or to a common
     # resolution determined by the actual channels and rebinnning.
 
-    if method == 'rebin_then_regrid':
+    elif method == 'rebin_then_regrid':
+        common_res = choose_common_res(
+            vals=(np.array(chan_width_list) * np.array(binfactor_list)),
+            epsilon=3e-4)
         for this_infile in scheme.keys():
             for this_spw in scheme[this_infile].keys():
                 if exact:
                     scheme[this_infile][this_spw]['target_chan_kms'] = \
                         target_chan_kms
                 else:
-                    common_res = choose_common_res(
-                        vals=(
-                            np.array(chan_width_list) *
-                            np.array(binfactor_list)),
-                        epsilon=3e-4)
                     scheme[this_infile][this_spw]['target_chan_kms'] = \
                         common_res
                     # print("chan_width_list: ", chan_width_list)
@@ -1101,7 +1101,10 @@ def suggest_extraction_scheme(
 
     # ... for regrid-then-rebin
 
-    if method == 'regrid_then_rebin':
+    elif method == 'regrid_then_rebin':
+        common_res = choose_common_res(
+            vals=(np.array(chan_width_list) * np.array(binfactor_list)),
+            epsilon=3e-4)
         for this_infile in scheme.keys():
             for this_spw in scheme[this_infile].keys():
                 if exact:
@@ -1109,11 +1112,6 @@ def suggest_extraction_scheme(
                         target_chan_kms /
                         scheme[this_infile][this_spw]['binfactor'])
                 else:
-                    common_res = choose_common_res(
-                        vals=(
-                            np.array(chan_width_list) *
-                            np.array(binfactor_list)),
-                        epsilon=3e-4)
                     this_target_chan_kms = (
                         common_res /
                         scheme[this_infile][this_spw]['binfactor'])
@@ -1144,7 +1142,7 @@ def extract_line(
     valid_methods = [
         'regrid_then_rebin', 'rebin_then_regrid', 'just_regrid', 'just_rebin']
     if method.lower().strip() not in valid_methods:
-        logger.error("Not a valid line extraction medod - "+str(method))
+        logger.error("Not a valid line extraction method - "+str(method))
         raise Exception("Please specify a valid line extraction method.")
 
     # Check input
@@ -1259,7 +1257,9 @@ def extract_line(
     if method == 'just_rebin' or method == 'regrid_then_rebin' or \
             method == 'rebin_then_regrid':
 
-        # Verify that we have the bin factor
+        if binfactor is None:
+            logger.warning('Need a bin factor to enable rebinning.')
+            return()
 
         rebin_params, rebin_msg = build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
@@ -1326,17 +1326,6 @@ def extract_line(
 
         if os.path.isdir(this_params['outputvis']):
             shutil.rmtree(this_params['outputvis'])
-        # if os.path.isdir(this_params['outputvis']+'.touch'):
-        #    shutil.rmtree(this_params['outputvis']+'.touch')
-        #    # if overwrite:
-        #    #    shutil.rmtree(this_params['outputvis'])
-        #    # else:
-        #    #    logger.error(
-        #    #        "Intermediate file in place and overwrite=False. "
-        #    #        "Returning.")
-        #    #    return()
-        #    # <DL> we already have overwrite check above, here we will just
-        #    # <DL> delete any existing old intermediate files
 
         logger.info("... "+this_msg)
 
@@ -1396,7 +1385,6 @@ def build_mstransform_call(
     Extract a spectral line from a measurement set and regrid onto a
     new velocity grid with the desired spacing. There are some minor
     subtleties here related to regridding and rebinning.
-
     """
 
     # ............................................
@@ -1407,7 +1395,7 @@ def build_mstransform_call(
 
     valid_methods = ['rebin', 'regrid', 'combine']
     if method.lower().strip() not in valid_methods:
-        logger.error("Not a valid line extraction medod - "+str(method))
+        logger.error("Not a valid line extraction method - "+str(method))
         raise Exception("Please specify a valid line extraction method.")
 
     # Check input
@@ -1429,8 +1417,6 @@ def build_mstransform_call(
                 infile=infile, restfreq_ghz=restfreq_ghz,
                 vlow_kms=vstart_kms, vhigh_kms=vstart_kms+vwidth_kms,
                 require_full_line_coverage=require_full_line_coverage)
-            # 20211226: the above call is not working (missing 'line' keyword)
-
             # Exit if no SPWs contain the line.
             if spw is None:
                 # there has already a warning message inside
@@ -1582,8 +1568,8 @@ def reweight_data(
         infile=None, edge_kms=None, edge_chans=None,
         overwrite=False, datacolumn=None):
     """
-    Use statwt to empirically re-weight data (mostly for
-    lines). Accepts an "edge" definition in either channels or km/s.
+    Use statwt to empirically re-weight data.
+    Accepts an "edge" definition in either channels or km/s.
     """
 
     # Check input
@@ -1726,20 +1712,22 @@ def reweight_data(
 
 
 def batch_extract_continuum(
-        infile_list=[], outfile=None, clear_pointing=True, overwrite=False,
-        **kwargs):
+        infile_list=[], outfile=None,
+        ranges_to_extract=None, target_chan_ghz=None, lines_to_flag=None,
+        vlow_kms=None, vhigh_kms=None, vsys_kms=None, vwidth_kms=None,
+        method='regrid_then_rebin', exact=False, freqtol='',
+        clear_pointing=True, require_full_cont_coverage=False,
+        overwrite=False):
     """
     Run a batch continuum extraction.
     """
 
     # Check that we have an output file defined.
-
     if outfile is None:
         logging.error("Please specify an output file.")
         raise Exception("Please specify an output file.")
 
     # Check existence of output data and abort if found and overwrite is off
-
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning(
@@ -1748,61 +1736,115 @@ def batch_extract_continuum(
             return()
 
     # Else, clear all previous files and temporary files
-
     for suffix in ['', '.flagversions', '.touch', '.temp*']:
-        if not (suffix.find('*') >= 0):
-            if os.path.isdir(outfile+suffix):
-                shutil.rmtree(outfile+suffix)
-        else:
-            for temp_outfile in glob.glob(outfile+suffix):
-                if os.path.isdir(temp_outfile):
-                    shutil.rmtree(temp_outfile)
-                    logger.debug('... shutil.rmtree(%r)' % (temp_outfile))
+        for temp_outfile in glob.glob(outfile+suffix):
+            if os.path.isdir(temp_outfile):
+                shutil.rmtree(temp_outfile)
+                logger.debug('... shutil.rmtree(%r)' % (temp_outfile))
 
-    # Create touch file to mark that we are processing this data
-    if not os.path.isdir(outfile+'.touch'):
-        os.mkdir(outfile+'.touch')
+    # Check input parameters
+    if ranges_to_extract is None:
+        logging.error(
+            "Please specify frequency ranges for continuum extraction.")
+        raise Exception(
+            "Please specify frequency ranges for continuum extraction.")
+    for ii, range_i in enumerate(ranges_to_extract):
+        max_i, min_i = np.max(range_i), np.min(range_i)
+        for jj, range_j in enumerate(ranges_to_extract):
+            max_j, min_j = np.max(range_j), np.min(range_j)
+            if ii < jj and max_i > min_j and min_i < max_j:
+                logging.error(
+                    "Overlapping frequency ranges for continuum extraction: "
+                    "{} vs {}".format(range_i, range_j))
+                raise Exception(
+                    "Overlapping frequency ranges for continuum extraction: "
+                    "{} vs {}".format(range_i, range_j))
 
     split_file_list = []
-    for this_infile in infile_list:
+    for kk, this_range in enumerate(ranges_to_extract):
 
-        # Specify output file and check for existence
-        this_outfile = this_infile+'.temp_cont'
+        reffreq_ghz = np.mean(this_range)
+        refvsys_kms = 0.0
+        refvwidth_kms = (
+            abs(np.diff(this_range).item()) / reffreq_ghz * sol_kms)
 
-        split_file_list.append(this_outfile)
+        if target_chan_ghz is None:
+            # use a single channel to cover this entire frequency range
+            target_chan_kms = refvwidth_kms
+            exact = True
+        else:
+            target_chan_kms = target_chan_ghz / reffreq_ghz * sol_kms
 
-        extract_continuum(
-            infile=this_infile, outfile=this_outfile, overwrite=overwrite,
-            **kwargs)
+        # Generate extraction schemes for this frequency range
+        if exact:
+            schemes = suggest_extraction_scheme(
+                infile_list=infile_list, target_chan_kms=target_chan_kms,
+                method=method, exact=exact, restfreq_ghz=reffreq_ghz,
+                vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
+                require_full_line_coverage=require_full_cont_coverage)
+        else:
+            # slightly adjust the channel size so that this frequency range
+            # contains an integer number of channels
+            target_chan_kms = (
+                refvwidth_kms / np.ceil(refvwidth_kms / target_chan_kms))
+            schemes = suggest_extraction_scheme(
+                infile_list=infile_list,
+                target_chan_kms=target_chan_kms,
+                method=method, exact=True, restfreq_ghz=reffreq_ghz,
+                vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
+                require_full_line_coverage=require_full_cont_coverage)
+        for this_infile in schemes.keys():
+            logger.info(
+                "For this frequency range ({:.6f} - {:.6f}), "
+                "I will extract SPWs {} from infile {}".format(
+                    np.min(this_range), np.max(this_range),
+                    schemes[this_infile].keys(), this_infile))
 
-        # Deal with pointing table - testing shows it to be a
-        # duplicate for each SPW here, so we remove all rows for
-        # all SPWs except the first one.
+        # Execute the extraction scheme
+        for this_infile in schemes.keys():
+            for this_spw in schemes[this_infile].keys():
+                this_scheme = schemes[this_infile][this_spw]
+                # Extract relevant parameters for continuum extraction
+                this_binfactor = this_scheme['binfactor']
+                this_target_chan_ghz = \
+                    this_scheme['target_chan_kms'] / sol_kms * reffreq_ghz
+                this_nchan = int(np.floor(
+                    refvwidth_kms * (1. + 1e-6) /
+                    this_scheme['target_chan_kms']))
+                # Specify output file and check for existence
+                this_outfile = this_infile+'.temp{:.0f}_spw{:.0f}'.format(
+                    kk, this_spw)
+                split_file_list.append(this_outfile)
 
-        if clear_pointing:
-            au.clearPointingTable(this_outfile)
+                # Execute continuum extraction
+                extract_continuum(
+                    infile=this_infile, outfile=this_outfile,
+                    spw=str(this_spw), range_to_extract=this_range,
+                    lines_to_flag=lines_to_flag,
+                    vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+                    vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+                    method=method, target_chan_ghz=this_target_chan_ghz,
+                    nchan=this_nchan, binfactor=this_binfactor,
+                    require_full_cont_coverage=require_full_cont_coverage,
+                    overwrite=overwrite)
+
+                # Deal with pointing table - testing shows it to be a
+                # duplicate for each SPW here, so we remove all rows for
+                # all SPWs except the first one.
+
+                if clear_pointing:
+                    au.clearPointingTable(this_outfile)
 
     # Concatenate and combine the output data sets
 
-    if clear_pointing:
-        copy_pointing = False
-    else:
-        copy_pointing = True
-
-    # ... concat
-
     concat_ms(
-        infile_list=split_file_list, outfile=outfile, overwrite=overwrite,
-        copypointing=copy_pointing)
+        infile_list=split_file_list, outfile=outfile, freqtol=freqtol,
+        overwrite=overwrite, copypointing=(not clear_pointing))
 
     # Clean up, deleting intermediate files
 
     for this_file in split_file_list:
         shutil.rmtree(this_file)
-
-    # Remove touch file to mark that we are have done the processing
-    if os.path.isdir(outfile+'.touch'):
-        os.rmdir(outfile+'.touch')
 
     return()
 
@@ -1813,36 +1855,27 @@ def batch_extract_continuum(
 
 
 def extract_continuum(
-        infile=None, outfile=None, ranges_to_exclude=[], lines_to_flag=[],
-        vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
-        target_chan_kms=None, min_nchan_per_spw=None,
-        do_statwt=True, do_collapse=True, overwrite=False):
+        infile=None, outfile=None, spw=None,
+        range_to_extract=None, method='regrid_then_rebin',
+        target_chan_ghz=None, binfactor=None, nchan=None, lines_to_flag=None,
+        vlow_kms=None, vhigh_kms=None, vsys_kms=None, vwidth_kms=None,
+        require_full_cont_coverage=False, overwrite=False):
     """
-    Extract continuum uv data from a measurement set. Optionally
-    reweights and rebins the data to fewer channels per spw.
-
-    Args:
-
-    infile (str): The input measurement set data with suffix ".ms".
-    outfile (str): The output measurement set data with suffix ".ms".
-    do_statwt (bool): True to reweight the continuum data.
-    do_collapse (bool): True to rebin the continuum data into fewer channels.
-
-    Inputs:
-
-    Outputs:
-
+    Continuum extraction routine. Takes infile, outfile, ranges of interest,
+    lines to flag, and algorithm, along with algorithm tuning parameters.
     """
+
+    # Check the method
+    valid_methods = [
+        'regrid_then_rebin', 'rebin_then_regrid', 'just_regrid', 'just_rebin']
+    if method.lower().strip() not in valid_methods:
+        logger.error("Not a valid continuum extraction method - "+str(method))
+        raise Exception("Please specify a valid continuum extraction method.")
 
     # Check input
-
     if infile is None:
         logging.error("Please specify an input file.")
         raise Exception("Please specify an input file.")
-
-    if outfile is None:
-        logging.error("Please specify an output file.")
-        raise Exception("Please specify an output file.")
 
     if not os.path.isdir(infile):
         logger.error(
@@ -1850,8 +1883,15 @@ def extract_continuum(
         raise Exception(
             'The input measurement set "'+infile+'"does not exist.')
 
-    # Check existing output data
+    if outfile is None:
+        logging.error("Please specify an output file.")
+        raise Exception("Please specify an output file.")
 
+    if range_to_extract is None:
+        logging.error("Please specify a frequency range.")
+        raise Exception("Please specify a frequency range.")
+
+    # Check existing output data and abort if found and overwrite is off
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
         if not overwrite:
             logger.warning(
@@ -1859,136 +1899,207 @@ def extract_continuum(
                 '", will not overwrite it.')
             return()
 
-    # Evaluate line flagging logic. If frequency ranges are supplied,
-    # use those. If not but we do have line and velocity data, use
-    # those to generate frequency ranges to flag.
+    # Else, clear all previous files and temporary files
+    for suffix in ['', '.flagversions', '.touch', '.temp*']:
+        for temp_outfile in glob.glob(outfile+suffix):
+            if os.path.isdir(temp_outfile):
+                logger.debug('... shutil.rmtree(%r)' % (temp_outfile))
+                shutil.rmtree(temp_outfile)
 
-    if len(ranges_to_exclude) == 0 and len(lines_to_flag) > 0:
+    # Create touch file to mark that we are processing this data
+    if not os.path.isdir(outfile+'.touch'):
+        os.mkdir(outfile+'.touch')
+
+    # Make copy of the input data
+    shutil.copytree(infile, infile+'.temp_copy')
+
+    # Evaluate line flagging logic. Use line and velocity data to generate
+    # frequency ranges to flag.
+    spw_flagging_string = ''
+    if lines_to_flag is not None:
         vsys_method = (vsys_kms is not None) and (vwidth_kms is not None)
         vlow_method = (vlow_kms is not None) and (vhigh_kms is not None)
-
         if vsys_method or vlow_method:
             ranges_to_exclude = lines.get_ghz_range_for_list(
                 line_list=lines_to_flag,
                 vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
                 vlow_kms=vlow_kms, vhigh_kms=vhigh_kms)
-
-    # if overwrite, then delete existing output data.
-
-    for suffix in ['', '.flagversions', '.touch',
-                   '.temp', '.temp.flagversions',
-                   '.temp_copy', '.temp_copy.flagversions',
-                   ]:
-        if os.path.isdir(outfile+suffix):
-            shutil.rmtree(outfile+suffix)
-
-    # find_spw_channels_for_provided frequency ranges
-
-    spw_flagging_string = spw_string_for_freq_ranges(
-        infile=infile, freq_ranges_ghz=ranges_to_exclude,
-        fail_on_empty=True)
-
-    # Make a copy of the data
-
-    if not os.path.isdir(outfile+'.touch'):
-        os.mkdir(outfile+'.touch')
-    shutil.copytree(infile, outfile)
-    if os.path.isdir(outfile+'.touch'):
-        os.rmdir(outfile+'.touch')
+            spw_flagging_string = spw_string_for_freq_ranges(
+                infile=infile, freq_ranges_ghz=ranges_to_exclude)
 
     # Flag the relevant line-affected channels.
     if spw_flagging_string != '':
-        if not os.path.isdir(outfile+'.touch'):
-            os.mkdir(outfile+'.touch')
         casaStuff.flagdata(
-            vis=outfile, spw=spw_flagging_string)
-        if os.path.isdir(outfile+'.touch'):
-            os.rmdir(outfile+'.touch')
+            vis=infile+'.temp_copy', spw=spw_flagging_string)
 
-    # If requested, re-weight the data using statwt. This can be VERY
-    # slow.
+    # Calculate reference frequencies and nominal velocity ranges
+    reffreq_ghz = np.mean(range_to_extract)
+    refvsys_kms = 0.0
+    refvwidth_kms = \
+        abs(np.diff(range_to_extract).item()) / reffreq_ghz * sol_kms
 
-    # Here - this command needs to be examined and refined in CASA
-    # 5.6.1 to see if it can be sped up. Right now things are
-    # devastatingly slow.
+    # ... if no SPW selection string is provided then note whether we
+    # have multiple windows.
+    if spw is None:
+        spw_list = find_spws_for_line(
+            infile=infile+'.temp_copy', restfreq_ghz=reffreq_ghz,
+            vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
+            require_full_line_coverage=require_full_cont_coverage,
+            require_data=True, exit_on_error=True, as_list=True)
+        if spw_list is None or len(spw_list) == 0:
+            logging.error(
+                "No SPWs for a selected frequency range: "
+                "{}--{}".format(*range_to_extract))
+            return()
+        spw = spw_list.join(',')
+    else:
+        spw_list = spw.split(',')
 
-    if do_statwt:
+    multiple_spws = len(spw_list) > 1
 
-        casaStuff.tb.open(outfile, nomodify=True)
-        colnames = casaStuff.tb.colnames()
-        if 'CORRECTED_DATA' in colnames:
-            logger.info("... Data has a CORRECTED column. Will use that.")
-            datacolumn = 'CORRECTED'
+    # ............................................
+    # Initialize the calls
+    # ............................................
+
+    if method in ('just_regrid', 'regrid_then_rebin', 'rebin_then_regrid'):
+
+        if target_chan_ghz is None:
+            logger.error(
+                'Need a target channel width to enable regridding.')
+            raise Exception(
+                "Need a target channel width to enable regridding.")
+
+        target_chan_kms = target_chan_ghz / reffreq_ghz * sol_kms
+        if nchan is None:
+            nchan = int(np.floor(refvwidth_kms / target_chan_kms))
+        refvstart_kms = refvsys_kms - refvwidth_kms/2. + target_chan_kms/2.
+
+        regrid_params, regrid_msg = build_mstransform_call(
+            infile=infile+'.temp_copy', outfile=outfile,
+            restfreq_ghz=reffreq_ghz, spw=spw,
+            method='regrid', vstart_kms=refvstart_kms,
+            target_chan_kms=target_chan_kms, nchan=nchan,
+            require_full_line_coverage=require_full_cont_coverage)
+
+    if method in ('just_rebin', 'regrid_then_rebin', 'rebin_then_regrid'):
+
+        if binfactor is None:
+            logger.warning('Need a bin factor to enable rebinning.')
+            return()
+
+        rebin_params, rebin_msg = build_mstransform_call(
+            infile=infile+'.temp_copy', outfile=outfile,
+            restfreq_ghz=reffreq_ghz, spw=spw,
+            method='rebin', binfactor=binfactor,
+            require_full_line_coverage=require_full_cont_coverage)
+
+    if multiple_spws:
+
+        combine_params, combine_msg = build_mstransform_call(
+            infile=infile+'.temp_copy', outfile=outfile,
+            restfreq_ghz=reffreq_ghz, spw=spw,
+            method='combine',
+            require_full_line_coverage=require_full_cont_coverage)
+
+    # ............................................
+    # string the calls together in the desired order
+    # ............................................
+
+    params_list = []
+    msg_list = []
+
+    if method == 'just_regrid':
+        params_list.append(regrid_params)
+        msg_list.append(regrid_msg)
+    elif method == 'just_rebin':
+        params_list.append(rebin_params)
+        msg_list.append(rebin_msg)
+    elif method == 'rebin_then_regrid':
+        params_list.append(rebin_params)
+        msg_list.append(rebin_msg)
+        params_list.append(regrid_params)
+        msg_list.append(regrid_msg)
+    else:
+        params_list.append(regrid_params)
+        msg_list.append(regrid_msg)
+        params_list.append(rebin_params)
+        msg_list.append(rebin_msg)
+
+    if multiple_spws:
+        params_list.append(combine_params)
+        msg_list.append(combine_msg)
+
+    # ............................................
+    # Execute the list of mstransform calls
+    # ............................................
+
+    n_calls = len(params_list)
+    logger.info('... we will have '+str(n_calls)+' mstransform calls')
+
+    for kk, (this_params, this_msg) in enumerate(zip(
+            params_list, msg_list)):
+
+        if kk == 0:
+            this_params['vis'] = infile+'.temp_copy'
+            this_params['outputvis'] = \
+                outfile+'.temp{:.0f}'.format(kk+1)
+        elif kk == n_calls-1:
+            this_params['vis'] = \
+                outfile+'.temp{:.0f}'.format(kk)
+            this_params['outputvis'] = outfile
         else:
-            logger.info(
-                "... Data lacks a CORRECTED column. Will use DATA column.")
-            datacolumn = 'DATA'
-        casaStuff.tb.close()
+            this_params['vis'] = \
+                outfile+'.temp{:.0f}'.format(kk)
+            this_params['outputvis'] = \
+                outfile+'.temp{:.0f}'.format(kk+1)
 
-        logger.info("... deriving empirical weights using STATWT.")
-        if not os.path.isdir(outfile+'.touch'):
-            os.mkdir(outfile+'.touch')
-        casaStuff.statwt(
-            vis=outfile, timebin='0.001s', slidetimebin=False,
-            chanbin='spw', statalg='classic', datacolumn=datacolumn)
-        if os.path.isdir(outfile+'.touch'):
-            os.rmdir(outfile+'.touch')
+        if os.path.isdir(this_params['outputvis']):
+            shutil.rmtree(this_params['outputvis'])
 
-    # collapse
+        logger.info("... "+this_msg)
 
-    if do_collapse:
+        if kk > 0:
+            this_params['spw'] = ''
+            this_params['datacolumn'] = 'DATA'
+
         logger.info(
-            "... Rebinning each continuum SPW to fewer channels.")
+            "... running CASA "+'mstransform(' +
+            ', '.join("{!s}={!r}".format(
+                t, this_params[t]) for t in this_params.keys()) +
+            ')')
 
-        if os.path.isdir(outfile):
-            shutil.move(outfile, outfile+'.temp_copy')
-        if os.path.isdir(outfile+'.flagversions'):
-            shutil.move(
-                outfile+'.flagversions', outfile+'.temp_copy'+'.flagversions')
+        if not os.path.isdir(this_params['outputvis']+'.touch'):
+            # mark the beginning of our processing
+            os.mkdir(this_params['outputvis']+'.touch')
 
-        if not os.path.isdir(outfile+'.touch'):
-            os.mkdir(outfile+'.touch')
+        casaStuff.mstransform(**this_params)
 
-        casaStuff.tb.open(outfile+'.temp_copy', nomodify=True)
-        colnames = casaStuff.tb.colnames()
-        if 'CORRECTED_DATA' in colnames:
-            logger.info("... Data has a CORRECTED column. Will use that.")
-            datacolumn = 'CORRECTED'
-        else:
-            logger.info(
-                "... Data lacks a CORRECTED column. Will use DATA column.")
-            datacolumn = 'DATA'
-        casaStuff.tb.close()
+        if os.path.isdir(this_params['outputvis']+'.touch') and \
+           this_params['outputvis'] != outfile:
+            # mark the end of our processing
+            os.rmdir(this_params['outputvis']+'.touch')
 
-        # calculate the binning
-        if min_nchan_per_spw is None:
-            min_nchan_per_spw = 1
-        max_width = np.floor(
-            np.array(au.getScienceSpwNChannels(outfile+'.temp_copy')) /
-            float(min_nchan_per_spw)).astype('int')
-        if target_chan_kms is None:
-            width = list(max_width)
-        else:
-            current_chan_ghz = np.array(
-                au.getScienceSpwChanwidths(outfile+'.temp_copy')) / 1e9
-            sci_freq_ghz = np.array(
-                au.getScienceFrequencies(outfile+'.temp_copy')) / 1e9
-            current_chan_kms = current_chan_ghz / sci_freq_ghz * sol_kms
-            width = np.floor(target_chan_kms / current_chan_kms).astype('int')
-            width = list(np.min([width, max_width], axis=0))
+    # ............................................
+    # Clean up leftover files
+    # ............................................
 
-        casaStuff.split(
-            vis=outfile+'.temp_copy', outputvis=outfile,
-            width=width, datacolumn=datacolumn, keepflags=False)
+    # TBD revisit
+    if os.path.isdir(outfile):
+        logger.info("... deleting temporary files")
+        for suffix in ['.temp_copy', '.temp_copy.flagversions']:
+            if os.path.isdir(infile+suffix):
+                shutil.rmtree(infile+suffix)
+        for kk in range(n_calls):
+            for suffix in [
+                    '.temp%d' % (kk),
+                    '.temp%d.flagversions' % (kk),
+                    '.temp%d.touch' % (kk)]:
+                if os.path.isdir(outfile+suffix):
+                    shutil.rmtree(outfile+suffix)
 
-        if os.path.isdir(outfile+'.touch'):
-            os.rmdir(outfile+'.touch')
-
-        # clean up
-        if os.path.isdir(outfile+'.temp_copy'):
-            shutil.rmtree(outfile+'.temp_copy')
-        if os.path.isdir(outfile+'.temp_copy.flagversions'):
-            shutil.rmtree(outfile+'.temp_copy.flagversions')
+    # Remove touch file to mark that we have done the processing
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch')
 
     return()
 
