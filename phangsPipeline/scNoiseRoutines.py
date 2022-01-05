@@ -491,8 +491,12 @@ def recipe_phangs_noise(
 
     # Recast from numpy array to spectral cube
     header = cube.header
-    header['DATAMIN'] = np.nanmin(rms)
-    header['DATAMAX'] = np.nanmax(rms)
+    datamin = np.nanmin(rms)
+    datamax = np.nanmax(rms)
+    if np.isfinite(datamin):
+        header['DATAMIN'] = datamin
+    if np.isfinite(datamax):
+        header['DATAMAX'] = datamax
     header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
     if tableversion:
         header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
