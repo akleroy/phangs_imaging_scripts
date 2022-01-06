@@ -9,7 +9,11 @@ import glob, copy, inspect
 import logging
 
 import numpy as np
-import pyfits  # CASA has pyfits, not astropy
+
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
@@ -766,7 +770,7 @@ def clean_loop(
 
         working_call.set_param('threshold', threshold_string, nowarning=True)
 
-        logger.info("Loop %d, niter %d, cycleniter %d, cumulative_niter %d, threshold %s." % ( \
+        logger.info("Loop %d, niter %d, cycleniter %d, cumulative_niter %d, threshold %s."%(\
             loop, niter, cycleniter, cumulative_niter, threshold_string))
 
         # If requested mask at each step (this is experimental, we're
@@ -959,13 +963,15 @@ def calc_residual_statistics(
         method='chauvmad', niter=5)
 
     out_dict = {
-        'cubename': resid_name,
-        'maskname': mask_name,
-        'max': np.max(vec),
-        'p99': np.percentile(vec, 99),
-        'p95': np.percentile(vec, 95),
-        'p90': np.percentile(vec, 90),
-        'noise': current_noise,
-    }
+        'cubename':resid_name,
+        'maskname':mask_name,
+        'max':np.max(vec),
+        'p99':np.percentile(vec,99),
+        'p95':np.percentile(vec,95),
+        'p90':np.percentile(vec,90),
+        'noise':current_noise,
+        }
 
-    return (out_dict)
+    return(out_dict)
+
+

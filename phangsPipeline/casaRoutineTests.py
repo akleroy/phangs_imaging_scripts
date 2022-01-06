@@ -41,7 +41,7 @@ def test_estimate_noise(
     """
     Test the noise estimation routine.
     """
-    
+
     tol = 1e-2
 
     vec = np.random.randn(1e5)
@@ -49,7 +49,7 @@ def test_estimate_noise(
     std_est = cma.estimate_noise(vec, method='std')
     chauv_est = cma.estimate_noise(vec, method='chauv')
     chauvmad_est = cma.estimate_noise(vec, method='chauvmad')
-    
+
     logger.info("mad estimate accuracy: "+str(np.abs(mad_est-1.0)))
     if np.abs(mad_est - 1.0) > tol:
         logger.error("mad estimate exceeds tolerance.")

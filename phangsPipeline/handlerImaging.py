@@ -1,8 +1,8 @@
 """imagingHandler
 
-This module makes images and cubes out of the uv data products created by uvdataHandler. 
+This module makes images and cubes out of the uv data products created by uvdataHandler.
 
-This code needs to be run inside CASA. 
+This code needs to be run inside CASA.
 
 Example:
     $ casa
@@ -27,28 +27,28 @@ Notes:
     This code calls following functions:
         import casaImagingRoutines as imr
         import casaMaskingRoutines as msr
-        if make_dirty_image: imr.make_dirty_map             
-        if revert_to_dirty: imr.replace_cube_with_copy      
-        if read_in_clean_mask: msr.import_and_align_mask    
-        if run_multiscale_clean: imr.multiscale_loop        
-        if revert_to_multiscale: imr.replace_cube_with_copy 
-        if make_singlescale_mask: msr.signal_mask           
-        if run_singlescale_clean: imr.singlescale_loop      
-        if do_export_to_fits: imr.export_to_fits            
+        if make_dirty_image: imr.make_dirty_map
+        if revert_to_dirty: imr.replace_cube_with_copy
+        if read_in_clean_mask: msr.import_and_align_mask
+        if run_multiscale_clean: imr.multiscale_loop
+        if revert_to_multiscale: imr.replace_cube_with_copy
+        if make_singlescale_mask: msr.signal_mask
+        if run_singlescale_clean: imr.singlescale_loop
+        if do_export_to_fits: imr.export_to_fits
 
 """
 
-# <DONE># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "handlerKeys.py"!
-# <TODO># 20200214 dzliu: will users want to do imaging for individual project instead of concatenated ms?
-# <TODO># 20200214 dzliu: needing KeyHandler API:
-# <DONE># 20200214 dzliu:     self._kh._cleanmask_dict   --> self._kh.get_cleanmask() # input target name, output clean mask file
-# <TODO># 20200214 dzliu:     self._kh._target_dict      --> self._kh.get_target_dict() # for rastring, decstring
-# <TODO># 20200214 dzliu:     self._kh._override_dict    --> self._kh.get_overrides()
-# <TODO># 20200214 dzliu:     self._kh._dir_keys         --> self._kh.get_target_name_for_multipart_name()
-# <TODO># 20200214 dzliu:     self._kh._config_dict['interf_config']['clean_scales_arcsec'] # angular scales
-# <TODO># 20200218 dzliu: CASA 5.4.0 works, but CASA 5.6.0 does not work!! -- now should work.
-# <TODO># 20200218 dzliu: revert does not work! -- copy_imaging suffix bug fixed.
-# <TODO># 20200218 dzliu: need to test 'cont'
+#<DONE># 20200210 dzliu: self._kh._cleanmask_dict is always None. It is not yet implemented in "handlerKeys.py"!
+#<TODO># 20200214 dzliu: will users want to do imaging for individual project instead of concatenated ms?
+#<TODO># 20200214 dzliu: needing KeyHandler API:
+#<DONE># 20200214 dzliu:     self._kh._cleanmask_dict   --> self._kh.get_cleanmask() # input target name, output clean mask file
+#<TODO># 20200214 dzliu:     self._kh._target_dict      --> self._kh.get_target_dict() # for rastring, decstring
+#<TODO># 20200214 dzliu:     self._kh._override_dict    --> self._kh.get_overrides()
+#<TODO># 20200214 dzliu:     self._kh._dir_keys         --> self._kh.get_target_name_for_multipart_name()
+#<TODO># 20200214 dzliu:     self._kh._config_dict['interf_config']['clean_scales_arcsec'] # angular scales
+#<TODO># 20200218 dzliu: CASA 5.4.0 works, but CASA 5.6.0 does not work!! -- now should work.
+#<TODO># 20200218 dzliu: revert does not work! -- copy_imaging suffix bug fixed.
+#<TODO># 20200218 dzliu: need to test 'cont'
 
 import os, sys, re, shutil
 import glob
@@ -61,20 +61,17 @@ import analysisUtils as au
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-try:
-    import taskinit
+# Check casa environment by importing CASA-only packages
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
     from . import casaImagingRoutines as imr
     from . import casaMaskingRoutines as msr
-
-    reload(imr)
-    reload(msr)
+    # reload(imr)
+    # reload(msr)
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -89,7 +86,7 @@ from . import casaStuff
 
 class ImagingHandler(handlerTemplate.HandlerTemplate):
     """
-    Class to makes image cubes out of uv data from each spectral line and continuum of each galaxy. 
+    Class to makes image cubes out of uv data from each spectral line and continuum of each galaxy.
     """
 
     ############
@@ -97,25 +94,23 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     ############
 
     def __init__(
-            self,
-            key_handler=None,
-            dry_run=False,
-    ):
+        self,
+        key_handler = None,
+        dry_run = False,
+        ):
 
         # inherit template class
-        handlerTemplate.HandlerTemplate.__init__(self,
-                                                 key_handler=key_handler,
-                                                 dry_run=dry_run)
+        handlerTemplate.HandlerTemplate.__init__(self,key_handler = key_handler, dry_run = dry_run)
 
     ###############
     # _fname_dict #
     ###############
 
     def _fname_dict(
-            self,
-            product,
-            imagename,
-    ):
+        self,
+        product,
+        imagename,
+        ):
         """
         Handles file names used in the imaging processes.
         """
@@ -146,6 +141,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             fname_dict['alpha'] = imagename + '.alpha'
             fname_dict['beta'] = imagename + '.beta'
         return fname_dict
+
 
     ################
     # loop_imaging #
@@ -271,7 +267,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             logger.info("--------------------------------------------------------")
             logger.info("END: Imaging target " + this_target + " config " + this_config + " product " + this_product)
             logger.info("--------------------------------------------------------")
-        # 
+        #
         # end of for looper
 
     #
@@ -300,7 +296,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         combination and an imaging stage.
         """
 
-        # check user input. 
+        # check user input.
         if target is None or config is None or product is None:
             logger.error('Please input target, config and product!')
             logger.error('e.g., target = "ngc3627_1", config = "12m+7m", product = "co21"')
@@ -396,7 +392,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         """
         Pick a cell size and imsize for a clean call by inspecting the
         visibility data, then attach these values to the clean call.
-        
+
         This will call casaImagingRoutines.estimate_cell_and_imsize()
         first, then apply custom overrides if they exist.
         """
@@ -430,6 +426,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         else:
             cell, imsize = '0.1arcsec', [1000, 1000]
             logger.info('DRY RUN skips calling imr.estimate_cell_and_imsize()')
+
+        logger.info('cell='+cell+'arcsec, imsize='+str(imsize))
 
         logger.info('cell=' + cell + 'arcsec, imsize=' + str(imsize))
 
@@ -482,7 +480,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
-        if not self._dry_run:
+        if not self._dry_run and casa_enabled:
             imr.make_dirty_image(clean_call, imaging_method=imaging_method)
             if backup:
                 imr.copy_imaging(
@@ -513,7 +511,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
-        if not self._dry_run:
+        if (not self._dry_run) and casa_enabled:
             imr.copy_imaging(
                 input_root=clean_call.get_param('imagename') + '_' + tag,
                 output_root=clean_call.get_param('imagename'),
@@ -568,6 +566,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if self._dry_run:
             return ()
+        if not casa_enabled:
+            return ()
 
         # Get fname dict
         fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'))
@@ -601,8 +601,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         Run a multiscale clean loop to convergence. This task
         currently hardcodes some of the PHANGS-ALMA best choice
         parameters.
-        
-        Set backup to True will make a copy of the multiscale cleaned 
+
+        Set backup to True will make a copy of the multiscale cleaned
         image as {imagename}_multiscale.image
         """
 
@@ -619,6 +619,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
 
         if self._dry_run:
+            return ()
+        if not casa_enabled:
             return ()
 
         imr.clean_loop(clean_call=clean_call,
@@ -695,7 +697,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
 
         if self._dry_run:
-            return ()
+            return()
+        if not casa_enabled:
+            return()
 
         # check if line product
         is_line_product = product in self._kh.get_line_products()
@@ -757,14 +761,13 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         Run a singlescale clean loop to convergence. This task
         currently hardcodes some of the PHANGS-ALMA best choice
         parameters.
-        
-        Set backup to True will make a copy of the singlescale cleaned 
+
+        Set backup to True will make a copy of the singlescale cleaned
         image as {imagename}_singlescale.image
         """
 
-        if not (clean_call.get_param('deconvolver') in ['hogbom', 'mtmfs']):
-            logger.warning("I expected a singlescale or mtmfs deconvolver but got " + str(
-                clean_call.get_param('deconvolver')) + ".")
+        if not (clean_call.get_param('deconvolver') in ['hogbom','mtmfs']):
+            logger.warning("I expected a singlescale or mtmfs deconvolver but got "+str(clean_call.get_param('deconvolver'))+".")
             raise Exception("Incorrect clean call! Should have a hogbom or mtmfs deconvolver.")
             return ()
 
@@ -776,6 +779,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
 
         if self._dry_run:
+            return ()
+        if not casa_enabled:
             return ()
 
         imr.clean_loop(clean_call=clean_call,
@@ -834,7 +839,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
-        if not self._dry_run:
+        if not self._dry_run and casa_enabled:
             imr.export_imaging_to_fits(image_root, imaging_method=imaging_method)
 
         return ()
@@ -873,10 +878,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             overwrite=False,
     ):
         """
-        PHANGS-ALMA basic imaging recipe. 
-        
+        PHANGS-ALMA basic imaging recipe.
+
         Major steps:
-       
+
         (1) Dirty imaging
         (2) Align a broad clean mask (if present)
         (3) Lightly masked multiscale clean to S/N ~ 4
@@ -885,9 +890,9 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         Operates by passing a "clean_call" object between steps. Can
         restart from any individual step.
-        
+
         Input file names: {target}_{config}_{product}_{extra_ext_in}.ms{.suffix_in}
-        
+
         Output file names: {target}_{config}_{product}_{extra_ext_out}.image
         """
 
@@ -1136,6 +1141,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # Export the products of the current clean to FITS files.
 
         if do_export_to_fits:
+            self.task_export_to_fits(clean_call=clean_call)
+
             self.task_export_to_fits(clean_call=clean_call)
 
         # Return

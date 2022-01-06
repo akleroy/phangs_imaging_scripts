@@ -32,7 +32,7 @@ logger.setLevel(logging.DEBUG)
 #region Routines to match resolution
 
 def common_res_for_mosaic(
-    infile_list = None, 
+    infile_list = None,
     outfile_list = None,
     target_res=None,
     pixel_padding=2.0,
@@ -40,7 +40,7 @@ def common_res_for_mosaic(
     overwrite=False
     ):
     """
-    Convolve multi-part cubes to a common res for mosaicking. 
+    Convolve multi-part cubes to a common res for mosaicking.
 
     infile_list : list of input files.
 
@@ -73,20 +73,20 @@ def common_res_for_mosaic(
     output files matched to the input file list, either as another
     list or a dictionary.
     """
-    
+
     # Check inputs.
 
     # First check that input files are supplied and exist.
 
     if infile_list is None:
         logger.error("Missing required infile_list.")
-        return(None)   
-    
+        return(None)
+
     for this_file in infile_list:
         if os.path.isdir(this_file) == False:
             logger.error("File not found "+this_file)
             return(None)
-    
+
     # If do_convolve is True then make sure that we have output files
     # and that they match the input files.
 
@@ -147,7 +147,7 @@ def common_res_for_mosaic(
 
             bmaj_list.append(this_bmaj)
             pix_list.append(this_pixel)
-        
+
         max_bmaj = np.max(bmaj_list)
         max_pix = np.max(pix_list)
         target_bmaj = np.sqrt((max_bmaj)**2+(pixel_padding*max_pix)**2)
@@ -164,7 +164,7 @@ def common_res_for_mosaic(
     for this_infile in infile_list:
         this_outfile = outfile_dict[this_infile]
         logger.debug("Convolving "+this_infile+' to '+this_outfile)
-        
+
         casaStuff.imsmooth(imagename=this_infile,
                       outfile=this_outfile,
                       targetres=True,
@@ -181,8 +181,8 @@ def common_res_for_mosaic(
 #region Routines to match astrometry between parts of a mosaic
 
 def calculate_mosaic_extent(
-        infile_list = None, 
-        force_ra_ctr = None, 
+        infile_list = None,
+        force_ra_ctr = None,
         force_dec_ctr = None,
         force_freq_ctr = None,
 ):
@@ -249,19 +249,19 @@ def calculate_mosaic_extent(
         xhi = this_shape[0]-1
         ylo = 0
         yhi = this_shape[1]-1
-        
+
         pixbox = str(xlo)+','+str(ylo)+','+str(xlo)+','+str(ylo)
         blc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
 
         pixbox = str(xlo)+','+str(yhi)+','+str(xlo)+','+str(yhi)
         tlc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
-        
+
         pixbox = str(xhi)+','+str(yhi)+','+str(xhi)+','+str(yhi)
         trc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
 
         pixbox = str(xhi)+','+str(ylo)+','+str(xhi)+','+str(ylo)
         brc = casaStuff.imval(this_infile, stokes='I', box=pixbox)
-        
+
         ra_list.append(blc['coords'][:,0])
         ra_list.append(tlc['coords'][:,0])
         ra_list.append(trc['coords'][:,0])
@@ -277,7 +277,7 @@ def calculate_mosaic_extent(
         freq_list.append(trc['coords'][:, 2])
         freq_list.append(brc['coords'][:, 2])
 
-    # Get the minimum and maximum RA and Declination. 
+    # Get the minimum and maximum RA and Declination.
 
     # TBD - this breaks straddling the meridian (RA = 0) or the poles
     # (Dec = 90). Add catch cases or at least error calls for
@@ -339,9 +339,9 @@ def calculate_mosaic_extent(
 def build_common_header(
         infile_list = None,
         template_file = None,
-        ra_ctr = None, 
+        ra_ctr = None,
         dec_ctr = None,
-        delta_ra = None, 
+        delta_ra = None,
         delta_dec = None,
         freq_ctr = None,
         delta_freq = None,
@@ -381,13 +381,13 @@ def build_common_header(
     """
 
     # Check inputs
-    
+
     if template_file is None:
 
         if infile_list is None:
             logger.error("Missing required infile_list and no template file.")
             return(None)
-    
+
         template_file = infile_list[0]
         logger.info("Using first input file as template - "+template_file)
 
@@ -403,7 +403,7 @@ def build_common_header(
             return(None)
 
     if infile_list is None:
-        
+
         if template_file is None:
             logger.error("Without an input file stack, I need a template file.")
             return(None)
@@ -425,7 +425,7 @@ def build_common_header(
             force_dec_ctr = dec_ctr,
             force_freq_ctr = freq_ctr
             )
-        
+
         if ra_ctr is None:
             ra_ctr = extent_dict['ra_ctr'][0]
         if dec_ctr is None:
@@ -440,11 +440,11 @@ def build_common_header(
             freq_ctr = extent_dict['freq_ctr'][0]
         if delta_freq is None:
             delta_freq = extent_dict['delta_freq'][0]
-        
+
     # Get the header from the template file
 
     target_hdr = casaStuff.imregrid(template_file, template='get')
-    
+
     # Get the pixel scale. This makes some assumptions. We could put a
     # lot of general logic here, but we are usually working in a
     # case where this works.
@@ -467,7 +467,7 @@ def build_common_header(
 
     # Calculate the size of the image in pixels and set the central
     # pixel coordinate for the RA and Dec axis.
-    
+
     ra_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][0]*180./np.pi*3600.)
     ra_axis_size = np.ceil(delta_ra / ra_pix_in_as) + 1
     new_ra_ctr_pix = (ra_axis_size + 1) /2.0
@@ -475,7 +475,7 @@ def build_common_header(
     dec_pix_in_as = np.abs(target_hdr['csys']['direction0']['cdelt'][1]*180./np.pi*3600.)
     dec_axis_size = np.ceil(delta_dec / dec_pix_in_as) + 1
     new_dec_ctr_pix = (dec_axis_size + 1)/2.0
-    
+
     freq_pix_in_hz = np.abs(target_hdr['csys']['spectral1']['wcs']['cdelt'])
     freq_axis_size = np.ceil(delta_freq / freq_pix_in_hz) + 1
     # +1 or the 1-indexing
@@ -497,7 +497,7 @@ def build_common_header(
     target_hdr['csys']['direction0']['crpix'][0] = new_ra_ctr_pix
     target_hdr['csys']['direction0']['crpix'][1] = new_dec_ctr_pix
     target_hdr['csys']['spectral1']['wcs']['crpix'] = new_freq_ctr_pix
-    
+
     target_hdr['shap'][0] = int(ra_axis_size)
     target_hdr['shap'][1] = int(dec_axis_size)
     target_hdr['shap'][2] = int(freq_axis_size)
@@ -509,12 +509,12 @@ def common_grid_for_mosaic(
     target_hdr = None,
     template_file = None,
     # could use **kwargs here if this gets much more complicated
-    ra_ctr = None, 
+    ra_ctr = None,
     dec_ctr = None,
-    delta_ra = None, 
+    delta_ra = None,
     delta_dec = None,
     allow_big_image = False,
-    too_big_pix=1e4,   
+    too_big_pix=1e4,
     asvelocity=True,
     interpolation='cubic',
     axes=[-1],
@@ -526,7 +526,7 @@ def common_grid_for_mosaic(
     as a header, the program calls other routines to create it based
     on the supplied parameters and stack of input images. Returns the
     common header.
-    
+
     infile_list : list of input files.
 
     outfile_list : a list of output files that will get the convolved
@@ -558,7 +558,7 @@ def common_grid_for_mosaic(
     for this_infile in infile_list:
         if os.path.isdir(this_infile) == False:
             logger.error("File "+this_infile+" not found. Continuing.")
-            continue        
+            continue
 
     if outfile_list is None:
         logger.error("Outfile list missing.")
@@ -584,15 +584,15 @@ def common_grid_for_mosaic(
     # Get the common header if one is not supplied
 
     if target_hdr is None:
-        
+
         logger.info('Generating target header.')
-        
+
         target_hdr = build_common_header(
-            infile_list = infile_list, 
+            infile_list = infile_list,
             template_file = template_file,
-            ra_ctr = ra_ctr, 
+            ra_ctr = ra_ctr,
             dec_ctr = dec_ctr,
-            delta_ra = delta_ra, 
+            delta_ra = delta_ra,
             delta_dec = delta_dec,
             allow_big_image = allow_big_image,
             too_big_pix=too_big_pix,
@@ -608,9 +608,9 @@ def common_grid_for_mosaic(
     logger.info('Aligning image files.')
 
     for this_infile in infile_list:
-        
+
         this_outfile = outfile_dict[this_infile]
-        
+
         casaStuff.imregrid(imagename=this_infile,
                       template=target_hdr,
                       output=this_outfile,
@@ -660,13 +660,13 @@ def generate_weight_file(
     - 'pb' for primary beam response (weight goes at pb^2)
     - 'noise' for a noise estimate (weight goes as 1/noise^2)
     - 'weight' for a weight value
-    
+
     outfile : the name of the output weight file to write
 
     scale_by_noise (default False) : if True, then scale the weight
     image by 1/noise^2 . Either the noise_value is supplied or it will
     be calculated from the image.
-    
+
     mask_for_noise : if supplied, the "True" values in this mask image
     will be passed to the noise estimation routine and excluded from
     the noise calculation.
@@ -676,7 +676,7 @@ def generate_weight_file(
 
     scale_by_factor : a factor that will be applied directly to the
     weight image.
-    
+
     overwrite (default False) : Delete existing files. You probably
     want to set this to True but it's a user decision.
 
@@ -730,7 +730,7 @@ def generate_weight_file(
             return(None)
 
         if noise_value is None:
-            
+
             logger.info("Calculating noise for "+image_file)
 
             # Could use kwargs here to simplify parameter passing. Fine right now, too.
@@ -772,7 +772,7 @@ def generate_weight_file(
 
     # Case 1 : We just have an input value.
 
-    if input_file is None and input_value is not None:        
+    if input_file is None and input_value is not None:
 
         if input_type is 'noise':
             weight_value = 1./input_value**2
@@ -782,7 +782,7 @@ def generate_weight_file(
             weight_value = input_value
 
         weight_image = data*0.0 + weight_value
-    
+
     # Case 2 : We have an input image. Read in the data and manipulate
     # it into a weight array.
 
@@ -798,7 +798,7 @@ def generate_weight_file(
     # Now we have a weight image. If request, scale the data by a factor.
 
     if scale_by_factor is not None:
-        
+
         weight_image = weight_image * scale_by_factor
 
     # If request, scale the data by the inverse square of the noise estimate.
@@ -818,7 +818,7 @@ def generate_weight_file(
 #region Routines to carry out the mosaicking
 
 def mosaic_aligned_data(
-    infile_list = None, 
+    infile_list = None,
     weightfile_list = None,
     outfile = None,
     overwrite=False,
@@ -839,7 +839,7 @@ def mosaic_aligned_data(
     outfile : the name of the output mosaic image. Will create
     associated files with ".sum" and ".weight" appended to this file
     name.
-    
+
     overwrite (default False) : Delete existing files. You probably
     want to set this to True but it's a user decision.
 
@@ -957,7 +957,7 @@ def mosaic_aligned_data(
             myia.replacemaskedpixels(0.0)
             myia.set(pixelmask=1)
         myia.close()
- 
+
     cwd = os.getcwd()
     ppdir = os.chdir(os.path.dirname(full_imlist[0]))
     local_imlist = [os.path.basename(ll) for ll in full_imlist]
@@ -976,7 +976,7 @@ def mosaic_aligned_data(
                      imagemd = local_imlist[0])
 
     # Just to be safe, reset the masks on the two images.
-    
+
     myia = au.createCasaTool(casaStuff.iatool)
     myia.open(sum_file)
     myia.set(pixelmask=1)
@@ -998,12 +998,12 @@ def mosaic_aligned_data(
     # (does not have to be zero, though, I guess).
 
     casaStuff.immath(imagename = weight_file, mode='evalexpr',
-                     expr='iif(IM0 > 0.0, 1.0, 0.0)', 
+                     expr='iif(IM0 > 0.0, 1.0, 0.0)',
                      outfile=local_maskfile)
-    
+
     # Strip out any degenerate axes and create the final output file.
 
-    casaStuff.imsubimage(imagename=temp_file, 
+    casaStuff.imsubimage(imagename=temp_file,
                     outfile=local_outfile,
                     mask='"'+local_maskfile+'"',
                     dropdeg=True)
