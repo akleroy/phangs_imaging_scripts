@@ -38,7 +38,6 @@ if casa_enabled:
     # reload(cfr)
 else:
     logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from . import handlerTemplate
 from . import utilsFilenames
