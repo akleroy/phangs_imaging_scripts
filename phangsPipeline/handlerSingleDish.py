@@ -24,7 +24,7 @@ casa_enabled = is_casa_installed()
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    import casaSingleDishRoutines as csdr
+    from . import casaSingleDishRoutines as csdr
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))

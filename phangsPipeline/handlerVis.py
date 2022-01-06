@@ -52,6 +52,7 @@ from . import utilsFilenames as fnames
 # Spectral lines
 from . import utilsLines as lines
 
+
 class VisHandler(handlerTemplate.HandlerTemplate):
     """
     Class to manipulate calibrated ALMA visibility data (measurement
@@ -69,14 +70,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             dry_run = False,):
         """
         """
-        
-        # inherit template class
-        handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
-        
-        # import necessary modules
-        if not self._dry_run:
-            global cvr
-            import casaVisRoutines as cvr
+        # Can't use super and keep python2/3 agnostic
+        handlerTemplate.HandlerTemplate.__init__(self, key_handler=key_handler, dry_run=dry_run)
 
 
 #region Loops
