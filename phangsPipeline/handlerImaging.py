@@ -978,7 +978,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                     myia.close()
 
                 # Pull out the cube parameters we need, since they have to exactly match the SD cube
-                from sdint_helper import *
+                from sdint_helper import SDINT_helper
                 sdintlib = SDINT_helper()
                 sd_dict = sdintlib.setup_cube_params(sdcube=sd_image_file)
 

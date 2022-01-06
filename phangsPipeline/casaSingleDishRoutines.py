@@ -86,13 +86,13 @@ import analysisUtils as au
 es = au.stuffForScienceDataReduction()
 
 # CASA stuff
-import casaStuff
+from . import casaStuff
 
 # Spectral lines
-import utilsLines as lines
+from . import utilsLines as lines
 
 # Pipeline versionining
-from pipelineVersion import version as pipeVer
+from .pipelineVersion import version as pipeVer
 
 #endregion
 

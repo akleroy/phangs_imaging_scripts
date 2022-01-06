@@ -19,11 +19,8 @@ logger.setLevel(logging.DEBUG)
 
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
@@ -32,9 +29,10 @@ else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import handlerTemplate
-import utilsFilenames
-import utilsLines
+from . import handlerTemplate
+from . import utilsFilenames
+from . import utilsLines
+
 
 class SingleDishHandler(handlerTemplate.HandlerTemplate):
     """
