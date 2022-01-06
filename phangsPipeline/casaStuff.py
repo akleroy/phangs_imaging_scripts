@@ -35,12 +35,14 @@ except (ImportError, ModuleNotFoundError):
 
     # This is for CASA6
 
-    from casatools import table, image, imager
+    from casatools import (table, image, imager, msmetadata)
 
     tb = table()
 
     iatool = image
     imtool = imager
+    msmdtool = msmetadata
+    tbtool = table
 
     import casatools
     simple_version = casatools.version()
