@@ -92,6 +92,10 @@ if casa_version.major <= 5:
     from listobs import listobs
     from flagcmd import flagcmd
     from flagdata import flagdata
+
+    # sdintimaging if casa version >= 5.7
+    if casa_version.minor >= 7:
+        from sdintimaging import sdintimaging
     
     try:
         # useful for singledish processing with precasa5
