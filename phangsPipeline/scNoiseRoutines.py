@@ -318,9 +318,10 @@ def noise_cube(data, mask=None,
         if not do_spec:
 
             # If spectral variations are turned off then assume that
-            # the noise_map describes all channels of the cube.
+            # the noise_map describes all channels of the cube. In
+            # that case the spectrum is just a series of ones.
 
-            pass
+            noise_spec = np.ones(data.shape[0])
             
         else:
 
@@ -329,7 +330,7 @@ def noise_cube(data, mask=None,
             zz = np.arange(data.shape[0])
             for z in zz:
 
-                # Idententify the range of channels to be considered
+                # Identify the range of channels to be considered
                 # in this estimate.
 
                 lowz = np.clip(z - boxv, 0, data.shape[0])
