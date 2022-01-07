@@ -551,6 +551,8 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 
         if this_type == "cont_product":
             expected_params = {
+                'freq_ranges_ghz':[],
+                'channel_ghz':0.0,
                 'lines_to_flag':[]
                 }                
 

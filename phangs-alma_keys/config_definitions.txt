@@ -136,7 +136,7 @@ line_product    13co21    {'fitorder':0,'combinespw':False,'lines_to_flag':['13c
 line_product    c18o21    {'line_tag':'c18o21','channel_kms':6.0,'statwt_edge_kms':100.0}
 line_product    c18o21    {'fitorder':0,'combinespw':False,'lines_to_flag':['c18o21','13co21']}
 
-cont_product    cont      {'lines_to_flag':['co','13co','c18o','hcn','hcop']}
+cont_product    cont      {'freq_ranges_ghz':[[214.87,216.83],[217.51,219.36],[229.49,230.40],[230.62,232.58]],'lines_to_flag':['co','13co','c18o','hcn','hcop']}
 
 interf_config   12m       {'array_tags':['12m']}
 interf_config   12m       {'clean_scales_arcsec':[0,1,2.5,5.0]}

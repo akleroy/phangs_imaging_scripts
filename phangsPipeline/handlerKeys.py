@@ -1750,6 +1750,47 @@ class KeyHandler:
 
         return(lines_to_flag)
 
+    def get_channel_width_for_cont_product(self, product=None):
+        """
+        Get the channel width (in km/s) associated with a continuum product.
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        channel_ghz = None
+        if 'cont_product' in self._config_dict:
+            if product in self._config_dict['cont_product']:
+                if 'channel_ghz' in self._config_dict['cont_product'][product]:
+                    channel_ghz = \
+                        self._config_dict['cont_product'][product]['channel_ghz']
+
+        if channel_ghz is None:
+            logging.info('No channel_ghz found for '+product)
+
+        return(channel_ghz)
+
+    def get_freq_ranges_for_cont_product(self, product=None):
+        """
+        Get the frequency ranges (in GHz) associated with a continuum product.
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        freq_ranges_ghz = None
+        if 'cont_product' in self._config_dict:
+            if product in self._config_dict['cont_product']:
+                if 'freq_ranges_ghz' in self._config_dict['cont_product'][product]:
+                    freq_ranges_ghz = \
+                        self._config_dict['cont_product'][product]['freq_ranges_ghz']
+
+        if freq_ranges_ghz is None:
+            logging.error('No freq_ranges_ghz value set for cont product '+product)
+            raise Exception('No freq_ranges_ghz value set for cont product '+product)
+
+        return(freq_ranges_ghz)
+
     def get_array_tags_for_config(self, config=None):
         """
         Get the list of array tags associated with an interferometric configuration.
