@@ -10,7 +10,10 @@ import glob
 import logging
 
 import numpy as np
-import pyfits # CASA has pyfits, not astropy
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
