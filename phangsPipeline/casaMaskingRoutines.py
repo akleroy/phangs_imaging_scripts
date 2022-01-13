@@ -18,7 +18,10 @@ import logging
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.special import erfc
-import pyfits  # CASA has pyfits, not astropy
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au

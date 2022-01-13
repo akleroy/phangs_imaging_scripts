@@ -110,6 +110,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         self,
         product,
         imagename,
+        imaging_method='tclean',
         ):
         """
         Handles file names used in the imaging processes.
@@ -119,27 +120,49 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         if is_line_product:
             fname_dict['root'] = imagename
             fname_dict['suffix'] = ''
-            fname_dict['image'] = imagename + '.image'
-            fname_dict['model'] = imagename + '.model'
-            fname_dict['residual'] = imagename + '.residual'
-            fname_dict['mask'] = imagename + '.mask'
-            fname_dict['pb'] = imagename + '.pb'
-            fname_dict['psf'] = imagename + '.psf'
-            fname_dict['weight'] = imagename + '.weight'
-            fname_dict['sumwt'] = imagename + '.sumwt'
+            if imaging_method == 'tclean':
+                fname_dict['image'] = imagename + '.image'
+                fname_dict['model'] = imagename + '.model'
+                fname_dict['residual'] = imagename + '.residual'
+                fname_dict['mask'] = imagename + '.mask'
+                fname_dict['pb'] = imagename + '.pb'
+                fname_dict['psf'] = imagename + '.psf'
+                fname_dict['weight'] = imagename + '.weight'
+                fname_dict['sumwt'] = imagename + '.sumwt'
+            elif imaging_method == 'sdintimaging':
+                fname_dict['image'] = imagename + '.joint.cube.image'
+                fname_dict['model'] = imagename + '.joint.cube.model'
+                fname_dict['residual'] = imagename + '.joint.cube.residual'
+                fname_dict['mask'] = imagename + '.joint.cube.mask'
+                fname_dict['pb'] = imagename + '.joint.cube.pb'
+                fname_dict['psf'] = imagename + '.joint.cube.psf'
+                fname_dict['weight'] = imagename + '.joint.cube.weight'
+                fname_dict['sumwt'] = imagename + '.joint.cube.sumwt'
         else:
             fname_dict['root'] = imagename
             fname_dict['suffix'] = '.tt0'
-            fname_dict['image'] = imagename + '.image.tt0'
-            fname_dict['model'] = imagename + '.model.tt0'
-            fname_dict['residual'] = imagename + '.residual.tt0'
-            fname_dict['mask'] = imagename + '.mask'  # not '.mask.tt0'
-            fname_dict['pb'] = imagename + '.pb.tt0'
-            fname_dict['psf'] = imagename + '.psf.tt0'
-            fname_dict['weight'] = imagename + '.weight.tt0'
-            fname_dict['sumwt'] = imagename + '.sumwt.tt0'
-            fname_dict['alpha'] = imagename + '.alpha'
-            fname_dict['beta'] = imagename + '.beta'
+            if imaging_method == 'tclean':
+                fname_dict['image'] = imagename + '.image.tt0'
+                fname_dict['model'] = imagename + '.model.tt0'
+                fname_dict['residual'] = imagename + '.residual.tt0'
+                fname_dict['mask'] = imagename + '.mask'  # not '.mask.tt0'
+                fname_dict['pb'] = imagename + '.pb.tt0'
+                fname_dict['psf'] = imagename + '.psf.tt0'
+                fname_dict['weight'] = imagename + '.weight.tt0'
+                fname_dict['sumwt'] = imagename + '.sumwt.tt0'
+                fname_dict['alpha'] = imagename + '.alpha'
+                fname_dict['beta'] = imagename + '.beta'
+            elif imaging_method == 'sdintimaging':
+                fname_dict['image'] = imagename + '.joint.cube.image.tt0'
+                fname_dict['model'] = imagename + '.joint.cube.model.tt0'
+                fname_dict['residual'] = imagename + '.joint.cube.residual.tt0'
+                fname_dict['mask'] = imagename + '.joint.cube.mask'  # not '.mask.tt0'
+                fname_dict['pb'] = imagename + '.joint.cube.pb.tt0'
+                fname_dict['psf'] = imagename + '.joint.cube.psf.tt0'
+                fname_dict['weight'] = imagename + '.joint.cube.weight.tt0'
+                fname_dict['sumwt'] = imagename + '.joint.cube.sumwt.tt0'
+                fname_dict['alpha'] = imagename + '.joint.cube.alpha'
+                fname_dict['beta'] = imagename + '.joint.cube.beta'
         return fname_dict
 
 
@@ -286,6 +309,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             target=None,
             config=None,
             product=None,
+            imaging_method='tclean',
             extra_ext_in=None,
             suffix_in=None,
             extra_ext_out=None,
@@ -379,6 +403,13 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         else:
             clean_call.set_reffreq_ghz(None)
 
+        if imaging_method == 'sdintimaging':
+            # Put in sdintimaging specific parameters to point at the SD image and PSF
+            image_name = clean_call.get_param('imagename')
+            clean_call.set_param('usedata', 'sdint')
+            clean_call.set_param('sdimage', image_name + '.sd.cube.image')
+            clean_call.set_param('sdpsf', image_name + '.sd.cube.psf')
+
         return (clean_call)
 
     @CleanCallFunctionDecorator
@@ -437,6 +468,77 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # Return
 
         return (cell, imsize)
+
+    @CleanCallFunctionDecorator
+    def task_setup_sdintimaging(
+            self,
+            clean_call=None,
+            target=None,
+            product=None,
+            asvelocity=True,
+            overwrite=False
+    ):
+        """
+        Regrid existing TP image to the staged MS
+        """
+
+        if clean_call is None:
+            logger.warning("Require a clean_call object. Returning.")
+            return ()
+
+        # TODO: errors for target/product
+
+        # Convert the fits file to an MS
+        sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
+        sd_image_file = clean_call.get_param('imagename') + '.sd'
+
+        if not os.path.exists(sd_image_file) or overwrite:
+            os.system('rm -rf ' + sd_image_file)
+            casaStuff.importfits(fitsimage=sd_fits_file, imagename=sd_image_file, overwrite=True)
+
+            # Make sure the image axes are the right way round
+            os.system('rm -rf ' + sd_image_file + '_reorder')
+            order = ['rig', 'declin', 'stok', 'frequ']
+            casaStuff.imtrans(imagename=sd_image_file, outfile=sd_image_file + '_reorder',
+                              order=order)
+            os.system('rm -rf ' + sd_image_file)
+            os.system('mv -f ' + sd_image_file + '_reorder ' + sd_image_file)
+
+            # Regrid this to the input measurement set to avoid any weirdness with overlap.
+            mytb = au.createCasaTool(casaStuff.tbtool)
+            mytb.open(clean_call.get_param('vis') + '/SPECTRAL_WINDOW')
+            freq = mytb.getcol('CHAN_FREQ')
+            n_chan = mytb.getcol('NUM_CHAN')[0]
+            d_freq = mytb.getcol('CHAN_WIDTH')[0, 0]
+            first_freq = freq[0, 0]
+            mytb.close()
+
+            template_hdr = casaStuff.imregrid(sd_image_file, template='get')
+            template_hdr['shap'][-1] = n_chan
+            template_hdr['csys']['spectral2']['wcs']['crpix'] = 0.0
+            template_hdr['csys']['spectral2']['wcs']['cdelt'] = d_freq
+            template_hdr['csys']['spectral2']['wcs']['crval'] = first_freq
+
+            casaStuff.imregrid(imagename=sd_image_file, output=sd_image_file + '_regrid',
+                               template=template_hdr, asvelocity=asvelocity, overwrite=True)
+            os.system('rm -rf ' + sd_image_file)
+            os.system('mv -f ' + sd_image_file + '_regrid ' + sd_image_file)
+
+            # Make sure the cube has per-plane restoring beans, both in channels and polarizations
+            cube_info = casaStuff.imhead(sd_image_file, mode='list')
+            n_chan = cube_info['shape'][-1]
+            n_pol = cube_info['shape'][-2]
+
+            myia = au.createCasaTool(casaStuff.iatool)
+            myia.open(sd_image_file)
+            restoring_beam = myia.restoringbeam()
+            myia.setrestoringbeam(remove=True)
+            for c in range(n_chan):
+                for p in range(n_pol):
+                    myia.setrestoringbeam(beam=restoring_beam, channel=c, polarization=p)
+            myia.close()
+
+        return sd_image_file
 
     @CleanCallFunctionDecorator
     def task_assign_multiscales(
@@ -570,22 +672,19 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             return ()
 
         # Get fname dict
-        fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'))
-
-        if imaging_method == 'tclean':
-            out_file = fname_dict['mask']
-            template = fname_dict['image']
-        elif imaging_method == 'sdintimaging':
-            out_file = fname_dict['mask'].replace('.mask', '.joint.cube.mask')
-            template = fname_dict['image'].replace('.image', '.sd.cube.image')
+        fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'),
+                                      imaging_method=imaging_method)
 
         # import_and_align_mask
         msr.import_and_align_mask(in_file=this_cleanmask,
-                                  out_file=out_file,
-                                  template=template,
+                                  out_file=fname_dict['mask'],
+                                  template=fname_dict['image'],
                                   blank_to_match=True)
         # AKL - propose to deprecate
         # clean_call.set_param('usemask','user')
+
+        # if imaging_method == 'sdintimaging':
+        #     os.system('cp -r %s %s' % (out_file, out_file.replace('.joint.cube', '.int.cube')))
 
         return ()
 
@@ -664,6 +763,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             self,
             clean_call=None,
             product=None,
+            imaging_method='tclean',
             high_snr=None,
             low_snr=None,
             absolute=False,
@@ -680,9 +780,11 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             return ()
 
         # Get fname dict
-        fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'))
+        fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'),
+                                      imaging_method=imaging_method)
 
         # get imagename
+
         imagename = fname_dict['image']
         if not os.path.isdir(imagename):
             logger.error("Image not found: " + imagename)
@@ -753,6 +855,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
     def task_singlescale_clean(
             self,
             clean_call=None,
+            imaging_method='tclean',
             convergence_fracflux=0.01,
             threshold_value=1.0,
             backup=True,
@@ -784,6 +887,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             return ()
 
         imr.clean_loop(clean_call=clean_call,
+                       imaging_method=imaging_method,
                        record_file=clean_call.get_param('imagename') + '_singlescale_record.txt',
                        niter_base_perchan=10,
                        niter_growth_model='geometric',
@@ -813,6 +917,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             imr.copy_imaging(
                 input_root=clean_call.get_param('imagename'),
                 output_root=clean_call.get_param('imagename') + '_singlescale',
+                imaging_method=imaging_method,
                 wipe_first=True)
 
         return ()
@@ -927,71 +1032,20 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 logger.warning('No singledish fits file found, reverting to standard tclean')
                 imaging_method = 'tclean'
             else:
-
-                # Convert the fits file to an MS
-                sd_image_file = clean_call.get_param('imagename') + '.sd'
-
-                if not os.path.exists(sd_image_file):
-                    os.system('rm -rf ' + sd_image_file)
-                    casaStuff.importfits(fitsimage=sd_fits_file, imagename=sd_image_file, overwrite=True)
-
-                    # Make sure the image axes are the right way round
-                    os.system('rm -rf ' + sd_image_file + '_reorder')
-                    order = ['rig', 'declin', 'stok', 'frequ']
-                    casaStuff.imtrans(imagename=sd_image_file, outfile=sd_image_file + '_reorder',
-                                      order=order)
-                    os.system('rm -rf ' + sd_image_file)
-                    os.system('mv -f ' + sd_image_file + '_reorder ' + sd_image_file)
-
-                    # Regrid this to the input measurement set to avoid any weirdness with overlap.
-                    mytb = au.createCasaTool(casaStuff.tbtool)
-                    mytb.open(clean_call.get_param('vis') + '/SPECTRAL_WINDOW')
-                    freq = mytb.getcol('CHAN_FREQ')
-                    n_chan = mytb.getcol('NUM_CHAN')[0]
-                    d_freq = mytb.getcol('CHAN_WIDTH')[0, 0]
-                    first_freq = freq[0, 0]
-                    mytb.close()
-
-                    template_hdr = casaStuff.imregrid(sd_image_file, template='get')
-                    template_hdr['shap'][-1] = n_chan
-                    template_hdr['csys']['spectral2']['wcs']['crpix'] = 0.0
-                    template_hdr['csys']['spectral2']['wcs']['cdelt'] = d_freq
-                    template_hdr['csys']['spectral2']['wcs']['crval'] = first_freq
-
-                    casaStuff.imregrid(imagename=sd_image_file, output=sd_image_file + '_regrid',
-                                       template=template_hdr, overwrite=True)
-                    os.system('rm -rf ' + sd_image_file)
-                    os.system('mv -f ' + sd_image_file + '_regrid ' + sd_image_file)
-
-                    # Make sure the cube has per-plane restoring beans, both in channels and polarizations
-                    cube_info = casaStuff.imhead(sd_image_file, mode='list')
-                    n_chan = cube_info['shape'][-1]
-                    n_pol = cube_info['shape'][-2]
-
-                    myia = au.createCasaTool(casaStuff.iatool)
-                    myia.open(sd_image_file)
-                    restoring_beam = myia.restoringbeam()
-                    myia.setrestoringbeam(remove=True)
-                    for c in range(n_chan):
-                        for p in range(n_pol):
-                            myia.setrestoringbeam(beam=restoring_beam, channel=c, polarization=p)
-                    myia.close()
-
-                # Pull out the cube parameters we need, since they have to exactly match the SD cube
-                from sdint_helper import SDINT_helper
-                sdintlib = SDINT_helper()
-                sd_dict = sdintlib.setup_cube_params(sdcube=sd_image_file)
+                sd_image_file = self.task_setup_sdintimaging(clean_call, target=target, product=product,
+                                                             overwrite=overwrite)
 
                 # Set the clean call parameters as necessary.
                 clean_call.set_param('usedata', 'sdint')
                 clean_call.set_param('sdimage', sd_image_file)
-                clean_call.set_param('nchan', sd_dict['nchan'])
-                clean_call.set_param('start', sd_dict['start'])
-                clean_call.set_param('width', sd_dict['width'])
 
-                # params_to_remove = ['outlierfile', 'conjbeams', 'normtype']
-                # for param_to_remove in params_to_remove:
-                #     del clean_call.clean_params[param_to_remove]
+                # Catch the case where the frequency axis might go the wrong way round by specifying this exactly to
+                # the SD parameters
+                sdintlib = casaStuff.sdint_helper.SDINT_helper()
+                cube_params = sdintlib.setup_cube_params(sdcube=sd_image_file)
+                clean_call.set_param('nchan', cube_params['nchan'])
+                clean_call.set_param('start', cube_params['start'])
+                clean_call.set_param('width', cube_params['width'])
 
         # Make a dirty image (niter=0)
 
@@ -1020,6 +1074,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         clean_call = self.task_initialize_clean_call(
             target=target, config=config, product=product,
+            imaging_method=imaging_method,
             extra_ext_in=extra_ext_in, suffix_in=suffix_in,
             extra_ext_out=extra_ext_out,
             stage='multiscale')
@@ -1030,13 +1085,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # didn't find a clean mask or if we did not supply one. Either
         # way, now turn on a primary beam based mask.
 
-        fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'))
+        fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'),
+                                      imaging_method=imaging_method)
 
-        if imaging_method == 'tclean':
-            mask_name = fname_dict['mask']
-        elif imaging_method == 'sdintimaging':
-            mask_name = fname_dict['mask'].replace('.mask', '.joint.cube.mask')
-
+        mask_name = fname_dict['mask']
         if not os.path.isdir(mask_name):
             logger.warning("I looked for this and did not find it: " + mask_name)
             if (clean_call.get_param('usemask') == "user") and (clean_call.get_param('mask') is not None) and (
@@ -1062,21 +1114,16 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             clean_call.set_param('cell', cell, nowarning=True)
             clean_call.set_param('imsize', imsize, nowarning=True)
 
-            # Look up the angular scales to clean for this config
-
-        self.task_assign_multiscales(config=config, clean_call=clean_call)
+        # Cube params for sdintimaging
 
         if imaging_method == 'sdintimaging':
-            # Set the clean call parameters as necessary.
+            clean_call.set_param('nchan', cube_params['nchan'])
+            clean_call.set_param('start', cube_params['start'])
+            clean_call.set_param('width', cube_params['width'])
 
-            vis = clean_call.get_param('imagename')
-            clean_call.set_param('usedata', 'sdint')
-            clean_call.set_param('sdimage', vis + '.sd.cube.image')
-            clean_call.set_param('sdpsf', vis + '.sd.cube.psf')
-            clean_call.set_param('mask', vis + '.joint.cube.mask')
-            clean_call.set_param('nchan', sd_dict['nchan'])
-            clean_call.set_param('start', sd_dict['start'])
-            clean_call.set_param('width', sd_dict['width'])
+        # Look up the angular scales to clean for this config
+
+        self.task_assign_multiscales(config=config, clean_call=clean_call)
 
         # Run a multiscale clean until it converges.
 
@@ -1085,7 +1132,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                                        imaging_method=imaging_method,
                                        convergence_fracflux=convergence_fracflux,
                                        )
-        no
 
         if do_export_to_fits and export_multiscale:
             self.task_export_to_fits(clean_call=clean_call, imaging_method=imaging_method, tag='multiscale')
@@ -1100,6 +1146,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         clean_call = self.task_initialize_clean_call(
             target=target, config=config, product=product,
+            imaging_method=imaging_method,
             extra_ext_in=extra_ext_in, suffix_in=suffix_in,
             extra_ext_out=extra_ext_out,
             stage='singlescale')
@@ -1108,27 +1155,25 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             clean_call.set_param('cell', cell, nowarning=True)
             clean_call.set_param('imsize', imsize, nowarning=True)
 
-        # Make a signal-to-noise based mask for use in singlescale clean.
-
-        # TODO: SDINT FROM HERE PROBABLY
-
-        if do_singlescale_mask:
-            self.task_singlescale_mask(clean_call=clean_call, product=product,
-                                       high_snr=singlescale_mask_high_snr, low_snr=singlescale_mask_low_snr,
-                                       absolute=singlescale_mask_absolute)
+        # Cube params for sdintimaging
 
         if imaging_method == 'sdintimaging':
-            # Set the clean call parameters as necessary.
-            clean_call.set_param('usedata', 'sdint')
-            clean_call.set_param('sdimage', sd_image_file)
-            clean_call.set_param('nchan', sd_dict['nchan'])
-            clean_call.set_param('start', sd_dict['start'])
-            clean_call.set_param('width', sd_dict['width'])
+            clean_call.set_param('nchan', cube_params['nchan'])
+            clean_call.set_param('start', cube_params['start'])
+            clean_call.set_param('width', cube_params['width'])
+
+        # Make a signal-to-noise based mask for use in singlescale clean.
+
+        if do_singlescale_mask:
+            self.task_singlescale_mask(clean_call=clean_call, product=product, imaging_method=imaging_method,
+                                       high_snr=singlescale_mask_high_snr, low_snr=singlescale_mask_low_snr,
+                                       absolute=singlescale_mask_absolute)
 
         # Run a singlescale clean until it converges.
 
         if do_singlescale_clean:
             self.task_singlescale_clean(clean_call=clean_call,
+                                        imaging_method=imaging_method,
                                         convergence_fracflux=convergence_fracflux,
                                         threshold_value=singlescale_threshold_value,
                                         )
@@ -1136,14 +1181,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # Reset the current imaging to the results of the singlescale clean.
 
         if do_revert_to_singlescale:
-            self.task_revert_to_imaging(clean_call=clean_call, tag='singlescale')
+            self.task_revert_to_imaging(clean_call=clean_call, imaging_method=imaging_method, tag='singlescale')
 
         # Export the products of the current clean to FITS files.
 
         if do_export_to_fits:
-            self.task_export_to_fits(clean_call=clean_call)
-
-            self.task_export_to_fits(clean_call=clean_call)
+            self.task_export_to_fits(clean_call=clean_call, imaging_method=imaging_method)
 
         # Return
 

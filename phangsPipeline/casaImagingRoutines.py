@@ -524,7 +524,15 @@ def make_dirty_image(
 
     dirty_clean_call = copy.deepcopy(clean_call)
 
-    dirty_clean_call.set_param('niter', 0)
+    # TODO: Currently sdintimaging doesn't properly produce a dirty image. Hack around this for now with a low
+    #   gain and niter=1
+
+    if imaging_method == 'tclean':
+        dirty_clean_call.set_param('niter', 0)
+    elif imaging_method == 'sdintimaging':
+        dirty_clean_call.set_param('niter', 1)
+        dirty_clean_call.set_param('cycleniter', 1)
+        dirty_clean_call.set_param('gain', 0.001)
     dirty_clean_call.set_param('calcres', True)
     dirty_clean_call.set_param('calcpsf', True)
 
@@ -829,6 +837,15 @@ def clean_loop(
                     mask_name,
                     working_call.get_param('mask')))
                 working_call.set_param('mask', '')
+
+        # TODO: Another sdintimaging hack, remove the SD images so it can pull them back in without crashing. Leave
+        #  model and residual to emulate a restart
+        # if imaging_method == 'sdintimaging':
+        #     image_name = working_call.get_param('imagename')
+        #     os.system('rm -rf %s' % image_name + '.sd.cube.image')
+        #     # os.system('rm -rf %s' % image_name + '.sd.cube.model')
+        #     os.system('rm -rf %s' % image_name + '.sd.cube.psf')
+        #     # os.system('rm -rf %s' % image_name + '.sd.cube.residual')
 
         # Execute the clean call.
 

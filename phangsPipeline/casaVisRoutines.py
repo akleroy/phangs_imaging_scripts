@@ -237,15 +237,16 @@ def split_science_targets(
     # Verify the column to use. If present, we use the corrected
     # column. If not, then we use the data column.
 
-    casaStuff.tb.open(infile, nomodify = True)
-    colnames = casaStuff.tb.colnames()
+    mytb = au.createCasaTool(casaStuff.tbtool)
+    mytb.open(infile, nomodify = True)
+    colnames = mytb.colnames()
     if 'CORRECTED_DATA' in colnames:
         logger.info("Data has a CORRECTED column. Will use that.")
         use_column = 'CORRECTED'
     else:
         logger.info("Data lacks a CORRECTED column. Will use DATA column.")
         use_column = 'DATA'
-    casaStuff.tb.close()
+    mytb.close()
 
     logger.info('... intent: '+intent)
     logger.info('... field: '+field)
@@ -544,6 +545,12 @@ def find_spws_for_line(
         logger.warning('No spectral windows contain the input line.')
         spw_list = []
         spw_list_string = None # can't be '', that selects all
+
+        if as_list:
+            return (spw_list)
+        else:
+            return (spw_list_string)
+
     else:
 
         # sort and remove duplicates
@@ -1382,15 +1389,16 @@ def build_mstransform_call(
     # Determine the column to use
 
     if datacolumn is None:
-        casaStuff.tb.open(infile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
     # ............................................
     # Common parameters
@@ -1525,15 +1533,16 @@ def reweight_data(
     # Determine column to use
 
     if datacolumn is None:
-        casaStuff.tb.open(infile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
     # Figure out the channel selection string
 
@@ -1853,15 +1862,16 @@ def extract_continuum(
 
     if do_statwt:
 
-        casaStuff.tb.open(outfile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(outfile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
         logger.info("... deriving empirical weights using STATWT.")
         if not os.path.isdir(outfile+'.touch'):
@@ -1889,15 +1899,16 @@ def extract_continuum(
         if not os.path.isdir(outfile+'.touch'):
             os.mkdir(outfile+'.touch')
 
-        casaStuff.tb.open(outfile+'.temp_copy', nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(outfile+'.temp_copy', nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
         casaStuff.split(vis=outfile+'.temp_copy',
                         outputvis=outfile,

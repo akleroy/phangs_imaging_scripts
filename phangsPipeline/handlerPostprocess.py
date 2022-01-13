@@ -19,7 +19,6 @@ import logging
 import numpy as np
 
 from phangsPipeline.casa_check import is_casa_installed
-from clean_call import CleanCall
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -44,6 +43,8 @@ else:
 from . import handlerTemplate
 from . import utilsFilenames
 from . import utilsResolutions
+
+from .clean_call import CleanCall
 
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):
@@ -73,6 +74,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target=None,
         config=None,
         product=None,
+        imaging_method='tclean',
         extra_ext='',
         ):
         """
@@ -113,21 +115,32 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Original cube
 
         tag = 'orig'
+
+        if imaging_method == 'tclean':
+            casaext = '.image'
+        elif imaging_method == 'sdintimaging':
+            casaext = '.joint.cube.image'
+
         orig_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = None,
             casa = True,
-            casaext = '.image')
+            casaext = casaext)
         fname_dict[tag] = orig_file
 
         # Original primary beam file
+
+        if imaging_method == 'tclean':
+            casaext = '.pb'
+        elif imaging_method == 'sdintimaging':
+            casaext = '.joint.cube.pb'
 
         tag = 'pb'
         pb_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = None,
             casa = True,
-            casaext = '.pb')
+            casaext = casaext)
         fname_dict[tag] = pb_file
 
         # Original single dish file (note that this comes with a
@@ -1648,6 +1661,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
     def loop_postprocess(
         self,
+        imaging_method='tclean',
         do_all=False,
         do_prep=False,
         do_feather=False,
@@ -1698,20 +1712,32 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
 
-                fname_dict = self._fname_dict(
-                    target=this_target, product=this_product, config=this_config)
+                has_imaging = False
 
-                imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-                has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                if imaging_method == 'sdintimaging':
+                    fname_dict = self._fname_dict(
+                        target=this_target, product=this_product, config=this_config,
+                        imaging_method=imaging_method)
+                    imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                    has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+
+                if not has_imaging:
+                    fname_dict = self._fname_dict(
+                        target=this_target, product=this_product, config=this_config)
+                    imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                    has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
 
                 if not has_imaging:
                     logger.debug("Skipping "+this_target+" because it lacks imaging.")
                     logger.debug(imaging_dir+fname_dict['orig'])
                     continue
+                print(this_target, this_product, this_config, fname_dict)
+                continue
 
                 self.recipe_prep_one_target(
                     target = this_target, product = this_product, config = this_config,
                     check_files = True)
+        no
 
         # Feather the interferometer configuration data that has
         # single dish imaging. We'll return to feather mosaicked
