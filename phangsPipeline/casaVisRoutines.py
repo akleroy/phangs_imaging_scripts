@@ -237,15 +237,16 @@ def split_science_targets(
     # Verify the column to use. If present, we use the corrected
     # column. If not, then we use the data column.
 
-    casaStuff.tb.open(infile, nomodify = True)
-    colnames = casaStuff.tb.colnames()
+    mytb = au.createCasaTool(casaStuff.tbtool)
+    mytb.open(infile, nomodify = True)
+    colnames = mytb.colnames()
     if 'CORRECTED_DATA' in colnames:
         logger.info("Data has a CORRECTED column. Will use that.")
         use_column = 'CORRECTED'
     else:
         logger.info("Data lacks a CORRECTED column. Will use DATA column.")
         use_column = 'DATA'
-    casaStuff.tb.close()
+    mytb.close()
 
     logger.info('... intent: '+intent)
     logger.info('... field: '+field)
@@ -553,7 +554,7 @@ def find_spws_for_line(
         spw_list_string = ','.join(np.array(spw_list).astype(str))
 
     # check if the spws in this measurement set completely covers the given line frequency range
-    if not (spw_lowest_ghz <= line_low_ghz and spw_highest_ghz >= line_high_ghz):
+    if not (spw_lowest_ghz <= line_low_ghz and spw_highest_ghz >= line_high_ghz) and spw_list_string is not None:
         logger.warning('The spectral windows in this measurement set "%s" (%.6f -- %.6f) does not cover the full "%s" line frequency range (%.6f -- %.6f).'%(\
                         infile, spw_lowest_ghz, spw_highest_ghz, line, line_low_ghz, line_high_ghz))
         if require_full_line_coverage:
@@ -851,7 +852,11 @@ def batch_extract_line(
                 # os.system('rm -rf '+this_outfile+'/POINTING')
 
                 # This zaps the whole table:
-                au.clearPointingTable(this_outfile)
+                if os.path.exists(this_outfile+os.sep+'POINTING'):
+                    au.clearPointingTable(this_outfile)
+                else:
+                    copy_pointing = False
+                    #logger.debug('Warning! Failed to run au.clearPointingTable(%r)'%(this_outfile))
 
     # Concatenate and combine the output data sets
 
@@ -1378,15 +1383,16 @@ def build_mstransform_call(
     # Determine the column to use
 
     if datacolumn is None:
-        casaStuff.tb.open(infile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
     # ............................................
     # Common parameters
@@ -1521,15 +1527,16 @@ def reweight_data(
     # Determine column to use
 
     if datacolumn is None:
-        casaStuff.tb.open(infile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
     # Figure out the channel selection string
 
@@ -1700,7 +1707,11 @@ def batch_extract_continuum(
         # all SPWs except the first one.
 
         if clear_pointing:
-            au.clearPointingTable(this_outfile)
+            if os.path.exists(this_outfile+os.sep+'POINTING'):
+                au.clearPointingTable(this_outfile)
+            else:
+                copy_pointing = False
+                #logger.debug('Warning! Failed to run au.clearPointingTable(%r)'%(this_outfile))
 
     # Concatenate and combine the output data sets
 
@@ -1845,15 +1856,16 @@ def extract_continuum(
 
     if do_statwt:
 
-        casaStuff.tb.open(outfile, nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(outfile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
         logger.info("... deriving empirical weights using STATWT.")
         if not os.path.isdir(outfile+'.touch'):
@@ -1881,15 +1893,16 @@ def extract_continuum(
         if not os.path.isdir(outfile+'.touch'):
             os.mkdir(outfile+'.touch')
 
-        casaStuff.tb.open(outfile+'.temp_copy', nomodify = True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(outfile+'.temp_copy', nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
         else:
             logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
         casaStuff.split(vis=outfile+'.temp_copy',
                         outputvis=outfile,
