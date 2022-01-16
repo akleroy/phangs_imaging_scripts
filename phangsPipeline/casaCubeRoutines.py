@@ -82,7 +82,7 @@ def get_mask(infile, allow_huge=True):
     Get a mask from a CASA image file. Includes a switch for large cubes, where getchunk can segfault.
     """
 
-    if allow_huge:
+    if not allow_huge:
         os.system('rm -rf ' + infile + '.temp_deg_ordered')
         casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
                           order='0132')
@@ -117,7 +117,7 @@ def copy_mask(infile, outfile, allow_huge=True):
     Copy a mask from infile to outfile. Includes a switch for large cubes, where getchunk/putchunk can segfault
     """
 
-    if allow_huge:
+    if not allow_huge:
         os.system('rm -rf ' + outfile + '/mask0')
         os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
     else:
@@ -140,10 +140,7 @@ def multiply_cube_by_value(infile, value, brightness_unit, allow_huge=True):
     getchunk/putchunk may fail.
     """
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(infile)
-
-    if allow_huge:
+    if not allow_huge:
         casaStuff.exportfits(imagename=infile,
                              fitsimage=infile + '.fits',
                              overwrite=True)
@@ -156,6 +153,8 @@ def multiply_cube_by_value(infile, value, brightness_unit, allow_huge=True):
                              overwrite=True)
         os.system('rm -rf ' + infile + '.fits')
     else:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(infile)
         vals = myia.getchunk()
         vals *= value
         myia.putchunk(vals)
