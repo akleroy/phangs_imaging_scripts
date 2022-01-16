@@ -286,6 +286,7 @@ def write_mask(infile, outfile, mask, allow_huge=True):
 
 
 def signal_mask(
+        imaging_method='tclean',
         cube_root=None,
         out_file=None,
         suffix_in='',
@@ -300,6 +301,9 @@ def signal_mask(
     A simple signal mask creation routine used to make masks on the
     fly during imaging. Leverages CASA statistics and scipy.
     """
+
+    if imaging_method == 'sdintimaging':
+        cube_root += '.joint.cube'
 
     if not os.path.isdir(cube_root + '.image' + suffix_in):
         logger.error('Data file not found: "' + cube_root + '.image' + suffix_in + '"')

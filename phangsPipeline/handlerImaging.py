@@ -484,9 +484,15 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if clean_call is None:
             logger.warning("Require a clean_call object. Returning.")
-            return ()
+            return None
 
-        # TODO: errors for target/product
+        if target is None:
+            logger.warning("Require a target. Returning.")
+            return None
+
+        if product is None:
+            logger.warning("Require a product. Returning.")
+            return None
 
         # Convert the fits file to an MS
         sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
@@ -814,7 +820,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 low_snr = 2.0
 
             # signal_mask
-            msr.signal_mask(cube_root=fname_dict['root'],
+            msr.signal_mask(imaging_method=imaging_method,
+                            cube_root=fname_dict['root'],
                             out_file=fname_dict['mask'],
                             suffix_in=fname_dict['suffix'],
                             suffix_out='',
@@ -837,7 +844,8 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                 low_snr = 1.0
 
             # signal_mask
-            msr.signal_mask(cube_root=fname_dict['root'],
+            msr.signal_mask(imaging_method=imaging_method,
+                            cube_root=fname_dict['root'],
                             out_file=fname_dict['mask'],
                             suffix_in=fname_dict['suffix'],
                             suffix_out='',
@@ -1028,12 +1036,16 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if imaging_method == 'sdintimaging':
             sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
-            if sd_fits_file == '':
-                logger.warning('No singledish fits file found, reverting to standard tclean')
+            feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
+            if not sd_fits_file or not feather_config:
+                logger.warning('No singledish setup for %s, %s, %s, reverting to standard tclean' %
+                               (target, product, config))
                 imaging_method = 'tclean'
             else:
                 sd_image_file = self.task_setup_sdintimaging(clean_call, target=target, product=product,
                                                              overwrite=overwrite)
+                if not sd_image_file:
+                    logger.error('Error in setting up singledish for sdintimaging')
 
                 # Set the clean call parameters as necessary.
                 clean_call.set_param('usedata', 'sdint')
