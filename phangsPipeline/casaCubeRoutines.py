@@ -567,24 +567,25 @@ def calc_jytok(
     """
 
     c = 2.99792458e10
-    h = 6.6260755e-27
     kb = 1.380658e-16
 
     if hdr is None:
         if infile is None:
             logger.error("No header and no infile. Returning.")
             return(None)
-        hdr = casaStuff.imhead(target_file, mode='list')
+        hdr = casaStuff.imhead(infile, mode='list')
 
-    if hdr['cunit3'] != 'Hz':
-        logger.error("I expected frequency as the third axis but did not find it. Returning.")
-        return(None)
-    
-    crpix3 = hdr['crpix3']
-    cdelt3 = hdr['cdelt3']
-    crval3 = hdr['crval3']
-    naxis3 = hdr['shape'][2]
-    faxis_hz = (np.arange(naxis3)+1.-crpix3)*cdelt3+crval3
+    for ii in range(len(hdr['shape'])):
+        if hdr['cunit{}'.format(ii+1)] == 'Hz':
+            break
+        if ii == len(hdr['shape'])-1:
+            logger.error("I expected a frequency axis but did not find it. Returning.")
+            return(None)
+    crpix = hdr['crpix{}'.format(ii+1)]
+    cdelt = hdr['cdelt{}'.format(ii+1)]
+    crval = hdr['crval{}'.format(ii+1)]
+    naxis = hdr['shape'][ii]
+    faxis_hz = (np.arange(naxis)+1.-crpix)*cdelt+crval
     freq_hz = np.mean(faxis_hz)
     
     bmaj_unit = hdr['beammajor']['unit']
