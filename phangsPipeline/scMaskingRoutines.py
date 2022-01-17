@@ -13,8 +13,7 @@ from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
 from spectral_cube import SpectralCube
 
-from .pipelineVersion import tableversion
-from .version import version
+from .pipelineVersion import tableversion, version
 
 from .scNoiseRoutines import mad_zero_centered
 
