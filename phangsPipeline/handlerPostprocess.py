@@ -952,8 +952,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         outdir = self._kh.get_postprocess_dir_for_target(target)
         feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
-        fname_dict_out = self._fname_dict(target=target, product=product, config=feather_config,
-                                          imaging_method=imaging_method)
+        fname_dict_out = self._fname_dict(target=target, product=product, config=feather_config)
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Renaming sdintimaging outputs for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
 
         for key in fname_dict_in.keys():
             item = fname_dict_in[key]
@@ -967,10 +973,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 new_file_name = outdir + fname_dict_out[key]
                 command = 'mv -f %s %s' % (file_name, new_file_name)
                 os.system('rm -rf %s' % new_file_name)
-
-                # TODO: For checking
-                print(command)
-                # os.system(command)
+                os.system(command)
 
         return
 
@@ -1682,7 +1685,6 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
-        imaging_method='tclean',
         check_files = True,
         ext_ext = '',
         ):
@@ -1696,22 +1698,19 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
             do_trimrind=True,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
-            imaging_method=imaging_method
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext
             )
 
         self.task_convert_units(
             target=target, config=config, product=product,
             check_files=check_files,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
-            imaging_method=imaging_method
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext
             )
 
         self.task_export_to_fits(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
-            imaging_method=imaging_method
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext
             )
 
         return()
@@ -1978,25 +1977,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         apodize=False, extra_ext_out='',check_files=True,
                         )
 
-        # At this point, if using sdintimaging rename all the interf config files to their associated feathered config
-        # files
-
-        if imaging_method == 'sdintimaging':
-
-            logger.info("Renaming sdintimaging files as appropriate.")
-
-            for this_target, this_product, this_config in \
-                    self.looper(do_targets=True,
-                                do_products=True,
-                                do_configs=True,
-                                just_interf=True):
-
-                self.task_rename_sdintimaging(target=this_target, product=this_product, config=this_config,
-                                              imaging_method=imaging_method)
-
         # Trim and downsample the data, convert to Kelvin, etc.
-
-        no
 
         if do_cleanup:
 
@@ -2005,11 +1986,18 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                                 do_products=True,
                                 do_configs=True):
 
+                # At this point, if using sdintimaging rename all the interf config files to their associated feathered
+                # config files
+
+                if imaging_method == 'sdintimaging':
+
+                    self.task_rename_sdintimaging(target=this_target, product=this_product, config=this_config,
+                                                  imaging_method=imaging_method)
+
                 self.recipe_cleanup_one_target(
                     target = this_target,
                     product = this_product,
                     config = this_config,
-                    imaging_method=imaging_method,
                     check_files = True)
 
         # Build reports summarizing the properties of the final
