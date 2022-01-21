@@ -467,8 +467,8 @@ def import_and_align_mask(
     # Check if 2D or 3D
     logger.debug('Template data axis names: ' + str(hdr['axisnames']) + ', shape: ' + str(hdr['shape']))
     logger.debug('Mask data axis names: ' + str(maskhdr['axisnames']) + ', shape: ' + str(maskhdr['shape']))
-    is_template_2D = (np.prod(list(hdr['shape'])) == np.prod(list(hdr['shape'])[0:2]))
-    is_mask_2D = (np.prod(list(maskhdr['shape'])) == np.prod(list(maskhdr['shape'])[0:2]))
+    is_template_2D = (np.prod(list(hdr['shape'])) == np.prod(list(hdr['shape'])[:2]))
+    is_mask_2D = (np.prod(list(maskhdr['shape'])) == np.prod(list(maskhdr['shape'])[:2]))
     if is_template_2D and not is_mask_2D:
         logger.debug('Template image is 2D but mask is 3D, collapsing the mask over channel axes: ' + str(
             np.arange(maskhdr['ndim'] - 1, 2 - 1, -1)))
@@ -545,17 +545,16 @@ def import_and_align_mask(
         myia.putchunk(data)
         myia.close()
     else:
-        # Need to make sure this works for two dimensional cases, too.
         if (hdr['axisnames'][3] == 'Frequency') and (hdr['ndim'] == 4):
             myia.open(out_file)
             data = myia.getchunk(dropdeg=False)
-            data[:, :, 0, :] = mask
+            data[:, :, 0, :] = mask.reshape((data.shape[0], data.shape[1], -1))
             myia.putchunk(data)
             myia.close()
         elif (hdr['axisnames'][2] == 'Frequency') and (hdr['ndim'] == 4):
             myia.open(out_file)
             data = myia.getchunk(dropdeg=False)
-            data[:, :, :, 0] = mask
+            data[:, :, :, 0] = mask.reshape((data.shape[0], data.shape[1], -1))
             myia.putchunk(data)
             myia.close()
         else:
