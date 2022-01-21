@@ -39,16 +39,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
     from . import casaVisRoutines as cvr
-    reload(cvr)  #<TODO><DEBUG>#
+    # reload(cvr) #<TODO><DEBUG>#
 else:
     logger.debug('casa_enabled = False')
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -145,15 +142,16 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
                 if do_copy:
 
-                    self.task_split(
-                        target=this_target,
-                        project=this_project,
-                        array_tag=this_array_tag,
-                        obsnum=this_obsnum,
-                        product=this_product,
-                        timebin=timebin,
-                        require_full_line_coverage=require_full_line_coverage,
-                        overwrite=overwrite)
+                        self.task_split(
+                            target = this_target,
+                            project = this_project,
+                            array_tag = this_array_tag,
+                            obsnum = this_obsnum,
+                            product = this_product,
+                            timebin = timebin,
+                            require_full_line_coverage = require_full_line_coverage,
+                            overwrite = overwrite,
+                            )
 
                 # Run custom processing. Not currently used.
 

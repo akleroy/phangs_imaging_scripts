@@ -244,15 +244,16 @@ def split_science_targets(
     # Verify the column to use. If present, we use the corrected
     # column. If not, then we use the data column.
 
-    casaStuff.tb.open(infile, nomodify=True)
-    colnames = casaStuff.tb.colnames()
+    mytb = au.createCasaTool(casaStuff.tbtool)
+    mytb.open(infile, nomodify = True)
+    colnames = mytb.colnames()
     if 'CORRECTED_DATA' in colnames:
         logger.info("Data has a CORRECTED column. Will use that.")
         use_column = 'CORRECTED'
     else:
         logger.info("Data lacks a CORRECTED column. Will use DATA column.")
         use_column = 'DATA'
-    casaStuff.tb.close()
+    mytb.close()
 
     logger.info('... intent: '+intent)
     logger.info('... field: '+field)
@@ -923,7 +924,11 @@ def batch_extract_line(
                 # os.system('rm -rf '+this_outfile+'/POINTING')
 
                 # This zaps the whole table:
-                au.clearPointingTable(this_outfile)
+                if os.path.exists(this_outfile+os.sep+'POINTING'):
+                    au.clearPointingTable(this_outfile)
+                else:
+                    copy_pointing = False
+                    #logger.debug('Warning! Failed to run au.clearPointingTable(%r)'%(this_outfile))
 
     # Concatenate and combine the output data sets
 
@@ -1429,8 +1434,9 @@ def build_mstransform_call(
     # Determine the column to use
 
     if datacolumn is None:
-        casaStuff.tb.open(infile, nomodify=True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
@@ -1438,7 +1444,7 @@ def build_mstransform_call(
             logger.info(
                 "... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
     # ............................................
     # Common parameters
@@ -1587,8 +1593,9 @@ def reweight_data(
     # Determine column to use
 
     if datacolumn is None:
-        casaStuff.tb.open(infile, nomodify=True)
-        colnames = casaStuff.tb.colnames()
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile, nomodify = True)
+        colnames = mytb.colnames()
         if 'CORRECTED_DATA' in colnames:
             logger.info("... Data has a CORRECTED column. Will use that.")
             datacolumn = 'CORRECTED'
@@ -1596,7 +1603,7 @@ def reweight_data(
             logger.info(
                 "... Data lacks a CORRECTED column. Will use DATA column.")
             datacolumn = 'DATA'
-        casaStuff.tb.close()
+        mytb.close()
 
     # Figure out the channel selection string
 
@@ -1845,6 +1852,10 @@ def batch_extract_continuum(
 
     for this_file in split_file_list:
         shutil.rmtree(this_file)
+
+    # Remove touch file to mark that we are have done the processing of this data
+    if os.path.isdir(outfile+'.touch'):
+        os.rmdir(outfile+'.touch')
 
     return()
 

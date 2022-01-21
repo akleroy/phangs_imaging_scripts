@@ -3,11 +3,11 @@ Stand alone routines to carry out basic noise estimation, masking, and
 mask manipulation steps in CASA.
 """
 
-# 
+#
 # 20200210 dzliu: moved "stat_clean_cube()" to here, as it is required by "signal_mask()"
 # 20200210 dzliu: changed "casa." to "casaStuff.", as "casa" is a dict used by CASA itself.
 # 20200210 dzliu: changed "print +(.*)$" to "logger.info(\1)"
-# 
+#
 
 # region Imports and definitions
 
@@ -18,7 +18,11 @@ import logging
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.special import erfc
-import pyfits  # CASA has pyfits, not astropy
+
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
@@ -52,7 +56,7 @@ def mad(
     as_sigma (default True) : scale the output so that the returned
     value represents the RMS or 1-sigma value for a normal
     distribution. For Gaussian noise, this implies that the result can
-    just be used as a standard noise estimate.  
+    just be used as a standard noise estimate.
     """
 
     if data is None:
@@ -479,7 +483,7 @@ def import_and_align_mask(
         # print('**********************')
         # print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
         # print('**********************')
-        # 
+        #
         # collapse channel and higher axes
         # mask = np.any(mask.astype(int).astype(bool), axis=np.arange(maskhdr['ndim']-1, 2-1, -1)) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
         # mask = mask.astype(int)
@@ -493,7 +497,7 @@ def import_and_align_mask(
         # newimage = myia.newimagefromarray(outfile=out_file+'.temp_collapsed', pixels=mask.astype(int), overwrite=True)
         # newimage.done()
         # myia.close()
-        # 
+        #
         # collapse channel and higher axes
         os.system('rm -rf ' + out_file + '.temp_collapsed' + ' 2>/dev/null')
         myia.open(out_file + '.temp_copy')

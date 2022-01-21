@@ -16,7 +16,7 @@ def ftconvolve(ImageIn, major = 1.0, minor = 1.0,
         NanMaskFlag = True
         image[nanmask] = 0.0
         wtimg[nanmask] = 0.0
-        ftwtimg = np.fft.fftn(wtimg)    
+        ftwtimg = np.fft.fftn(wtimg)
 
     ftimg = np.fft.fftn(image)
 
@@ -51,22 +51,22 @@ def ftconvolve(ImageIn, major = 1.0, minor = 1.0,
         ConvolvedImage[nanmask] = np.nan
     return(ConvolvedImage)
 
-def MakeRoundBeam(incube, 
+def MakeRoundBeam(incube,
                   outfile=None,
                   overwrite=True):
 
     '''
-    This takes a FITS file or a SpectralCube and outputs 
+    This takes a FITS file or a SpectralCube and outputs
 
     Parameters
     ----------
     filename : `string` or `SpectralCube`
        Input spectral cube
-    
+
     Returns
     -------
     cube : `SpectralCube`
-    
+
     '''
     if isinstance(incube,str):
         cube = SpectralCube.read(incube)
@@ -77,14 +77,14 @@ def MakeRoundBeam(incube,
     if not isinstance(cube, VaryingResolutionSpectralCube):
         warnings.warn("No information about multiple beams")
         return(None)
-    
+
     beams = cube.beams
     major_axes = np.array([bm.major.to(u.deg).value for bm in beams])
     target_beamsize = np.array(major_axes.max())
     target_beam = Beam(major=target_beamsize*u.deg,
                        minor=target_beamsize*u.deg,
                        pa=0.0*u.deg)
-    print "Target beam is :", target_beam
+    print("Target beam is : {}".format(target_beam))
 
     # Let's assume square pixels
     pixsize = cube.wcs.pixel_scale_matrix[1,1]
