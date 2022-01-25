@@ -1812,7 +1812,6 @@ class KeyHandler:
 
         if freq_ranges_ghz is None:
             logging.error('No freq_ranges_ghz value set for cont product '+product)
-            raise Exception('No freq_ranges_ghz value set for cont product '+product)
 
         return(freq_ranges_ghz)
 

@@ -1757,98 +1757,118 @@ def batch_extract_continuum(
                 shutil.rmtree(temp_outfile)
                 logger.debug('... shutil.rmtree(%r)' % (temp_outfile))
 
-    # Check input parameters
-    if ranges_to_extract is None:
-        logging.error(
-            "Please specify frequency ranges for continuum extraction.")
-        raise Exception(
-            "Please specify frequency ranges for continuum extraction.")
-    for ii, range_i in enumerate(ranges_to_extract):
-        max_i, min_i = np.max(range_i), np.min(range_i)
-        for jj, range_j in enumerate(ranges_to_extract):
-            max_j, min_j = np.max(range_j), np.min(range_j)
-            if ii < jj and max_i > min_j and min_i < max_j:
-                logging.error(
-                    "Overlapping frequency ranges for continuum extraction: "
-                    "{} vs {}".format(range_i, range_j))
-                raise Exception(
-                    "Overlapping frequency ranges for continuum extraction: "
-                    "{} vs {}".format(range_i, range_j))
+    if ranges_to_extract is None and target_chan_ghz is None:
 
-    split_file_list = []
-    for kk, this_range in enumerate(ranges_to_extract):
+        split_file_list = []
+        for this_infile in infile_list:
+            # Specify output file and check for existence
+            this_outfile = this_infile + '.temp_cont'
 
-        reffreq_ghz = np.mean(this_range)
-        refvsys_kms = 0.0
-        refvwidth_kms = (
-            abs(np.diff(this_range).item()) / reffreq_ghz * sol_kms)
+            split_file_list.append(this_outfile)
 
-        if target_chan_ghz is None:
-            # use a single channel to cover this entire frequency range
-            target_chan_kms = refvwidth_kms
-            exact = True
-        else:
-            target_chan_kms = target_chan_ghz / reffreq_ghz * sol_kms
+            extract_continuum(
+                infile=this_infile,
+                outfile=this_outfile,
+                lines_to_flag=lines_to_flag,
+                vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+                vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+                overwrite=overwrite,
+            )
 
-        # Generate extraction schemes for this frequency range
-        if exact:
-            schemes = suggest_extraction_scheme(
-                infile_list=infile_list, target_chan_kms=target_chan_kms,
-                method=method, exact=exact, restfreq_ghz=reffreq_ghz,
-                vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
-                require_full_line_coverage=require_full_cont_coverage)
-        else:
-            # slightly adjust the channel size so that this frequency range
-            # contains an integer number of channels
-            target_chan_kms = (
-                refvwidth_kms / np.ceil(refvwidth_kms / target_chan_kms))
-            schemes = suggest_extraction_scheme(
-                infile_list=infile_list,
-                target_chan_kms=target_chan_kms,
-                method=method, exact=True, restfreq_ghz=reffreq_ghz,
-                vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
-                require_full_line_coverage=require_full_cont_coverage)
-        for this_infile in schemes.keys():
-            logger.info(
-                "For this frequency range ({:.6f} - {:.6f}), "
-                "I will extract SPWs {} from infile {}".format(
-                    np.min(this_range), np.max(this_range),
-                    schemes[this_infile].keys(), this_infile))
+    else:
 
-        # Execute the extraction scheme
-        for this_infile in schemes.keys():
-            for this_spw in schemes[this_infile].keys():
-                this_scheme = schemes[this_infile][this_spw]
-                # Extract relevant parameters for continuum extraction
-                this_binfactor = this_scheme['binfactor']
-                this_target_chan_ghz = \
-                    this_scheme['target_chan_kms'] / sol_kms * reffreq_ghz
-                this_nchan = int(np.floor(
-                    refvwidth_kms * (1. + 1e-6) /
-                    this_scheme['target_chan_kms']))
-                # Specify output file and check for existence
-                this_outfile = this_infile+'.temp{:.0f}_spw{:.0f}'.format(
-                    kk, this_spw)
-                split_file_list.append(this_outfile)
+        # Check input parameters
+        if ranges_to_extract is None:
+            logging.error(
+                "Please specify frequency ranges for continuum extraction.")
+            raise Exception(
+                "Please specify frequency ranges for continuum extraction.")
+        for ii, range_i in enumerate(ranges_to_extract):
+            max_i, min_i = np.max(range_i), np.min(range_i)
+            for jj, range_j in enumerate(ranges_to_extract):
+                max_j, min_j = np.max(range_j), np.min(range_j)
+                if ii < jj and max_i > min_j and min_i < max_j:
+                    logging.error(
+                        "Overlapping frequency ranges for continuum extraction: "
+                        "{} vs {}".format(range_i, range_j))
+                    raise Exception(
+                        "Overlapping frequency ranges for continuum extraction: "
+                        "{} vs {}".format(range_i, range_j))
 
-                # Execute continuum extraction
-                extract_continuum(
-                    infile=this_infile, outfile=this_outfile,
-                    spw=str(this_spw), range_to_extract=this_range,
-                    lines_to_flag=lines_to_flag,
-                    vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
-                    vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
-                    method=method, target_chan_ghz=this_target_chan_ghz,
-                    nchan=this_nchan, binfactor=this_binfactor,
-                    require_full_cont_coverage=require_full_cont_coverage,
-                    overwrite=overwrite)
+        split_file_list = []
+        for kk, this_range in enumerate(ranges_to_extract):
 
-                # Deal with pointing table - testing shows it to be a
-                # duplicate for each SPW here, so we remove all rows for
-                # all SPWs except the first one.
+            reffreq_ghz = np.mean(this_range)
+            refvsys_kms = 0.0
+            refvwidth_kms = (
+                abs(np.diff(this_range).item()) / reffreq_ghz * sol_kms)
 
-                if clear_pointing:
-                    au.clearPointingTable(this_outfile)
+            if target_chan_ghz is None:
+                # use a single channel to cover this entire frequency range
+                target_chan_kms = refvwidth_kms
+                exact = True
+            else:
+                target_chan_kms = target_chan_ghz / reffreq_ghz * sol_kms
+
+            # Generate extraction schemes for this frequency range
+            if exact:
+                schemes = suggest_extraction_scheme(
+                    infile_list=infile_list, target_chan_kms=target_chan_kms,
+                    method=method, exact=exact, restfreq_ghz=reffreq_ghz,
+                    vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
+                    require_full_line_coverage=require_full_cont_coverage)
+            else:
+                # slightly adjust the channel size so that this frequency range
+                # contains an integer number of channels
+                target_chan_kms = (
+                    refvwidth_kms / np.ceil(refvwidth_kms / target_chan_kms))
+                schemes = suggest_extraction_scheme(
+                    infile_list=infile_list,
+                    target_chan_kms=target_chan_kms,
+                    method=method, exact=True, restfreq_ghz=reffreq_ghz,
+                    vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
+                    require_full_line_coverage=require_full_cont_coverage)
+            for this_infile in schemes.keys():
+                logger.info(
+                    "For this frequency range ({:.6f} - {:.6f}), "
+                    "I will extract SPWs {} from infile {}".format(
+                        np.min(this_range), np.max(this_range),
+                        schemes[this_infile].keys(), this_infile))
+
+            # Execute the extraction scheme
+            for this_infile in schemes.keys():
+                for this_spw in schemes[this_infile].keys():
+                    this_scheme = schemes[this_infile][this_spw]
+                    # Extract relevant parameters for continuum extraction
+                    this_binfactor = this_scheme['binfactor']
+                    this_target_chan_ghz = \
+                        this_scheme['target_chan_kms'] / sol_kms * reffreq_ghz
+                    this_nchan = int(np.floor(
+                        refvwidth_kms * (1. + 1e-6) /
+                        this_scheme['target_chan_kms']))
+                    # Specify output file and check for existence
+                    this_outfile = this_infile+'.temp{:.0f}_spw{:.0f}'.format(
+                        kk, this_spw)
+                    split_file_list.append(this_outfile)
+
+                    # Execute continuum extraction
+                    extract_continuum(
+                        infile=this_infile, outfile=this_outfile,
+                        spw=str(this_spw), range_to_extract=this_range,
+                        lines_to_flag=lines_to_flag,
+                        vlow_kms=vlow_kms, vhigh_kms=vhigh_kms,
+                        vsys_kms=vsys_kms, vwidth_kms=vwidth_kms,
+                        method=method, target_chan_ghz=this_target_chan_ghz,
+                        nchan=this_nchan, binfactor=this_binfactor,
+                        require_full_cont_coverage=require_full_cont_coverage,
+                        overwrite=overwrite)
+
+                    # Deal with pointing table - testing shows it to be a
+                    # duplicate for each SPW here, so we remove all rows for
+                    # all SPWs except the first one.
+
+                    if clear_pointing:
+                        au.clearPointingTable(this_outfile)
 
     # Concatenate and combine the output data sets
 
@@ -1906,9 +1926,9 @@ def extract_continuum(
         logging.error("Please specify an output file.")
         raise Exception("Please specify an output file.")
 
-    if range_to_extract is None:
-        logging.error("Please specify a frequency range.")
-        raise Exception("Please specify a frequency range.")
+    # if range_to_extract is None:
+    #     logging.error("Please specify a frequency range.")
+    #     raise Exception("Please specify a frequency range.")
 
     # Check existing output data and abort if found and overwrite is off
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
@@ -1951,152 +1971,180 @@ def extract_continuum(
         casaStuff.flagdata(
             vis=infile+'.temp_copy', spw=spw_flagging_string)
 
-    # Calculate reference frequencies and nominal velocity ranges
-    reffreq_ghz = np.mean(range_to_extract)
-    refvsys_kms = 0.0
-    refvwidth_kms = \
-        abs(np.diff(range_to_extract).item()) / reffreq_ghz * sol_kms
+    if range_to_extract is None:
 
-    # ... if no SPW selection string is provided then note whether we
-    # have multiple windows.
-    if spw is None:
-        spw_list = find_spws_for_line(
-            infile=infile+'.temp_copy', restfreq_ghz=reffreq_ghz,
-            vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
-            require_full_line_coverage=require_full_cont_coverage,
-            require_data=True, exit_on_error=True, as_list=True)
-        if spw_list is None or len(spw_list) == 0:
-            logging.error(
-                "No SPWs for a selected frequency range: "
-                "{}--{}".format(*range_to_extract))
-            return()
-        spw = spw_list.join(',')
-    else:
-        spw_list = spw.split(',')
+        # Collapse the SPW down to a single channel
 
-    multiple_spws = len(spw_list) > 1
+        logger.info("... Collapsing each continuum SPW to a single channel.")
 
-    # ............................................
-    # Initialize the calls
-    # ............................................
+        if not os.path.isdir(outfile + '.touch'):
+            os.mkdir(outfile + '.touch')
 
-    if method in ('just_regrid', 'regrid_then_rebin', 'rebin_then_regrid'):
-
-        if target_chan_ghz is None:
-            logger.error(
-                'Need a target channel width to enable regridding.')
-            raise Exception(
-                "Need a target channel width to enable regridding.")
-
-        target_chan_kms = target_chan_ghz / reffreq_ghz * sol_kms
-        if nchan is None:
-            nchan = int(np.floor(refvwidth_kms / target_chan_kms))
-        refvstart_kms = refvsys_kms - refvwidth_kms/2. + target_chan_kms/2.
-
-        regrid_params, regrid_msg = build_mstransform_call(
-            infile=infile+'.temp_copy', outfile=outfile,
-            restfreq_ghz=reffreq_ghz, spw=spw,
-            method='regrid', vstart_kms=refvstart_kms,
-            target_chan_kms=target_chan_kms, nchan=nchan,
-            require_full_line_coverage=require_full_cont_coverage)
-
-    if method in ('just_rebin', 'regrid_then_rebin', 'rebin_then_regrid'):
-
-        if binfactor is None:
-            logger.warning('Need a bin factor to enable rebinning.')
-            return()
-
-        rebin_params, rebin_msg = build_mstransform_call(
-            infile=infile+'.temp_copy', outfile=outfile,
-            restfreq_ghz=reffreq_ghz, spw=spw,
-            method='rebin', binfactor=binfactor,
-            require_full_line_coverage=require_full_cont_coverage)
-
-    if multiple_spws:
-
-        combine_params, combine_msg = build_mstransform_call(
-            infile=infile+'.temp_copy', outfile=outfile,
-            restfreq_ghz=reffreq_ghz, spw=spw,
-            method='combine',
-            require_full_line_coverage=require_full_cont_coverage)
-
-    # ............................................
-    # string the calls together in the desired order
-    # ............................................
-
-    params_list = []
-    msg_list = []
-
-    if method == 'just_regrid':
-        params_list.append(regrid_params)
-        msg_list.append(regrid_msg)
-    elif method == 'just_rebin':
-        params_list.append(rebin_params)
-        msg_list.append(rebin_msg)
-    elif method == 'rebin_then_regrid':
-        params_list.append(rebin_params)
-        msg_list.append(rebin_msg)
-        params_list.append(regrid_params)
-        msg_list.append(regrid_msg)
-    else:
-        params_list.append(regrid_params)
-        msg_list.append(regrid_msg)
-        params_list.append(rebin_params)
-        msg_list.append(rebin_msg)
-
-    if multiple_spws:
-        params_list.append(combine_params)
-        msg_list.append(combine_msg)
-
-    # ............................................
-    # Execute the list of mstransform calls
-    # ............................................
-
-    n_calls = len(params_list)
-    logger.info('... we will have '+str(n_calls)+' mstransform calls')
-
-    for kk, (this_params, this_msg) in enumerate(zip(
-            params_list, msg_list)):
-
-        if kk == 0:
-            this_params['vis'] = infile+'.temp_copy'
-            this_params['outputvis'] = \
-                outfile+'.temp{:.0f}'.format(kk+1)
-        elif kk == n_calls-1:
-            this_params['vis'] = \
-                outfile+'.temp{:.0f}'.format(kk)
-            this_params['outputvis'] = outfile
+        mytb = au.createCasaTool(casaStuff.tbtool)
+        mytb.open(infile + '.temp_copy', nomodify=True)
+        colnames = mytb.colnames()
+        if 'CORRECTED_DATA' in colnames:
+            logger.info("... Data has a CORRECTED column. Will use that.")
+            datacolumn = 'CORRECTED'
         else:
-            this_params['vis'] = \
-                outfile+'.temp{:.0f}'.format(kk)
-            this_params['outputvis'] = \
-                outfile+'.temp{:.0f}'.format(kk+1)
+            logger.info("... Data lacks a CORRECTED column. Will use DATA column.")
+            datacolumn = 'DATA'
+        mytb.close()
 
-        if os.path.isdir(this_params['outputvis']):
-            shutil.rmtree(this_params['outputvis'])
+        casaStuff.split(vis=infile + '.temp_copy',
+                        outputvis=outfile,
+                        width=100000,
+                        datacolumn=datacolumn,
+                        keepflags=False)
 
-        logger.info("... "+this_msg)
+    else:
 
-        if kk > 0:
-            this_params['spw'] = ''
-            this_params['datacolumn'] = 'DATA'
+        # Calculate reference frequencies and nominal velocity ranges
+        reffreq_ghz = np.mean(range_to_extract)
+        refvsys_kms = 0.0
+        refvwidth_kms = \
+            abs(np.diff(range_to_extract).item()) / reffreq_ghz * sol_kms
 
-        logger.info(
-            "... running CASA "+'mstransform(' +
-            ', '.join("{!s}={!r}".format(
-                t, this_params[t]) for t in this_params.keys()) +
-            ')')
+        # ... if no SPW selection string is provided then note whether we
+        # have multiple windows.
+        if spw is None:
+            spw_list = find_spws_for_line(
+                infile=infile+'.temp_copy', restfreq_ghz=reffreq_ghz,
+                vsys_kms=refvsys_kms, vwidth_kms=refvwidth_kms,
+                require_full_line_coverage=require_full_cont_coverage,
+                require_data=True, exit_on_error=True, as_list=True)
+            if spw_list is None or len(spw_list) == 0:
+                logging.error(
+                    "No SPWs for a selected frequency range: "
+                    "{}--{}".format(*range_to_extract))
+                return()
+            spw = spw_list.join(',')
+        else:
+            spw_list = spw.split(',')
 
-        if not os.path.isdir(this_params['outputvis']+'.touch'):
-            # mark the beginning of our processing
-            os.mkdir(this_params['outputvis']+'.touch')
+        multiple_spws = len(spw_list) > 1
 
-        casaStuff.mstransform(**this_params)
+        # ............................................
+        # Initialize the calls
+        # ............................................
 
-        if os.path.isdir(this_params['outputvis']+'.touch') and \
-           this_params['outputvis'] != outfile:
-            # mark the end of our processing
-            os.rmdir(this_params['outputvis']+'.touch')
+        if method in ('just_regrid', 'regrid_then_rebin', 'rebin_then_regrid'):
+
+            if target_chan_ghz is None:
+                logger.error(
+                    'Need a target channel width to enable regridding.')
+                raise Exception(
+                    "Need a target channel width to enable regridding.")
+
+            target_chan_kms = target_chan_ghz / reffreq_ghz * sol_kms
+            if nchan is None:
+                nchan = int(np.floor(refvwidth_kms / target_chan_kms))
+            refvstart_kms = refvsys_kms - refvwidth_kms/2. + target_chan_kms/2.
+
+            regrid_params, regrid_msg = build_mstransform_call(
+                infile=infile+'.temp_copy', outfile=outfile,
+                restfreq_ghz=reffreq_ghz, spw=spw,
+                method='regrid', vstart_kms=refvstart_kms,
+                target_chan_kms=target_chan_kms, nchan=nchan,
+                require_full_line_coverage=require_full_cont_coverage)
+
+        if method in ('just_rebin', 'regrid_then_rebin', 'rebin_then_regrid'):
+
+            if binfactor is None:
+                logger.warning('Need a bin factor to enable rebinning.')
+                return()
+
+            rebin_params, rebin_msg = build_mstransform_call(
+                infile=infile+'.temp_copy', outfile=outfile,
+                restfreq_ghz=reffreq_ghz, spw=spw,
+                method='rebin', binfactor=binfactor,
+                require_full_line_coverage=require_full_cont_coverage)
+
+        if multiple_spws:
+
+            combine_params, combine_msg = build_mstransform_call(
+                infile=infile+'.temp_copy', outfile=outfile,
+                restfreq_ghz=reffreq_ghz, spw=spw,
+                method='combine',
+                require_full_line_coverage=require_full_cont_coverage)
+
+        # ............................................
+        # string the calls together in the desired order
+        # ............................................
+
+        params_list = []
+        msg_list = []
+
+        if method == 'just_regrid':
+            params_list.append(regrid_params)
+            msg_list.append(regrid_msg)
+        elif method == 'just_rebin':
+            params_list.append(rebin_params)
+            msg_list.append(rebin_msg)
+        elif method == 'rebin_then_regrid':
+            params_list.append(rebin_params)
+            msg_list.append(rebin_msg)
+            params_list.append(regrid_params)
+            msg_list.append(regrid_msg)
+        else:
+            params_list.append(regrid_params)
+            msg_list.append(regrid_msg)
+            params_list.append(rebin_params)
+            msg_list.append(rebin_msg)
+
+        if multiple_spws:
+            params_list.append(combine_params)
+            msg_list.append(combine_msg)
+
+        # ............................................
+        # Execute the list of mstransform calls
+        # ............................................
+
+        n_calls = len(params_list)
+        logger.info('... we will have '+str(n_calls)+' mstransform calls')
+
+        for kk, (this_params, this_msg) in enumerate(zip(
+                params_list, msg_list)):
+
+            if kk == 0:
+                this_params['vis'] = infile+'.temp_copy'
+                this_params['outputvis'] = \
+                    outfile+'.temp{:.0f}'.format(kk+1)
+            elif kk == n_calls-1:
+                this_params['vis'] = \
+                    outfile+'.temp{:.0f}'.format(kk)
+                this_params['outputvis'] = outfile
+            else:
+                this_params['vis'] = \
+                    outfile+'.temp{:.0f}'.format(kk)
+                this_params['outputvis'] = \
+                    outfile+'.temp{:.0f}'.format(kk+1)
+
+            if os.path.isdir(this_params['outputvis']):
+                shutil.rmtree(this_params['outputvis'])
+
+            logger.info("... "+this_msg)
+
+            if kk > 0:
+                this_params['spw'] = ''
+                this_params['datacolumn'] = 'DATA'
+
+            logger.info(
+                "... running CASA "+'mstransform(' +
+                ', '.join("{!s}={!r}".format(
+                    t, this_params[t]) for t in this_params.keys()) +
+                ')')
+
+            if not os.path.isdir(this_params['outputvis']+'.touch'):
+                # mark the beginning of our processing
+                os.mkdir(this_params['outputvis']+'.touch')
+
+            casaStuff.mstransform(**this_params)
+
+            if os.path.isdir(this_params['outputvis']+'.touch') and \
+               this_params['outputvis'] != outfile:
+                # mark the end of our processing
+                os.rmdir(this_params['outputvis']+'.touch')
 
     # ............................................
     # Clean up leftover files
@@ -2108,13 +2156,14 @@ def extract_continuum(
         for suffix in ['.temp_copy', '.temp_copy.flagversions']:
             if os.path.isdir(infile+suffix):
                 shutil.rmtree(infile+suffix)
-        for kk in range(n_calls):
-            for suffix in [
-                    '.temp%d' % (kk),
-                    '.temp%d.flagversions' % (kk),
-                    '.temp%d.touch' % (kk)]:
-                if os.path.isdir(outfile+suffix):
-                    shutil.rmtree(outfile+suffix)
+        if range_to_extract is not None:
+            for kk in range(n_calls):
+                for suffix in [
+                        '.temp%d' % (kk),
+                        '.temp%d.flagversions' % (kk),
+                        '.temp%d.touch' % (kk)]:
+                    if os.path.isdir(outfile+suffix):
+                        shutil.rmtree(outfile+suffix)
 
     # Remove touch file to mark that we have done the processing
     if os.path.isdir(outfile+'.touch'):
