@@ -13,34 +13,23 @@ from __future__ import print_function
 import os, sys, re, shutil
 import json
 import glob
+import logging
 import numpy as np
 import scipy.ndimage.morphology as morph
 import scipy.ndimage as nd
 
-import logging
-logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-else:
-    logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline')
+from . import handlerTemplate
+from . import handlerKeys
+from . import utilsFilenames
+from . import casaImagingRoutines as cir
 
-#print(sys.path)
-from phangsPipeline import handlerTemplate
-from phangsPipeline import handlerKeys
-from phangsPipeline import utilsFilenames
-from phangsPipeline import casaImagingRoutines as cir
 
 class StatsHandler(handlerTemplate.HandlerTemplate):
     """
@@ -58,8 +47,9 @@ class StatsHandler(handlerTemplate.HandlerTemplate):
         ):
         
         # inherit template class
-        handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
-    
+        handlerTemplate.HandlerTemplate.__init__(self, 
+                                                 key_handler = key_handler, 
+                                                 dry_run = dry_run)
     
     def go(
         self, 

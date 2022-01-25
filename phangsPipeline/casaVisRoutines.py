@@ -598,7 +598,12 @@ def find_spws_for_line(
 
         logger.warning('No spectral windows contain the input line.')
         spw_list = []
-        spw_list_string = None  # can't be '', that selects all
+        spw_list_string = None # can't be '', that selects all
+
+        if as_list:
+            return (spw_list)
+        else:
+            return (spw_list_string)
 
     else:
 
@@ -1255,7 +1260,7 @@ def extract_line(
         regrid_params, regrid_msg = build_mstransform_call(
             infile=infile, outfile=outfile, restfreq_ghz=restfreq_ghz, spw=spw,
             vstart_kms=vstart_kms, vwidth_kms=vwidth_kms,
-            target_chan_kms=target_chan_kms, nchan=nchan,
+            target_chan_kms=target_chan_kms, nchan=nchan, binfactor=binfactor,
             method='regrid',
             require_full_line_coverage=require_full_line_coverage)
 
@@ -1523,13 +1528,16 @@ def build_mstransform_call(
         if nchan is None:
             nchan = int(np.max(np.ceil(vwidth_kms / target_chan_kms)))
 
-        params.update({
-            'combinespws': False, 'regridms': True, 'chanaverage': False,
-            'mode': 'velocity', 'interpolation': 'cubic',
-            'outframe': 'lsrk', 'veltype': 'radio',
-            'restfreq': restfreq_string, 'start': start_vel_string,
-            'nchan': nchan, 'width': chanwidth_string,
-        })
+        if binfactor is not None:
+            # Make sure that we won't lose anything in the rebinning stage
+            add_chans = nchan % binfactor
+            nchan += add_chans
+
+        params.update(
+            {'combinespws': False, 'regridms': True, 'chanaverage': False,
+             'mode': 'velocity', 'interpolation': 'cubic',
+             'outframe': 'lsrk', 'veltype': 'radio', 'restfreq': restfreq_string,
+             'start': start_vel_string, 'nchan': nchan, 'width': chanwidth_string })
 
         if skip_width:
             del params['width']

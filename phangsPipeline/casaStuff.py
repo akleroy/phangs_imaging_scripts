@@ -31,13 +31,18 @@ try:
 
     simple_version = '.'.join((casa['version'].split('.'))[0:2])
 
+    # sdintimaging imports
+
+    try:
+        from sdintimaging import sdintimaging
+    except ImportError:
+        pass
+
 except (ImportError, ModuleNotFoundError):
 
     # This is for CASA6
 
     from casatools import (table, image, imager, msmetadata)
-
-    tb = table()
 
     iatool = image
     imtool = imager
@@ -64,8 +69,11 @@ except (ImportError, ModuleNotFoundError):
                            imval,
                            makemask,
                            mstransform,
+                           sdintimaging,
                            split,
                            statwt,
                            tclean,
                            uvcontsub,
                            visstat)
+
+    from casatasks.private import sdint_helper
