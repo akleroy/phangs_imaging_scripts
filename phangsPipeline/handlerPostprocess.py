@@ -938,10 +938,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
             # In the case where we have a mosaic, look for the telltale sdint files
 
-            mosaic_parts = self._kh.get_parts_for_linmos(this_target)
+            mosaic_parts = self._kh.get_parts_for_linmos(target)
             for mosaic_part in mosaic_parts:
                 fname_dict_mosaic = self._fname_dict(
-                    target=mosaic_part, product=this_product, config=this_config,
+                    target=mosaic_part, product=product, config=config,
                     imaging_method=imaging_method)
                 imaging_dir = self._kh.get_imaging_dir_for_target(mosaic_part)
                 using_sdint = os.path.isdir(imaging_dir + fname_dict_mosaic['orig'])
@@ -1900,8 +1900,6 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         )
 
         # Mosaic the interferometer, single dish, and feathered data.
-
-        # TODO: TEST MOSAIC!
 
         if do_mosaic:
 
