@@ -15,6 +15,7 @@ from spectral_cube import SpectralCube
 
 from .pipelineVersion import version, tableversion
 from .scNoiseRoutines import mad_zero_centered
+from .scDerivativeRoutines import convert_and_reproject
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -343,6 +344,166 @@ def cprops_mask(data, noise=None,
     if grow_v is not None:
         mask = grow_mask(mask, iters_v=grow_v)
     
+    return(mask)
+
+def mask_around_value(cube, target=None, delta=None):
+    """General function to make a mask that includes only values within
+    delta of some target value or cube.
+    
+    Parameters:
+
+    -----------
+
+    cube : array
+
+    target : array or float
+
+        The target value
+
+    delta : the tolerance
+
+        When cube is within delta of target, return True
+
+    Keywords:
+    ---------
+
+    TBD
+
+    """
+
+    # -------------------------------------------------
+    # Generate the mask
+    # -------------------------------------------------
+
+    mask = np.abs(cube - target) <= delta
+
+    # -------------------------------------------------
+    # Return
+    # -------------------------------------------------
+
+    return(mask)
+
+def make_vfield_mask(cube, vfield, window,
+                     outfile=None, overwrite=True):
+    """Make a mask that includes only pixels within +/- some velocity
+    window of a provided velocity field, which can be two-d or one-d.
+    
+    Parameters:
+
+    -----------
+
+    data : string or SpectralCube
+        
+        The original data cube.
+
+    vfield : float or two-d array or string
+
+        The velocity field to use as a template. If a string, it's
+        read as a file.
+
+    window : float or two-d array or string
+
+        The velocity field to use as a template. If a string, it's
+        read as a file.
+
+    Keywords:
+    ---------
+
+    TBD
+
+    """
+    
+    # -------------------------------------------------
+    # Get spectral information from the cube
+    # -------------------------------------------------
+
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+    spvalue = spaxis.value
+    nz, ny, nx = cube.shape
+
+    # -------------------------------------------------
+    # Convert and align the velocity field as needed
+    # -------------------------------------------------
+
+    # Make sure the velocity is a quanity
+    if type(vfield) != u.quantity.Quantity:
+        # Guess matched units
+        vfield = u.quantity.Quantity(vfield,spunit)
+    
+    # Just convert if it's a scalar
+    if np.ndim(vfield.data) <= 1:
+        vfield = vfield.to(spunit)
+        vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
+    else:
+        # reproject if it's a projection
+        if type(vfield) is Projection:            
+            vfield = convert_and_reproject(vfield, template=cube.header, unit=spunit)
+        else:            
+            vfield = vfield.to(spunit)
+
+    # Check sizes    
+    if (cube.shape[1] != vfield.shape[0]) or (cube.shape[2] != vfield.shape[1]):
+        return(np.nan)
+
+    # -------------------------------------------------
+    # Convert and align the window as needed
+    # -------------------------------------------------
+
+    # Make sure the window is a quanity
+    if type(window) != u.quantity.Quantity:
+        # Guess matched units
+        window = u.quantity.Quantity(window,spunit)
+    
+    # Just convert if it's a scalar
+    if np.ndim(window.data) <= 1:
+        window = window.to(spunit)        
+        window = u.quantity.Quantity(np.ones((ny, nx))*window.value, window.unit)
+    else:
+        # reproject if it's a projection
+        if type(window) is Projection:            
+            window = convert_and_reproject(window, template=cube.header, unit=spunit)
+        else:            
+            window = window.to(spunit)
+
+    # Check sizes
+    if (cube.shape[1] != window.shape[0]) or (cube.shape[2] != window.shape[1]):
+        return(np.nan)    
+
+    # -------------------------------------------------
+    # Generate a velocity cube and a vfield cube
+    # -------------------------------------------------
+
+    spaxis_cube = np.ones((ny, nx))[None,:,:] * spvalue[:,None,None]    
+    vfield_cube = (vfield.value)[None,:,:] * np.ones(nz)[:,None,None]
+    window_cube = (window.value)[None,:,:] * np.ones(nz)[:,None,None]
+
+    # -------------------------------------------------
+    # Make the mask
+    # -------------------------------------------------
+
+    mask = mask_around_value( \
+        spaxis_cube,
+        target=vfield_cube,
+        delta=window_cube)
+
+    # -------------------------------------------------
+    # Write to disk
+    # -------------------------------------------------
+    
+    mask = SpectralCube(mask.astype(np.int), wcs=cube.wcs,
+                        header=cube.header,
+                        meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
+    
+    # Write to disk, if desired
+    if outfile is not None:        
+        header = mask.header
+        header['DATAMAX'] = 1
+        header['DATAMIN'] = 0
+        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+                              header=header)
+        hdu.writeto(outfile, overwrite=overwrite)
+
     return(mask)
 
 def join_masks(orig_mask_in, new_mask_in, 
