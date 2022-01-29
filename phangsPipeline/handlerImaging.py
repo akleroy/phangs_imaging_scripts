@@ -174,6 +174,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             self,
             do_all=False,
             imaging_method='tclean',
+            imaging_method_override=None,
             do_dirty_image=False,
             do_revert_to_dirty=False,
             do_read_clean_mask=False,
@@ -265,6 +266,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
                     suffix_in=suffix_in,
                     extra_ext_out=extra_ext_out,
                     imaging_method=imaging_method,
+                    imaging_method_override=imaging_method_override,
                     do_dirty_image=do_dirty_image,
                     do_revert_to_dirty=do_revert_to_dirty,
                     do_read_clean_mask=do_read_clean_mask,
@@ -970,6 +972,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             suffix_in=None,
             extra_ext_out=None,
             imaging_method='tclean',
+            imaging_method_override=None,
             do_dirty_image=True,
             do_revert_to_dirty=True,
             do_read_clean_mask=True,
@@ -1011,6 +1014,24 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         cell = None
         imsize = None
+
+        # Allow for manual overriding of configs if we need it
+        if imaging_method_override is not None:
+            target_override = imaging_method_override['target']
+            config_override = imaging_method_override['config']
+            product_override = imaging_method_override['product']
+
+            if type(target_override) == str:
+                target_override = [target_override]
+            if type(config_override) == str:
+                config_override = [config_override]
+            if type(product_override) == str:
+                product_override = [product_override]
+
+            if target in target_override or 'all' in target_override:
+                if config in config_override or 'all' in config_override:
+                    if product_override in product_override or 'all' in product_override:
+                        imaging_method = imaging_method_override['new_imaging_method']
 
         # These calls instantiate a clean call object with default
         # clean parameters. For the next few steps, we use the clean

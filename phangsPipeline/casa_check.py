@@ -9,6 +9,7 @@ def is_casa_installed():
     try:
         import taskinit
         casa_enabled = True
+        return casa_enabled
     except (ImportError, ModuleNotFoundError):
         pass
 
@@ -16,6 +17,7 @@ def is_casa_installed():
     try:
         import casatools  # favour casatools instead of casatasks
         casa_enabled = True
+        return casa_enabled
     except (ImportError, ModuleNotFoundError):
         pass
 
