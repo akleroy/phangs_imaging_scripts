@@ -40,6 +40,7 @@ logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
 from .casa_check import is_casa_installed
+
 casa_enabled = is_casa_installed()
 
 if casa_enabled:
@@ -48,7 +49,6 @@ if casa_enabled:
     # reload(cvr) #<TODO><DEBUG>#
 else:
     logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
 class VisHandler(handlerTemplate.HandlerTemplate):
@@ -69,7 +69,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         handlerTemplate.HandlerTemplate.__init__(
             self, key_handler=key_handler, dry_run=dry_run)
 
-#region Loops
+    # region Loops
 
     ######################################
     # Loop through all steps and targets #
@@ -141,22 +141,20 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 # fields and spectral windows from each input data set.
 
                 if do_copy:
-
-                        self.task_split(
-                            target = this_target,
-                            project = this_project,
-                            array_tag = this_array_tag,
-                            obsnum = this_obsnum,
-                            product = this_product,
-                            timebin = timebin,
-                            require_full_line_coverage = require_full_line_coverage,
-                            overwrite = overwrite,
-                            )
+                    self.task_split(
+                        target=this_target,
+                        project=this_project,
+                        array_tag=this_array_tag,
+                        obsnum=this_obsnum,
+                        product=this_product,
+                        timebin=timebin,
+                        require_full_line_coverage=require_full_line_coverage,
+                        overwrite=overwrite,
+                    )
 
                 # Run custom processing. Not currently used.
 
                 if do_custom:
-
                     pass
 
                 # Next we apply uv continuum subtraction. We may later offer
@@ -165,7 +163,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 # the observation setup.
 
                 if this_product in self._kh.get_line_products() and do_contsub:
-
                     self.task_contsub(
                         target=this_target,
                         project=this_project,
@@ -202,7 +199,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             if do_extract_line:
 
                 if this_product in self._kh.get_line_products():
-
                     self.task_extract_line(
                         target=this_target,
                         config=this_config,
@@ -234,7 +230,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             if do_extract_cont:
 
                 if this_product in self._kh.get_continuum_products():
-
                     self.task_extract_continuum(
                         target=this_target,
                         product=this_product,
@@ -259,7 +254,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             for this_product in product_list:
 
                 if do_remove_staging:
-
                     self.remove_staged_products(
                         target=this_target,
                         project=this_project,
@@ -268,11 +262,11 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         product=this_product,
                         strict_config=strict_config)
 
-        return()
+        return ()
 
-#endregion
+    # endregion
 
-#region Tasks
+    # region Tasks
 
     ##########################################
     # Tasks - individual operations on data. #
@@ -323,15 +317,15 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         infile = self._kh.get_file_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
 
-        logger.info("... file: "+infile)
+        logger.info("... file: " + infile)
 
         if infile is None:
             logger.error("Infile not found. Returning.")
-            return()
+            return ()
 
         if not os.path.isdir(infile):
             logger.error("Infile not found. Returning.")
-            return()
+            return ()
 
         field = self._kh.get_field_for_input_ms(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
@@ -342,28 +336,28 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target=target, project=project, array_tag=array_tag, obsnum=obsnum,
             product=product, ext=extra_ext_out)
 
-        logger.info("... output: "+outfile)
+        logger.info("... output: " + outfile)
 
         # Check existence of output data and abort if found and overwrite is off
 
-        if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+        if os.path.isdir(outfile) and not os.path.isdir(outfile + '.touch'):
             if not overwrite:
-                logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
-                return()
+                logger.warning('... found existing output data "' + outfile + '", will not overwrite it.')
+                return ()
 
         # If the user doesn't override the time bin, get it from the
         # key handler.
 
         if timebin is None:
             timebin = self._kh.get_timebin_for_array_tag(array_tag=array_tag)
-            logger.info("... timebin: "+str(timebin))
+            logger.info("... timebin: " + str(timebin))
 
         # If requested, select on SPW for the product
 
         spw = ''
         if product is not None:
 
-            logger.info("... product: "+str(product))
+            logger.info("... product: " + str(product))
 
             if product in self._kh.get_line_products():
 
@@ -378,7 +372,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 if combinespw is None:
                     combinespw = False
 
-                logger.info("... combinespw: "+str(combinespw))
+                logger.info("... combinespw: " + str(combinespw))
 
                 if not self._dry_run:
                     if combinespw:
@@ -395,20 +389,18 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                             "... No SPWs meet the selection criteria. "
                             "Skipping.")
 
-                        return()
+                        return ()
 
             if product in self._kh.get_continuum_products():
-
                 spw = cvr.find_spws_for_science(infile=infile)
 
-        logger.info("... extracting spws :"+str(spw))
+        logger.info("... extracting spws :" + str(spw))
 
         # Change to the imaging directory for the target
 
         _ = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
         if not self._dry_run:
-
             cvr.split_science_targets(
                 infile=infile,
                 outfile=outfile,
@@ -418,7 +410,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 do_statwt=do_statwt,
                 overwrite=overwrite)
 
-        return()
+        return ()
 
     def remove_staged_products(
             self,
@@ -458,7 +450,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-        logger.info("Clearing intermediate staged u-v data for "+infile)
+        logger.info("Clearing intermediate staged u-v data for " + infile)
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
@@ -467,11 +459,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         _ = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
         if not self._dry_run:
+            os.system('rm -rf ' + infile)
+            os.system('rm -rf ' + infile + '.contsub')
 
-            os.system('rm -rf '+infile)
-            os.system('rm -rf '+infile+'.contsub')
-
-        return()
+        return ()
 
     def task_concat_uvdata(
             self,
@@ -528,7 +519,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
         if len(staged_ms_list) == 0:
             logger.warning("No measurement sets to concatenate, returning.")
-            return()
+            return ()
 
         # Generate the outfile name
 
@@ -541,25 +532,24 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Concatenating staged and split u-v data for:")
-        logger.info("... target: "+target)
-        logger.info("... product: "+product)
-        logger.info("... config: "+config)
-        logger.info("... files: "+str(staged_ms_list))
-        logger.info("... output: "+str(outfile))
+        logger.info("... target: " + target)
+        logger.info("... product: " + product)
+        logger.info("... config: " + config)
+        logger.info("... files: " + str(staged_ms_list))
+        logger.info("... output: " + str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
         # Concatenate the measurement sets
 
         if not self._dry_run:
-
             cvr.concat_ms(
                 infile_list=staged_ms_list,
                 outfile=outfile,
                 overwrite=overwrite,
                 copypointing=False)  # come back later
 
-        return()
+        return ()
 
     def task_contsub(
             self,
@@ -631,9 +621,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("u-v continuum subtraction for")
-        logger.info("... file: "+infile)
-        logger.info("... output: "+infile+'.contsub')
-        logger.info("... excluding frequency ranges: "+str(ranges_to_exclude))
+        logger.info("... file: " + infile)
+        logger.info("... output: " + infile + '.contsub')
+        logger.info("... excluding frequency ranges: " + str(ranges_to_exclude))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
@@ -642,7 +632,6 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         _ = self._kh.get_imaging_dir_for_target(target, changeto=True)
 
         if not self._dry_run:
-
             cvr.contsub(
                 infile=infile,
                 # outfile is not an option right now, comes out ".contsub"
@@ -651,7 +640,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 fitorder=fitorder,
                 combine=combine)
 
-        return()
+        return ()
 
     def task_run_custom_scripts(
             self,
@@ -710,7 +699,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         valid_contsub_options = ['prefer', 'require', 'none']
         if contsub.lower().strip() not in valid_contsub_options:
             logger.error("Please choose a valid contsub option.")
-            logger.error("Valid options are:"+str(valid_contsub_options))
+            logger.error("Valid options are:" + str(valid_contsub_options))
             raise Exception("Please choose a valid contsub option.")
 
         # Compile a list of input files, looping over the staged
@@ -721,16 +710,16 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.debug('')
         logger.debug('task_extract_line')
         logger.debug('loop_over_input_ms')
-        logger.debug('target=%s'%(str([target])))
-        logger.debug('config=%s'%(str([config])))
-        #<TODO># we have not excluded the combined interf config '12m+7m'
-        
+        logger.debug('target=%s' % (str([target])))
+        logger.debug('config=%s' % (str([config])))
+        # <TODO># we have not excluded the combined interf config '12m+7m'
+
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=[target],
                                             config=[config],
                                             project=None,
-											strict_config=strict_config):
+                                            strict_config=strict_config):
 
             # The name of the staged measurement set with this
             # combination of target, project, array, obsnum.
@@ -747,7 +736,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             infile_dict[this_infile]['present'] = \
                 os.path.isdir(this_infile)
             infile_dict[this_infile]['contsub'] = \
-                os.path.isdir(this_infile+'.contsub')
+                os.path.isdir(this_infile + '.contsub')
 
         # Implement the logic related to continuum
         # subtraction. Options are "require" (use only data with
@@ -782,11 +771,11 @@ class VisHandler(handlerTemplate.HandlerTemplate):
 
             for this_infile in infile_dict.keys():
                 if infile_dict[this_infile]['contsub']:
-                    infile_list.append(this_infile+'.contsub')
+                    infile_list.append(this_infile + '.contsub')
                     logger.warning("In file: {}".format(this_infile))
                 else:
                     logger.warning(
-                        "File lacks contsub, skipping: "+str(this_infile))
+                        "File lacks contsub, skipping: " + str(this_infile))
 
         if contsub == 'none':
 
@@ -794,11 +783,11 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 if infile_dict[this_infile]['present']:
                     infile_list.append(this_infile)
                 else:
-                    logger.warning("File missing, skipping: "+str(this_infile))
+                    logger.warning("File missing, skipping: " + str(this_infile))
 
         if len(infile_list) == 0:
             logger.warning("No files to process.")
-            return()
+            return ()
 
         # Define the output file. Line extraction has a concatenation
         # step, so the individual measurement sets will be combined
@@ -819,7 +808,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             'regrid_then_rebin', 'rebin_then_regrid',
             'just_regrid', 'just_rebin']
         if method.lower().strip() not in valid_methods:
-            logger.error("Not a valid line extraction method - "+str(method))
+            logger.error("Not a valid line extraction method - " + str(method))
             raise Exception("Please specify a valid line extraction method.")
 
         target_chanwidth = self._kh.get_channel_width_for_line_product(product)
@@ -827,21 +816,21 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Extracting spectral product:")
-        logger.info("... Line: "+str(line_to_extract))
-        logger.info("... Vsys [km/s]: "+str(vsys_kms))
-        logger.info("... Vwidth [km/s]: "+str(vwidth_kms))
-        logger.info("... Method: "+str(method))
-        logger.info("... From files: "+str(infile_list))
-        logger.info("... To file: "+str(outfile))
+        logger.info("... Line: " + str(line_to_extract))
+        logger.info("... Vsys [km/s]: " + str(vsys_kms))
+        logger.info("... Vwidth [km/s]: " + str(vwidth_kms))
+        logger.info("... Method: " + str(method))
+        logger.info("... From files: " + str(infile_list))
+        logger.info("... To file: " + str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
         # Check existence of output data and abort if found and overwrite is off
 
-        if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):            
+        if os.path.isdir(outfile) and not os.path.isdir(outfile + '.touch'):
             if not overwrite:
-                logger.warning('... found existing output data "'+outfile+'", will not overwrite it.')
-                return()
+                logger.warning('... found existing output data "' + outfile + '", will not overwrite it.')
+                return ()
 
         if not self._dry_run:
 
@@ -858,13 +847,12 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 require_full_line_coverage=require_full_line_coverage)
 
             if do_statwt:
-
                 cvr.reweight_data(
                     infile=outfile,
                     edge_kms=edge_for_statwt,
                     overwrite=overwrite)
 
-        return()
+        return ()
 
     def task_extract_continuum(
             self,
@@ -903,18 +891,17 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.debug('')
         logger.debug('task_extract_continuum')
         logger.debug('loop_over_input_ms')
-        logger.debug('target=%s'%(str([target])))
-        logger.debug('config=%s'%(str([config])))
-        logger.debug('product=%s'%(product))
-        #<TODO># we have not excluded the combined interf config '12m+7m'
-        
+        logger.debug('target=%s' % (str([target])))
+        logger.debug('config=%s' % (str([config])))
+        logger.debug('product=%s' % (product))
+        # <TODO># we have not excluded the combined interf config '12m+7m'
+
         infile_dict = {}
         for this_target, this_project, this_array_tag, this_obsnum in \
                 self._kh.loop_over_input_ms(target=[target],
                                             config=[config],
                                             project=None,
-											strict_config=strict_config):
-
+                                            strict_config=strict_config):
             # The name of the staged measurement set with this
             # combination of target, project, array, obsnum.
 
@@ -933,7 +920,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         # If no ms data found for the given target, then just return.
         # This could happen if the target name is a mosaic target, 
         # and each ms data will be named by the mosaic parts.
-        
+
         if len(infile_dict) == 0:
             return
 
@@ -965,22 +952,22 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             'just_regrid', 'just_rebin']
         if method.lower().strip() not in valid_methods:
             logger.error(
-                "Not a valid continuum extraction method - "+str(method))
+                "Not a valid continuum extraction method - " + str(method))
             raise Exception(
                 "Please specify a valid continuum extraction method.")
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Extracting continuum product:")
-        logger.info("... Extracting ranges: "+str(ranges_to_extract))
-        logger.info("... Lines to flag: "+str(lines_to_flag))
-        logger.info("... Target channel width: "+str(target_chanwidth))
-        logger.info("... Method: "+str(method))
-        logger.info("... From files: "+str(infile_list))
-        logger.info("... To file: "+str(outfile))
+        logger.info("... Extracting ranges: " + str(ranges_to_extract))
+        logger.info("... Lines to flag: " + str(lines_to_flag))
+        logger.info("... Target channel width: " + str(target_chanwidth))
+        logger.info("... Method: " + str(method))
+        logger.info("... From files: " + str(infile_list))
+        logger.info("... To file: " + str(outfile))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         if not self._dry_run and casa_enabled:
 
             cvr.batch_extract_continuum(
@@ -998,11 +985,10 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 require_full_cont_coverage=require_full_cont_coverage)
 
             if do_statwt:
-
                 # not sure if we need this here
                 pass
 
-        return()
+        return ()
 
     def task_remove_concat(
             self,
@@ -1046,10 +1032,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 target=target, config=config, product=product,
                 ext=extra_ext_in, suffix=this_suffix)
 
-            logger.info('Removing '+infile)
+            logger.info('Removing ' + infile)
 
             if not self._dry_run:
-                os.system('rm -rf '+infile)
+                os.system('rm -rf ' + infile)
 
-
-#endregion
+# endregion

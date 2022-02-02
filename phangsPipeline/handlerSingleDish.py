@@ -27,7 +27,6 @@ if casa_enabled:
     from . import casaSingleDishRoutines as csdr
 else:
     logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from . import handlerTemplate
 from . import utilsFilenames

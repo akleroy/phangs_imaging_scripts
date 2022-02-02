@@ -18,8 +18,6 @@ import logging
 
 import numpy as np
 
-from phangsPipeline.casa_check import is_casa_installed
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -119,6 +117,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             casaext = '.image'
         elif imaging_method == 'sdintimaging':
             casaext = '.joint.cube.image'
+        else:
+            logger.error('imaging_method %s not recognised' % imaging_method)
+            raise Exception('imaging_method %s not recognised' % imaging_method)
 
         orig_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
@@ -917,7 +918,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             logger.warning('Missing config')
             return
 
-        if imaging_method not in ['sdintimaging']:
+        if imaging_method != 'sdintimaging':
             logger.warning('This should only be run for sdintimaging')
             return
 

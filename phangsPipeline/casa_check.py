@@ -15,7 +15,8 @@ def is_casa_installed():
 
     # CASA 6
     try:
-        import casatools  # favour casatools instead of casatasks
+        import casatasks
+        import casatools
         casa_enabled = True
         return casa_enabled
     except (ImportError, ModuleNotFoundError):

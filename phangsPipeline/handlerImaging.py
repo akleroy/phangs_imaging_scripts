@@ -56,8 +56,6 @@ import logging
 
 import numpy as np
 
-import analysisUtils as au
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -74,6 +72,9 @@ if casa_enabled:
     # reload(msr)
 else:
     logger.debug('casa_enabled = False')
+
+# Analysis utilities
+import analysisUtils as au
 
 from .clean_call import CleanCall, CleanCallFunctionDecorator
 
@@ -222,7 +223,7 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
         if imaging_method not in ['tclean', 'sdintimaging']:
             logger.error('imaging_method should be either tclean or sdintimaging')
-            return None
+            raise Exception('imaging_method should be either tclean or sdintimaging')
 
         if len(self.get_targets()) == 0:
             logger.error("Need a target list.")
@@ -521,15 +522,23 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             mytb.close()
 
             template_hdr = casaStuff.imregrid(sd_image_file, template='get')
-            template_hdr['shap'][-1] = n_chan
-            template_hdr['csys']['spectral2']['wcs']['crpix'] = 0.0
-            template_hdr['csys']['spectral2']['wcs']['cdelt'] = d_freq
-            template_hdr['csys']['spectral2']['wcs']['crval'] = first_freq
 
-            casaStuff.imregrid(imagename=sd_image_file, output=sd_image_file + '_regrid',
-                               template=template_hdr, asvelocity=asvelocity, overwrite=True)
-            os.system('rm -rf ' + sd_image_file)
-            os.system('mv -f ' + sd_image_file + '_regrid ' + sd_image_file)
+            spec_shap = template_hdr['shap'][-1]
+            spec_crpix = template_hdr['csys']['spectral2']['wcs']['crpix']
+            spec_cdelt = template_hdr['csys']['spectral2']['wcs']['cdelt']
+            spec_crval = template_hdr['csys']['spectral2']['wcs']['crval']
+
+            if not (spec_shap == n_chan and spec_crpix == 0.0 and spec_cdelt == d_freq and spec_crval == first_freq):
+
+                template_hdr['shap'][-1] = n_chan
+                template_hdr['csys']['spectral2']['wcs']['crpix'] = 0.0
+                template_hdr['csys']['spectral2']['wcs']['cdelt'] = d_freq
+                template_hdr['csys']['spectral2']['wcs']['crval'] = first_freq
+
+                casaStuff.imregrid(imagename=sd_image_file, output=sd_image_file + '_regrid',
+                                   template=template_hdr, asvelocity=asvelocity, overwrite=True)
+                os.system('rm -rf ' + sd_image_file)
+                os.system('mv -f ' + sd_image_file + '_regrid ' + sd_image_file)
 
             # Make sure the cube has per-plane restoring beans, both in channels and polarizations
             cube_info = casaStuff.imhead(sd_image_file, mode='list')
@@ -779,6 +788,10 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         Create a signal-to-noise based mask within the existing clean
         mask for deep cleaning. Used before running a deep single
         scale clean.
+
+        If high_snr is None, will default to 4.0 (line imaging), or 2.5 (continuum imaging)
+
+        If low_snr is None, will default to 2.0 (line imaging), or 1.0 (continuum imaging)
         """
 
         if product is None:
@@ -813,12 +826,18 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         # check if line product
         is_line_product = product in self._kh.get_line_products()
 
-        if is_line_product:
-
-            if high_snr is None:
+        if high_snr is None:
+            if is_line_product:
                 high_snr = 4.0
-            if low_snr is None:
+            else:
+                high_snr = 2.5
+        if low_snr is None:
+            if is_line_product:
                 low_snr = 2.0
+            else:
+                low_snr = 1.0
+
+        if is_line_product:
 
             # signal_mask
             msr.signal_mask(imaging_method=imaging_method,
@@ -838,11 +857,6 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
 
             # here we also use a lower high_snr and low_snr 
             # for continuum cleaning
-
-            if high_snr is None:
-                high_snr = 2.5
-            if low_snr is None:
-                low_snr = 1.0
 
             # signal_mask
             msr.signal_mask(imaging_method=imaging_method,
@@ -1009,6 +1023,12 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
         Input file names: {target}_{config}_{product}_{extra_ext_in}.ms{.suffix_in}
 
         Output file names: {target}_{config}_{product}_{extra_ext_out}.image
+
+        imaging_method_override allows for some switches if you don't want to use a
+        particular algorithm for a particular setup. This should be supplied as a
+        dictionary containing 'target', 'config', and 'product' keys that match up
+        with a particular setup (these can be lists or 'all'), and a 'new_imaging_method'
+        key that the target/product/config setup should switch to (either tclean or sdintimaging)
         """
 
         cell = None

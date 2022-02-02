@@ -673,7 +673,7 @@ class KeyHandler:
 
                     if this_param.lower() == 'phys_res':
                         this_res_dict = ast.literal_eval(this_value)
-                        if type(this_res_dict) != type({}):
+                        if not isinstance(this_res_dict, dict):
                             logger.warning("Format of res string not a dictionary. Line is:")
                             logger.warning(line)
                             continue
@@ -685,7 +685,7 @@ class KeyHandler:
 
                     if this_param.lower() == 'ang_res':
                         this_res_dict = ast.literal_eval(this_value)
-                        if type(this_res_dict) != type({}):
+                        if not isinstance(this_res_dict, dict):
                             logger.warning("Format of res string not a dictionary. Line is:")
                             logger.warning(line)
                         for res_tag in this_res_dict.keys():
@@ -722,7 +722,7 @@ class KeyHandler:
                         if this_param.lower().strip() != valid_dict:
                             continue
                         this_kw_dict = ast.literal_eval(this_value)
-                        if type(this_kw_dict) != type({}):
+                        if not isinstance(this_kw_dict, dict):
                             logger.warning("Format of mask keywords is a dict. Line is:")
                             logger.warning(line)
                             continue
@@ -1334,7 +1334,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return(None)
         if 'interf_config' not in self._config_dict.keys():
             return(None)
@@ -1351,7 +1351,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return(None)
         if 'feather_config' not in self._config_dict.keys():
             return(None)
@@ -1367,7 +1367,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return(None)
         if 'singledish_config' not in self._config_dict.keys():
             return(None)
@@ -1399,7 +1399,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return([])
         if 'line_product' not in self._config_dict.keys():
             return([])
@@ -1415,7 +1415,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return([])
         if 'cont_product' not in self._config_dict.keys():
             return([])

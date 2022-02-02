@@ -33,10 +33,8 @@ try:
 
     # sdintimaging imports
 
-    try:
+    if simple_version >= '5.7':
         from sdintimaging import sdintimaging
-    except ImportError:
-        pass
 
 except (ImportError, ModuleNotFoundError):
 

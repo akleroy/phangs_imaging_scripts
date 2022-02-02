@@ -161,48 +161,10 @@ def wipe_imaging(
             'sumwt.tt0', 'sumwt.tt1', 'sumwt.tt2']
 
     if imaging_method == 'tclean':
-        cmd_list = ['rm -rf %s.%s' % (image_root, ext) for ext in exts]
-        # cmd_list = [
-        #     'rm -rf ' + image_root + '.image',
-        #     'rm -rf ' + image_root + '.model',
-        #     'rm -rf ' + image_root + '.mask',
-        #     'rm -rf ' + image_root + '.pb',
-        #     'rm -rf ' + image_root + '.psf',
-        #     'rm -rf ' + image_root + '.residual',
-        #     'rm -rf ' + image_root + '.weight',
-        #     'rm -rf ' + image_root + '.sumwt',
-        #     'rm -rf ' + image_root + '.alpha',
-        #     'rm -rf ' + image_root + '.alpha.error',
-        #     'rm -rf ' + image_root + '.beta',
-        #     'rm -rf ' + image_root + '.beta.error',
-        #     'rm -rf ' + image_root + '.image.tt0',
-        #     'rm -rf ' + image_root + '.image.tt1',
-        #     'rm -rf ' + image_root + '.image.tt2',
-        #     'rm -rf ' + image_root + '.model.tt0',
-        #     'rm -rf ' + image_root + '.model.tt1',
-        #     'rm -rf ' + image_root + '.model.tt2',
-        #     'rm -rf ' + image_root + '.mask.tt0',
-        #     'rm -rf ' + image_root + '.mask.tt1',
-        #     'rm -rf ' + image_root + '.mask.tt2',
-        #     'rm -rf ' + image_root + '.pb.tt0',
-        #     'rm -rf ' + image_root + '.pb.tt1',
-        #     'rm -rf ' + image_root + '.pb.tt2',
-        #     'rm -rf ' + image_root + '.psf.tt0',
-        #     'rm -rf ' + image_root + '.psf.tt1',
-        #     'rm -rf ' + image_root + '.psf.tt2',
-        #     'rm -rf ' + image_root + '.residual.tt0',
-        #     'rm -rf ' + image_root + '.residual.tt1',
-        #     'rm -rf ' + image_root + '.residual.tt2',
-        #     'rm -rf ' + image_root + '.weight.tt0',
-        #     'rm -rf ' + image_root + '.weight.tt1',
-        #     'rm -rf ' + image_root + '.weight.tt2',
-        #     'rm -rf ' + image_root + '.sumwt.tt0',
-        #     'rm -rf ' + image_root + '.sumwt.tt1',
-        #     'rm -rf ' + image_root + '.sumwt.tt2',
-        # ]
+        cmd_list = ['rm -rf {0}.{1}'.format(image_root, ext) for ext in exts]
     elif imaging_method == 'sdintimaging':
         cube_exts = ['sd.cube', 'int.cube', 'joint.cube', 'joint.multiterm']
-        cmd_list = ['rm -rf %s.%s.%s' % (image_root, cube_ext, ext)
+        cmd_list = ['rm -rf {0}.{1}.{2}'.format(image_root, cube_ext, ext)
                     for ext in exts for cube_ext in cube_exts]
 
     for this_cmd in cmd_list:
@@ -243,49 +205,10 @@ def copy_imaging(
             'sumwt.tt0', 'sumwt.tt1', 'sumwt.tt2']
 
     if imaging_method == 'tclean':
-
-        cmd_list = ['cp -r %s.%s %s.%s' % (input_root, ext, output_root, ext) for ext in exts]
-        # cmd_list = [
-        #     'cp -r ' + input_root + '.image ' + output_root + '.image',
-        #     'cp -r ' + input_root + '.model ' + output_root + '.model',
-        #     'cp -r ' + input_root + '.residual ' + output_root + '.residual',
-        #     'cp -r ' + input_root + '.mask ' + output_root + '.mask',
-        #     'cp -r ' + input_root + '.pb ' + output_root + '.pb',
-        #     'cp -r ' + input_root + '.psf ' + output_root + '.psf',
-        #     'cp -r ' + input_root + '.weight ' + output_root + '.weight',
-        #     'cp -r ' + input_root + '.sumwt ' + output_root + '.sumwt',
-        #     'cp -r ' + input_root + '.alpha ' + output_root + '.alpha',
-        #     'cp -r ' + input_root + '.alpha.error ' + output_root + '.alpha.error',
-        #     'cp -r ' + input_root + '.beta ' + output_root + '.beta',
-        #     'cp -r ' + input_root + '.beta.error ' + output_root + '.beta.error',
-        #     'cp -r ' + input_root + '.image.tt0 ' + output_root + '.image.tt0',
-        #     'cp -r ' + input_root + '.image.tt1 ' + output_root + '.image.tt1',
-        #     'cp -r ' + input_root + '.image.tt2 ' + output_root + '.image.tt2',
-        #     'cp -r ' + input_root + '.model.tt0 ' + output_root + '.model.tt0',
-        #     'cp -r ' + input_root + '.model.tt1 ' + output_root + '.model.tt1',
-        #     'cp -r ' + input_root + '.model.tt2 ' + output_root + '.model.tt2',
-        #     'cp -r ' + input_root + '.residual.tt0 ' + output_root + '.residual.tt0',
-        #     'cp -r ' + input_root + '.residual.tt1 ' + output_root + '.residual.tt1',
-        #     'cp -r ' + input_root + '.residual.tt2 ' + output_root + '.residual.tt2',
-        #     'cp -r ' + input_root + '.mask.tt0 ' + output_root + '.mask.tt0',
-        #     'cp -r ' + input_root + '.mask.tt1 ' + output_root + '.mask.tt1',
-        #     'cp -r ' + input_root + '.mask.tt2 ' + output_root + '.mask.tt2',
-        #     'cp -r ' + input_root + '.pb.tt0 ' + output_root + '.pb.tt0',
-        #     'cp -r ' + input_root + '.pb.tt1 ' + output_root + '.pb.tt1',
-        #     'cp -r ' + input_root + '.pb.tt2 ' + output_root + '.pb.tt2',
-        #     'cp -r ' + input_root + '.psf.tt0 ' + output_root + '.psf.tt0',
-        #     'cp -r ' + input_root + '.psf.tt1 ' + output_root + '.psf.tt1',
-        #     'cp -r ' + input_root + '.psf.tt2 ' + output_root + '.psf.tt2',
-        #     'cp -r ' + input_root + '.weight.tt0 ' + output_root + '.weight.tt0',
-        #     'cp -r ' + input_root + '.weight.tt1 ' + output_root + '.weight.tt1',
-        #     'cp -r ' + input_root + '.weight.tt2 ' + output_root + '.weight.tt2',
-        #     'cp -r ' + input_root + '.sumwt.tt0 ' + output_root + '.sumwt.tt0',
-        #     'cp -r ' + input_root + '.sumwt.tt1 ' + output_root + '.sumwt.tt1',
-        #     'cp -r ' + input_root + '.sumwt.tt2 ' + output_root + '.sumwt.tt2',
-        # ]
+        cmd_list = ['cp -r {0}.{1} {2}.{3}'.format(input_root, ext, output_root, ext) for ext in exts]
     elif imaging_method == 'sdintimaging':
         cube_exts = ['sd.cube', 'int.cube', 'joint.cube', 'joint.multiterm']
-        cmd_list = ['cp -r %s.%s.%s %s.%s.%s' % (input_root, cube_ext, ext, output_root, cube_ext, ext)
+        cmd_list = ['cp -r {0}.{1}.{2} {3}.{4}.{5}'.format(input_root, cube_ext, ext, output_root, cube_ext, ext)
                     for ext in exts for cube_ext in cube_exts]
 
     for this_cmd in cmd_list:
@@ -301,41 +224,6 @@ def export_imaging_to_fits(
     """
     Export the products associated with a CASA imaging run to FITS.
     """
-
-    # ext_map = {
-    #     '.alpha': '_alpha.fits',
-    #     '.alpha.error': '_alpha_error.fits',
-    #     '.beta': '_beta.fits',
-    #     '.beta.error': '_beta_error.fits',
-    #     '.image.tt0': '.fits',
-    #     '.image.tt1': '_tt1.fits',
-    #     '.image.tt2': '_tt2.fits',
-    #     '.model.tt0': '_model.fits',
-    #     '.model.tt1': '_model_tt1.fits',
-    #     '.model.tt2': '_model_tt2.fits',
-    #     '.residual.tt0': '_residual.fits',
-    #     '.residual.tt1': '_residual_tt1.fits',
-    #     '.residual.tt2': '_residual_tt2.fits',
-    #     '.mask.tt0': '_mask.fits',
-    #     '.mask.tt1': '_mask_tt1.fits',
-    #     '.mask.tt2': '_mask_tt2.fits',
-    #     '.pb.tt0': '_pb.fits',
-    #     '.pb.tt1': '_pb_tt1.fits',
-    #     '.pb.tt2': '_pb_tt2.fits',
-    #     '.psf.tt0': '_psf.fits',
-    #     '.psf.tt1': '_psf_tt1.fits',
-    #     '.psf.tt2': '_psf_tt2.fits',
-    #     '.weight.tt0': '_weight.fits',
-    #     '.weight.tt1': '_weight_tt1.fits',
-    #     '.weight.tt2': '_weight_tt2.fits',
-    #     '.image': '.fits',
-    #     '.model': '_model.fits',
-    #     '.residual': '_residual.fits',
-    #     '.mask': '_mask.fits',
-    #     '.pb': '_pb.fits',
-    #     '.psf': '_psf.fits',
-    #     '.weight': '_weight.fits',
-    # }
 
     exts = ['alpha', 'alpha.error',
             'beta', 'beta.error',
@@ -458,6 +346,10 @@ def execute_clean_call(
     elif imaging_method == 'sdintimaging':
         logger.debug("Running CASA " + str(clean_call).replace('tclean', 'sdintimaging'))
         expected_kwargs = inspect.getargspec(casaStuff.sdintimaging)[0]
+    else:
+        logger.error('Unexpected imaging method %s' % imaging_method)
+        raise Exception('Unexpected imaging method %s' % imaging_method)
+
     clean_kwargs = clean_call.kwargs_for_clean()
     active_kwargs = {}  # kwarg dict
     if expected_kwargs is not None:
@@ -680,6 +572,9 @@ def clean_loop(
         residual_image_name = clean_call.get_param('imagename') + '.residual' + suffix
     elif imaging_method == 'sdintimaging':
         residual_image_name = clean_call.get_param('imagename') + '.joint.cube.residual' + suffix
+    else:
+        logger.error('Unexpected imaging method %s' % imaging_method)
+        raise Exception('Unexpected imaging method %s' % imaging_method)
 
     if os.path.isdir(residual_image_name):
         missing_image = False
@@ -837,15 +732,6 @@ def clean_loop(
                     mask_name,
                     working_call.get_param('mask')))
                 working_call.set_param('mask', '')
-
-        # TODO: Another sdintimaging hack, remove the SD images so it can pull them back in without crashing. Leave
-        #  model and residual to emulate a restart
-        # if imaging_method == 'sdintimaging':
-        #     image_name = working_call.get_param('imagename')
-        #     os.system('rm -rf %s' % image_name + '.sd.cube.image')
-        #     # os.system('rm -rf %s' % image_name + '.sd.cube.model')
-        #     os.system('rm -rf %s' % image_name + '.sd.cube.psf')
-        #     # os.system('rm -rf %s' % image_name + '.sd.cube.residual')
 
         # Execute the clean call.
 

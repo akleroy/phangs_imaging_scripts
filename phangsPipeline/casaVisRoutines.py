@@ -421,17 +421,7 @@ def contsub(
 
     spw_flagging_string = spw_string_for_freq_ranges(
         infile=infile, freq_ranges_ghz=ranges_to_exclude,
-        # fail_on_empty=True)
         )
-
-    # <JS> Not sure why one would want fail_on_empty=True here...
-    # <JS> Entirely masked SPWs should be allowed especially if combine="spw".
-    # <JS> Commented out for now.
-
-    # if spw_flagging_string is None:
-    #     logger.error(
-    #         "All data are masked in at least one spectral window. Returning")
-    #     return()
 
     # uvcontsub, this outputs infile+'.contsub'
 
@@ -612,25 +602,6 @@ def find_spws_for_line(
 
         # make spw_list_string appropriate for use in selection
         spw_list_string = ','.join(np.array(spw_list).astype(str))
-
-    # <JS> The lines below are not doing what they are supposed to do.
-    # <JS> I have commented them out and then repurposed the
-    # <JS> 'require_full_line_coverage' parameter to check for *individual*
-    # <JS> SPWs that fully cover the line frequency range
-
-    # # check if the spws in this measurement set completely covers
-    # # the given line frequency range
-    # if not (spw_lowest_ghz <= line_low_ghz and
-    #         spw_highest_ghz >= line_high_ghz):
-    #     logger.warning(
-    #         'The spectral windows in this ms "%s" (%.6f -- %.6f) '
-    #         'doesn't cover the full "%s" line frequency range (%.6f -- %.6f)'
-    #         '.' % (
-    #             infile, spw_lowest_ghz, spw_highest_ghz,
-    #             line, line_low_ghz, line_high_ghz))
-    #     if require_full_line_coverage:
-    #         spw_list = []
-    #         spw_list_string = None  # can't be '', that selects all
 
     # return
     if as_list:
@@ -1472,14 +1443,14 @@ def build_mstransform_call(
 
         if restfreq_ghz is None:
             logger.error("Please specify a rest frequency in GHz.")
-            raise Exception("No rest frequency specified.")
+            raise Exception("Please specify a rest frequency in GHz.")
         restfreq_string = ("{:12.8f}".format(restfreq_ghz)+'GHz').strip()
 
         # Check that we have a velocity start and width
 
         if vstart_kms is None:
             logger.error("Please specify a starting velocity in km/s.")
-            raise Exception("No starting velocity specified.")
+            raise Exception("Please specify a starting velocity in km/s.")
         start_vel_string = ("{:12.8f}".format(vstart_kms)+'km/s').strip()
 
         # Check that we have a velocity width
@@ -1487,9 +1458,8 @@ def build_mstransform_call(
         if vwidth_kms is None:
             if nchan is None:
                 logger.error(
-                    "Please specify a velocity width in km/s or "
-                    "number of channels.")
-                raise Exception("No velocity width specified.")
+                    "Please specify a velocity width in km/s or number of channels.")
+                raise Exception("Please specify a velocity width in km/s or number of channels.")
             else:
                 vwidth_kms = nchan*target_chan_kms
 
@@ -1925,10 +1895,6 @@ def extract_continuum(
     if outfile is None:
         logging.error("Please specify an output file.")
         raise Exception("Please specify an output file.")
-
-    # if range_to_extract is None:
-    #     logging.error("Please specify a frequency range.")
-    #     raise Exception("Please specify a frequency range.")
 
     # Check existing output data and abort if found and overwrite is off
     if os.path.isdir(outfile) and not os.path.isdir(outfile+'.touch'):
