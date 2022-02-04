@@ -580,7 +580,7 @@ def clean_loop(
         missing_image = False
 
     if missing_image or force_dirty_image:
-        make_dirty_image(clean_call)
+        make_dirty_image(clean_call, imaging_method=imaging_method)
 
     # Copy the clean call so we can manipulate it without changing the
     # input version call.
