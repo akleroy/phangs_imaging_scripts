@@ -300,6 +300,7 @@ def export_imaging_to_fits(
 def execute_clean_call(
         clean_call=None,
         imaging_method='tclean',
+        convergence_fracflux=0.02,
         reset=False,
 ):
     """
@@ -352,6 +353,7 @@ def execute_clean_call(
 
     clean_kwargs = clean_call.kwargs_for_clean()
     active_kwargs = {}  # kwarg dict
+
     if expected_kwargs is not None:
         missing_kwargs = []  # list
         unused_kwargs = []  # list
@@ -363,6 +365,10 @@ def execute_clean_call(
         for k in clean_kwargs:
             if not (k in expected_kwargs):
                 unused_kwargs.append(k)
+        if imaging_method == 'sdintimaging':
+            # Put in the convergence_fracflux criteria, and make sure we don't throw a warning
+            active_kwargs['convergence_fracflux'] = convergence_fracflux
+            missing_kwargs.remove('convergence_fracflux')
         if len(unused_kwargs) > 0:
             logger.warning('Unused key arguments for ' + imaging_method + ': ' + str(unused_kwargs))
         if len(missing_kwargs) > 0:
@@ -735,7 +741,9 @@ def clean_loop(
 
         # Execute the clean call.
 
-        execute_clean_call(working_call, imaging_method=imaging_method)
+        execute_clean_call(working_call,
+                           imaging_method=imaging_method,
+                           convergence_fracflux=convergence_fracflux)
 
         # Calculate the new model flux and the change relative to the
         # previous step, normalized by current flux and by iterations.
