@@ -577,7 +577,7 @@ class KeyHandler:
                     'mask_configs':[],
                     'moments':[],
                     }
-                
+
         self._derived_dict = full_dict
 
         return()
@@ -586,7 +586,7 @@ class KeyHandler:
         """
         Read a file that defines the calculation of derived products.
         """
-   
+
         # Check file existence
 
         if os.path.isfile(fname) is False:
@@ -601,17 +601,17 @@ class KeyHandler:
         expected_format = "config product param value"
 
         # Known parameters
-        
+
         known_param_list = ['mask_configs','ang_res', 'phys_res',
                             'noise_kw','strictmask_kw','broadmask_kw',
                             'convolve_kw','moments']
 
         # Open File
-        
+
         infile = open(fname, 'r')
-        
+
         # Initialize the dictionary
-        
+
         if self._derived_dict is None:
             self._initialize_derived_dict()
         out_dict = self._derived_dict
@@ -623,13 +623,13 @@ class KeyHandler:
             if len(line) == 0:
                 break
 
-            if key_readers.skip_line(line, expected_words=expected_words, 
+            if key_readers.skip_line(line, expected_words=expected_words,
                                      delim=delim, expected_format=expected_format):
                 continue
 
             this_config, this_product, this_param, this_value = \
                 key_readers.parse_one_line(line, delim=delim)
-            
+
             if this_param.lower() not in known_param_list:
                 logger.warning("Parameter not in known parameter list. Skipping. Line is:")
                 logger.warning(line)
@@ -667,13 +667,13 @@ class KeyHandler:
                 product_list = [this_product]
 
             # Read in the read data
-            
+
             for each_config in config_list:
                 for each_product in product_list:
-                    
+
                     if this_param.lower() == 'phys_res':
                         this_res_dict = ast.literal_eval(this_value)
-                        if type(this_res_dict) != type({}):
+                        if not isinstance(this_res_dict, dict):
                             logger.warning("Format of res string not a dictionary. Line is:")
                             logger.warning(line)
                             continue
@@ -685,7 +685,7 @@ class KeyHandler:
 
                     if this_param.lower() == 'ang_res':
                         this_res_dict = ast.literal_eval(this_value)
-                        if type(this_res_dict) != type({}):
+                        if not isinstance(this_res_dict, dict):
                             logger.warning("Format of res string not a dictionary. Line is:")
                             logger.warning(line)
                         for res_tag in this_res_dict.keys():
@@ -722,7 +722,7 @@ class KeyHandler:
                         if this_param.lower().strip() != valid_dict:
                             continue
                         this_kw_dict = ast.literal_eval(this_value)
-                        if type(this_kw_dict) != type({}):
+                        if not isinstance(this_kw_dict, dict):
                             logger.warning("Format of mask keywords is a dict. Line is:")
                             logger.warning(line)
                             continue
@@ -739,14 +739,14 @@ class KeyHandler:
         # Close and return
 
         infile.close()
-            
+
         logger.info("Read "+str(lines_read)+" lines into a derived product definition dictionary.")
 
         return(out_dict)
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&% 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 # Batch read the other keys.
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&% 
+# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 # Mostly these wrap around the programs in utilsKeyReaders , which
 # parse individual key files into dictionaries.
@@ -823,7 +823,7 @@ class KeyHandler:
             return
 
         self._target_list = list(self._target_dict.keys())
-        self._target_list.sort()
+        self._target_list = sorted(self._target_list)
 
         self._missing_targets = []
 
@@ -908,7 +908,7 @@ class KeyHandler:
                 if this_part in self._whole_target_list:
                     self._whole_target_list.remove(this_part)
 
-        self._whole_target_list.sort()
+        self._whole_target_list = sorted(self._whole_target_list)
 
         logger.info("Total of "+str(len(self._whole_target_list))+" 'whole' targets.")
 
@@ -1106,7 +1106,7 @@ class KeyHandler:
                 if target in current_targets:
                     continue
                 current_targets.append(target)
-                current_targets.sort()
+                current_targets = sorted(current_targets)
                 self._targets_for_dir[this_dir] = current_targets
             else:
                 self._targets_for_dir[this_dir] = [target]
@@ -1173,7 +1173,7 @@ class KeyHandler:
     def _get_dir_for_target(self, target=None, changeto=False,
                             imaging=False, postprocess=False,
                             derived=False, release=False,
-                            cleanmask=False):
+                            cleanmask=False, singledish=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -1207,6 +1207,8 @@ class KeyHandler:
             this_dir = self._release_root + self._dir_for_target[target]+'/'
         elif cleanmask:
             this_dir = self._cleanmask_roots[-1] + self._dir_for_target[target]+'/'
+        elif singledish:
+            this_dir = self._sd_roots[-1] + self._dir_for_target[target]+'/'
         else:
             logging.error("Pick a type of directory. None found.")
             return(None)
@@ -1253,6 +1255,13 @@ class KeyHandler:
         changeto is true, then change directory to that location.
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, cleanmask=True))
+
+    def get_singledish_dir_for_target(self, target=None, changeto=False):
+        """
+        Return the release working directory given a target name. If
+        changeto is true, then change directory to that location.
+        """
+        return(self._get_dir_for_target(target=target, changeto=changeto, singledish=True))
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1325,7 +1334,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return(None)
         if 'interf_config' not in self._config_dict.keys():
             return(None)
@@ -1342,13 +1351,29 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return(None)
         if 'feather_config' not in self._config_dict.keys():
             return(None)
         feather_configs = self._config_dict['feather_config'].keys()
         this_list = \
             list_utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
+        return(this_list)
+
+    def get_singledish_configs(self, only=None, skip=None):
+        """
+        Get a list of singledish configruations.
+
+        Modified by keywords only, skip. Will only return targets in
+        only, skip targets in skip.
+        """
+        if not isinstance(self._config_dict, dict):
+            return(None)
+        if 'singledish_config' not in self._config_dict.keys():
+            return(None)
+        singledish_configs = self._config_dict['singledish_config'].keys()
+        this_list = \
+            list_utils.select_from_list(singledish_configs, skip=skip, only=only, loose=True)
         return(this_list)
 
     def get_all_configs(self):
@@ -1374,7 +1399,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return([])
         if 'line_product' not in self._config_dict.keys():
             return([])
@@ -1390,7 +1415,7 @@ class KeyHandler:
         Modified by keywords only, skip. Will only return targets in
         only, skip targets in skip.
         """
-        if type(self._config_dict) != type({}):
+        if not isinstance(self._config_dict, dict):
             return([])
         if 'cont_product' not in self._config_dict.keys():
             return([])
@@ -1404,7 +1429,7 @@ class KeyHandler:
         """
         if self._linmos_dict is not None:
             if len(self._linmos_dict) > 0:
-                return sorted(self._linmos_dict.keys())
+                return sorted(list(self._linmos_dict.keys()))
         return None
 
     def get_all_targets(self):
@@ -1750,6 +1775,46 @@ class KeyHandler:
 
         return(lines_to_flag)
 
+    def get_channel_width_for_cont_product(self, product=None):
+        """
+        Get the channel width (in km/s) associated with a continuum product.
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        channel_ghz = None
+        if 'cont_product' in self._config_dict:
+            if product in self._config_dict['cont_product']:
+                if 'channel_ghz' in self._config_dict['cont_product'][product]:
+                    channel_ghz = \
+                        self._config_dict['cont_product'][product]['channel_ghz']
+
+        if channel_ghz is None:
+            logging.info('No channel_ghz found for '+product)
+
+        return(channel_ghz)
+
+    def get_freq_ranges_for_cont_product(self, product=None):
+        """
+        Get the frequency ranges (in GHz) associated with a continuum product.
+        """
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+
+        freq_ranges_ghz = None
+        if 'cont_product' in self._config_dict:
+            if product in self._config_dict['cont_product']:
+                if 'freq_ranges_ghz' in self._config_dict['cont_product'][product]:
+                    freq_ranges_ghz = \
+                        self._config_dict['cont_product'][product]['freq_ranges_ghz']
+
+        if freq_ranges_ghz is None:
+            logging.error('No freq_ranges_ghz value set for cont product '+product)
+
+        return(freq_ranges_ghz)
+
     def get_array_tags_for_config(self, config=None):
         """
         Get the list of array tags associated with an interferometric configuration.
@@ -1762,6 +1827,13 @@ class KeyHandler:
             if config in self._config_dict['interf_config']:
                 if 'array_tags' in self._config_dict['interf_config'][config]:
                     return self._config_dict['interf_config'][config]['array_tags']
+
+        if 'singledish_config' in self._config_dict:
+            if config in self._config_dict['singledish_config']:
+                if 'array_tags' in self._config_dict['singledish_config'][config]:
+                    return self._config_dict['singledish_config'][config]['array_tags']
+                else:
+                    return [config] 
 
         return None
 
@@ -1864,7 +1936,7 @@ class KeyHandler:
                         just_arraytags.append(this_tag)
 
         # Loop over targets
-        target_list = self._ms_dict.keys()
+        target_list = list(self._ms_dict.keys())
         target_list.sort()
         for this_target in target_list:
 
@@ -1893,7 +1965,7 @@ class KeyHandler:
                     else:
                         logger.error("Expected list or string.")
                         raise Exception("Expected list or string.")
-                    
+
                     has_data_for_any_config = False
 
                     # Check if the target has data for that configuration
@@ -1906,13 +1978,13 @@ class KeyHandler:
                             for this_arraytag in self.get_array_tags_for_config(this_config):
                                 if valid_arraytags.count(this_arraytag) == 0:
                                     valid_arraytags.append(this_arraytag)
-                            
+
                     # If there are no valid configurations skip.
                     if not has_data_for_any_config:
                         continue
 
             # loop over projects
-            project_list = self._ms_dict[this_target].keys()
+            project_list = list(self._ms_dict[this_target].keys())
             project_list.sort()
             for this_project in project_list:
 
@@ -1921,7 +1993,7 @@ class KeyHandler:
                         continue
 
                 # loop over array tags
-                arraytag_list = self._ms_dict[this_target][this_project].keys()
+                arraytag_list = list(self._ms_dict[this_target][this_project].keys())
                 arraytag_list.sort()
                 for this_arraytag in arraytag_list:
 
@@ -1935,7 +2007,7 @@ class KeyHandler:
 
                     # loop over obs nums
 
-                    obsnum_list = self._ms_dict[this_target][this_project][this_arraytag].keys()
+                    obsnum_list = list(self._ms_dict[this_target][this_project][this_arraytag].keys())
                     obsnum_list.sort()
                     for this_obsnum in obsnum_list:
 
@@ -2020,7 +2092,7 @@ class KeyHandler:
         key. If "strict" is TRUE then require that a target has data
         from ALL arrays that make up the configuration.
         """
-        
+
         if target is None:
             logging.error("Please specify a target.")
             return(None)
@@ -2029,7 +2101,7 @@ class KeyHandler:
             return(None)
 
         config_array_tags = self.get_array_tags_for_config(config)
-        
+
         arraytags_for_target = []
 
         for this_target in self._ms_dict.keys():
@@ -2038,9 +2110,9 @@ class KeyHandler:
                 continue
 
             for this_project in self._ms_dict[this_target].keys():
-                
+
                 for this_arraytag in self._ms_dict[this_target][this_project].keys():
-                    
+
                     arraytags_for_target.append(this_arraytag)
 
         has_any = False
@@ -2058,7 +2130,7 @@ class KeyHandler:
 
             if missing_this_one:
                 missing_any = True
-                
+
         if strict:
             if missing_any:
                 return(False)
@@ -2152,6 +2224,7 @@ class KeyHandler:
         self,
         target=None,
         product=None,
+        nocheck=False,
         ):
         """
         Return the single dish filename for a target and product combination.
@@ -2184,7 +2257,7 @@ class KeyHandler:
         last_found_file = None
         for this_root in self._sd_roots:
             this_fname = this_root + this_dict[product]
-            if os.path.isfile(this_fname) or os.path.isdir(this_fname):
+            if os.path.isfile(this_fname) or os.path.isdir(this_fname) or nocheck:
                 found = True
                 found_count += 1
                 last_found_file = this_fname
@@ -2380,7 +2453,7 @@ class KeyHandler:
         for masking or noise estimation. Valid kwarg_types are
         'strictmask_kw', 'broadmask_kw', 'noise_kw'
         """
-        
+
         if config is None:
             logger.warning("Need a config.")
             return(None)
@@ -2462,6 +2535,27 @@ class KeyHandler:
 
         return(self._moment_dict[moment])
 
+    def get_params_for_singledish(
+        self,
+        singledish_config=None
+        ):
+        """
+        Return parameter dictionary for a singledish config.
+        """
+
+        if singledish_config is None:
+            return None
+
+        if 'singledish_config' not in self._config_dict.keys():
+            return None
+
+        singledish_config_dict = self._config_dict['singledish_config']
+
+        if singledish_config not in singledish_config_dict.keys():
+            return None
+
+        return singledish_config_dict[singledish_config]
+
     def print_configs(
         self
         ):
@@ -2534,7 +2628,7 @@ class KeyHandler:
         for this_target in self.get_all_targets():
             if self.get_distance_for_target(target=this_target) is None:
                 missing_targets.append(this_target)
-        
+
         if len(missing_targets) == 0:
             logger.info("... no targets are missing distances!")
             return()
@@ -2548,7 +2642,7 @@ class KeyHandler:
         """
         Print out the information for derived products.
         """
-        
+
         if self._derived_dict is None:
             return()
 

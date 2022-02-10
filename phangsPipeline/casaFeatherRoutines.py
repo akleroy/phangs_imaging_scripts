@@ -10,7 +10,10 @@ import glob
 import logging
 
 import numpy as np
-import pyfits  # CASA has pyfits, not astropy
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
@@ -41,7 +44,7 @@ def prep_sd_for_feather(
     do_checkunits=True,
     overwrite=False):
     """
-    Prepare single dish data for feathering. 
+    Prepare single dish data for feathering.
 
     sdfile_in : the input single dish file. Can be a FITS file (with
     do_import) or a CASA image.
@@ -72,7 +75,7 @@ def prep_sd_for_feather(
     """
 
     # Check inputs
-    
+
     if (os.path.isdir(interf_file) == False):
         logger.error("Interferometric file not found: "+interf_file)
         return(None)
@@ -87,27 +90,27 @@ def prep_sd_for_feather(
 
     # Initialize file handling
 
-    current_infile = sdfile_in    
+    current_infile = sdfile_in
     current_outfile = sdfile_out
     tempfile_name = sdfile_out+'.temp'
-    
+
     # Import from FITS if needed. Keep blanks as not-a-numbers.
-    
+
     if do_import:
         if ((current_infile[-4:] == 'FITS') or \
                 (current_infile[-4:] == 'fits')) and \
                 os.path.isfile(current_infile):
             logger.info("Importing from FITS.")
-                    
+
             casaStuff.importfits(
-                fitsimage=current_infile, 
+                fitsimage=current_infile,
                 imagename=current_outfile,
                 zeroblanks=False,
                 overwrite=overwrite)
             current_infile = current_outfile
 
     # Drop degenerate axes using a call to imsubimage
-            
+
     if do_dropdeg:
         if current_infile == current_outfile:
             if os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name):
@@ -117,7 +120,7 @@ def prep_sd_for_feather(
                     logger.error("Temp file needed but exists and overwrite=False - "+tempfile_name)
                     return(None)
             os.system('cp -r '+current_infile+' '+tempfile_name)
-            current_infile = tempfile_name            
+            current_infile = tempfile_name
             os.system('rm -rf '+current_outfile)
 
         if os.path.isdir(current_outfile) or os.path.isfile(current_outfile):
@@ -128,7 +131,7 @@ def prep_sd_for_feather(
                 return(None)
 
         casaStuff.imsubimage(
-            imagename=current_infile, 
+            imagename=current_infile,
             outfile=current_outfile,
             dropdeg=True)
 
@@ -145,7 +148,7 @@ def prep_sd_for_feather(
                     logger.error("Temp file needed but exists and overwrite=False - "+tempfile_name)
                     return(None)
             os.system('cp -r '+current_infile+' '+tempfile_name)
-            current_infile = tempfile_name            
+            current_infile = tempfile_name
             os.system('rm -rf '+current_outfile)
 
         casaStuff.imregrid(
@@ -167,8 +170,8 @@ def prep_sd_for_feather(
         if unit == 'K':
             logger.info("Unit is Kelvin. Converting.")
             ccr.convert_ktojy(
-                infile=current_outfile, 
-                overwrite=overwrite, 
+                infile=current_outfile,
+                overwrite=overwrite,
                 inplace=True)
 
     # Remove leftover temporary files.
@@ -227,7 +230,7 @@ def feather_two_cubes(
     if (os.path.isdir(sd_file) == False):
         logger.error("Single dish file not found: "+sd_file)
         return(False)
-        
+
     if (os.path.isdir(interf_file) == False):
         logger.error("Interferometric file not found: "+interf_file)
         return(False)
@@ -242,7 +245,7 @@ def feather_two_cubes(
     os.system('rm -rf '+sd_file+'.temp')
     os.system('rm -rf '+interf_file+'.temp')
     os.system('rm -rf '+out_file+'.temp')
-    
+
     os.system('rm -rf '+sd_file+'.temp.temp')
     os.system('rm -rf '+interf_file+'.temp.temp')
     os.system('rm -rf '+out_file+'.temp.temp')
@@ -254,8 +257,8 @@ def feather_two_cubes(
     # interferometer map, so that only regions in common should
     # survive.
 
-    if do_blank:        
-        
+    if do_blank:
+
         current_interf_file = interf_file+'.temp'
         current_sd_file = sd_file+'.temp'
 
@@ -271,7 +274,7 @@ def feather_two_cubes(
         myia.open(sd_file)
         sd_mask = myia.getchunk(getmask=True)
         myia.close()
-        
+
         # CASA calls unmasked values True and masked values False. The
         # region with values in both cubes is the product.
 
@@ -306,21 +309,21 @@ def feather_two_cubes(
     if do_apodize:
 
         casaStuff.impbcor(imagename=current_sd_file,
-                     pbimage=apod_file, 
-                     outfile=current_sd_file+'.temp', 
+                     pbimage=apod_file,
+                     outfile=current_sd_file+'.temp',
                      mode='multiply')
         current_sd_file = current_sd_file+'.temp'
-        
+
         casaStuff.impbcor(imagename=current_interf_file,
-                     pbimage=apod_file, 
-                     outfile=current_interf_file+'.temp', 
+                     pbimage=apod_file,
+                     outfile=current_interf_file+'.temp',
                      mode='multiply')
         current_interf_file = current_interf_file+'.temp'
 
     # Call feather, followed by an imsubimage to deal with degenerate
     # axis stuff.
 
-    if overwrite:        
+    if overwrite:
         os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.temp')
     casaStuff.feather(imagename=out_file+'.temp',
@@ -328,7 +331,7 @@ def feather_two_cubes(
                  lowres=current_sd_file,
                  sdfactor=1.0,
                  lowpassfiltersd=False)
-    casaStuff.imsubimage(imagename=out_file+'.temp', 
+    casaStuff.imsubimage(imagename=out_file+'.temp',
                     outfile=out_file,
                     dropdeg=True)
     os.system('rm -rf '+out_file+'.temp')
@@ -339,9 +342,9 @@ def feather_two_cubes(
         os.system('rm -rf '+out_file+'.temp')
         os.system('mv '+out_file+' '+out_file+'.temp')
         casaStuff.impbcor(imagename=out_file+'.temp',
-                     pbimage=apod_file, 
-                     outfile=out_file, 
-                     mode='divide', 
+                     pbimage=apod_file,
+                     outfile=out_file,
+                     mode='divide',
                      cutoff=apod_cutoff)
 
     # Remove temporary files
