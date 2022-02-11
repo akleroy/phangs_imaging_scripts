@@ -23,7 +23,7 @@ from casatasks.private.imagerhelpers.input_parameters import ImagerParameters
 from casatasks.private.cleanhelper import write_tclean_history, get_func_params
 from casatasks.private.sdint_helper import *
 
-# TODO: Pull MPI in, if available
+# Pull MPI in, if available
 
 try:
     from casampi.MPIEnvironment import MPIEnvironment
