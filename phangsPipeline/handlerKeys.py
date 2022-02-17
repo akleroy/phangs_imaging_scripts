@@ -2718,14 +2718,20 @@ class KeyHandler:
 
 #region Manipulate files and file structure
 
-    def make_missing_directories(self, imaging=False, postprocess=False, derived=False, release=False):
+    def make_missing_directories(self, ms_root=False, imaging=False, postprocess=False, derived=False, release=False):
         """
         Make any missing imaging or postprocessing directories.
         """
 
-        if not imaging and not postprocess and not derived and not release:
-            logging.error("Set either imaging or postprocess or product or release to True. Returning.")
+        if not ms_root and not imaging and not postprocess and not derived and not release:
+            logging.error("Set either ms_root or imaging or postprocess or product or release to True. Returning.")
             return(False)
+
+        if ms_root:
+            # Just create the first directory
+            if not os.path.isdir(self._ms_roots[0]):
+                logging.info("Creating MS root directory: "+self._ms_roots[0])
+                os.makedirs(self._ms_roots[0])
 
         if imaging:
             if not os.path.isdir(self._imaging_root):
