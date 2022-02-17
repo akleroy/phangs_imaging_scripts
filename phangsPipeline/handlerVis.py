@@ -88,6 +88,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             make_directories=True,
             statwt_line=True,
             statwt_cont=True,
+            intent=None,
             timebin=None,
             just_projects=None,
             strict_config=True,
@@ -147,7 +148,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         array_tag=this_array_tag,
                         obsnum=this_obsnum,
                         product=this_product,
-                        timebin=timebin,
+                        intent=intent,
+                        timebin=timebin,                        
                         require_full_line_coverage=require_full_line_coverage,
                         overwrite=overwrite,
                     )
@@ -279,6 +281,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             array_tag=None,
             obsnum=None,
             product=None,
+            intent=None,
             extra_ext_out='',
             do_statwt=False,
             timebin=None,
@@ -331,6 +334,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             target=target, project=project, array_tag=array_tag, obsnum=obsnum)
         if (field.lower()).strip() == 'all':
             field = ''
+
+        if intent is None:
+            intent='OBSERVE_TARGET*'
 
         outfile = fnames.get_staged_msname(
             target=target, project=project, array_tag=array_tag, obsnum=obsnum,
@@ -405,6 +411,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 infile=infile,
                 outfile=outfile,
                 field=field,
+                intent=intent,
                 spw=spw,
                 timebin=timebin,
                 do_statwt=do_statwt,
