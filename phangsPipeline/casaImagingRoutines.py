@@ -431,6 +431,10 @@ def make_dirty_image(
         dirty_clean_call.set_param('niter', 1)
         dirty_clean_call.set_param('cycleniter', 1)
         dirty_clean_call.set_param('gain', 0.001)
+
+        # Make sure we don't have a PSF set, and use hogbom
+        dirty_clean_call.set_param('deconvolver', 'hogbom')
+        dirty_clean_call.set_param('sdpsf', '')
     dirty_clean_call.set_param('calcres', True)
     dirty_clean_call.set_param('calcpsf', True)
 

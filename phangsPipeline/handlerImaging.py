@@ -409,8 +409,15 @@ class ImagingHandler(handlerTemplate.HandlerTemplate):
             # Put in sdintimaging specific parameters to point at the SD image and PSF
             image_name = clean_call.get_param('imagename')
             clean_call.set_param('usedata', 'sdint')
-            clean_call.set_param('sdimage', image_name + '.sd.cube.image')
-            clean_call.set_param('sdpsf', image_name + '.sd.cube.psf')
+
+            sdimage_name = image_name + '.sd.cube.image'
+            sdpsf_name = image_name + '.sd.cube.psf'
+            if not os.path.exists(sdimage_name):
+                sdimage_name = image_name + '.sd'
+                sdpsf_name = ''
+
+            clean_call.set_param('sdimage', sdimage_name)
+            clean_call.set_param('sdpsf', sdpsf_name)
 
         return (clean_call)
 
