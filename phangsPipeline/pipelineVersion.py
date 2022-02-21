@@ -10,5 +10,5 @@ except ImportError:
     # the version.py file has not been generated on package installation
 
     # For now this needs to be updated manually.
-    # Setting to last tagged version on 11/11/2021.
-    version = "v2.1"
+    # Setting to last tagged version on 2022/02/21.
+    version = "v3.0"
