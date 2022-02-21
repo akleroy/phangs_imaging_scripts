@@ -96,6 +96,64 @@ def parse_one_line(line='', delim=None):
     
 # Very specific format
 
+
+def read_casaversion_key(fname='', existing_dict=None, delim=None):
+    """
+    Read CASA version keys.
+    """
+
+    # Initialize the dictionary
+
+    if existing_dict is None:
+        out_dict = {}
+    else:
+        out_dict = existing_dict
+
+    # Check file existence
+
+    if os.path.isfile(fname) is False:
+        logger.error("I tried to read key " + fname + " but it does not exist.")
+        return out_dict
+
+    logger.info("Reading: " + fname)
+
+    # Expected Format
+
+    expected_words = 2
+    expected_format = "version path"
+
+    # Open File
+
+    infile = open(fname, 'r')
+
+    # Loop over the lines
+    lines_read = 0
+    while True:
+        line = infile.readline()
+        if len(line) == 0:
+            break
+        if skip_line(line, expected_words=expected_words, delim=delim, expected_format=expected_format):
+            continue
+
+        this_version, this_path = parse_one_line(line, delim=delim)
+
+        # Check if the version is new
+
+        if (this_version in out_dict.keys()) == False:
+            out_dict[this_version] = {}
+
+        # Add path
+        out_dict[this_version] = this_path
+
+        lines_read += 1
+
+    infile.close()
+
+    logger.info("Read " + str(lines_read) + " lines into an ms dictionary.")
+
+    return out_dict
+
+
 def read_ms_key(fname='', existing_dict=None, delim=None):
     """
     Read a measurement set key.

@@ -43,6 +43,7 @@ class KeyHandler:
         self._config_dict = None
         self._imaging_dict = None
 
+        self._casaversion_dict = None
         self._ms_dict = None
         self._sd_dict = None
         self._cleanmask_dict = None
@@ -179,6 +180,7 @@ class KeyHandler:
         self._ms_roots = []
         self._sd_roots = []
         self._cleanmask_roots = []
+        self._casaversion_keys = []
         self._ms_keys = []
         self._sd_keys = []
         self._cleanmask_keys = []
@@ -268,6 +270,10 @@ class KeyHandler:
                 self._cleanmask_roots.append(this_value)
                 lines_read += 1
 
+            if this_key == 'casaversion_key':
+                self._casaversion_keys.append(this_value)
+                lines_read += 1
+
             if this_key == 'ms_key':
                 self._ms_keys.append(this_value)
                 lines_read += 1
@@ -339,7 +345,7 @@ class KeyHandler:
 
         self._key_dir_exists = os.path.isdir(self._key_dir)
         if not self._key_dir_exists:
-            logger.error("Missing the key directory. Currentloy set to "+ self._key_dir)
+            logger.error("Missing the key directory. Currently set to "+ self._key_dir)
             logger.error("I need the key directory to proceed. Set key_dir in your master_key file.")
             all_valid = False
             errors += 1
@@ -361,9 +367,8 @@ class KeyHandler:
 
         for keypath in self._ms_roots:
             if not os.path.isdir(keypath):
-                logger.error("The ms root directory does not exist: %r"%(keypath))
-                logger.error("Please set the correct ms_root in your master_key file.")
-                all_valid = False
+                logger.error("The ms root directory does not exist: %r. "
+                             "This will cause an error if not using downloader handler." % keypath)
                 errors += 1
         if len(self._cleanmask_roots)>0:
             for keypath in self._cleanmask_roots:
@@ -374,19 +379,24 @@ class KeyHandler:
                     errors += 1
 
         all_key_lists = \
-            [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
-             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys,
-             self._derived_keys, self._moment_keys]
+            [self._casaversion_keys, self._ms_keys, self._dir_keys, self._target_keys, self._override_keys,
+             self._imaging_keys, self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys,
+             self._distance_keys, self._derived_keys, self._moment_keys]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir + this_key)
                 if not this_key_exists:
-                    all_valid = False
                     errors += 1
-                    logger.error("key "+ this_key + " is defined but does not exist in "+self._key_dir)
+                    if this_list not in [self._ms_keys, self._dir_keys, self._linmos_keys]:
+                        all_valid = False
+                        logger.error("key "+ this_key + " is defined but does not exist in "+self._key_dir)
+                    else:
+                        logger.warning('key %s is defined but does not exist. This will cause issues if not using the '
+                                       'download handler' % this_key)
 
         if all_valid:
-            logger.info("Checked key file existence and all files found.")
+            logger.info("Checked key file existence with %d errors. "
+                        "This may cause issues if not using download handlers." % errors)
         else:
             logger.error("Checked key file existence. Found "+str(errors)+" errors.")
             raise Exception("Checked key file existence. Found "+str(errors)+" errors.")
@@ -755,6 +765,10 @@ class KeyHandler:
         """
         Read the other keys into dictionary attributes.
         """
+
+        self._casaversion_dict = key_readers.batch_read(
+            key_list=self._casaversion_keys, reader_function=key_readers.read_casaversion_key,
+            key_dir=self._key_dir)
 
         self._ms_dict = key_readers.batch_read(
             key_list=self._ms_keys, reader_function=key_readers.read_ms_key,
@@ -1262,6 +1276,18 @@ class KeyHandler:
         changeto is true, then change directory to that location.
         """
         return(self._get_dir_for_target(target=target, changeto=changeto, singledish=True))
+
+    def get_path_for_casaversion(self, casa_version=None):
+        """
+        Get the CASA path for a given version of CASA.
+        """
+        if casa_version is None:
+            return None
+        try:
+            casa_path = self._casaversion_dict[casa_version]
+            return casa_path
+        except KeyError:
+            return None
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
