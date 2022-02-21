@@ -11,6 +11,9 @@ Example:
     this_adl = adl.DerivedHandler(key_handler=this_kh)
     this_adl.loop_alma_download()
 
+Note that as this module will rewrite keys, you should re-initialise the key handler
+after running through this module.
+
 """
 import copy
 import fnmatch
@@ -222,7 +225,6 @@ if has_imports:
         This script may also produce weirdness if you have a multiple files for each key type.
 
         TODO:
-            Modifications to things for mosaics
             Allow for TP
             Allow for proprietary data
             Add another key file for granular control over what we want to download. Something like
@@ -231,9 +233,6 @@ if has_imports:
             Ongoing checks to catch different ways to pick up CASA pipeline versions.
 
             Just some thoughts...
-
-            when making target definitions, we need a way to pull in overall targets and go from there. This might be
-            a bit tricky, since can't just rename. Maybe this can be implemented at the __init__ stage?
 
             for the TP, maybe we do put that into a line directory just to make sorting out
             singledish_key easier later
@@ -348,6 +347,7 @@ if has_imports:
                                            product=this_product,
                                            config=this_config)
                     self.task_download(target=this_target,
+                                       product=this_product,
                                        config=this_config,
                                        uids=uids,
                                        overwrite=overwrite_download)
@@ -576,7 +576,7 @@ if has_imports:
             original_dir = os.getcwd()
             os.chdir(dl_dir)
 
-            tar_files = glob.glob('*.tar')
+            tar_files = sorted(glob.glob('*.tar'))
 
             logger.info("")
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
