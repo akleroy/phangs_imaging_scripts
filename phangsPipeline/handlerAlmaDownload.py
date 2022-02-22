@@ -215,6 +215,7 @@ if has_imports:
     from astroquery.alma import Alma
     from astroquery.alma.utils import parse_frequency_support
 
+
     class AlmaDownloadHandler(handlerTemplate.HandlerTemplate):
         """
         Class to automate downloading and calibrating ALMA data.
@@ -227,8 +228,6 @@ if has_imports:
         TODO:
             Allow for TP
             Allow for proprietary data
-            Add another key file for granular control over what we want to download. Something like
-                {target}    {project_code:XXX, spectral_resolution:YYY} or so
             If target is not resolved then query will fail. Fall back to RA/Dec coordinates?
             Ongoing checks to catch different ways to pick up CASA pipeline versions.
 
@@ -278,12 +277,12 @@ if has_imports:
                 make_directories=True,
                 do_download=False,
                 do_calibrate=False,
-                do_build_file_keys=False,
+                do_build_key_files=False,
                 do_tp=False,
                 split_ms='mosaic',
                 overwrite_download=False,
                 overwrite_calibrate=False,
-                overwrite_build_file_keys=True,
+                overwrite_build_key_files=True,
                 overwrite_all=False,
         ):
             """Download and calibrate ALMA data.
@@ -292,7 +291,7 @@ if has_imports:
 
             (1) Query archive for target/line/antenna config and download
             (2) Figure out which version of CASA to run the scriptForPI in, and run that
-            (3) Build the MS file key from the downloaded, calibrated files
+            (3) Build the file keys from the downloaded, calibrated files
 
             N.B. After running this you will need to reinitialise the key handler, since this makes edits to various
             key files
@@ -312,11 +311,12 @@ if has_imports:
                 make_directories = True
                 do_download = True
                 do_calibrate = True
-                do_build_file_keys = True
+                do_build_key_files = True
+                do_tp = True
             if overwrite_all:
                 overwrite_download = True
                 overwrite_calibrate = True
-                overwrite_build_file_keys = True
+                overwrite_build_key_files = True
 
             # Error checking
 
@@ -329,15 +329,15 @@ if has_imports:
                 return None
 
             # If requested, make the directories
-
             if make_directories:
                 self._kh.make_missing_directories(ms_root=True)
 
+            # If requested, query/download/extract data
             if do_download:
 
                 logger.info("")
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                logger.info("Beginning download of ALMA data")
+                logger.info("Beginning download/extraction of ALMA data")
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
                 logger.info("")
 
@@ -352,6 +352,7 @@ if has_imports:
                                        uids=uids,
                                        overwrite=overwrite_download)
 
+                # Also potentially include TP
                 if do_tp:
 
                     for this_target, this_product in \
@@ -365,6 +366,7 @@ if has_imports:
                                            uids=uids,
                                            overwrite=overwrite_download)
 
+            # If requested, run scriptForPI
             if do_calibrate:
 
                 logger.info("")
@@ -379,15 +381,16 @@ if has_imports:
                                               config=this_config,
                                               overwrite=overwrite_calibrate)
 
-            if do_build_file_keys:
+            # If requested, build key files
+            if do_build_key_files:
                 logger.info("")
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                logger.info("Building file keys")
+                logger.info("Building key files")
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
                 logger.info("")
 
-                self.task_build_file_keys(split_ms=split_ms,
-                                          overwrite=overwrite_build_file_keys)
+                self.task_build_key_files(split_ms=split_ms,
+                                          overwrite=overwrite_build_key_files)
 
         def task_query(self,
                        target=None,
@@ -438,6 +441,11 @@ if has_imports:
             # Perform a query.
             observations = query_target(target, max_query_failures=max_query_failures)
 
+            # Include custom switches
+            download_restrictions = self._kh.get_alma_download_restrictions(target=target,
+                                                                            product=product,
+                                                                            config=config)
+
             parsed_obs = table.Table()
             for observation in observations:
 
@@ -479,9 +487,22 @@ if has_imports:
                 if not freq_wanted:
                     continue
 
-                # TODO: Include custom switches
+                # Check for any additional restrictions
+                restriction_found = False
+                if download_restrictions is not None:
+                    for key in download_restrictions.keys():
+                        download_restriction = download_restrictions[key]
+                        if not isinstance(download_restriction, list):
+                            download_restriction = [download_restriction]
 
-                # I think that's everything we want, append that observation row to a new table
+                        if observation[key] not in download_restriction:
+                            restriction_found = True
+                            break
+
+                if restriction_found:
+                    continue
+
+                # After we've parsed everything down, append that observation row to a new table
                 parsed_obs = table.vstack([parsed_obs, observation])
 
             uids = np.unique(parsed_obs['member_ous_uid'])
@@ -515,7 +536,7 @@ if has_imports:
 
             logger.info("")
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-            logger.info("Downloading data for:")
+            logger.info("Downloading/extracting data for:")
             logger.info('{0}, {1}, {2}'.format(target, product, config))
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
@@ -576,7 +597,13 @@ if has_imports:
             original_dir = os.getcwd()
             os.chdir(dl_dir)
 
-            tar_files = sorted(glob.glob('*.tar'))
+            original_tar_files = sorted(glob.glob('*.tar'))
+
+            # Check if we've already untarred
+            tar_files = []
+            for tar_file in original_tar_files:
+                if not os.path.exists('%s_touch' % tar_file):
+                    tar_files.append(tar_file)
 
             logger.info("")
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -586,7 +613,12 @@ if has_imports:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
 
-            os.system('cat *.tar | tar --skip-old-files -xf - -i')
+            # Loop over and once they've been untarred make a file so we know to skip next time
+
+            for tar_file in tar_files:
+                os.system('tar --skip-old-files -xf %s' % tar_file)
+                os.system('touch %s_touch' % tar_file)
+
             os.chdir(original_dir)
 
         def task_run_scriptforpi(self,
@@ -626,29 +658,36 @@ if has_imports:
             original_dir = os.getcwd()
             os.chdir(dl_dir)
 
-            # First, search for QA reports
             casa_version_files = {}
+
+            # Search for QA reports
             for root, dirnames, filenames in os.walk(os.getcwd()):
                 for filename in fnmatch.filter(filenames, '*.qa2_report.html'):
-                    casa_version_files[os.path.join(root, filename)] = 'qa_report'
+                    par_dir = os.path.dirname(root)
+                    if par_dir not in casa_version_files.keys():
+                        casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
+                                                       'type': 'qa_report'}
+
+            # Search for calibration scripts
+            for root, dirnames, filenames in os.walk(os.getcwd()):
+                for filename in fnmatch.filter(filenames, '*.scriptForCalibration.py'):
+                    par_dir = os.path.dirname(root)
+                    if par_dir not in casa_version_files.keys():
+                        casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
+                                                       'type': 'calibration_script'}
 
             # Search for weblogs
             for root, dirnames, filenames in os.walk(os.getcwd()):
-                for filename in fnmatch.filter(filenames, '*.weblog.tgz'):
-                    casa_version_files[os.path.join(root, filename)] = 'weblog'
+                for filename in fnmatch.filter(filenames, '*.weblog.*'):
+                    par_dir = os.path.dirname(root)
+                    if par_dir not in casa_version_files.keys():
+                        casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
+                                                       'type': 'weblog'}
 
-            # Search for calibration scripts
-            calibration_dirs = []
-            for root, dirnames, filenames in os.walk(os.getcwd()):
-                for filename in fnmatch.filter(filenames, '*.scriptForCalibration.py'):
-                    # There may be multiple calibration scripts so make sure we only use one per directory
-                    if root not in calibration_dirs:
-                        casa_version_files[os.path.join(root, filename)] = 'calibration_script'
-                        calibration_dirs.append(root)
+            for root_dir in sorted(casa_version_files.keys()):
 
-            for casa_version_file in casa_version_files.keys():
-
-                casa_version_file_type = casa_version_files[casa_version_file]
+                casa_version_file_type = casa_version_files[root_dir]['type']
+                casa_version_file = casa_version_files[root_dir]['filename']
 
                 member_dir = os.path.sep + os.path.join(*casa_version_file.split(os.path.sep)[:-2])
                 calibrated_dir = os.path.join(member_dir, 'calibrated')
@@ -736,7 +775,7 @@ if has_imports:
             # Move back to the original directory
             os.chdir(original_dir)
 
-        def task_build_file_keys(self,
+        def task_build_key_files(self,
                                  split_ms='mosaic',
                                  overwrite=False):
             """Builds MS file key from calibrated measurement sets.
@@ -822,7 +861,12 @@ if has_imports:
                         if science_goal not in all_science_goals:
                             all_science_goals.append(science_goal)
 
-                        target_ms_dict[full_dir] = [config, project_id, science_goal, ra_str, dec_str]
+                        target_ms_dict[full_dir] = {'config': config,
+                                                    'project_id': project_id,
+                                                    'science_goal': science_goal,
+                                                    'ra': ra_str,
+                                                    'dec': dec_str
+                                                    }
 
                 # Start writing these things out
                 mosaic_no = 1
@@ -845,17 +889,17 @@ if has_imports:
                             match_found = False
                             match_key = None
                             for key in target_ms_dict.keys():
-                                if target_ms_dict[key][1] == project_id and \
-                                        target_ms_dict[key][2] == science_goal:
+                                if target_ms_dict[key]['project_id'] == project_id and \
+                                        target_ms_dict[key]['science_goal'] == science_goal:
                                     match_found = True
                                     match_key = copy.deepcopy(key)
-                                    config = target_ms_dict[key][0]
+                                    config = target_ms_dict[key]['config']
                                     ms_file.write('%s\t%s\tall\t%s\t%d\t%s\n' %
                                                   (target_key, project_id, config, observation_number[config], key))
                                     observation_number[config] += 1
                             if match_found:
 
-                                ra, dec = target_ms_dict[match_key][3], target_ms_dict[match_key][4]
+                                ra, dec = target_ms_dict[match_key]['ra'], target_ms_dict[match_key]['dec']
 
                                 if using_mosaic:
                                     mosaic_info[target_key] = {}
@@ -875,8 +919,8 @@ if has_imports:
                     target_key = copy.deepcopy(target)
                     observation_number = {config: 1 for config in all_configs}
                     for key in target_ms_dict.keys():
-                        config = target_ms_dict[key][0]
-                        project_id = target_ms_dict[key][1]
+                        config = target_ms_dict[key]['config']
+                        project_id = target_ms_dict[key]['project_id']
                         ms_file.write('%s\t%s\tall\t%s\t%d\t%s\n' %
                                       (target_key, project_id, config, observation_number[config], key))
                         observation_number[config] += 1
@@ -890,14 +934,14 @@ if has_imports:
                     target_key = '%s_%d' % (target, mosaic_no)
                     observation_number = 1
                     for key in target_ms_dict.keys():
-                        config = target_ms_dict[key][0]
-                        project_id = target_ms_dict[key][1]
+                        config = target_ms_dict[key]['config']
+                        project_id = target_ms_dict[key]['project_id']
 
                         ms_file.write('%s\t%s\tall\t%s\t%d\t%s\n' %
                                       (target_key, project_id, config, observation_number, key))
                         ms_file.write('\n')
 
-                        ra, dec = target_ms_dict[key][3], target_ms_dict[key][4]
+                        ra, dec = target_ms_dict[key]['ra'], target_ms_dict[key]['dec']
 
                         mosaic_info[target_key] = {}
                         mosaic_info[target_key]['original_target'] = target
@@ -917,7 +961,6 @@ if has_imports:
             dir_file = open(dir_key_file_name, 'w+')
 
             for key in mosaic_info.keys():
-
                 target_name = mosaic_info[key]['original_target']
                 dir_file.write('%s\t%s\n' % (key, target_name))
 
@@ -954,7 +997,6 @@ if has_imports:
 
                 for target_mosaic in mosaic_info.keys():
                     if mosaic_info[target_mosaic]['original_target'] == target:
-
                         ra = mosaic_info[target_mosaic]['ra']
                         dec = mosaic_info[target_mosaic]['dec']
 
