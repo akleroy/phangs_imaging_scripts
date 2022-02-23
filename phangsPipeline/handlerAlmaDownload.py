@@ -505,6 +505,14 @@ if has_imports:
                 # After we've parsed everything down, append that observation row to a new table
                 parsed_obs = table.vstack([parsed_obs, observation])
 
+            if len(parsed_obs) == 0:
+                logger.info("")
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                logger.info('No suitable UIDs found')
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                logger.info("")
+                return None
+
             uids = np.unique(parsed_obs['member_ous_uid'])
             logger.info("")
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -867,6 +875,8 @@ if has_imports:
                                                     'ra': ra_str,
                                                     'dec': dec_str
                                                     }
+
+                # TODO: Find the TP directory here
 
                 # Start writing these things out
                 mosaic_no = 1
