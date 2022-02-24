@@ -39,7 +39,31 @@ def query_target(target, max_query_failures=10):
     query_failures = 0
     while not query_success and query_failures <= max_query_failures:
         try:
-            observations = Alma.query_object(target)
+            try:
+                observations = Alma.query_object(target)
+                return observations
+            except astropy.coordinates.name_resolve.NameResolveError:
+                return None
+        except requests.exceptions.HTTPError:
+            query_failures += 1
+
+    # If we can't reach the server, fail out
+    if not query_success:
+        logger.warning('Maximum ALMA archive queries reached. Server is probably down.')
+        raise Exception('Maximum ALMA archive queries reached. Server is probably down.')
+
+
+def query_region(coords, radius=None, max_query_failures=10):
+    """Light wrapper around astroquery region query to allow for HTTP errors"""
+
+    if radius is None:
+        raise ValueError('Search radius should be defined!')
+
+    query_success = False
+    query_failures = 0
+    while not query_success and query_failures <= max_query_failures:
+        try:
+            observations = Alma.query_region(coords, radius=radius)
             return observations
         except requests.exceptions.HTTPError:
             query_failures += 1
@@ -50,12 +74,14 @@ def query_target(target, max_query_failures=10):
         raise Exception('Maximum ALMA archive queries reached. Server is probably down.')
 
 
-def astroquery_download(row, cache_location=None):
+def astroquery_download(row, cache_location=None, username=None):
     """Download ALMA archive files"""
     myAlma = Alma()
 
     if cache_location is not None:
         myAlma.cache_location = cache_location
+    if username is not None:
+        myAlma.login(username)
 
     myAlma.download_files([row['access_url']], cache=True)
     return True
@@ -212,7 +238,7 @@ if has_imports:
     import numpy as np
     from astropy import table
     from astropy.coordinates import SkyCoord
-    from astroquery.alma import Alma
+    from astroquery.alma import Alma, Conf
     from astroquery.alma.utils import parse_frequency_support
 
 
@@ -221,20 +247,9 @@ if has_imports:
         Class to automate downloading and calibrating ALMA data.
 
         N.B. Since clean masks are generated externally, this code will not modify that key file. It will, however,
-        modify ms_key, dir_key, linmos_key, singledish_key (TODO), and target_key.
+        modify ms_key, dir_key, linmos_key, singledish_key, and target_key.
 
         This script may also produce weirdness if you have a multiple files for each key type.
-
-        TODO:
-            Allow for TP
-            Allow for proprietary data
-            If target is not resolved then query will fail. Fall back to RA/Dec coordinates?
-            Ongoing checks to catch different ways to pick up CASA pipeline versions.
-
-            Just some thoughts...
-
-            for the TP, maybe we do put that into a line directory just to make sorting out
-            singledish_key easier later
 
         """
 
@@ -279,6 +294,9 @@ if has_imports:
                 do_calibrate=False,
                 do_build_key_files=False,
                 do_tp=False,
+                allow_proprietary=False,
+                username=None,
+                query_radius=10*u.arcmin,
                 split_ms='mosaic',
                 overwrite_download=False,
                 overwrite_calibrate=False,
@@ -297,8 +315,14 @@ if has_imports:
             key files
 
             Args:
-                do_tp (bool, optional): If True, will also download TP data and sort out for the TP pipeline.
-                    TODO: CURRENTLY NOT IMPLEMENTED
+                do_tp (bool, optional): If True, will also download TP data and sort out for the TP pipeline. Defaults
+                    to False.
+                allow_proprietary (bool, optional): If True, will log in to the ALMA servers using username, to allow
+                    for download of proprietary data. This requires a working keychain package! Defaults to False.
+                username (str, optional): ALMA username to login. On first time running this, it will ask for a
+                    password.
+                query_radius (astropy.units, optional): Search radius for fallback coordinate query. Defaults to 10
+                    arcmin, same as the ALMA archive search.
                 split_ms (str, optional): Can be one of 'mosaic', 'join', 'separate'. Determines how the MS file key is
                     set up for later staging and imaging. If mosaic, will attempt to be smart and split observations by
                     project ID/science goal. If 'join', all observations will be joined together into a potentially
@@ -332,6 +356,15 @@ if has_imports:
             if make_directories:
                 self._kh.make_missing_directories(ms_root=True)
 
+            # If allowing proprietary data, login here and save password for later
+            if allow_proprietary:
+                if username is None:
+                    logger.warning('username should be set!')
+                    raise Exception('username should be set!')
+                Conf.username = username
+                alma = Alma()
+                alma.login(username, store_password=True)
+
             # If requested, query/download/extract data
             if do_download:
 
@@ -345,11 +378,13 @@ if has_imports:
                         self.looper(do_targets=True, do_products=True, do_configs=True, just_interf=True):
                     uids = self.task_query(target=this_target,
                                            product=this_product,
-                                           config=this_config)
+                                           config=this_config,
+                                           query_radius=query_radius)
                     self.task_download(target=this_target,
                                        product=this_product,
                                        config=this_config,
                                        uids=uids,
+                                       username=username,
                                        overwrite=overwrite_download)
 
                 # Also potentially include TP
@@ -364,6 +399,7 @@ if has_imports:
                                            product=this_product,
                                            config='tp',
                                            uids=uids,
+                                           username=username,
                                            overwrite=overwrite_download)
 
             # If requested, run scriptForPI
@@ -389,13 +425,15 @@ if has_imports:
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
                 logger.info("")
 
-                self.task_build_key_files(split_ms=split_ms,
+                self.task_build_key_files(do_tp=do_tp,
+                                          split_ms=split_ms,
                                           overwrite=overwrite_build_key_files)
 
         def task_query(self,
                        target=None,
                        product=None,
                        config=None,
+                       query_radius=10*u.arcmin,
                        max_query_failures=10,
                        ):
             """Query ALMA archive.
@@ -438,8 +476,14 @@ if has_imports:
                                                                             )
             line_ghz = ((line_high_ghz + line_low_ghz) / 2) * u.GHz
 
-            # Perform a query.
+            # Perform a target query.
             observations = query_target(target, max_query_failures=max_query_failures)
+
+            # If the target doesn't resolve, fall back to RA/Dec search.key file building
+            if observations is None:
+                ra, dec = self._kh.get_phasecenter_for_target(target=target)
+                coords = SkyCoord('%s %s' % (ra, dec))
+                observations = query_region(coords=coords, radius=query_radius, max_query_failures=max_query_failures)
 
             # Include custom switches
             download_restrictions = self._kh.get_alma_download_restrictions(target=target,
@@ -529,6 +573,7 @@ if has_imports:
                           config=None,
                           product=None,
                           uids=None,
+                          username=None,
                           n_simultaneous=5,
                           overwrite=False,
                           ):
@@ -538,7 +583,9 @@ if has_imports:
                 ms_root/target/config/(product for TP), to make navigation a little easier
 
             Args:
-                n_simultaneous (int, optional): Number of download processes to spawn, to speed up download time
+                username (str, optional): ALMA archive username. Defaults to None.
+                n_simultaneous (int, optional): Number of download processes to spawn, to speed up download time.
+                    Defaults to 5.
 
             """
 
@@ -598,7 +645,8 @@ if has_imports:
 
             # Download files. Allow multiple downloads via pool
             with mp.Pool(n_simultaneous) as p:
-                map_result = p.map_async(partial(astroquery_download, cache_location=dl_dir), link_list)
+                map_result = p.map_async(partial(astroquery_download, cache_location=dl_dir, username=username),
+                                         link_list)
                 map_result.wait()
 
             # Extract tar files
@@ -668,29 +716,20 @@ if has_imports:
 
             casa_version_files = {}
 
-            # Search for QA reports
-            for root, dirnames, filenames in os.walk(os.getcwd()):
-                for filename in fnmatch.filter(filenames, '*.qa2_report.html'):
-                    par_dir = os.path.dirname(root)
-                    if par_dir not in casa_version_files.keys():
-                        casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
-                                                       'type': 'qa_report'}
+            # Search for QA reports, calibration scripts, and weblogs
+            file_types = {'qa_report': '*.qa2_report.html',
+                          'calibration_script': '*.scriptForCalibration.py',
+                          'weblog': '*.weblog.*'}
 
-            # Search for calibration scripts
-            for root, dirnames, filenames in os.walk(os.getcwd()):
-                for filename in fnmatch.filter(filenames, '*.scriptForCalibration.py'):
-                    par_dir = os.path.dirname(root)
-                    if par_dir not in casa_version_files.keys():
-                        casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
-                                                       'type': 'calibration_script'}
+            for file_type in file_types.keys():
+                file_ext = file_types[file_type]
 
-            # Search for weblogs
-            for root, dirnames, filenames in os.walk(os.getcwd()):
-                for filename in fnmatch.filter(filenames, '*.weblog.*'):
-                    par_dir = os.path.dirname(root)
-                    if par_dir not in casa_version_files.keys():
-                        casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
-                                                       'type': 'weblog'}
+                for root, dirnames, filenames in os.walk(os.getcwd()):
+                    for filename in fnmatch.filter(filenames, file_ext):
+                        par_dir = os.path.dirname(root)
+                        if par_dir not in casa_version_files.keys():
+                            casa_version_files[par_dir] = {'filename': os.path.join(root, filename),
+                                                           'type': file_type}
 
             for root_dir in sorted(casa_version_files.keys()):
 
@@ -773,7 +812,7 @@ if has_imports:
             missing_dirs = False
             for calibrated_dir in calibrated_dirs:
                 if not os.path.exists(calibrated_dir):
-                    # TODO: DEBUG AS THIS COMES UP
+                    # TODO: This will find any missing 'calibrated' directories, so keeping as a TODO for corner cases
                     logger.warning('Unexpected missing calibrated directory! %s' % calibrated_dir)
                     missing_dirs = True
 
@@ -784,8 +823,10 @@ if has_imports:
             os.chdir(original_dir)
 
         def task_build_key_files(self,
+                                 do_tp=False,
                                  split_ms='mosaic',
-                                 overwrite=False):
+                                 overwrite=False,
+                                 max_query_failures=10):
             """Builds MS file key from calibrated measurement sets.
 
             Recursively search through calibrated measurement sets and build up into a key file to be read in for later
@@ -811,6 +852,10 @@ if has_imports:
             ms_file_name = os.path.join(key_root, ms_key_file)
             target_file_name = os.path.join(key_root, target_key_file)
 
+            if do_tp:
+                sd_key_file = self._kh._sd_keys[0]
+                sd_key_file_name = os.path.join(key_root, sd_key_file)
+
             file_names_stacked = [dir_key_file_name,
                                   linmos_key_file_name,
                                   ms_file_name]
@@ -824,12 +869,20 @@ if has_imports:
             ms_file = open(ms_file_name, 'w+')
 
             mosaic_info = {}
+            singledish_info = {}
 
             targets = self._kh.get_targets()
 
             for target in targets:
 
-                observations = query_target(target)
+                observations = query_target(target, max_query_failures=max_query_failures)
+
+                # If the target doesn't resolve, fall back to RA/Dec search.key file building
+                if observations is None:
+                    ra, dec = self._kh.get_phasecenter_for_target(target=target)
+                    coords = SkyCoord('%s %s' % (ra, dec))
+                    observations = query_region(coords=coords, radius=query_radius,
+                                                max_query_failures=max_query_failures)
 
                 dl_dir = os.path.join(ms_root, target)
 
@@ -837,24 +890,45 @@ if has_imports:
                 os.chdir(dl_dir)
 
                 target_ms_dict = {}
-                # Find target MSs
                 all_configs = []
                 all_project_ids = []
                 all_science_goals = []
+
+                # Search recursively for files
                 for root, dirnames, filenames in os.walk(os.getcwd()):
-                    for dirname in fnmatch.filter(dirnames, '*.ms.split.cal'):
-                        # TODO: This will miss not-split MSs, so double check
+
+                    if 'tp' in root.split(os.path.sep) and do_tp:
+                        # Find the member.* directory for TP data
+                        search_term = 'member.*'
+                        search_type = 'tp'
+                    else:
+                        # TODO: This will miss non '.ms.split.cal', so keeping this as a TODO for corner cases.
+                        search_term = '*.ms.split.cal'
+                        search_type = 'int'
+
+                    for dirname in fnmatch.filter(dirnames, search_term):
+
                         full_dir = os.path.join(root, dirname).split(ms_root)[1]
                         full_dir_split = full_dir.split(os.path.sep)
 
-                        # Pull out config, project ID, science goal, member UID
-                        config = full_dir_split[1]
-                        project_id = full_dir_split[2]
-                        science_goal = full_dir_split[3]
+                        # Pull out config, product, project ID, science goal, member UID
+                        if search_type == 'int':
+                            config = full_dir_split[1]
+                            product = None
+                            project_id = full_dir_split[2]
+                            science_goal = full_dir_split[3]
+                            member_uid = full_dir_split[5]
+                        elif search_type == 'tp':
+                            config = full_dir_split[1]
+                            product = full_dir_split[2]
+                            project_id = full_dir_split[3]
+                            science_goal = full_dir_split[4]
+                            member_uid = full_dir_split[6]
+                        else:
+                            raise Exception('search_type %s not known!' % search_type)
 
                         # Use member uid to get at coordinates of the observation
 
-                        member_uid = full_dir_split[5]
                         member_uid = member_uid.replace('___', '://').replace('_', '/').replace('member.', '')
                         observations_ms = observations[member_uid == observations['member_ous_uid']][0]
                         ra, dec = observations_ms['s_ra'], observations_ms['s_dec']
@@ -870,13 +944,12 @@ if has_imports:
                             all_science_goals.append(science_goal)
 
                         target_ms_dict[full_dir] = {'config': config,
+                                                    'product': product,
                                                     'project_id': project_id,
                                                     'science_goal': science_goal,
                                                     'ra': ra_str,
                                                     'dec': dec_str
                                                     }
-
-                # TODO: Find the TP directory here
 
                 # Start writing these things out
                 mosaic_no = 1
@@ -904,9 +977,17 @@ if has_imports:
                                     match_found = True
                                     match_key = copy.deepcopy(key)
                                     config = target_ms_dict[key]['config']
+                                    product = target_ms_dict[key]['product']
                                     ms_file.write('%s\t%s\tall\t%s\t%d\t%s\n' %
                                                   (target_key, project_id, config, observation_number[config], key))
                                     observation_number[config] += 1
+
+                                    # Save any singledish info
+                                    if config == 'tp':
+                                        singledish_info[target_key] = {'original_target': target,
+                                                                       'product': product,
+                                                                       'ms_filename': key}
+
                             if match_found:
 
                                 ra, dec = target_ms_dict[match_key]['ra'], target_ms_dict[match_key]['dec']
@@ -930,10 +1011,17 @@ if has_imports:
                     observation_number = {config: 1 for config in all_configs}
                     for key in target_ms_dict.keys():
                         config = target_ms_dict[key]['config']
+                        product = target_ms_dict[key]['product']
                         project_id = target_ms_dict[key]['project_id']
                         ms_file.write('%s\t%s\tall\t%s\t%d\t%s\n' %
                                       (target_key, project_id, config, observation_number[config], key))
                         observation_number[config] += 1
+
+                        # Save any singledish info
+                        if config == 'tp':
+                            singledish_info[target_key] = {'original_target': target,
+                                                           'product': product,
+                                                           'ms_filename': key}
 
                     ms_file.write('\n')
 
@@ -945,6 +1033,7 @@ if has_imports:
                     observation_number = 1
                     for key in target_ms_dict.keys():
                         config = target_ms_dict[key]['config']
+                        product = target_ms_dict[key]['product']
                         project_id = target_ms_dict[key]['project_id']
 
                         ms_file.write('%s\t%s\tall\t%s\t%d\t%s\n' %
@@ -955,8 +1044,15 @@ if has_imports:
 
                         mosaic_info[target_key] = {}
                         mosaic_info[target_key]['original_target'] = target
+                        mosaic_info[target_key]['product'] = product
                         mosaic_info[target_key]['ra'] = ra
                         mosaic_info[target_key]['dec'] = dec
+
+                        # Save any singledish info
+                        if config == 'tp':
+                            singledish_info[target_key] = {'original_target': target,
+                                                           'product': product,
+                                                           'ms_filename': key}
 
                         mosaic_no += 1
                         target_key = '%s_%d' % (target, mosaic_no)
@@ -988,6 +1084,20 @@ if has_imports:
 
             linmos_file.write('\n')
             linmos_file.close()
+
+            # Write out singledish keys.
+
+            if do_tp:
+
+                os.system('rm -rf %s' % sd_key_file_name)
+                sd_file = open(sd_key_file_name, 'w+')
+
+                for key in singledish_info.keys():
+                    product = singledish_info[key]['product']
+                    tp_filename = '%s_%s.fits' % (key, product)
+                    sd_file.write('%s\t%s\t%s\n' % (key, product, tp_filename))
+
+                sd_file.close()
 
             # Write out target definitions. Start by renaming the original, so we can pull it back in if this gets rerun
 
