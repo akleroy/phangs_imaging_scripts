@@ -40,17 +40,12 @@ except (ImportError, ModuleNotFoundError):
 
     # This is for CASA6
 
-    from casatools import (table, image, imager, msmetadata)
-
-    iatool = image
-    imtool = imager
-    msmdtool = msmetadata
-    tbtool = table
-
     import casatools
-    simple_version = casatools.version()
+    from casatools import (table, image, imager, msmetadata, synthesisimager, synthesisutils)
 
-    from casatasks import (concat,
+    import casatasks
+    from casatasks import (casalog,
+                           concat,
                            exportfits,
                            feather,
                            flagdata,
@@ -67,11 +62,20 @@ except (ImportError, ModuleNotFoundError):
                            imval,
                            makemask,
                            mstransform,
-                           sdintimaging,
                            split,
                            statwt,
                            tclean,
                            uvcontsub,
                            visstat)
-
     from casatasks.private import sdint_helper
+
+    from .taskSDIntImaging import sdintimaging
+
+    # Rename some things for compatibility
+
+    iatool = image
+    imtool = imager
+    msmdtool = msmetadata
+    tbtool = table
+
+    simple_version = casatools.version()
