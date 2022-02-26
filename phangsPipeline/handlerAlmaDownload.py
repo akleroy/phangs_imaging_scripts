@@ -379,7 +379,8 @@ if has_imports:
                     uids = self.task_query(target=this_target,
                                            product=this_product,
                                            config=this_config,
-                                           query_radius=query_radius)
+                                           query_radius=query_radius,
+                                           overwrite=overwrite_download)
                     self.task_download(target=this_target,
                                        product=this_product,
                                        config=this_config,
@@ -435,6 +436,7 @@ if has_imports:
                        config=None,
                        query_radius=10*u.arcmin,
                        max_query_failures=10,
+                       overwrite=False,
                        ):
             """Query ALMA archive.
 
@@ -466,6 +468,8 @@ if has_imports:
                 logger.warning('Require a valid config (%s)' % list(ANTENNA_ARRAY_SETUP.keys()))
                 return None
 
+            ms_root = self._kh._ms_roots[0]
+
             # Pull out line, channel width, and central frequency for this combination of target, product, config
             line = self._kh.get_line_tag_for_line_product(product)
             channel_kms = self._kh._config_dict['line_product'][product]['channel_kms']
@@ -491,7 +495,22 @@ if has_imports:
                                                                             config=config)
 
             parsed_obs = table.Table()
+
             for observation in observations:
+
+                # Check if the file actually already exists
+
+                proposal_id = observation['proposal_id']
+                file_uid = observation['asdm_uid'].replace(':', '_').replace('/', '_')
+                tar_file_name = '%s_%s.asdm.sdm.tar' % (proposal_id, file_uid)
+
+                if config != 'tp':
+                    file_name = os.path.join(ms_root, target, config, tar_file_name)
+                else:
+                    file_name = os.path.join(ms_root, target, config, product, tar_file_name)
+
+                if os.path.exists(file_name) and not overwrite:
+                    continue
 
                 # Do checks on velocity resolution
                 velocity_res = observation['velocity_resolution'] / 1000
