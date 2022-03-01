@@ -80,12 +80,12 @@ def copy_dropdeg(
     return(True)
 
 
-def get_mask(infile, allow_huge=True):
+def get_mask(infile, huge_cube_workaround=True):
     """
     Get a mask from a CASA image file. Includes a switch for large cubes, where getchunk can segfault.
     """
 
-    if not allow_huge:
+    if huge_cube_workaround:
         os.system('rm -rf ' + infile + '.temp_deg_ordered')
         casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
                           order='0132')
@@ -115,12 +115,12 @@ def get_mask(infile, allow_huge=True):
     return mask
 
 
-def copy_mask(infile, outfile, allow_huge=True):
+def copy_mask(infile, outfile, huge_cube_workaround=True):
     """
     Copy a mask from infile to outfile. Includes a switch for large cubes, where getchunk/putchunk can segfault
     """
 
-    if not allow_huge:
+    if huge_cube_workaround:
         os.system('rm -rf ' + outfile + '/mask0')
         os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
     else:
@@ -137,13 +137,13 @@ def copy_mask(infile, outfile, allow_huge=True):
     return True
 
 
-def multiply_cube_by_value(infile, value, brightness_unit, allow_huge=True):
+def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=True):
     """
     Multiply a cube by some value, and update the brightness unit accordingly. Includes a switch for large cubes, where
     getchunk/putchunk may fail.
     """
 
-    if not allow_huge:
+    if huge_cube_workaround:
         casaStuff.exportfits(imagename=infile,
                              fitsimage=infile + '.fits',
                              overwrite=True)
@@ -335,7 +335,7 @@ def trim_cube(
     myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
     myia.close()
 
-    mask = get_mask(outfile, allow_huge=True)
+    mask = get_mask(outfile, huge_cube_workaround=True)
 
     this_shape = mask.shape
 
@@ -552,7 +552,7 @@ def convolve_to_round_beam(
                        )
 
     # Copy over mask
-    copy_mask(infile, outfile, allow_huge=True)
+    copy_mask(infile, outfile, huge_cube_workaround=True)
 
     return(target_bmaj)
 
@@ -644,7 +644,7 @@ def convert_jytok(
 
     jytok = calc_jytok(hdr=hdr)
 
-    multiply_cube_by_value(target_file, jytok, brightness_unit='K', allow_huge=True)
+    multiply_cube_by_value(target_file, jytok, brightness_unit='K', huge_cube_workaround=True)
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
@@ -689,7 +689,7 @@ def convert_ktojy(
 
     jytok = calc_jytok(hdr=hdr)
 
-    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam', allow_huge=True)
+    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam', huge_cube_workaround=True)
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 

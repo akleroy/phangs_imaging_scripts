@@ -224,12 +224,12 @@ def stat_cube(
 
 # region Mask creation and manipulation
 
-def read_cube(infile, allow_huge=True):
+def read_cube(infile, huge_cube_workaround=True):
     """
     Read cube from CASA image file. Includes a switch for large cubes, where getchunk may fail.
     """
 
-    if allow_huge:
+    if huge_cube_workaround:
         casaStuff.exportfits(imagename=infile,
                              fitsimage=infile + '.fits',
                              stokeslast=False, overwrite=True)
@@ -247,7 +247,7 @@ def read_cube(infile, allow_huge=True):
     return cube
 
 
-def write_mask(infile, outfile, mask, allow_huge=True):
+def write_mask(infile, outfile, mask, huge_cube_workaround=True):
     """
     Write a CASA mask out as a CASA image. Includes a switch for large cubes, where putchunk may fail.
     """
@@ -255,7 +255,7 @@ def write_mask(infile, outfile, mask, allow_huge=True):
     os.system('rm -rf ' + outfile)
     os.system('cp -r ' + infile + ' ' + outfile)
 
-    if allow_huge:
+    if huge_cube_workaround:
         casaStuff.exportfits(imagename=outfile,
                              fitsimage=outfile + '.fits',
                              stokeslast=False, overwrite=True)
@@ -327,7 +327,7 @@ def signal_mask(
         spec_axis = 3
 
     logger.info('Reading cube.')
-    cube = read_cube(cube_root + '.image' + suffix_in, allow_huge=True)
+    cube = read_cube(cube_root + '.image' + suffix_in, huge_cube_workaround=True)
 
     logger.info('Building high mask.')
     if absolute:
@@ -373,7 +373,7 @@ def signal_mask(
 
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root + '.mask' + suffix_out):
-            old_mask = read_cube(cube_root + '.mask' + suffix_out, allow_huge=True)
+            old_mask = read_cube(cube_root + '.mask' + suffix_out, huge_cube_workaround=True)
         else:
             logger.info("Operation AND/OR requested but no previous mask found.")
             logger.info("... will set operation=NEW.")
@@ -397,7 +397,7 @@ def signal_mask(
     # Export the image to fits, put in the mask and convert back to a CASA image
     logger.info('Writing mask to disk')
 
-    write_mask(cube_root + '.image' + suffix_in, cube_root + '.mask' + suffix_out, mask, allow_huge=True)
+    write_mask(cube_root + '.image' + suffix_in, cube_root + '.mask' + suffix_out, mask, huge_cube_workaround=True)
 
 
 def apply_additional_mask(
