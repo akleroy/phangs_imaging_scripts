@@ -6,13 +6,20 @@
 from ._astropy_init import *   # noqa
 # ----------------------------------------------------------------------------
 
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
+
 from .phangsLogger import setup_logger
 from .handlerKeys import KeyHandler
 from .handlerSingleDish import SingleDishHandler
 from .handlerVis import VisHandler
-from .handlerImaging import ImagingHandler
 from .handlerPostprocess import PostProcessHandler
 from .handlerDerived import DerivedHandler
 
-__all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "ImagingHandler", "PostProcessHandler",
-           "DerivedHandler"]
+if casa_enabled:
+    from .handlerImaging import ImagingHandler
+
+__all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "PostProcessHandler", "DerivedHandler"]
+
+if casa_enabled:
+    __all__.append("ImagingHandler")
