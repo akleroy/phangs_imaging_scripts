@@ -730,6 +730,10 @@ if has_imports:
             ms_root = self._kh._ms_roots[0]
             dl_dir = os.path.join(ms_root, target, config)
 
+            if not os.path.exists(dl_dir):
+                logger.warning('Directory for %s, %s does not exist. Returning' % (target, config))
+                return None
+
             original_dir = os.getcwd()
             os.chdir(dl_dir)
 
