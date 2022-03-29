@@ -820,7 +820,41 @@ if has_imports:
                     cmd = '%s --pipeline --nologger -c %s' % (casa_path, script_name)
                     if suppress_casa_output:
                         cmd += ' >/dev/null 2>&1'
-                    os.system(cmd)
+                    exit_code = os.system(cmd)
+
+                    # If we don't execute properly, this might be a case that it's an early cycle that's been re-imaged
+                    # and the numbers are wrong in the report. Switch to CASA4.2.2 and try again
+                    if exit_code != 0:
+                        os.system('rm -rf ../calibrated')
+
+                        fallback_casa_path = self._kh.get_path_for_casaversion('4.2.2')
+
+                        if fallback_casa_path is None:
+                            logger.warning('No CASA path defined for 4.2.2. Skipping')
+                            # raise Exception('No CASA path defined for 4.2.2. Skipping')
+                            continue
+
+                        # Make sure we're properly pointing at CASA
+                        if not fallback_casa_path.endswith('casa'):
+                            fallback_casa_path = os.path.join(fallback_casa_path, 'casa')
+
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                        logger.info('CASA %s failed, falling back to 4.2.2' % casa_pipeline_version)
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                        logger.info("")
+                        cmd = '%s --pipeline --nologger -c %s' % (fallback_casa_path, script_name)
+                        if suppress_casa_output:
+                            cmd += ' >/dev/null 2>&1'
+                        fallback_exit_code = os.system(cmd)
+
+                        if fallback_exit_code != 0:
+                            os.system('rm -rf ../calibrated')
+                            logger.warning("")
+                            logger.warning("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                            logger.warning('Calibration still failing for %s' % script_name)
+                            logger.warning("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                            logger.warning("")
 
                 os.chdir(dl_dir)
 
