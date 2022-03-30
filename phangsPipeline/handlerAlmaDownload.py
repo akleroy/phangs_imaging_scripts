@@ -823,15 +823,19 @@ if has_imports:
                     exit_code = os.system(cmd)
 
                     # If we don't execute properly, this might be a case that it's an early cycle that's been re-imaged
-                    # and the numbers are wrong in the report. Switch to CASA4.2.2 and try again
+                    # and the numbers are wrong in the report. Switch to an earlier CASA version and try again
                     if exit_code != 0:
                         os.system('rm -rf ../calibrated')
 
-                        fallback_casa_path = self._kh.get_path_for_casaversion('4.2.2')
+                        # TODO: We may possibly need to brute force loop over some early CASA versions, depending on
+                        #  the observations
+                        fallback_casa_version = '4.2.2'
+
+                        fallback_casa_path = self._kh.get_path_for_casaversion(fallback_casa_version)
 
                         if fallback_casa_path is None:
-                            logger.warning('No CASA path defined for 4.2.2. Skipping')
-                            # raise Exception('No CASA path defined for 4.2.2. Skipping')
+                            logger.warning('No CASA path defined for %s. Skipping' % fallback_casa_version)
+                            # raise Exception('No CASA path defined for %s. Skipping' % fallback_casa_version)
                             continue
 
                         # Make sure we're properly pointing at CASA
@@ -840,7 +844,8 @@ if has_imports:
 
                         logger.info("")
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                        logger.info('CASA %s failed, falling back to 4.2.2' % casa_pipeline_version)
+                        logger.info('CASA %s failed, falling back to %s' %
+                                    (casa_pipeline_version, fallback_casa_version))
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
                         logger.info("")
                         cmd = '%s --pipeline --nologger -c %s' % (fallback_casa_path, script_name)
