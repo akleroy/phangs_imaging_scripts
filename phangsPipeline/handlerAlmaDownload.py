@@ -826,41 +826,47 @@ if has_imports:
                     # If we don't execute properly, this might be a case that it's an early cycle that's been re-imaged
                     # and the numbers are wrong in the report. Switch to an earlier CASA version and try again
                     if exit_code != 0:
-                        os.system('rm -rf ../calibrated')
 
-                        # TODO: We may possibly need to brute force loop over some early CASA versions, depending on
-                        #  the observations
-                        fallback_casa_version = '4.2.2'
+                        # TODO: Loop over some early CASA versions. Add them as we find them.
+                        fallback_casa_versions = ['4.2.2', '4.5.2', '4.7.2']
 
-                        fallback_casa_path = self._kh.get_path_for_casaversion(fallback_casa_version)
+                        for fallback_casa_version in fallback_casa_versions:
 
-                        if fallback_casa_path is None:
-                            logger.warning('No CASA path defined for %s. Skipping' % fallback_casa_version)
-                            # raise Exception('No CASA path defined for %s. Skipping' % fallback_casa_version)
-                            continue
-
-                        # Make sure we're properly pointing at CASA
-                        if not fallback_casa_path.endswith('casa'):
-                            fallback_casa_path = os.path.join(fallback_casa_path, 'casa')
-
-                        logger.info("")
-                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                        logger.info('CASA %s failed, falling back to %s' %
-                                    (casa_pipeline_version, fallback_casa_version))
-                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                        logger.info("")
-                        cmd = '%s --pipeline --nologger -c %s' % (fallback_casa_path, script_name)
-                        if suppress_casa_output:
-                            cmd += ' >/dev/null 2>&1'
-                        fallback_exit_code = os.system(cmd)
-
-                        if fallback_exit_code != 0:
                             os.system('rm -rf ../calibrated')
-                            logger.warning("")
-                            logger.warning("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                            logger.warning('Calibration still failing for %s' % script_name)
-                            logger.warning("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
-                            logger.warning("")
+
+                            fallback_casa_path = self._kh.get_path_for_casaversion(fallback_casa_version)
+
+                            if fallback_casa_path is None:
+                                logger.warning('No CASA path defined for %s. Skipping' % fallback_casa_version)
+                                continue
+
+                            # Make sure we're properly pointing at CASA
+                            if not fallback_casa_path.endswith('casa'):
+                                fallback_casa_path = os.path.join(fallback_casa_path, 'casa')
+
+                            logger.info("")
+                            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                            logger.info('CASA %s failed, falling back to %s' %
+                                        (casa_pipeline_version, fallback_casa_version))
+                            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                            logger.info("")
+                            cmd = '%s --pipeline --nologger -c %s' % (fallback_casa_path, script_name)
+                            if suppress_casa_output:
+                                cmd += ' >/dev/null 2>&1'
+                            fallback_exit_code = os.system(cmd)
+
+                            # Sometimes this actually fails gracefully, so check we've got some files
+                            output_mses = glob.glob('../calibrated/*.ms.split.cal') + glob.glob('../calibrated/*.ms')
+
+                            if fallback_exit_code != 0 or len(output_mses) == 0:
+                                os.system('rm -rf ../calibrated')
+                                logger.warning("")
+                                logger.warning("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                                logger.warning('Calibration still failing for %s' % fallback_casa_version)
+                                logger.warning("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                                logger.warning("")
+                            else:
+                                break
 
                 os.chdir(dl_dir)
 
