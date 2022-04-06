@@ -528,11 +528,12 @@ if has_imports:
                         array_wanted = True
 
                         # Sometimes it seems like TP can use other antenna (maybe this is only early science?) so double
-                        # check here
+                        # check here. TP only has 4 antenna so
                         if config != 'tp':
-                            for tp_array_tag in ANTENNA_ARRAY_SETUP['tp']:
-                                if tp_array_tag in antenna_arrays:
-                                    array_wanted = False
+                            # for tp_array_tag in ANTENNA_ARRAY_SETUP['tp']:
+                            #     if tp_array_tag in antenna_arrays:
+                            if antenna_arrays.count(':') <= 4:
+                                array_wanted = False
 
                 if not array_wanted:
                     continue
