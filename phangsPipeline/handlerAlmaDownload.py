@@ -818,14 +818,24 @@ if has_imports:
                     logger.info('Running %s in CASA %s' % (script_name, casa_pipeline_version))
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
                     logger.info("")
-                    cmd = '%s --pipeline --nologger -c %s' % (casa_path, script_name)
+
+                    # If the CASA version is 4.6, there is no pipeline version so don't use that switch
+                    if '4.6.' in casa_pipeline_version:
+                        pipeline_cmd = ''
+                    else:
+                        pipeline_cmd = '--pipeline'
+
+                    cmd = '%s %s --nologger -c %s' % (casa_path, pipeline_cmd, script_name)
                     if suppress_casa_output:
                         cmd += ' >/dev/null 2>&1'
                     exit_code = os.system(cmd)
 
+                    # Sometimes this actually fails gracefully, so check we've got some files
+                    output_mses = glob.glob('../calibrated/*.ms.split.cal') + glob.glob('../calibrated/*.ms')
+
                     # If we don't execute properly, this might be a case that it's an early cycle that's been re-imaged
-                    # and the numbers are wrong in the report. Switch to an earlier CASA version and try again
-                    if exit_code != 0:
+                    # and the numbers are wrong in the report. Loop round some early CASA versions and try again
+                    if exit_code != 0 or len(output_mses) == 0:
 
                         # TODO: Loop over some early CASA versions. Add them as we find them.
                         fallback_casa_versions = ['4.2.2', '4.5.2', '4.7.2']
@@ -850,7 +860,14 @@ if has_imports:
                                         (casa_pipeline_version, fallback_casa_version))
                             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
                             logger.info("")
-                            cmd = '%s --pipeline --nologger -c %s' % (fallback_casa_path, script_name)
+
+                            # If the CASA version is 4.6, there is no pipeline version so don't use that switch
+                            if '4.6.' in fallback_casa_version:
+                                pipeline_cmd = ''
+                            else:
+                                pipeline_cmd = '--pipeline'
+
+                            cmd = '%s %s --nologger -c %s' % (fallback_casa_path, pipeline_cmd, script_name)
                             if suppress_casa_output:
                                 cmd += ' >/dev/null 2>&1'
                             fallback_exit_code = os.system(cmd)
