@@ -837,8 +837,10 @@ if has_imports:
                     # and the numbers are wrong in the report. Loop round some early CASA versions and try again
                     if exit_code != 0 or len(output_mses) == 0:
 
-                        # TODO: Loop over some early CASA versions. Add them as we find them.
-                        fallback_casa_versions = ['4.2.2', '4.5.2', '4.7.2']
+                        # TODO: Loop over some early CASA versions. Looking at the list of pipeline versions
+                        #  (https://almascience.nrao.edu/processing/science-pipeline), these should cover them all, but
+                        #  leaving a note here in case we run into some weird cases
+                        fallback_casa_versions = ['4.2.2', '4.3.1', '4.5.3', '4.7.2']
 
                         for fallback_casa_version in fallback_casa_versions:
 
