@@ -296,7 +296,8 @@ if has_imports:
                 do_tp=False,
                 allow_proprietary=False,
                 username=None,
-                query_radius=10*u.arcmin,
+                query_radius=10 * u.arcmin,
+                suppress_casa_output=True,
                 split_ms='mosaic',
                 overwrite_download=False,
                 overwrite_calibrate=False,
@@ -416,6 +417,7 @@ if has_imports:
                         self.looper(do_targets=True, do_products=False, do_configs=True, just_interf=True):
                     self.task_run_scriptforpi(target=this_target,
                                               config=this_config,
+                                              suppress_casa_output=suppress_casa_output,
                                               overwrite=overwrite_calibrate)
 
             # If requested, build key files
@@ -434,7 +436,7 @@ if has_imports:
                        target=None,
                        product=None,
                        config=None,
-                       query_radius=10*u.arcmin,
+                       query_radius=10 * u.arcmin,
                        max_query_failures=10,
                        overwrite=False,
                        ):
@@ -740,10 +742,12 @@ if has_imports:
 
             casa_version_files = {}
 
-            # Search for QA reports, calibration scripts, and weblogs
-            file_types = {'qa_report': '*.qa2_report.html',
-                          'calibration_script': '*.scriptForCalibration.py',
-                          'weblog': '*.weblog.*'}
+            # Search for calibration scripts, QA reports, and weblogs. Prefer the calibration script highest, since that
+            # will crash out if the wrong version is chosen
+            file_types = {'calibration_script': '*.scriptForCalibration.py',
+                          'qa_report': '*.qa2_report.html',
+                          'weblog': '*.weblog.*',
+                          }
 
             for file_type in file_types.keys():
                 file_ext = file_types[file_type]
