@@ -12,6 +12,7 @@ casa_enabled = is_casa_installed()
 from .phangsLogger import setup_logger
 from .handlerKeys import KeyHandler
 from .handlerSingleDish import SingleDishHandler
+from .handlerAlmaDownload import AlmaDownloadHandler
 from .handlerVis import VisHandler
 from .handlerPostprocess import PostProcessHandler
 from .handlerDerived import DerivedHandler

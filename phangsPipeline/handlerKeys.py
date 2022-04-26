@@ -21,7 +21,8 @@ from . import utilsResolutions
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-VALID_IMAGING_STAGES = ['dirty','multiscale','singlescale']
+VALID_IMAGING_STAGES = ['dirty', 'multiscale', 'singlescale']
+
 
 class KeyHandler:
     """
@@ -30,7 +31,7 @@ class KeyHandler:
     """
 
     def __init__(self,
-                 master_key = 'key_templates/master_key.txt',
+                 master_key='key_templates/master_key.txt',
                  quiet=False,
                  dochecks=True,
                  ):
@@ -43,6 +44,8 @@ class KeyHandler:
         self._config_dict = None
         self._imaging_dict = None
 
+        self._casaversion_dict = None
+        self._alma_download_dict = None
         self._ms_dict = None
         self._sd_dict = None
         self._cleanmask_dict = None
@@ -55,11 +58,11 @@ class KeyHandler:
 
         self.build_key_handler(master_key)
 
-##############################################################
-# FILE READING AND INITIALIZATION
-##############################################################
+    ##############################################################
+    # FILE READING AND INITIALIZATION
+    ##############################################################
 
-    def build_key_handler(self,master_key=None):
+    def build_key_handler(self, master_key=None):
         """
         Construct the key handler object.
         """
@@ -71,9 +74,9 @@ class KeyHandler:
         logger.info("")
 
         if os.path.isfile(master_key) is False:
-            logger.error("Master key "+master_key+" not found. Aborting.")
-            raise Exception("Master key "+master_key+" not found. Aborting.")
-            return(False)
+            logger.error("Master key " + master_key + " not found. Aborting.")
+            raise Exception("Master key " + master_key + " not found. Aborting.")
+            return False
 
         self._master_key = os.path.abspath(master_key)
         self._read_master_key()
@@ -150,12 +153,12 @@ class KeyHandler:
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
 
-##############################################################
-# READ THE MASTER KEY
-##############################################################
+    ##############################################################
+    # READ THE MASTER KEY
+    ##############################################################
 
-# This steers the whole pipeline process and infrastructure and links
-# from fields into attributes of the object.
+    # This steers the whole pipeline process and infrastructure and links
+    # from fields into attributes of the object.
 
     def _read_master_key(self):
         """
@@ -163,22 +166,25 @@ class KeyHandler:
         """
         logger.info("Reading the master key.")
 
-        logger.info("Master key file: "+self._master_key)
+        logger.info("Master key file: " + self._master_key)
         fname = self._master_key
         infile = open(fname, 'r')
 
         # Initialize
 
-        self._key_dir = os.path.dirname(self._master_key)+os.sep # None #<20200305><DL># We do not have to set a 'key_dir' in "master_key.txt", just use its directory. If set, then we still use the one in the 'key_dir' in "master_key.txt".
-        self._imaging_root = '' # os.getcwd()+'/../imaging/'
-        self._postprocess_root = '' # os.getcwd()+'/../postprocess/'
-        self._derived_root = '' # os.getcwd()+'/../derived/'
-        self._release_root = '' # os.getcwd()+'/../release/'
-        self._cleanmask_root = '' # os.getcwd() + '/../cleanmask/'
+        self._key_dir = os.path.dirname(
+            self._master_key) + os.sep  # None #<20200305><DL># We do not have to set a 'key_dir' in "master_key.txt", just use its directory. If set, then we still use the one in the 'key_dir' in "master_key.txt".
+        self._imaging_root = ''  # os.getcwd()+'/../imaging/'
+        self._postprocess_root = ''  # os.getcwd()+'/../postprocess/'
+        self._derived_root = ''  # os.getcwd()+'/../derived/'
+        self._release_root = ''  # os.getcwd()+'/../release/'
+        self._cleanmask_root = ''  # os.getcwd() + '/../cleanmask/'
 
         self._ms_roots = []
         self._sd_roots = []
         self._cleanmask_roots = []
+        self._casaversion_keys = []
+        self._alma_download_keys = []
         self._ms_keys = []
         self._sd_keys = []
         self._cleanmask_keys = []
@@ -201,7 +207,7 @@ class KeyHandler:
 
         lines_read = 0
         while True:
-            line  = infile.readline()
+            line = infile.readline()
             if len(line) == 0:
                 break
             if line[0] == '#' or line == '\n':
@@ -268,6 +274,14 @@ class KeyHandler:
                 self._cleanmask_roots.append(this_value)
                 lines_read += 1
 
+            if this_key == 'casaversion_key':
+                self._casaversion_keys.append(this_value)
+                lines_read += 1
+
+            if this_key == 'alma_download_key':
+                self._alma_download_keys.append(this_value)
+                lines_read += 1
+
             if this_key == 'ms_key':
                 self._ms_keys.append(this_value)
                 lines_read += 1
@@ -316,14 +330,14 @@ class KeyHandler:
                 self._distance_keys.append(this_value)
                 lines_read += 1
 
-        logger.info("Successfully imported "+str(lines_read)+" key/value pairs.")
+        logger.info("Successfully imported " + str(lines_read) + " key/value pairs.")
 
         infile.close()
 
         if self._dochecks:
             self.check_key_existence()
 
-        return(True)
+        return True
 
     def check_key_existence(self):
         """
@@ -339,17 +353,17 @@ class KeyHandler:
 
         self._key_dir_exists = os.path.isdir(self._key_dir)
         if not self._key_dir_exists:
-            logger.error("Missing the key directory. Currentloy set to "+ self._key_dir)
+            logger.error("Missing the key directory. Currently set to " + self._key_dir)
             logger.error("I need the key directory to proceed. Set key_dir in your master_key file.")
             all_valid = False
             errors += 1
-            #return(all_valid)
+            # return(all_valid)
 
         for keyname in ['imaging', 'postprocess', 'derived', 'release']:
-            keypath = getattr(self, '_%s_root'%(keyname))
+            keypath = getattr(self, '_%s_root' % keyname)
             if keypath is None or keypath == '':
-                logger.error("The %s root directory has not been set."%(keyname))
-                logger.error("Please set a valid %s_root in your master_key file."%(keyname))
+                logger.error("The %s root directory has not been set." % keyname)
+                logger.error("Please set a valid %s_root in your master_key file." % keyname)
                 all_valid = False
                 errors += 1
 
@@ -361,49 +375,64 @@ class KeyHandler:
 
         for keypath in self._ms_roots:
             if not os.path.isdir(keypath):
-                logger.error("The ms root directory does not exist: %r"%(keypath))
-                logger.error("Please set the correct ms_root in your master_key file.")
-                all_valid = False
+                logger.error("The ms root directory does not exist: %r. "
+                             "This will cause an error if not using downloader handler." % keypath)
                 errors += 1
-        if len(self._cleanmask_roots)>0:
+        if len(self._cleanmask_roots) > 0:
             for keypath in self._cleanmask_roots:
                 if not os.path.isdir(keypath):
-                    logger.error("The cleanmask root directory does not exist: %r"%(keypath))
+                    logger.error("The cleanmask root directory does not exist: %r" % keypath)
                     logger.error("Please set the correct cleanmask_root in your master_key file.")
                     all_valid = False
                     errors += 1
 
-        all_key_lists = \
-            [self._ms_keys, self._dir_keys, self._target_keys, self._override_keys, self._imaging_keys,
-             self._linmos_keys, self._sd_keys, self._config_keys, self._cleanmask_keys, self._distance_keys,
-             self._derived_keys, self._moment_keys]
+        all_key_lists = [self._casaversion_keys,
+                         self._alma_download_keys,
+                         self._ms_keys,
+                         self._dir_keys,
+                         self._target_keys,
+                         self._override_keys,
+                         self._imaging_keys,
+                         self._linmos_keys,
+                         self._sd_keys,
+                         self._config_keys,
+                         self._cleanmask_keys,
+                         self._distance_keys,
+                         self._derived_keys,
+                         self._moment_keys,
+                         ]
         for this_list in all_key_lists:
             for this_key in this_list:
                 this_key_exists = os.path.isfile(self._key_dir + this_key)
                 if not this_key_exists:
-                    all_valid = False
                     errors += 1
-                    logger.error("key "+ this_key + " is defined but does not exist in "+self._key_dir)
+                    if this_list not in [self._ms_keys, self._dir_keys, self._linmos_keys]:
+                        all_valid = False
+                        logger.error("key " + this_key + " is defined but does not exist in " + self._key_dir)
+                    else:
+                        logger.warning('key %s is defined but does not exist. This will cause issues if not using the '
+                                       'download handler' % this_key)
 
         if all_valid:
-            logger.info("Checked key file existence and all files found.")
+            logger.info("Checked key file existence with %d errors. "
+                        "This may cause issues if not using download handlers." % errors)
         else:
-            logger.error("Checked key file existence. Found "+str(errors)+" errors.")
-            raise Exception("Checked key file existence. Found "+str(errors)+" errors.")
+            logger.error("Checked key file existence. Found " + str(errors) + " errors.")
+            raise Exception("Checked key file existence. Found " + str(errors) + " errors.")
 
-        return(all_valid)
+        return all_valid
 
-##############################################################
-# READ THE KEYS INTO DICTIONARIES
-##############################################################
+    ##############################################################
+    # READ THE KEYS INTO DICTIONARIES
+    ##############################################################
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Define routines to read the imaging dictionary
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Define routines to read the imaging dictionary
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# The imaging dictionary requires outside knowledge, e.g., because it
-# uses wild cards and requires entries for each case. Initialize and
-# read it here.
+    # The imaging dictionary requires outside knowledge, e.g., because it
+    # uses wild cards and requires entries for each case. Initialize and
+    # read it here.
 
     def _initialize_imaging_dict(self):
         """
@@ -436,7 +465,7 @@ class KeyHandler:
 
         self._imaging_dict = full_dict
 
-        return()
+        return ()
 
     def _read_imaging_key(self, fname=None, existing_dict=None, delim=None):
         """
@@ -448,10 +477,10 @@ class KeyHandler:
         # Check file existence
 
         if os.path.isfile(fname) is False:
-            logger.error("I tried to read key "+fname+" but it does not exist.")
-            return(existing_dict)
+            logger.error("I tried to read key " + fname + " but it does not exist.")
+            return existing_dict
 
-        logger.info("Reading: "+fname)
+        logger.info("Reading: " + fname)
 
         # Expected Format
 
@@ -474,7 +503,7 @@ class KeyHandler:
         # Loop over the lines
         lines_read = 0
         while True:
-            line  = infile.readline()
+            line = infile.readline()
             if len(line) == 0:
                 break
             if key_readers.skip_line(line, expected_words=expected_words,
@@ -525,8 +554,8 @@ class KeyHandler:
                 for each_product in product_list:
                     for each_stage in stage_list:
                         out_dict[each_config][each_product][each_stage] = this_recipe
-                        #out_dict[each_config][each_product][each_stage] = this_recipe
-                        #logger.debug('self._imaging_dict[%r][%r][%r] = %r'%(each_config, each_product, each_stage, this_recipe))
+                        # out_dict[each_config][each_product][each_stage] = this_recipe
+                        # logger.debug('self._imaging_dict[%r][%r][%r] = %r'%(each_config, each_product, each_stage, this_recipe))
 
             lines_read += 1
 
@@ -534,16 +563,16 @@ class KeyHandler:
 
         infile.close()
 
-        logger.info("Read "+str(lines_read)+" lines into the imaging recipe dictionary.")
+        logger.info("Read " + str(lines_read) + " lines into the imaging recipe dictionary.")
 
         return out_dict
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Define routines to read the derived product dictionary
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Define routines to read the derived product dictionary
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# The derived product dictionary requires outside knowledge, e.g.,
-# because it uses wild cards and involved cross-indexing.
+    # The derived product dictionary requires outside knowledge, e.g.,
+    # because it uses wild cards and involved cross-indexing.
 
     def _initialize_derived_dict(self):
         """
@@ -562,25 +591,25 @@ class KeyHandler:
             # Loop over line products
             for this_product in self.get_line_products():
                 full_dict[this_config][this_product] = {
-                    'phys_res':{},
-                    'ang_res':{},
-                    'mask_configs':[],
-                    'moments':[],
-                    }
+                    'phys_res': {},
+                    'ang_res': {},
+                    'mask_configs': [],
+                    'moments': [],
+                }
 
             # Loop over continuum products
             for this_product in self.get_continuum_products():
                 full_dict[this_config][this_product] = {}
                 full_dict[this_config][this_product] = {
-                    'phys_res':{},
-                    'ang_res':{},
-                    'mask_configs':[],
-                    'moments':[],
-                    }
+                    'phys_res': {},
+                    'ang_res': {},
+                    'mask_configs': [],
+                    'moments': [],
+                }
 
         self._derived_dict = full_dict
 
-        return()
+        return ()
 
     def _read_derived_key(self, fname='', existing_dict=None, delim=None):
         """
@@ -590,10 +619,10 @@ class KeyHandler:
         # Check file existence
 
         if os.path.isfile(fname) is False:
-            logger.error("I tried to read key "+fname+" but it does not exist.")
-            return(existing_dict)
+            logger.error("I tried to read key " + fname + " but it does not exist.")
+            return existing_dict
 
-        logger.info("Reading: "+fname)
+        logger.info("Reading: " + fname)
 
         # Expected Format
 
@@ -602,9 +631,9 @@ class KeyHandler:
 
         # Known parameters
 
-        known_param_list = ['mask_configs','ang_res', 'phys_res',
-                            'noise_kw','strictmask_kw','broadmask_kw',
-                            'convolve_kw','moments']
+        known_param_list = ['mask_configs', 'ang_res', 'phys_res',
+                            'noise_kw', 'strictmask_kw', 'broadmask_kw',
+                            'convolve_kw', 'moments']
 
         # Open File
 
@@ -619,7 +648,7 @@ class KeyHandler:
         # Loop over the lines
         lines_read = 0
         while True:
-            line  = infile.readline()
+            line = infile.readline()
             if len(line) == 0:
                 break
 
@@ -678,7 +707,6 @@ class KeyHandler:
                             logger.warning(line)
                             continue
                         for res_tag in this_res_dict.keys():
-
                             # EWR : error checking / sanity here comparing string to numerical value.
 
                             out_dict[each_config][each_product]['phys_res'][res_tag] = this_res_dict[res_tag]
@@ -689,7 +717,6 @@ class KeyHandler:
                             logger.warning("Format of res string not a dictionary. Line is:")
                             logger.warning(line)
                         for res_tag in this_res_dict.keys():
-
                             # EWR : error checking / sanity here comparing string to numerical value.
 
                             out_dict[each_config][each_product]['ang_res'][res_tag] = this_res_dict[res_tag]
@@ -718,7 +745,7 @@ class KeyHandler:
 
                     # Keywords for masking, noise
 
-                    for valid_dict in ['strictmask_kw','broadmask_kw','noise_kw','convolve_kw']:
+                    for valid_dict in ['strictmask_kw', 'broadmask_kw', 'noise_kw', 'convolve_kw']:
                         if this_param.lower().strip() != valid_dict:
                             continue
                         this_kw_dict = ast.literal_eval(this_value)
@@ -740,21 +767,29 @@ class KeyHandler:
 
         infile.close()
 
-        logger.info("Read "+str(lines_read)+" lines into a derived product definition dictionary.")
+        logger.info("Read " + str(lines_read) + " lines into a derived product definition dictionary.")
 
-        return(out_dict)
+        return out_dict
 
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-# Batch read the other keys.
-# &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Batch read the other keys.
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-# Mostly these wrap around the programs in utilsKeyReaders , which
-# parse individual key files into dictionaries.
+    # Mostly these wrap around the programs in utilsKeyReaders , which
+    # parse individual key files into dictionaries.
 
     def _read_all_keys(self):
         """
         Read the other keys into dictionary attributes.
         """
+
+        self._casaversion_dict = key_readers.batch_read(
+            key_list=self._casaversion_keys, reader_function=key_readers.read_casaversion_key,
+            key_dir=self._key_dir)
+
+        self._alma_download_dict = key_readers.batch_read(
+            key_list=self._alma_download_keys, reader_function=key_readers.read_alma_download_key,
+            key_dir=self._key_dir)
 
         self._ms_dict = key_readers.batch_read(
             key_list=self._ms_keys, reader_function=key_readers.read_ms_key,
@@ -806,9 +841,9 @@ class KeyHandler:
             key_list=self._moment_keys, reader_function=key_readers.read_moment_key,
             key_dir=self._key_dir)
 
-##############################################################
-# LINKING AND KEY BUILDING
-##############################################################
+    ##############################################################
+    # LINKING AND KEY BUILDING
+    ##############################################################
 
     def _build_target_list(self, check=True):
         """
@@ -833,7 +868,7 @@ class KeyHandler:
             ms_targets = self._ms_dict.keys()
             for target in ms_targets:
                 if target not in self._target_list:
-                    #logger.error(target+ " is in the measurement set key but not the target list.")
+                    # logger.error(target+ " is in the measurement set key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -841,7 +876,7 @@ class KeyHandler:
             dir_targets = self._dir_for_target.keys()
             for target in dir_targets:
                 if target not in self._target_list:
-                    #logger.error(target+ " is in the directory key but not the target list.")
+                    # logger.error(target+ " is in the directory key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -849,7 +884,7 @@ class KeyHandler:
             sd_targets = self._sd_dict.keys()
             for target in sd_targets:
                 if target not in self._target_list:
-                    #logger.error(target+ " is in the single dish key but not the target list.")
+                    # logger.error(target+ " is in the single dish key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -857,7 +892,7 @@ class KeyHandler:
             linmos_targets = self._linmos_dict.keys()
             for target in linmos_targets:
                 if target not in self._target_list:
-                    #logger.error(target+ " is in the linear mosaic key but not the target list.")
+                    # logger.error(target+ " is in the linear mosaic key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -865,20 +900,20 @@ class KeyHandler:
             distance_targets = self._distance_dict.keys()
             for target in distance_targets:
                 if target not in self._target_list:
-                    #logger.error(target+ " is in the distance key but not the target list.")
+                    # logger.error(target+ " is in the distance key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
         self._missing_targets = missing_targets
 
-        logger.info("Total of "+str(len(self._target_list))+" targets.")
+        logger.info("Total of " + str(len(self._target_list)) + " targets.")
         n_missing = len(self._missing_targets)
         if n_missing == 0:
             logger.info("No cases found where I expect a target but lack a definition.")
         else:
-            logger.warning(str(n_missing)+" cases where I expected a target definition but didn't find one.")
+            logger.warning(str(n_missing) + " cases where I expected a target definition but didn't find one.")
 
-        return()
+        return ()
 
     def _build_whole_target_list(self):
         """
@@ -890,7 +925,7 @@ class KeyHandler:
 
         if self._target_dict is None:
             logger.error("I don't have a target dictionary. Can't proceed.")
-            return()
+            return ()
 
         if self._target_list is None:
             self._build_target_list()
@@ -898,7 +933,7 @@ class KeyHandler:
         self._whole_target_list = list(self._target_list)
 
         if self._linmos_dict is None:
-            return()
+            return ()
 
         linmos_targets = self._linmos_dict.keys()
         for this_mosaic in linmos_targets:
@@ -910,9 +945,9 @@ class KeyHandler:
 
         self._whole_target_list = sorted(self._whole_target_list)
 
-        logger.info("Total of "+str(len(self._whole_target_list))+" 'whole' targets.")
+        logger.info("Total of " + str(len(self._whole_target_list)) + " 'whole' targets.")
 
-        return()
+        return ()
 
     def _map_targets_to_mosaics(self):
         """
@@ -923,7 +958,7 @@ class KeyHandler:
 
         if self._target_dict is None:
             logger.error("I don't have a target dictionary. Can't proceed.")
-            return()
+            return ()
 
         if self._target_list is None:
             self._build_target_list()
@@ -931,7 +966,7 @@ class KeyHandler:
         self._mosaic_assign_dict = {}
 
         if self._linmos_dict is None:
-            return()
+            return ()
 
         linmos_targets = self._linmos_dict.keys()
         for this_mosaic in linmos_targets:
@@ -939,10 +974,10 @@ class KeyHandler:
             for this_part in part_list:
                 self._mosaic_assign_dict[this_part] = this_mosaic
 
-        logger.info("Total of "+str(len(self._mosaic_assign_dict.keys()))+ \
-                        " targets assigned to mosaics.")
+        logger.info("Total of " + str(len(self._mosaic_assign_dict.keys())) + \
+                    " targets assigned to mosaics.")
 
-        return()
+        return ()
 
     def _map_configs(self):
         """
@@ -952,7 +987,7 @@ class KeyHandler:
         logger.info("Cross-matching interferometric and feather configs")
 
         if 'interf_config' not in self._config_dict.keys():
-            return()
+            return ()
 
         # Initialize
         for interf_config in self._config_dict['interf_config'].keys():
@@ -967,18 +1002,18 @@ class KeyHandler:
                     continue
                 self._config_dict['interf_config'][interf_config]['feather_config'] = feather_config
 
-        return()
+        return ()
 
-##############################################################
-# Programs to run checks on the keyHandler and the data
-##############################################################
+    ##############################################################
+    # Programs to run checks on the keyHandler and the data
+    ##############################################################
 
     def set_dochecks(self, dochecks=True):
         """
 
         """
         self._dochecks = dochecks
-        return()
+        return ()
 
     def print_missing_targets(self):
         """
@@ -994,13 +1029,14 @@ class KeyHandler:
 
         if len(self._missing_targets) == 0:
             logger.info("No missing targets.")
-            return(None)
+            return None
 
-        logger.warning("Missing a total of "+str(len(self._missing_targets))+" target definitions.") # missing sources in the target_definitions.txt
+        logger.warning("Missing a total of " + str(
+            len(self._missing_targets)) + " target definitions.")  # missing sources in the target_definitions.txt
         for target in self._missing_targets:
-           logger.error("missing: "+target)
+            logger.error("missing: " + target)
 
-        return()
+        return ()
 
     def check_ms_existence(self):
         """
@@ -1013,7 +1049,7 @@ class KeyHandler:
         logger.info("-------------------------------------------")
 
         if self._ms_dict is None:
-            return()
+            return ()
 
         found_count = 0
         missing_count = 0
@@ -1030,19 +1066,20 @@ class KeyHandler:
                                 found_count += 1
                                 local_found_count += 1
                             if local_found_count > 1:
-                                logger.error("Found multiple copies of ms for "+target+" "+project_tag+" "+array_tag)
+                                logger.error(
+                                    "Found multiple copies of ms for " + target + " " + project_tag + " " + array_tag)
                         if found:
                             continue
                         missing_count += 1
-                        logger.error("Missing ms for "+target+" "+project_tag+" "+array_tag)
+                        logger.error("Missing ms for " + target + " " + project_tag + " " + array_tag)
 
-        logger.info("Verified the existence of "+str(found_count)+" measurement sets.")
+        logger.info("Verified the existence of " + str(found_count) + " measurement sets.")
         if missing_count == 0:
             logger.info("No measurement sets found to be missing.")
         else:
-            logger.error("Missing "+str(missing_count)+" measurement set key entries.")
+            logger.error("Missing " + str(missing_count) + " measurement set key entries.")
 
-        return()
+        return ()
 
     def check_sd_existence(self):
         """
@@ -1055,7 +1092,7 @@ class KeyHandler:
         logger.info("-------------------------------------------")
 
         if self._sd_dict is None:
-            return()
+            return ()
 
         found_count = 0
         missing_count = 0
@@ -1070,19 +1107,19 @@ class KeyHandler:
                         found_count += 1
                         local_found_count += 1
                 if local_found_count > 1:
-                    logger.error("Found multiple copies of singledish data for "+target+" "+product)
+                    logger.error("Found multiple copies of singledish data for " + target + " " + product)
                 if found:
                     continue
                 missing_count += 1
-                logger.warning("Missing singledish data for "+target+" "+product)
+                logger.warning("Missing singledish data for " + target + " " + product)
 
-        logger.info("Verified the existence of "+str(found_count)+" single dish data sets.")
+        logger.info("Verified the existence of " + str(found_count) + " single dish data sets.")
         if missing_count == 0:
             logger.info("No single dish data found to be missing.")
         else:
-            logger.warning("Missing "+str(missing_count)+" single dish key entries.")
+            logger.warning("Missing " + str(missing_count) + " single dish key entries.")
 
-        return()
+        return ()
 
     def _expand_dir_key(self):
         """
@@ -1111,7 +1148,7 @@ class KeyHandler:
             else:
                 self._targets_for_dir[this_dir] = [target]
 
-        return()
+        return ()
 
     def check_dir_existence(self, imaging=True, postprocess=True, derived=True, release=True):
         """
@@ -1124,51 +1161,51 @@ class KeyHandler:
 
         dir_list = self._targets_for_dir.keys()
 
-        found_dirs=0
-        missing_dirs=[]
+        found_dirs = 0
+        missing_dirs = []
         for this_dir in dir_list:
 
             if imaging:
-                if os.path.isdir(self._imaging_root+this_dir):
+                if os.path.isdir(self._imaging_root + this_dir):
                     found_dirs += 1
                 else:
-                    logger.warning("Missing imaging directory :"+self._imaging_root+this_dir)
-                    missing_dirs.append(self._imaging_root+this_dir)
+                    logger.warning("Missing imaging directory :" + self._imaging_root + this_dir)
+                    missing_dirs.append(self._imaging_root + this_dir)
 
             if postprocess:
-                if os.path.isdir(self._postprocess_root+this_dir):
+                if os.path.isdir(self._postprocess_root + this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing post-processing directory :"+self._postprocess_root+this_dir)
-                    missing_dirs.append(self._postprocess_root+this_dir)
+                    logging.warning("Missing post-processing directory :" + self._postprocess_root + this_dir)
+                    missing_dirs.append(self._postprocess_root + this_dir)
 
             if derived:
-                if os.path.isdir(self._derived_root+this_dir):
+                if os.path.isdir(self._derived_root + this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing derived directory :"+self._derived_root+this_dir)
-                    missing_dirs.append(self._derived_root+this_dir)
+                    logging.warning("Missing derived directory :" + self._derived_root + this_dir)
+                    missing_dirs.append(self._derived_root + this_dir)
 
             if release:
-                if os.path.isdir(self._release_root+this_dir):
+                if os.path.isdir(self._release_root + this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing release directory :"+self._release_root+this_dir)
-                    missing_dirs.append(self._release_root+this_dir)
+                    logging.warning("Missing release directory :" + self._release_root + this_dir)
+                    missing_dirs.append(self._release_root + this_dir)
 
-        logging.info("Found "+str(found_dirs)+" directories.")
+        logging.info("Found " + str(found_dirs) + " directories.")
 
         missing_count = (len(missing_dirs))
         if missing_count == 0:
             logger.info("No directories appear to be missing.")
         else:
-            logger.warning("Missing "+str(missing_count)+" directories. Returning that list.")
+            logger.warning("Missing " + str(missing_count) + " directories. Returning that list.")
 
-        return(missing_dirs)
+        return missing_dirs
 
-##############################################################
-# Access properties and key information.
-##############################################################
+    ##############################################################
+    # Access properties and key information.
+    ##############################################################
 
     def _get_dir_for_target(self, target=None, changeto=False,
                             imaging=False, postprocess=False,
@@ -1181,87 +1218,107 @@ class KeyHandler:
 
         if target == None:
             logging.error("Please specify a target.")
-            return(None)
+            return None
 
         if target not in self._dir_for_target.keys():
-            logging.error("Target "+target+" is not in the list of targets.")
-            return(None)
+            logging.error("Target " + target + " is not in the list of targets.")
+            return None
 
         if (imaging and postprocess) or (imaging and derived) or \
                 (derived and postprocess):
             logging.error("Multiple flags set, pick only one type of directory.")
-            return(None)
+            return None
 
         if (release and imaging) or (release and derived) or \
                 (release and postprocess):
             logging.error("Multiple flags set, pick only one type of directory.")
-            return(None)
+            return None
 
         if imaging:
-            this_dir = self._imaging_root + self._dir_for_target[target]+'/'
+            this_dir = self._imaging_root + self._dir_for_target[target] + '/'
         elif postprocess:
-            this_dir = self._postprocess_root + self._dir_for_target[target]+'/'
+            this_dir = self._postprocess_root + self._dir_for_target[target] + '/'
         elif derived:
-            this_dir = self._derived_root + self._dir_for_target[target]+'/'
+            this_dir = self._derived_root + self._dir_for_target[target] + '/'
         elif release:
-            this_dir = self._release_root + self._dir_for_target[target]+'/'
+            this_dir = self._release_root + self._dir_for_target[target] + '/'
         elif cleanmask:
-            this_dir = self._cleanmask_roots[-1] + self._dir_for_target[target]+'/'
+            this_dir = self._cleanmask_roots[-1] + self._dir_for_target[target] + '/'
         elif singledish:
-            this_dir = self._sd_roots[-1] + self._dir_for_target[target]+'/'
+            this_dir = self._sd_roots[-1] + self._dir_for_target[target] + '/'
         else:
             logging.error("Pick a type of directory. None found.")
-            return(None)
+            return None
 
         if changeto:
             if not os.path.isdir(this_dir):
-                logging.error("You requested to change to "+this_dir+" but it does not exist.")
-                return(this_dir)
+                logging.error("You requested to change to " + this_dir + " but it does not exist.")
+                return this_dir
             os.chdir(this_dir)
-            return(this_dir)
-        return(this_dir)
+            return this_dir
+        return this_dir
 
     def get_imaging_dir_for_target(self, target=None, changeto=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, imaging=True))
+        return self._get_dir_for_target(target=target, changeto=changeto, imaging=True)
 
     def get_postprocess_dir_for_target(self, target=None, changeto=False):
         """
         Return the postprocessing working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, postprocess=True))
+        return self._get_dir_for_target(target=target, changeto=changeto, postprocess=True)
 
     def get_derived_dir_for_target(self, target=None, changeto=False):
         """
         Return the derived working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, derived=True))
+        return self._get_dir_for_target(target=target, changeto=changeto, derived=True)
 
     def get_release_dir_for_target(self, target=None, changeto=False):
         """
         Return the release working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, release=True))
+        return self._get_dir_for_target(target=target, changeto=changeto, release=True)
 
     def get_cleanmask_dir_for_target(self, target=None, changeto=False):
         """
         Return the release working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, cleanmask=True))
+        return self._get_dir_for_target(target=target, changeto=changeto, cleanmask=True)
 
     def get_singledish_dir_for_target(self, target=None, changeto=False):
         """
         Return the release working directory given a target name. If
         changeto is true, then change directory to that location.
         """
-        return(self._get_dir_for_target(target=target, changeto=changeto, singledish=True))
+        return self._get_dir_for_target(target=target, changeto=changeto, singledish=True)
+
+    def get_path_for_casaversion(self, casa_version=None):
+        """
+        Get the CASA path for a given version of CASA.
+        """
+        if casa_version is None:
+            return None
+        try:
+            # Preferentially search an exact match
+            casa_path = self._casaversion_dict[casa_version]
+            return casa_path
+        except KeyError:
+
+            # Loop over, trying to find CASA version without the -XX version (i.e. 5.4.0 instead of 5.4.0-70)
+            for key in self._casaversion_dict.keys():
+                if key.split('-')[0] == casa_version.split('-')[0]:
+                    return self._casaversion_dict[key]
+
+            # Give up if we don't find anything
+            return None
 
     def get_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1272,9 +1329,9 @@ class KeyHandler:
         alphabetically after first and before last.
         """
         this_target_list = \
-            list_utils.select_from_list(self._target_list, first=first, last=last \
-                                       , skip=skip, only=only, loose=True)
-        return(this_target_list)
+            list_utils.select_from_list(self._target_list, first=first, last=last,
+                                        skip=skip, only=only, loose=True)
+        return this_target_list
 
     def get_targets_in_ms_key(self, only=None, skip=None, first=None, last=None):
         """
@@ -1291,9 +1348,9 @@ class KeyHandler:
                 targets_with_ms.append(target)
 
         this_target_list = \
-            list_utils.select_from_list(targets_with_ms, first=first, last=last \
-                                       , skip=skip, only=only, loose=True)
-        return(this_target_list)
+            list_utils.select_from_list(targets_with_ms, first=first, last=last,
+                                        skip=skip, only=only, loose=True)
+        return this_target_list
 
     def get_linmos_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1304,14 +1361,13 @@ class KeyHandler:
         alphabetically after first and before last.
         """
         if self._linmos_dict is None:
-            return(None)
+            return None
         mosaic_targets = list(self._linmos_dict.keys())
 
         this_target_list = \
-            list_utils.select_from_list(mosaic_targets, first=first, last=last \
-                                       , skip=skip, only=only, loose=True)
-        return(this_target_list)
-
+            list_utils.select_from_list(mosaic_targets, first=first, last=last,
+                                        skip=skip, only=only, loose=True)
+        return this_target_list
 
     def get_whole_targets(self, only=None, skip=None, first=None, last=None):
         """
@@ -1323,9 +1379,54 @@ class KeyHandler:
         alphabetically after first and before last.
         """
         this_whole_target_list = \
-            list_utils.select_from_list(self._whole_target_list, first=first, last=last \
-                                       , skip=skip, only=only, loose=True)
-        return(this_whole_target_list)
+            list_utils.select_from_list(self._whole_target_list, first=first, last=last,
+                                        skip=skip, only=only, loose=True)
+        return this_whole_target_list
+
+    def get_alma_download_restrictions(self, target=None, product=None, config=None):
+        """
+        Get any download restrictions for ALMA data
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+            return None
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+        if config is None:
+            logging.error("Please specify a config.")
+            raise Exception("Please specify a config.")
+            return None
+
+        restrictions_dict = None
+
+        # Drill down through the dictionary to get at any restrictions. Preferentially match, but fall back to 'all'
+        # options if not explicitly found
+
+        all_targets = [target, 'all']  # TODO: MAYBE THIS WILL WORK WHO KNOWS. SEE HOW PRIORITY WORKS
+        all_products = [product, 'all']
+        all_configs = [config, 'all']
+
+        dict_found = False
+
+        for target in all_targets:
+            for product in all_products:
+                for config in all_configs:
+                    try:
+                        restrictions_dict = self._alma_download_dict[target][product][config]
+                        dict_found = True
+                        break
+                    except KeyError:
+                        pass
+
+                if dict_found:
+                    break
+            if dict_found:
+                break
+
+        return restrictions_dict
 
     def get_interf_configs(self, only=None, skip=None):
         """
@@ -1335,13 +1436,13 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if not isinstance(self._config_dict, dict):
-            return(None)
+            return None
         if 'interf_config' not in self._config_dict.keys():
-            return(None)
+            return None
         interf_configs = self._config_dict['interf_config'].keys()
         this_list = \
             list_utils.select_from_list(interf_configs, skip=skip, only=only, loose=True)
-        return(this_list)
+        return this_list
 
     def get_feather_configs(self, only=None, skip=None):
         """
@@ -1352,13 +1453,13 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if not isinstance(self._config_dict, dict):
-            return(None)
+            return None
         if 'feather_config' not in self._config_dict.keys():
-            return(None)
+            return None
         feather_configs = self._config_dict['feather_config'].keys()
         this_list = \
             list_utils.select_from_list(feather_configs, skip=skip, only=only, loose=True)
-        return(this_list)
+        return this_list
 
     def get_singledish_configs(self, only=None, skip=None):
         """
@@ -1368,13 +1469,13 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if not isinstance(self._config_dict, dict):
-            return(None)
+            return None
         if 'singledish_config' not in self._config_dict.keys():
-            return(None)
+            return None
         singledish_configs = self._config_dict['singledish_config'].keys()
         this_list = \
             list_utils.select_from_list(singledish_configs, skip=skip, only=only, loose=True)
-        return(this_list)
+        return this_list
 
     def get_all_configs(self):
         """
@@ -1400,13 +1501,13 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if not isinstance(self._config_dict, dict):
-            return([])
+            return []
         if 'line_product' not in self._config_dict.keys():
-            return([])
+            return []
         line_products = self._config_dict['line_product'].keys()
         this_list = \
             list_utils.select_from_list(line_products, skip=skip, only=only, loose=True)
-        return(this_list)
+        return this_list
 
     def get_continuum_products(self, only=None, skip=None):
         """
@@ -1416,13 +1517,13 @@ class KeyHandler:
         only, skip targets in skip.
         """
         if not isinstance(self._config_dict, dict):
-            return([])
+            return []
         if 'cont_product' not in self._config_dict.keys():
-            return([])
+            return []
         cont_products = self._config_dict['cont_product'].keys()
         this_list = \
             list_utils.select_from_list(cont_products, skip=skip, only=only, loose=True)
-        return(this_list)
+        return this_list
 
     def get_all_mosaic_targets(self):
         """Get all mosaic targets defined in "linearmosaic_definitions.txt" which have parts.
@@ -1475,16 +1576,16 @@ class KeyHandler:
         mosaic operation.
         """
         if target == None:
-            return(False)
+            return False
 
         if self._linmos_dict is None:
             logging.error("No linear mosaic dictionary defined.")
-            return(False)
+            return False
 
         if target in self._linmos_dict.keys():
-            return(True)
+            return True
 
-        return(False)
+        return False
 
     def get_parts_for_linmos(self, target=None):
         """
@@ -1492,17 +1593,17 @@ class KeyHandler:
         """
         if target == None:
             logging.error("Please specify a target.")
-            return(None)
+            return None
 
         if self._linmos_dict is None:
             logging.error("No linear mosaic dictionary defined.")
-            return(None)
+            return None
 
         if target not in self._linmos_dict.keys():
-            logging.error("No linear mosaic defined for "+target)
-            return(None)
+            logging.error("No linear mosaic defined for " + target)
+            return None
 
-        return(self._linmos_dict[target])
+        return self._linmos_dict[target]
 
     def is_target_in_mosaic(self, target, return_target_name=False):
         """
@@ -1527,23 +1628,28 @@ class KeyHandler:
             return None
         if config in self._imaging_dict:
             if product in self._imaging_dict[config]:
-                imaging_recipe_dir = self._key_dir #<TODO><DL># imaging_recipe_dir
+                imaging_recipe_dir = self._key_dir  # <TODO><DL># imaging_recipe_dir
                 if not imaging_recipe_dir.endswith(os.sep):
                     imaging_recipe_dir += os.sep
                 if stage is not None:
                     if stage in self._imaging_dict[config][product]:
                         imaging_recipe_file = self._imaging_dict[config][product][stage]
                         if imaging_recipe_file is None:
-                            logger.error('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+stage+'. Please check your "imaging_recipes.txt"!')
-                            raise Exception('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+stage+'. Please check your "imaging_recipes.txt"!')
-                        return imaging_recipe_dir+self._imaging_dict[config][product][stage] #<TODO><DL># multiple recipes for one stage?
+                            logger.error(
+                                'No imaging recipe is defined for config ' + config + ' product ' + product + ' and imaging stage ' + stage + '. Please check your "imaging_recipes.txt"!')
+                            raise Exception(
+                                'No imaging recipe is defined for config ' + config + ' product ' + product + ' and imaging stage ' + stage + '. Please check your "imaging_recipes.txt"!')
+                        return imaging_recipe_dir + self._imaging_dict[config][product][
+                            stage]  # <TODO><DL># multiple recipes for one stage?
                 else:
                     for t in VALID_IMAGING_STAGES:
                         imaging_recipe_file = self._imaging_dict[config][product][t]
                         if imaging_recipe_file is None:
-                            logger.error('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+t+'. Please check your "imaging_recipes.txt"!')
-                            raise Exception('No imaging recipe is defined for config '+config+' product '+product+' and imaging stage '+t+'. Please check your "imaging_recipes.txt"!')
-                    return [imaging_recipe_dir+self._imaging_dict[config][product][t] for t in VALID_IMAGING_STAGES]
+                            logger.error(
+                                'No imaging recipe is defined for config ' + config + ' product ' + product + ' and imaging stage ' + t + '. Please check your "imaging_recipes.txt"!')
+                            raise Exception(
+                                'No imaging recipe is defined for config ' + config + ' product ' + product + ' and imaging stage ' + t + '. Please check your "imaging_recipes.txt"!')
+                    return [imaging_recipe_dir + self._imaging_dict[config][product][t] for t in VALID_IMAGING_STAGES]
         return None
 
     def get_distance_for_target(self, target=None):
@@ -1566,14 +1672,13 @@ class KeyHandler:
                 if 'distance' in self._distance_dict[target_name]:
                     distance = self._distance_dict[target_name]['distance']
 
-        return(distance)
-
+        return distance
 
     def get_system_velocity_and_velocity_width_for_target(
-        self,
-        target=None,
-        check_parent=False,
-        ):
+            self,
+            target=None,
+            check_parent=False,
+    ):
         """
 
         Inputs
@@ -1593,7 +1698,6 @@ class KeyHandler:
                 target_vsys = self._target_dict[target]['vsys']
                 target_vwidth = self._target_dict[target]['vwidth']
 
-
                 # If this is part of a linear mosaic, check that vwidth is
                 # equivalent so the full line extent is used for all chunks.
                 if check_parent and target in self._mosaic_assign_dict:
@@ -1608,15 +1712,16 @@ class KeyHandler:
                                    "vsys, vwidth for {}".format(target))
 
         if target_vsys is None or target_vwidth is None:
-            logging.error('No vsys or vwidth values set for the target '+target+'. Please check your "target_definitions.txt".')
-            raise Exception('No vsys or vwidth values set for the target '+target)
+            logging.error(
+                'No vsys or vwidth values set for the target ' + target + '. Please check your "target_definitions.txt".')
+            raise Exception('No vsys or vwidth values set for the target ' + target)
 
-        return(target_vsys, target_vwidth)
+        return target_vsys, target_vwidth
 
     def get_phasecenter_for_target(
-        self,
-        target=None,
-        ):
+            self,
+            target=None,
+    ):
         """
         Return the strings (ra, dec) that define the phase center for
         a target in the target dictionary.
@@ -1634,10 +1739,10 @@ class KeyHandler:
                 decstring = self._target_dict[target]['decstring']
 
         if rastring is None or decstring is None:
-            logging.error('Missing phase center for target '+target)
-            raise Exception('Missing phase center for target '+target)
+            logging.error('Missing phase center for target ' + target)
+            raise Exception('Missing phase center for target ' + target)
 
-        return(rastring, decstring)
+        return rastring, decstring
 
     def get_channel_width_for_line_product(self, product=None):
         """
@@ -1655,10 +1760,10 @@ class KeyHandler:
                     channel_kms = self._config_dict['line_product'][product]['channel_kms']
 
         if channel_kms is None:
-            logging.error('No channel_kms value set for line product '+product)
-            raise Exception('No channel_kms value set for line product '+product)
+            logging.error('No channel_kms value set for line product ' + product)
+            raise Exception('No channel_kms value set for line product ' + product)
 
-        return(channel_kms)
+        return channel_kms
 
     def get_line_tag_for_line_product(self, product=None):
         """
@@ -1677,12 +1782,12 @@ class KeyHandler:
                     line_tag = self._config_dict['line_product'][product]['line_tag']
 
         if line_tag is None:
-            logging.error('No line_tag value set for the input line product '+product)
-            raise Exception('No line_tag value set for the input line product '+product)
+            logging.error('No line_tag value set for the input line product ' + product)
+            raise Exception('No line_tag value set for the input line product ' + product)
 
         return line_tag
 
-    def get_statwt_edge_for_line_product(self,product=None):
+    def get_statwt_edge_for_line_product(self, product=None):
         """
         Get the velocity width of the edge region to use when running
         statwt on a line product.
@@ -1699,9 +1804,9 @@ class KeyHandler:
                     statwt_edge = self._config_dict['line_product'][product]['statwt_edge_kms']
 
         if statwt_edge is None:
-            logging.info('No statwt_edge found for '+product)
+            logging.info('No statwt_edge found for ' + product)
 
-        return(statwt_edge)
+        return statwt_edge
 
     def get_contsub_fitorder(self, product=None):
         """
@@ -1720,10 +1825,10 @@ class KeyHandler:
                     fitorder = self._config_dict['line_product'][product]['fitorder']
 
         if fitorder is None:
-            logging.info('No fitorder found for '+product+' . Defaulting to order zero.')
+            logging.info('No fitorder found for ' + product + ' . Defaulting to order zero.')
             fitorder = 0
 
-        return(fitorder)
+        return fitorder
 
     def get_contsub_combinespw(self, product=None):
         """
@@ -1742,10 +1847,10 @@ class KeyHandler:
                     combinespw = self._config_dict['line_product'][product]['combinespw']
 
         if combinespw is None:
-            logging.info('No combinespw flag found for '+product+' . Defaulting to False.')
+            logging.info('No combinespw flag found for ' + product + ' . Defaulting to False.')
             combinespw = False
 
-        return(combinespw)
+        return combinespw
 
     def get_lines_to_flag(self, product=None):
         """
@@ -1770,10 +1875,10 @@ class KeyHandler:
                     lines_to_flag = self._config_dict['line_product'][product]['lines_to_flag']
 
         if len(lines_to_flag) == 0:
-            logging.warning('No lines to flag for the input product '+product)
-            #raise Exception('No lines to flag for the input continuum product '+product)
+            logging.warning('No lines to flag for the input product ' + product)
+            # raise Exception('No lines to flag for the input continuum product '+product)
 
-        return(lines_to_flag)
+        return lines_to_flag
 
     def get_channel_width_for_cont_product(self, product=None):
         """
@@ -1791,9 +1896,9 @@ class KeyHandler:
                         self._config_dict['cont_product'][product]['channel_ghz']
 
         if channel_ghz is None:
-            logging.info('No channel_ghz found for '+product)
+            logging.info('No channel_ghz found for ' + product)
 
-        return(channel_ghz)
+        return channel_ghz
 
     def get_freq_ranges_for_cont_product(self, product=None):
         """
@@ -1811,9 +1916,9 @@ class KeyHandler:
                         self._config_dict['cont_product'][product]['freq_ranges_ghz']
 
         if freq_ranges_ghz is None:
-            logging.error('No freq_ranges_ghz value set for cont product '+product)
+            logging.error('No freq_ranges_ghz value set for cont product ' + product)
 
-        return(freq_ranges_ghz)
+        return freq_ranges_ghz
 
     def get_array_tags_for_config(self, config=None):
         """
@@ -1833,7 +1938,7 @@ class KeyHandler:
                 if 'array_tags' in self._config_dict['singledish_config'][config]:
                     return self._config_dict['singledish_config'][config]['array_tags']
                 else:
-                    return [config] 
+                    return [config]
 
         return None
 
@@ -1842,24 +1947,24 @@ class KeyHandler:
         Get the timebin for an array tag. Returns 0s by default.
         """
         if 'array_tag' not in self._config_dict.keys():
-            #logger.debug("No array_tag defined in config definitions.")
-            return('0s')
+            # logger.debug("No array_tag defined in config definitions.")
+            return '0s'
         if array_tag.strip() not in self._config_dict['array_tag'].keys():
-            logger.debug("Tag "+str(array_tag)+" not in config definitions.")
-            return('0s')
+            logger.debug("Tag " + str(array_tag) + " not in config definitions.")
+            return '0s'
         if 'timebin' not in self._config_dict['array_tag'][array_tag].keys():
-            logger.debug("Tag "+str(array_tag)+" has no timebin.")
-            return('0s')
-        return(self._config_dict['array_tag'][array_tag]['timebin'])
+            logger.debug("Tag " + str(array_tag) + " has no timebin.")
+            return '0s'
+        return self._config_dict['array_tag'][array_tag]['timebin']
 
     def loop_over_input_ms(
-        self,
-        target=None,
-        config=None,
-        project=None,
-        check_linmos=False,
-        strict_config=True,
-        ):
+            self,
+            target=None,
+            config=None,
+            project=None,
+            check_linmos=False,
+            strict_config=True,
+    ):
         """
         Loop over the the target name, project tag, array tag, and
         obsnum for each input visibility file. If a target is supplied
@@ -1971,7 +2076,7 @@ class KeyHandler:
                     # Check if the target has data for that configuration
                     for this_config in input_configs:
 
-                        if self.has_data_for_config(target=this_target,config=this_config,strict=True):
+                        if self.has_data_for_config(target=this_target, config=this_config, strict=True):
                             has_data_for_any_config = True
 
                             # Note the array tags in this, known to be valid, configuration
@@ -2010,16 +2115,15 @@ class KeyHandler:
                     obsnum_list = list(self._ms_dict[this_target][this_project][this_arraytag].keys())
                     obsnum_list.sort()
                     for this_obsnum in obsnum_list:
-
                         yield this_target, this_project, this_arraytag, this_obsnum
 
     def get_file_for_input_ms(
-        self,
-        target=None,
-        project=None,
-        array_tag=None,
-        obsnum=None,
-        ):
+            self,
+            target=None,
+            project=None,
+            array_tag=None,
+            obsnum=None,
+    ):
         """
         Return the full file path to of an input measurement set given
         a target, project, array_tag, obsnum combination.
@@ -2050,10 +2154,10 @@ class KeyHandler:
                         check_valid = True
 
         if not check_valid:
-            logger.error('No target '+target+' project '+project+' array_tag '+ \
-                             array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
-            raise Exception('No target '+target+' project '+project+' array_tag '+ \
-                                array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
+            logger.error('No target ' + target + ' project ' + project + ' array_tag ' + \
+                         array_tag + ' obsnum ' + str(obsnum) + ' defined in ms dictionary.')
+            raise Exception('No target ' + target + ' project ' + project + ' array_tag ' + \
+                            array_tag + ' obsnum ' + str(obsnum) + ' defined in ms dictionary.')
 
         # Else locate the full path to the file
 
@@ -2067,26 +2171,26 @@ class KeyHandler:
         # Error check the results (redundant with read-in checks but good to have)
 
         if len(file_paths) == 0:
-            logging.warning('Could not find measurement set for target '+ \
-                                target+' project '+project+' array_tag '+ \
-                                array_tag+' obsnum '+str(obsnum)+'!')
-            return(None)
+            logging.warning('Could not find measurement set for target ' + \
+                            target + ' project ' + project + ' array_tag ' + \
+                            array_tag + ' obsnum ' + str(obsnum) + '!')
+            return None
         else:
             if len(file_paths) > 1:
-                logging.warning('Found multiple measurement sets for target '+ \
-                                    target+' project '+project+' array_tag '+ \
-                                    array_tag+' obsnum '+str(obsnum)+ \
-                                    ':\n'+'\n'.join(file_paths)+'\n'+'Returning the first one.')
+                logging.warning('Found multiple measurement sets for target ' + \
+                                target + ' project ' + project + ' array_tag ' + \
+                                array_tag + ' obsnum ' + str(obsnum) + \
+                                ':\n' + '\n'.join(file_paths) + '\n' + 'Returning the first one.')
 
         ms_file_path = file_paths[0]
-        return(ms_file_path)
+        return ms_file_path
 
     def has_data_for_config(
-        self,
-        target=None,
-        config=None,
-        strict=True,
-        ):
+            self,
+            target=None,
+            config=None,
+            strict=True,
+    ):
         """
         Test whether a target has data for a configuration in the ms
         key. If "strict" is TRUE then require that a target has data
@@ -2095,10 +2199,10 @@ class KeyHandler:
 
         if target is None:
             logging.error("Please specify a target.")
-            return(None)
+            return None
         if config is None:
             logging.error("Please specify a config.")
-            return(None)
+            return None
 
         config_array_tags = self.get_array_tags_for_config(config)
 
@@ -2112,7 +2216,6 @@ class KeyHandler:
             for this_project in self._ms_dict[this_target].keys():
 
                 for this_arraytag in self._ms_dict[this_target][this_project].keys():
-
                     arraytags_for_target.append(this_arraytag)
 
         has_any = False
@@ -2133,24 +2236,24 @@ class KeyHandler:
 
         if strict:
             if missing_any:
-                return(False)
+                return False
             else:
-                return(True)
+                return True
         else:
             if has_any:
-                return(True)
+                return True
             else:
-                return(False)
+                return False
 
-        return(False)
+        return False
 
     def get_field_for_input_ms(
-        self,
-        target=None,
-        project=None,
-        array_tag=None,
-        obsnum=None,
-        ):
+            self,
+            target=None,
+            project=None,
+            array_tag=None,
+            obsnum=None,
+    ):
         """
         Return the science field given a target, project, array_tag,
         obsnum combination.
@@ -2181,18 +2284,18 @@ class KeyHandler:
                         check_valid = True
 
         if not check_valid:
-            logger.error('No target '+target+' project '+project+' array_tag '+ \
-                             array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
-            raise Exception('No target '+target+' project '+project+' array_tag '+ \
-                                array_tag+' obsnum '+str(obsnum)+' defined in ms dictionary.')
+            logger.error('No target ' + target + ' project ' + project + ' array_tag ' + \
+                         array_tag + ' obsnum ' + str(obsnum) + ' defined in ms dictionary.')
+            raise Exception('No target ' + target + ' project ' + project + ' array_tag ' + \
+                            array_tag + ' obsnum ' + str(obsnum) + ' defined in ms dictionary.')
 
-        return(self._ms_dict[target][project][array_tag][obsnum]['field'])
+        return self._ms_dict[target][project][array_tag][obsnum]['field']
 
     def has_singledish(
-        self,
-        target=None,
-        product=None,
-        ):
+            self,
+            target=None,
+            product=None,
+    ):
         """
         Return true or false indicating if this target and product
         combination has associated single dish data.
@@ -2200,57 +2303,57 @@ class KeyHandler:
 
         if self._sd_dict is None:
             logging.error("No single dish key defined.")
-            return(None)
+            return None
 
         if target == None:
             logging.error("Please specify a target.")
-            return(None)
+            return None
 
         if product == None:
             logging.error("Please specify a product.")
-            return(None)
+            return None
 
         if target not in self._sd_dict.keys():
-            return(False)
+            return False
 
         this_dict = self._sd_dict[target]
 
         if product not in this_dict.keys():
-            return(False)
+            return False
 
-        return(True)
+        return True
 
     def get_sd_filename(
-        self,
-        target=None,
-        product=None,
-        nocheck=False,
-        ):
+            self,
+            target=None,
+            product=None,
+            nocheck=False,
+    ):
         """
         Return the single dish filename for a target and product combination.
         """
 
         if self._sd_dict is None:
             logging.error("No single dish key defined.")
-            return(None)
+            return None
 
         if target == None:
             logging.error("Please specify a target.")
-            return(None)
+            return None
 
         if product == None:
             logging.error("Please specify a product.")
-            return(None)
+            return None
 
         if target not in self._sd_dict.keys():
-            logging.warning("Not in single dish keys: "+target)
-            return(None)
+            logging.warning("Not in single dish keys: " + target)
+            return None
 
         this_dict = self._sd_dict[target]
 
         if product not in this_dict.keys():
-            logging.warning("Product not found for "+target+" : "+product)
-            return(None)
+            logging.warning("Product not found for " + target + " : " + product)
+            return None
 
         found = False
         found_count = 0
@@ -2263,36 +2366,36 @@ class KeyHandler:
                 last_found_file = this_fname
 
         if found_count > 1:
-            logging.error("Found multiple copies of single dish data for "+target+" "+product)
+            logging.error("Found multiple copies of single dish data for " + target + " " + product)
             logging.error("Returning last one, but this is likely an error.")
-            return(last_found_file)
+            return last_found_file
 
         if found_count == 0:
-            logging.error("Did not find single dish data for "+target+" "+product)
-            return(None)
+            logging.error("Did not find single dish data for " + target + " " + product)
+            return None
 
-        return(last_found_file)
+        return last_found_file
 
     def get_cleanmask_filename(
-        self,
-        target=None,
-        product=None,
-        ):
+            self,
+            target=None,
+            product=None,
+    ):
         """
         Get the file name of the clean mask associated with a target and product.
         """
 
         if self._cleanmask_dict is None:
             logging.error("No cleanmask dictionary defined.")
-            return(None)
+            return None
 
         if target == None:
             logging.error("Please specify a target.")
-            return(None)
+            return None
 
         if target not in self._cleanmask_dict.keys():
-            logging.warning("Not in cleanmask keys: "+target)
-            return(None)
+            logging.warning("Not in cleanmask keys: " + target)
+            return None
 
         this_dict = self._cleanmask_dict[target]
 
@@ -2302,8 +2405,8 @@ class KeyHandler:
             this_product = product
 
         if this_product not in this_dict.keys():
-            logging.warning("Cleanmask not found for "+target+" and product "+str(this_product))
-            return(None)
+            logging.warning("Cleanmask not found for " + target + " and product " + str(this_product))
+            return None
 
         found = False
         found_count = 0
@@ -2316,89 +2419,90 @@ class KeyHandler:
                 last_found_file = this_fname
 
         if found_count > 1:
-            logging.error("Found multiple copies of cleanmask for "+target+" "+str(this_product))
+            logging.error("Found multiple copies of cleanmask for " + target + " " + str(this_product))
             logging.error("Returning last one, but this is likely an error.")
-            return(last_found_file)
+            return last_found_file
 
         if found_count == 0:
-            logging.error("Did not find a cleanmask for "+target+" "+str(this_product))
-            return(None)
+            logging.error("Did not find a cleanmask for " + target + " " + str(this_product))
+            return None
 
-        logger.debug('Using clean mask file "'+os.path.basename(last_found_file)+'" for target "'+target+'" and product "'+product+'"')
+        logger.debug('Using clean mask file "' + os.path.basename(
+            last_found_file) + '" for target "' + target + '" and product "' + product + '"')
 
-        return(last_found_file)
+        return last_found_file
 
         return ()
 
     def get_feather_config_for_interf_config(
-        self,
-        interf_config=None
-        ):
+            self,
+            interf_config=None
+    ):
         """
         Get the interferometric configuration to go with a feather configuration.
         """
 
         if interf_config is None:
-            return(None)
+            return None
 
         if 'interf_config' not in self._config_dict.keys():
-            return(None)
+            return None
 
         interf_config_dict = self._config_dict['interf_config']
 
         if interf_config not in interf_config_dict.keys():
-            return(None)
+            return None
 
         if 'feather_config' not in interf_config_dict[interf_config].keys():
-            return(None)
+            return None
 
-        return(interf_config_dict[interf_config]['feather_config'])
+        return interf_config_dict[interf_config]['feather_config']
 
     def get_interf_config_for_feather_config(
-        self,
-        feather_config=None
-        ):
+            self,
+            feather_config=None
+    ):
         """
         Get the feather configuration to go with an interferometric configuration.
         """
 
         if feather_config is None:
-            return(None)
+            return None
 
         if 'interf_config' not in self._config_dict.keys():
-            return(None)
+            return None
 
         feather_config_dict = self._config_dict['feather_config']
 
         if feather_config not in feather_config_dict.keys():
-            return(None)
+            return None
 
         if 'interf_config' not in feather_config_dict[feather_config].keys():
-            return(None)
+            return None
 
-        return(feather_config_dict[feather_config]['interf_config'])
+        return feather_config_dict[feather_config]['interf_config']
 
     def get_clean_scales_for_config(
-        self,
-        config=None,
-        ):
+            self,
+            config=None,
+    ):
         """
         Return the angular scales used for multiscale clean for an
         interferometric configuration.
         """
 
         if config is None:
-            return(None)
+            return None
 
         if config in self._config_dict['interf_config'].keys():
             this_dict = self._config_dict['interf_config'][config]
         else:
-            return(None)
+            return None
 
-        return(this_dict['clean_scales_arcsec'])
+        return this_dict['clean_scales_arcsec']
 
     def get_ang_res_dict(self, config=None, product=None,
-        ):
+                         ):
         """
         Return the angular resolutions for derived product creation
         for a combination of resolution and spectral product.
@@ -2406,25 +2510,25 @@ class KeyHandler:
 
         if config is None:
             logger.warning("Need a config.")
-            return(None)
+            return None
 
         if product is None:
             logger.warning("Need a product.")
-            return(None)
+            return None
 
         if config not in self._derived_dict.keys():
-            return({})
+            return {}
 
         if product not in self._derived_dict[config].keys():
-            return({})
+            return {}
 
-        return(self._derived_dict[config][product]['ang_res'])
+        return self._derived_dict[config][product]['ang_res']
 
     def get_phys_res_dict(
-        self,
-        config=None,
-        product=None,
-        ):
+            self,
+            config=None,
+            product=None,
+    ):
         """
         Return the physical resolutions for derived product creation
         for a combination of resolution and spectral product.
@@ -2432,19 +2536,19 @@ class KeyHandler:
 
         if config is None:
             logger.warning("Need a config.")
-            return(None)
+            return None
 
         if product is None:
             logger.warning("Need a product.")
-            return(None)
+            return None
 
         if config not in self._derived_dict.keys():
-            return({})
+            return {}
 
         if product not in self._derived_dict[config].keys():
-            return({})
+            return {}
 
-        return(self._derived_dict[config][product]['phys_res'])
+        return self._derived_dict[config][product]['phys_res']
 
     def get_derived_kwargs(self, config=None, product=None,
                            kwarg_type='strictmask_kw'):
@@ -2456,70 +2560,70 @@ class KeyHandler:
 
         if config is None:
             logger.warning("Need a config.")
-            return(None)
+            return None
 
         if product is None:
             logger.warning("Need a product.")
-            return(None)
+            return None
 
         if config not in self._derived_dict.keys():
-            return({})
+            return {}
 
         if product not in self._derived_dict[config].keys():
-            return({})
+            return {}
 
         if kwarg_type not in self._derived_dict[config][product].keys():
-            return({})
+            return {}
 
-        return(self._derived_dict[config][product][kwarg_type].copy())
+        return self._derived_dict[config][product][kwarg_type].copy()
 
     def get_linked_mask_configs(
-        self,
-        config=None,
-        product=None,
-        ):
+            self,
+            config=None,
+            product=None,
+    ):
         """
         Return the list of linked configurations used in making hybrid
         masks.
         """
 
         if config is None:
-            return(None)
+            return None
 
         if product is None:
-            return(None)
+            return None
 
         if config not in self._derived_dict.keys():
-            return([])
+            return []
 
         if product not in self._derived_dict[config].keys():
-            return([])
+            return []
 
-        return(self._derived_dict[config][product]['mask_configs'])
+        return self._derived_dict[config][product]['mask_configs']
 
     def get_moment_list(
-        self,
-        config=None,
-        product=None,
-        ):
+            self,
+            config=None,
+            product=None,
+    ):
         """
         Return the list of moments to build for a config + product.
         masks.
         """
 
         if config is None:
-            return(None)
+            return None
 
         if product is None:
-            return(None)
+            return None
 
         if config not in self._derived_dict.keys():
-            return([])
+            return []
 
         if product not in self._derived_dict[config].keys():
-            return([])
+            return []
 
-        return(self._derived_dict[config][product]['moments'])
+        return self._derived_dict[config][product]['moments']
 
     def get_params_for_moment(self, moment=None):
         """
@@ -2527,18 +2631,18 @@ class KeyHandler:
         """
 
         if moment is None:
-            return(None)
+            return None
 
         if moment not in self._moment_dict.keys():
-            logger.error("Moment not found in keys: "+str(moment))
-            return(None)
+            logger.error("Moment not found in keys: " + str(moment))
+            return None
 
-        return(self._moment_dict[moment])
+        return self._moment_dict[moment]
 
     def get_params_for_singledish(
-        self,
-        singledish_config=None
-        ):
+            self,
+            singledish_config=None
+    ):
         """
         Return parameter dictionary for a singledish config.
         """
@@ -2557,72 +2661,72 @@ class KeyHandler:
         return singledish_config_dict[singledish_config]
 
     def print_configs(
-        self
-        ):
+            self
+    ):
         """
         Print out the configurations for inspection.
         """
 
         if self._config_dict is None:
-            return()
+            return ()
 
         logger.info("Interferometric Configurations")
         for this_config in self._config_dict['interf_config'].keys():
-            logger.info("... "+this_config)
+            logger.info("... " + this_config)
             this_arrays = self._config_dict['interf_config'][this_config]['array_tags']
             this_other_config = self._config_dict['interf_config'][this_config]['feather_config']
             scales_for_clean = self._config_dict['interf_config'][this_config]['clean_scales_arcsec']
-            logger.info("... ... includes arrays "+str(this_arrays))
-            logger.info("... ... maps to feather config "+str(this_other_config))
-            logger.info("... ... clean these scales in arcsec "+str(scales_for_clean))
+            logger.info("... ... includes arrays " + str(this_arrays))
+            logger.info("... ... maps to feather config " + str(this_other_config))
+            logger.info("... ... clean these scales in arcsec " + str(scales_for_clean))
 
         if 'feather_config' in self._config_dict:
             logger.info("Feather Configurations")
             for this_config in self._config_dict['feather_config'].keys():
-                logger.info("... "+this_config)
+                logger.info("... " + this_config)
                 this_other_config = self._config_dict['feather_config'][this_config]['interf_config']
-                logger.info("... ... maps to interferometer config "+str(this_other_config))
+                logger.info("... ... maps to interferometer config " + str(this_other_config))
 
-        return()
+        return ()
 
     def print_products(
-        self
-        ):
+            self
+    ):
         """
         Print out the products for inspection.
         """
 
         if self._config_dict is None:
-            return()
+            return ()
 
         logger.info("Continuum data products")
         for this_product in self.get_continuum_products():
-            logger.info("... "+this_product)
+            logger.info("... " + this_product)
             lines_to_flag = self._config_dict['cont_product'][this_product]['lines_to_flag']
-            logger.info("... ... lines to flag "+str(lines_to_flag))
+            logger.info("... ... lines to flag " + str(lines_to_flag))
 
         logger.info("Line data products")
         for this_product in self.get_line_products():
-            logger.info("... "+this_product)
+            logger.info("... " + this_product)
             if 'channel_kms' in self._config_dict['line_product'][this_product].keys():
                 channel_width = self._config_dict['line_product'][this_product]['channel_kms']
-                logger.info("... ... channel width [km/s] "+str(channel_width))
+                logger.info("... ... channel width [km/s] " + str(channel_width))
             if 'line_tag' in self._config_dict['line_product'][this_product].keys():
                 line_name = self._config_dict['line_product'][this_product]['line_tag']
-                logger.info("... ... line name code "+str(line_name))
+                logger.info("... ... line name code " + str(line_name))
 
-        return()
+        return ()
 
     def print_missing_distances(
-        self
-        ):
+            self
+    ):
         """
         Print out the missing distances
         """
 
         if self._distance_dict is None:
             logger.info("... there is no distance dictionary defined.")
-            return()
+            return ()
 
         missing_targets = []
         for this_target in self.get_all_targets():
@@ -2631,37 +2735,37 @@ class KeyHandler:
 
         if len(missing_targets) == 0:
             logger.info("... no targets are missing distances!")
-            return()
+            return ()
 
-        logger.info("... targets missing distances: "+str(missing_targets))
-        return()
+        logger.info("... targets missing distances: " + str(missing_targets))
+        return ()
 
     def print_derived(
-        self
-        ):
+            self
+    ):
         """
         Print out the information for derived products.
         """
 
         if self._derived_dict is None:
-            return()
+            return ()
 
         for this_config in self.get_all_configs():
             all_products = self.get_continuum_products() + self.get_line_products()
             for this_product in all_products:
-                logger.info("... derived produts for "+this_config+" "+this_product)
+                logger.info("... derived produts for " + this_config + " " + this_product)
 
                 ang_res = self._derived_dict[this_config][this_product]['ang_res']
                 phys_res = self._derived_dict[this_config][this_product]['phys_res']
                 linked_configs = self._derived_dict[this_config][this_product]['mask_configs']
                 moments = self._derived_dict[this_config][this_product]['moments']
 
-                logger.info("... ... angular resolutions [arcsec]: "+str(ang_res))
-                logger.info("... ... physical resolutions [pc]: "+str(phys_res))
-                logger.info("... ... linked configs for masking: "+str(linked_configs))
-                logger.info("... ... moments to produce: "+str(moments))
+                logger.info("... ... angular resolutions [arcsec]: " + str(ang_res))
+                logger.info("... ... physical resolutions [pc]: " + str(phys_res))
+                logger.info("... ... linked configs for masking: " + str(linked_configs))
+                logger.info("... ... moments to produce: " + str(moments))
 
-        return()
+        return ()
 
     def has_overrides_for_key(self, key=None):
         """Check whether the override dictionary contains the input key or not.
@@ -2699,75 +2803,84 @@ class KeyHandler:
 
         # check key in override dict or not
         if not (key in self._override_dict):
-            #logger.debug('Warning! The input key "'+str(key)+'" is not in the overrides file!')
+            # logger.debug('Warning! The input key "'+str(key)+'" is not in the overrides file!')
             return default
 
         # if user has input key only, return the dict
         if param is None:
-            #logger.debug('Warning! Only has key input when getting overrides! Will return the override dictionary for this key "'+str(key)+'".')
-            return self._override_dict[key] #<TODO># dzliu: what if user has just input a key?
+            # logger.debug('Warning! Only has key input when getting overrides! Will return the override dictionary for this key "'+str(key)+'".')
+            return self._override_dict[key]  # <TODO># dzliu: what if user has just input a key?
 
         if not (param in self._override_dict[key]):
-            #logger.debug('Warning! The input key "'+str(key)+'" does not have a param "'+str(param)+'" in the overrides file! Return default value '+str(default))
+            # logger.debug('Warning! The input key "'+str(key)+'" does not have a param "'+str(param)+'" in the overrides file! Return default value '+str(default))
             return default
 
-        logger.debug('Overriding key "'+str(key)+'" param "'+str(param)+'" value '+str(self._override_dict[key][param])+', default ' +str(default) )
+        logger.debug('Overriding key "' + str(key) + '" param "' + str(param) + '" value ' + str(
+            self._override_dict[key][param]) + ', default ' + str(default))
         return self._override_dict[key][param]
 
-#endregion
+    # endregion
 
-#region Manipulate files and file structure
+    # region Manipulate files and file structure
 
-    def make_missing_directories(self, imaging=False, postprocess=False, derived=False, release=False):
+    def make_missing_directories(self, ms_root=False, imaging=False, postprocess=False, derived=False, release=False):
         """
         Make any missing imaging or postprocessing directories.
         """
 
-        if not imaging and not postprocess and not derived and not release:
-            logging.error("Set either imaging or postprocess or product or release to True. Returning.")
-            return(False)
+        if not ms_root and not imaging and not postprocess and not derived and not release:
+            logging.error("Set either ms_root or imaging or postprocess or product or release to True. Returning.")
+            return False
+
+        if ms_root:
+            # Just create the first directory
+            if not os.path.isdir(self._ms_roots[0]):
+                logging.info("Creating MS root directory: " + self._ms_roots[0])
+                os.makedirs(self._ms_roots[0])
 
         if imaging:
             if not os.path.isdir(self._imaging_root):
-                #logging.info("Missing imaging root directory.")
-                logging.info("Creating imaging root directory: "+self._imaging_root)
-                #return(False)
+                # logging.info("Missing imaging root directory.")
+                logging.info("Creating imaging root directory: " + self._imaging_root)
+                # return(False)
                 os.makedirs(self._imaging_root)
 
         if postprocess:
             if not os.path.isdir(self._postprocess_root):
-                #logging.info("Missing postprocess root directory.")
-                logging.info("Creating postprocess root directory: "+self._postprocess_root)
-                #return(False)
+                # logging.info("Missing postprocess root directory.")
+                logging.info("Creating postprocess root directory: " + self._postprocess_root)
+                # return(False)
                 os.makedirs(self._postprocess_root)
 
         if derived:
             if not os.path.isdir(self._derived_root):
-                #logging.info("Missing derived root directory.")
-                logging.info("Creating derived root directory: "+self._derived_root)
-                #return(False)
+                # logging.info("Missing derived root directory.")
+                logging.info("Creating derived root directory: " + self._derived_root)
+                # return(False)
                 os.makedirs(self._derived_root)
 
         if release:
             if not os.path.isdir(self._release_root):
-                #logging.info("Missing release root directory.")
-                logging.info("Creating release root directory: "+self._release_root)
-                #return(False)
+                # logging.info("Missing release root directory.")
+                logging.info("Creating release root directory: " + self._release_root)
+                # return(False)
                 os.makedirs(self._release_root)
 
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, derived=derived, release=release)
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, derived=derived,
+                                                release=release)
         made_directories = 0
         for this_missing_dir in missing_dirs:
             made_directories += 1
             os.makedirs(this_missing_dir)
 
-        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, derived=derived, release=release)
+        missing_dirs = self.check_dir_existence(imaging=imaging, postprocess=postprocess, derived=derived,
+                                                release=release)
 
-        logging.info("Made "+str(made_directories)+" directories. Now "+str(len(missing_dirs))+" missing.")
+        logging.info("Made " + str(made_directories) + " directories. Now " + str(len(missing_dirs)) + " missing.")
 
         if len(missing_dirs) == 0:
-            return(True)
+            return True
 
-        return(False)
+        return False
 
-#endregion
+# endregion
