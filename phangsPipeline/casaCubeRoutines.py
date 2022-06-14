@@ -161,7 +161,10 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
         vals = myia.getchunk()
         vals *= value
         myia.putchunk(vals)
+        myia.close()
 
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(infile)
     myia.setbrightnessunit(brightness_unit)
     myia.close()
 
