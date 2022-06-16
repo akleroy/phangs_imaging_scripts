@@ -12,7 +12,6 @@ casa_enabled = is_casa_installed()
 from .phangsLogger import setup_logger
 from .handlerKeys import KeyHandler
 from .handlerSingleDish import SingleDishHandler
-from .handlerAlmaDownload import AlmaDownloadHandler
 from .handlerVis import VisHandler
 from .handlerPostprocess import PostProcessHandler
 from .handlerDerived import DerivedHandler
@@ -24,3 +23,9 @@ __all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "Pos
 
 if casa_enabled:
     __all__.append("ImagingHandler")
+
+try:
+    from .handlerAlmaDownload import AlmaDownloadHandler
+    __all__.append("AlmaDownloadHandler")
+except:
+    pass
