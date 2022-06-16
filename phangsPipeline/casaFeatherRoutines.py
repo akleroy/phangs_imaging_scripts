@@ -267,39 +267,94 @@ def feather_two_cubes(
 
         myia = au.createCasaTool(casaStuff.iatool)
 
+        # As noted in [https://casa.nrao.edu/docs/casaref/image.putchunk.html], 
+        # "If all the pixels didn’t easily fit in memory, you would iterate through 
+        # the image chunk by chunk to avoid exhausting virtual memory."
+        # So here we do this iteration if the image cube is too large, 
+        # say 1000*1000*500. 
+        # In principle we can do channel by channel putchunk for all cubes, 
+        # just not sure how much extra time it will need. 
+        
         myia.open(interf_file)
-        interf_mask = myia.getchunk(getmask=True)
+        interf_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
 
         myia.open(sd_file)
-        sd_mask = myia.getchunk(getmask=True)
+        sd_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
 
-        # CASA calls unmasked values True and masked values False. The
-        # region with values in both cubes is the product.
-
-        combined_mask = sd_mask*interf_mask
-
-        # This isn't a great solution. Just zero out the masked
-        # values. It will do what we want in the FFT but the CASA mask
-        # bookkeeping is being left in the dust. The workaround is
-        # complicated, though, because you can't directly manipulate
-        # pixel masks for some reason.
-
-        if np.sum(combined_mask == False) > 0:
-            myia.open(current_interf_file)
-            interf_data = myia.getchunk()
-            interf_data[combined_mask == False] = 0.0
-            myia.putchunk(interf_data)
+        assert np.all(interf_shape == sd_shape)
+        assert len(interf_shape) == 3
+        
+        if np.prod(interf_shape) < 1000*1000*500:
+        
+            myia.open(interf_file)
+            interf_mask = myia.getchunk(getmask=True)
             myia.close()
-
-            myia.open(current_sd_file)
-            sd_data = myia.getchunk()
-            sd_data[combined_mask == False] = 0.0
-            myia.putchunk(sd_data)
+            
+            myia.open(sd_file)
+            sd_mask = myia.getchunk(getmask=True)
             myia.close()
+            
+            # CASA calls unmasked values True and masked values False. The
+            # region with values in both cubes is the product.
+            
+            combined_mask = sd_mask*interf_mask
+            
+            # This isn't a great solution. Just zero out the masked
+            # values. It will do what we want in the FFT but the CASA mask
+            # bookkeeping is being left in the dust. The workaround is
+            # complicated, though, because you can't directly manipulate
+            # pixel masks for some reason.
+            
+            if np.sum(combined_mask == False) > 0:
+                myia.open(current_interf_file)
+                interf_data = myia.getchunk()
+                interf_data[combined_mask == False] = 0.0
+                myia.putchunk(interf_data)
+                myia.close()
+            
+                myia.open(current_sd_file)
+                sd_data = myia.getchunk()
+                sd_data[combined_mask == False] = 0.0
+                myia.putchunk(sd_data)
+                myia.close()
+        
+        else:
+            
+            nchan = interf_shape[2]
+
+            for ichan in range(nchan):
+                
+                blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                myia.open(current_interf_file)
+                interf_data_per_chan = myia.getchunk(blc, trc)
+                interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                myia.close()
+                myia.open(current_sd_file)
+                sd_data_per_chan = myia.getchunk(blc, trc)
+                sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                myia.close()
+
+                combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
+
+                # CASA calls unmasked values True and masked values False. The
+                # region with values in both cubes is the product.
+                
+                boolean_mask_per_chan = (combined_mask_per_chan == False)
+                if np.any(boolean_mask_per_chan):
+                    interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                    sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                    myia.open(current_interf_file)
+                    myia.putchunk(interf_data_per_chan, blc)
+                    myia.close()
+                    myia.open(current_sd_file)
+                    myia.putchunk(sd_data_per_chan, blc)
+                    myia.close()
 
     else:
+        
         current_interf_file = interf_file
         current_sd_file = sd_file
 
