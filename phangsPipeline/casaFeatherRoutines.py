@@ -271,7 +271,7 @@ def feather_two_cubes(
         # "If all the pixels didn’t easily fit in memory, you would iterate through 
         # the image chunk by chunk to avoid exhausting virtual memory."
         # So here we do this iteration if the image cube is too large, 
-        # say 1000*1000*500. 
+        # say [3600, 3600,  393] (but [2880, 2880, 393] is okay). 
         # In principle we can do channel by channel putchunk for all cubes, 
         # just not sure how much extra time it will need. 
         
@@ -284,17 +284,28 @@ def feather_two_cubes(
         myia.close()
 
         assert np.all(interf_shape == sd_shape)
-        assert len(interf_shape) == 3
         
-        if np.prod(interf_shape) < 1000*1000*500:
-        
+        no_memory_issue = True
+        interf_mask = None
+        sd_mask = None
+        if np.prod(interf_shape) >= 3000*3000*393: # known memory issue
+            no_memory_issue = False
+        if no_memory_issue: 
             myia.open(interf_file)
             interf_mask = myia.getchunk(getmask=True)
             myia.close()
-            
+            if not np.all(interf_mask.shape == interf_shape): # shape does not match, has memory issue
+                no_memory_issue = False
+        if no_memory_issue: 
             myia.open(sd_file)
             sd_mask = myia.getchunk(getmask=True)
             myia.close()
+            if not np.all(sd_mask.shape == sd_shape): # shape does not match, has memory issue
+                no_memory_issue = False
+        
+        if no_memory_issue:
+            
+            # If there is no getchunk/putchunk memory issue, directly proceed to combine the masks. 
             
             # CASA calls unmasked values True and masked values False. The
             # region with values in both cubes is the product.
@@ -322,6 +333,7 @@ def feather_two_cubes(
         
         else:
             
+            assert len(interf_shape) >= 3
             nchan = interf_shape[2]
 
             for ichan in range(nchan):

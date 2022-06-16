@@ -85,33 +85,75 @@ def get_mask(infile, huge_cube_workaround=True):
     Get a mask from a CASA image file. Includes a switch for large cubes, where getchunk can segfault.
     """
 
-    if huge_cube_workaround:
-        os.system('rm -rf ' + infile + '.temp_deg_ordered')
-        casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
-                          order='0132')
-
-        casaStuff.makemask(mode='copy', inpimage=infile + '.temp_deg_ordered',
-                           inpmask=infile + '.temp_deg_ordered:mask0',
-                           output=infile + '.temp_mask', overwrite=True)
-
-        casaStuff.exportfits(imagename=infile + '.temp_mask',
-                             fitsimage=infile + '.temp.fits',
-                             stokeslast=False, overwrite=True)
-        hdu = pyfits.open(infile + '.temp.fits')[0]
-        mask = hdu.data.T[:, :, 0, :]
-
-        os.system('rm -rf ' + infile + '.temp_deg_ordered')
-        os.system('rm -rf ' + infile + '.temp_mask')
-        os.system('rm -rf ' + infile + '.temp.fits')
-
+    #if huge_cube_workaround:
+    #    os.system('rm -rf ' + infile + '.temp_deg_ordered')
+    #    casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
+    #                      order='0132')
+    #
+    #    casaStuff.makemask(mode='copy', inpimage=infile + '.temp_deg_ordered',
+    #                       inpmask=infile + '.temp_deg_ordered:mask0',
+    #                       output=infile + '.temp_mask', overwrite=True)
+    #
+    #    casaStuff.exportfits(imagename=infile + '.temp_mask',
+    #                         fitsimage=infile + '.temp.fits',
+    #                         stokeslast=False, overwrite=True)
+    #    hdu = pyfits.open(infile + '.temp.fits')[0]
+    #    mask = hdu.data.T[:, :, 0, :]
+    #
+    #    os.system('rm -rf ' + infile + '.temp_deg_ordered')
+    #    os.system('rm -rf ' + infile + '.temp_mask')
+    #    os.system('rm -rf ' + infile + '.temp.fits')
+    #
+    #else:
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(infile+'.temp_deg')
+    #    mask = myia.getchunk(getmask=True)
+    #    myia.close()
+    #
+    #os.system('rm -rf ' + infile + '.temp_deg')
+    
+    myia = au.createCasaTool(casaStuff.iatool)
+    
+    myia.open(infile)
+    cube_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
+    myia.close()
+    
+    assert len(cube_shape) in [2, 3, 4]
+    
+    myia.open(infile)
+    cube_mask = myia.getchunk(getmask=True) # cube_mask.shape = [X, Y, CHANNEL, [STOKES]]
+    
+    if np.all(cube_mask.shape == cube_shape): # getchunk was successful, no memory issue
+        mask = cube_mask
     else:
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(infile+'.temp_deg')
-        mask = myia.getchunk(getmask=True)
-        myia.close()
-
-    os.system('rm -rf ' + infile + '.temp_deg')
-
+        # putchunk channel by channel
+        mask = np.full(cube_shape, fill_value=False)
+        if len(cube_shape) == 2:
+            blc = [0, 0] # [X, Y]
+            trc = [-1, -1] # [X, Y]
+            cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+            mask[:, :] = cube_mask_per_chan
+        elif len(cube_shape) == 3:
+            nchan = cube_shape[2]
+            for ichan in range(nchan):
+                blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                mask[:, :, ichan] = cube_mask_per_chan
+        elif len(cube_shape) == 4:
+            nstokes = cube_shape[3]
+            nchan = cube_shape[2]
+            for istokes in range(nstokes):
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                    mask[:, :, ichan, istokes] = cube_mask_per_chan
+    
+    myia.close()
+    
+    assert np.all(mask.shape == cube_shape)
+    
     return mask
 
 
@@ -120,19 +162,47 @@ def copy_mask(infile, outfile, huge_cube_workaround=True):
     Copy a mask from infile to outfile. Includes a switch for large cubes, where getchunk/putchunk can segfault
     """
 
-    if huge_cube_workaround:
-        os.system('rm -rf ' + outfile + '/mask0')
-        os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
+    #if huge_cube_workaround:
+    #    os.system('rm -rf ' + outfile + '/mask0')
+    #    os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
+    #else:
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(infile)
+    #    mask = myia.getchunk(getmask=True)
+    #    myia.close()
+    #
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(outfile)
+    #    mask = myia.putregion(pixelmask=mask)
+    #    myia.close()
+    
+    mask = get_mask(infile)
+    
+    # use putregion to update pixel mask
+    
+    myia = au.createCasaTool(casaStuff.iatool)
+    
+    myia.open(outfile)
+    out_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
+    myia.close()
+    
+    assert np.all(mask.shape == out_shape) # input and output shape must be the same
+    
+    myia.open(outfile)
+    out_mask = myia.getchunk(getmask=True) # out_mask.shape = [X, Y, CHANNEL, [STOKES]]
+    if np.all(out_mask.shape == out_shape): # getchunk was successful, no memory issue
+        myia.putregion(pixelmask=mask)
     else:
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(infile)
-        mask = myia.getchunk(getmask=True)
-        myia.close()
-
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(outfile)
-        mask = myia.putregion(pixelmask=mask)
-        myia.close()
+        # putregion channel by channel
+        myrg = au.createCasaTool(casaStuff.rgtool)
+        nx = out_shape[0]
+        ny = out_shape[1]
+        nchan = out_shape[2]
+        for ichan in range(nchan):
+            r1 = myrg.box([0, 0, ichan], [nx-1, ny-1, ichan])
+            myia.putregion(pixelmask=np.take(mask, ichan, axis=2), region=r1)
+        myrg.done()
+    myia.close()
 
     return True
 
@@ -143,26 +213,71 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     getchunk/putchunk may fail.
     """
 
-    if huge_cube_workaround:
-        casaStuff.exportfits(imagename=infile,
-                             fitsimage=infile + '.fits',
-                             overwrite=True)
-        hdu = pyfits.open(infile + '.fits')[0]
-        hdu.data *= value
-
-        hdu.writeto(infile + '.fits', clobber=True)
-        casaStuff.importfits(fitsimage=infile + '.fits',
-                             imagename=infile,
-                             overwrite=True)
-        os.system('rm -rf ' + infile + '.fits')
-    else:
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(infile)
-        vals = myia.getchunk()
+    #if huge_cube_workaround:
+    #    casaStuff.exportfits(imagename=infile,
+    #                         fitsimage=infile + '.fits',
+    #                         overwrite=True)
+    #    hdu = pyfits.open(infile + '.fits')[0]
+    #    hdu.data *= value
+    #
+    #    hdu.writeto(infile + '.fits', clobber=True)
+    #    casaStuff.importfits(fitsimage=infile + '.fits',
+    #                         imagename=infile,
+    #                         overwrite=True)
+    #    os.system('rm -rf ' + infile + '.fits')
+    #else:
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(infile)
+    #    vals = myia.getchunk()
+    #    vals *= value
+    #    myia.putchunk(vals)
+    
+    myia = au.createCasaTool(casaStuff.iatool)
+    
+    myia.open(infile)
+    cube_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
+    myia.close()
+    
+    assert len(cube_shape) in [2, 3, 4]
+    
+    myia.open(infile)
+    vals = myia.getchunk() # vals.shape = [X, Y, CHANNEL, [STOKES]]
+    if np.all(vals.shape == cube_shape): # getchunk was successful, no memory issue
         vals *= value
         myia.putchunk(vals)
-
-    myia.setbrightnessunit(brightness_unit)
+    else:
+        # putchunk channel by channel
+        if len(cube_shape) == 2:
+            blc = [0, 0] # [X, Y]
+            trc = [-1, -1] # [X, Y]
+            inc = [cube_shape[0], cube_shape[1]] # [X, Y]
+            vals = myia.getchunk(blc, trc)
+            vals *= value
+            myia.putchunk(vals, blc, inc)
+        elif len(cube_shape) == 3:
+            nchan = cube_shape[2]
+            for ichan in range(nchan):
+                blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                inc = [cube_shape[0], cube_shape[1], 1] # [X, Y, CHANNEL]
+                vals = myia.getchunk(blc, trc)
+                vals *= value
+                myia.putchunk(vals, blc, inc)
+        elif len(cube_shape) == 4:
+            nstokes = cube_shape[3]
+            nchan = cube_shape[2]
+            for istokes in range(nstokes):
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    inc = [cube_shape[0], cube_shape[1], 1, 1] # [X, Y, CHANNEL, STOKES]
+                    vals = myia.getchunk(blc, trc)
+                    vals *= value
+                    myia.putchunk(vals, blc, inc)
+    
+    if brightness_unit is not None:
+        myia.setbrightnessunit(brightness_unit)
+    
     myia.close()
 
     return True
@@ -330,24 +445,27 @@ def trim_cube(
 
     # Figure out the extent of the image inside the cube
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(outfile + '.temp')
-    myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
-    myia.close()
+    #myia = au.createCasaTool(casaStuff.iatool)
+    #myia.open(outfile + '.temp')
+    #myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
+    #myia.close()
+    #
+    #mask = get_mask(outfile + '.temp_deg')
+    
+    mask = get_mask(outfile + '.temp')
 
-    mask = get_mask(outfile, huge_cube_workaround=True)
-
-    this_shape = mask.shape
-
-    mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    #mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))
     xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
     xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
 
-    mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    #mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    mask_spec_y = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 1]))
     ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
     ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
 
-    mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
+    #mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
+    mask_spec_z = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 2]))
     zmin = np.max([0,np.min(np.where(mask_spec_z))-pad])
     zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[2]-1])
 
@@ -552,7 +670,7 @@ def convolve_to_round_beam(
                        )
 
     # Copy over mask
-    copy_mask(infile, outfile, huge_cube_workaround=True)
+    copy_mask(infile, outfile)
 
     return(target_bmaj)
 
@@ -644,7 +762,7 @@ def convert_jytok(
 
     jytok = calc_jytok(hdr=hdr)
 
-    multiply_cube_by_value(target_file, jytok, brightness_unit='K', huge_cube_workaround=True)
+    multiply_cube_by_value(target_file, jytok, brightness_unit='K')
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
@@ -689,7 +807,7 @@ def convert_ktojy(
 
     jytok = calc_jytok(hdr=hdr)
 
-    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam', huge_cube_workaround=True)
+    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam')
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
