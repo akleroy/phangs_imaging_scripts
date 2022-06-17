@@ -288,15 +288,17 @@ def feather_two_cubes(
         no_memory_issue = True
         interf_mask = None
         sd_mask = None
-        if np.prod(interf_shape) >= 3000*3000*393: # known memory issue
+        if np.prod(interf_shape) >= 2880*2880*393: # known memory issue
             no_memory_issue = False
-        if no_memory_issue: 
+        if no_memory_issue: # try to see if there is a memory issue for reading 'interf_file'
+            # in which case the getchunk will return a flat array instead of the cube shape
             myia.open(interf_file)
             interf_mask = myia.getchunk(getmask=True)
             myia.close()
             if not np.all(interf_mask.shape == interf_shape): # shape does not match, has memory issue
                 no_memory_issue = False
-        if no_memory_issue: 
+        if no_memory_issue: # try to see if there is a memory issue for reading 'sd_file'
+            # in which case the getchunk will return a flat array instead of the cube shape
             myia.open(sd_file)
             sd_mask = myia.getchunk(getmask=True)
             myia.close()

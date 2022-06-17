@@ -26,8 +26,12 @@ from .pipelineVersion import version as pipeVer
 # CASA stuff
 from . import casaStuff
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# Logging
+from .pipelineLogger import PipelineLogger
+logger = PipelineLogger(__name__)
+
+#logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
 
 #endregion
 
@@ -121,12 +125,25 @@ def get_mask(infile, huge_cube_workaround=True):
     assert len(cube_shape) in [2, 3, 4]
     
     myia.open(infile)
-    cube_mask = myia.getchunk(getmask=True) # cube_mask.shape = [X, Y, CHANNEL, [STOKES]]
     
-    if np.all(cube_mask.shape == cube_shape): # getchunk was successful, no memory issue
+    no_memory_issue = True
+    cube_mask = None
+    if np.prod(cube_shape) >= 2880*2880*393: # known memory issue
+        no_memory_issue = False
+    if no_memory_issue: # try to see if there is a memory issue
+        # in which case the getchunk will return a flat array instead of the cube shape
+        cube_mask = myia.getchunk(getmask=True) # cube_mask.shape = [X, Y, CHANNEL, [STOKES]]
+        if not np.all(cube_mask.shape == cube_shape): # shape does not match, has memory issue
+            no_memory_issue = False
+    
+    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
+        no_memory_issue = True
+    
+    if no_memory_issue: # getchunk was successful, no memory issue
         mask = cube_mask
     else:
         # putchunk channel by channel
+        logger.debug('getchunk channel by channel for known memory issue')
         mask = np.full(cube_shape, fill_value=False)
         if len(cube_shape) == 2:
             blc = [0, 0] # [X, Y]
@@ -139,16 +156,19 @@ def get_mask(infile, huge_cube_workaround=True):
                 blc = [0, 0, ichan] # [X, Y, CHANNEL]
                 trc = [-1, -1, ichan] # [X, Y, CHANNEL]
                 cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
-                mask[:, :, ichan] = cube_mask_per_chan
+                mask[:, :, ichan] = cube_mask_per_chan[:, :, 0]
         elif len(cube_shape) == 4:
             nstokes = cube_shape[3]
-            nchan = cube_shape[2]
+            nchan = cube_shape[2] # It's okay if Stokes and Spectral axes are swapped.
             for istokes in range(nstokes):
                 for ichan in range(nchan):
                     blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL, STOKES]
                     trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    #logger.debug('get_mask blc {} trc {}'.format(blc, trc))
                     cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
-                    mask[:, :, ichan, istokes] = cube_mask_per_chan
+                    mask[:, :, ichan, istokes] = cube_mask_per_chan[:, :, 0, 0]
+        else:
+            raise Exception('Could not proceed with cube dimension ' + str(len(cube_shape)))
     
     myia.close()
     
@@ -189,18 +209,65 @@ def copy_mask(infile, outfile, huge_cube_workaround=True):
     assert np.all(mask.shape == out_shape) # input and output shape must be the same
     
     myia.open(outfile)
-    out_mask = myia.getchunk(getmask=True) # out_mask.shape = [X, Y, CHANNEL, [STOKES]]
-    if np.all(out_mask.shape == out_shape): # getchunk was successful, no memory issue
+    
+    no_memory_issue = True
+    out_mask = None
+    if np.prod(out_shape) >= 2880*2880*393: # known memory issue
+        no_memory_issue = False
+    if no_memory_issue: # try to see if there is a memory issue
+        # in which case the getchunk will return a flat array instead of the cube shape
+        out_mask = myia.getchunk(getmask=True) # out_mask.shape = [X, Y, CHANNEL, [STOKES]]
+        if not np.all(out_mask.shape == out_shape): # shape does not match, has memory issue
+            no_memory_issue = False
+    
+    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
+        no_memory_issue = True
+    
+    if no_memory_issue: # getchunk was successful, no memory issue
         myia.putregion(pixelmask=mask)
     else:
         # putregion channel by channel
+        logger.debug('putregion channel by channel for known memory issue')
         myrg = au.createCasaTool(casaStuff.rgtool)
         nx = out_shape[0]
         ny = out_shape[1]
-        nchan = out_shape[2]
-        for ichan in range(nchan):
-            r1 = myrg.box([0, 0, ichan], [nx-1, ny-1, ichan])
-            myia.putregion(pixelmask=np.take(mask, ichan, axis=2), region=r1)
+        #logger.debug('copy_mask mask.shape {}'.format(mask.shape))
+        if len(out_shape) == 2:
+            blc = [0, 0]
+            trc = [nx-1, ny-1]
+            r1 = myrg.box(blc, trc)
+            #logger.debug('copy_mask putregion blc {} trc {}'.format(blc, trc))
+            myia.putregion(pixelmask=mask, region=r1)
+        elif len(out_shape) == 3:
+            specaxis = 2
+            nchan = out_shape[specaxis]
+            blc = [0, 0, 0]
+            trc = [nx-1, ny-1, 0]
+            for ichan in range(nchan):
+                blc[specaxis] = ichan
+                trc[specaxis] = ichan
+                r1 = myrg.box(blc, trc)
+                #logger.debug('copy_mask putregion blc {} trc {}'.format(blc, trc))
+                myia.putregion(pixelmask=np.take(mask, ichan, axis=specaxis), region=r1)
+        elif len(out_shape) == 4:
+            mycs = myia.coordsys()
+            specaxis = mycs.axiscoordinatetypes().index('Spectral')
+            stokesaxis = mycs.axiscoordinatetypes().index('Stokes')
+            nchan = out_shape[specaxis]
+            nstokes = out_shape[stokesaxis]
+            blc = [0, 0, 0, 0]
+            trc = [nx-1, ny-1, 0, 0]
+            for istokes in range(nstokes):
+                for ichan in range(nchan):
+                    blc[specaxis] = ichan
+                    trc[specaxis] = ichan
+                    blc[stokesaxis] = istokes
+                    trc[stokesaxis] = istokes
+                    r1 = myrg.box(blc, trc)
+                    #logger.debug('copy_mask putregion blc {} trc {}'.format(blc, trc))
+                    myia.putregion(pixelmask=np.take(np.take(mask, blc[3], axis=3), blc[2], axis=2), region=r1)
+        else:
+            raise Exception('Could not proceed with cube dimension ' + str(len(out_shape)))
         myrg.done()
     myia.close()
 
@@ -241,39 +308,52 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     assert len(cube_shape) in [2, 3, 4]
     
     myia.open(infile)
-    vals = myia.getchunk() # vals.shape = [X, Y, CHANNEL, [STOKES]]
-    if np.all(vals.shape == cube_shape): # getchunk was successful, no memory issue
+    
+    no_memory_issue = True
+    vals = None
+    if np.prod(cube_shape) >= 2880*2880*393: # known memory issue
+        no_memory_issue = False
+    if no_memory_issue: # try to see if there is a memory issue
+        # in which case the getchunk will return a flat array instead of the cube shape
+        vals = myia.getchunk() # vals.shape = [X, Y, CHANNEL, [STOKES]]
+        if not np.all(vals.shape == cube_shape): # shape does not match, has memory issue
+            no_memory_issue = False
+    
+    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
+        no_memory_issue = True
+    
+    if no_memory_issue: # getchunk was successful, no memory issue
         vals *= value
         myia.putchunk(vals)
     else:
         # putchunk channel by channel
+        logger.debug('putchunk channel by channel for known memory issue')
         if len(cube_shape) == 2:
             blc = [0, 0] # [X, Y]
             trc = [-1, -1] # [X, Y]
-            inc = [cube_shape[0], cube_shape[1]] # [X, Y]
             vals = myia.getchunk(blc, trc)
             vals *= value
-            myia.putchunk(vals, blc, inc)
+            myia.putchunk(vals, blc)
         elif len(cube_shape) == 3:
             nchan = cube_shape[2]
             for ichan in range(nchan):
                 blc = [0, 0, ichan] # [X, Y, CHANNEL]
                 trc = [-1, -1, ichan] # [X, Y, CHANNEL]
-                inc = [cube_shape[0], cube_shape[1], 1] # [X, Y, CHANNEL]
                 vals = myia.getchunk(blc, trc)
                 vals *= value
-                myia.putchunk(vals, blc, inc)
+                myia.putchunk(vals, blc)
         elif len(cube_shape) == 4:
             nstokes = cube_shape[3]
-            nchan = cube_shape[2]
+            nchan = cube_shape[2] # It's okay if Stokes and Spectral axes are swapped.
             for istokes in range(nstokes):
                 for ichan in range(nchan):
                     blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL, STOKES]
                     trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL, STOKES]
-                    inc = [cube_shape[0], cube_shape[1], 1, 1] # [X, Y, CHANNEL, STOKES]
                     vals = myia.getchunk(blc, trc)
                     vals *= value
-                    myia.putchunk(vals, blc, inc)
+                    myia.putchunk(vals, blc)
+        else:
+            raise Exception('Could not proceed with cube dimension ' + str(len(cube_shape)))
     
     if brightness_unit is not None:
         myia.setbrightnessunit(brightness_unit)
