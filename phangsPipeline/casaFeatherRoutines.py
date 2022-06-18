@@ -27,6 +27,10 @@ from . import casaStuff
 # Other pipeline stuff
 from . import casaCubeRoutines as ccr
 
+# Logging
+#from .pipelineLogger import PipelineLogger
+#logger = PipelineLogger(__name__)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 

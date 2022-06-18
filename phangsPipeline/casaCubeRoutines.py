@@ -27,11 +27,11 @@ from .pipelineVersion import version as pipeVer
 from . import casaStuff
 
 # Logging
-from .pipelineLogger import PipelineLogger
-logger = PipelineLogger(__name__)
+#from .pipelineLogger import PipelineLogger
+#logger = PipelineLogger(__name__)
 
-#logger = logging.getLogger(__name__)
-#logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 #endregion
 
