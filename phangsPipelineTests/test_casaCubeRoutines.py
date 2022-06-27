@@ -142,6 +142,10 @@ class TestingCasaCubeRoutines(unittest.TestCase):
         self.import_test_image('test.fits', 'test3.image', overwrite=False)
         ccr.multiply_cube_by_value('test3.image', 5.0, 'Jy/beam')
         shutil.rmtree('test3.image')
+        
+    def tearDown(self):
+        if os.path.isfile('test.fits'):
+            os.remove('test.fits')
 
 
 class TestingCasaCubeRoutinesInCasa():

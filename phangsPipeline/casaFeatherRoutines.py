@@ -339,37 +339,69 @@ def feather_two_cubes(
         
         else:
             
-            assert len(interf_shape) >= 3
-            nchan = interf_shape[2]
-
-            for ichan in range(nchan):
-                
-                blc = [0, 0, ichan] # [X, Y, CHANNEL]
-                trc = [-1, -1, ichan] # [X, Y, CHANNEL]
-                myia.open(current_interf_file)
-                interf_data_per_chan = myia.getchunk(blc, trc)
-                interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
-                myia.close()
-                myia.open(current_sd_file)
-                sd_data_per_chan = myia.getchunk(blc, trc)
-                sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
-                myia.close()
-
-                combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
-
-                # CASA calls unmasked values True and masked values False. The
-                # region with values in both cubes is the product.
-                
-                boolean_mask_per_chan = (combined_mask_per_chan == False)
-                if np.any(boolean_mask_per_chan):
-                    interf_data_per_chan[boolean_mask_per_chan] = 0.0
-                    sd_data_per_chan[boolean_mask_per_chan] = 0.0
+            assert len(interf_shape) in [3, 4]
+            
+            if len(interf_shape) == 3:
+                nchan = interf_shape[2]
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                    trc = [-1, -1, ichan] # [X, Y, CHANNEL]
                     myia.open(current_interf_file)
-                    myia.putchunk(interf_data_per_chan, blc)
+                    interf_data_per_chan = myia.getchunk(blc, trc)
+                    interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
                     myia.close()
                     myia.open(current_sd_file)
-                    myia.putchunk(sd_data_per_chan, blc)
+                    sd_data_per_chan = myia.getchunk(blc, trc)
+                    sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
                     myia.close()
+
+                    combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
+
+                    # CASA calls unmasked values True and masked values False. The
+                    # region with values in both cubes is the product.
+                    
+                    boolean_mask_per_chan = (combined_mask_per_chan == False)
+                    if np.any(boolean_mask_per_chan):
+                        interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                        sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                        myia.open(current_interf_file)
+                        myia.putchunk(interf_data_per_chan, blc)
+                        myia.close()
+                        myia.open(current_sd_file)
+                        myia.putchunk(sd_data_per_chan, blc)
+                        myia.close()
+            
+            elif len(interf_shape) == 4:
+                nchan = interf_shape[2]
+                nstokes = interf_shape[3] # It's okay if Spectral and Stokes axes are swapped.
+                for istokes in range(nstokes):
+                    for ichan in range(nchan):
+                        blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL]
+                        trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL]
+                        myia.open(current_interf_file)
+                        interf_data_per_chan = myia.getchunk(blc, trc)
+                        interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                        myia.close()
+                        myia.open(current_sd_file)
+                        sd_data_per_chan = myia.getchunk(blc, trc)
+                        sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                        myia.close()
+
+                        combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
+
+                        # CASA calls unmasked values True and masked values False. The
+                        # region with values in both cubes is the product.
+                        
+                        boolean_mask_per_chan = (combined_mask_per_chan == False)
+                        if np.any(boolean_mask_per_chan):
+                            interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                            sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                            myia.open(current_interf_file)
+                            myia.putchunk(interf_data_per_chan, blc)
+                            myia.close()
+                            myia.open(current_sd_file)
+                            myia.putchunk(sd_data_per_chan, blc)
+                            myia.close()
 
     else:
         
