@@ -274,18 +274,27 @@ def split_science_targets(
             k, split_params[k]) for k in split_params.keys()) +
         ')')
 
-    casaStuff.split(**split_params)
+    # an MS can have a SPW label for data that is no longer contained in the MS
+    # (e.g., it was fully flagged, and keepflags=False was used in a previous split)
+    # This try/except should work for CASA 6 and newer versions with CASA's improved
+    # exception handling.
+    try:
+        casaStuff.split(**split_params)
+        flag_split_success = True
+    except RuntimeError as exc:
+        logger.error("Splitting failed with exception: {}".format(exc))
+        flag_split_success = False
 
     # Re-weight the data if desired.
-
-    if do_statwt:
-        logger.info("Using statwt to re-weight the data.")
-        statwt_params = {'vis': outfile, 'datacolumn': 'DATA'}
-        logger.info(
-            "... running CASA "+'statwt(' +
-            ', '.join("{!s}={!r}".format(
-                k, statwt_params[k]) for k in statwt_params.keys())+')')
-        casaStuff.statwt(**statwt_params)
+    # Only continue if the split was successful
+    if do_statwt and flag_split_success:
+            logger.info("Using statwt to re-weight the data.")
+            statwt_params = {'vis': outfile, 'datacolumn': 'DATA'}
+            logger.info(
+                "... running CASA "+'statwt(' +
+                ', '.join("{!s}={!r}".format(
+                    k, statwt_params[k]) for k in statwt_params.keys())+')')
+            casaStuff.statwt(**statwt_params)
 
     if os.path.isdir(outfile+'.touch'):
         # mark the end of our processing
