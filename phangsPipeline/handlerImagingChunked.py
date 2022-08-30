@@ -434,6 +434,80 @@ if casa_enabled:
                                 datacolumn=use_column)
 
 
+        def task_split_cube_to_chunks(self, imagename, overwrite=False, chunk_num=None,
+                                      specaxis_name="Frequency"):
+            '''
+            Split a given cube into the channel chunks.
+
+            Parameters
+            ----------
+            overwrite : bool
+                Overwrite an existing MS file for the chunk.
+            chunk_num : int, list or None
+                If None, will loop through all chunks. If a list or integer are given,
+                this will loop through only the specified chunk numbers defined in
+                `ImagingChunkedHandler.chunk_params`.
+            '''
+
+            chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
+
+            myia = au.createCasaTool(casaStuff.iatool)
+            myrg = au.createCasaTool(casaStuff.rgtool)
+
+            myia.open(imagename)
+
+            # Find the spectral axis
+            csys = myia.coordsys()
+            try:
+                spec_axis = np.where(np.asarray(csys.names()) == specaxis_name)[0][0]
+            except IndexError:
+                myia.close()
+
+                raise IndexError("Cannot find spectral axis" + specaxis_name + " in " +
+                                str(csys.names()))
+
+            # Check given number of channels
+            cube_shape = list(myia.shape())
+            ndims = len(cube_shape)
+
+            for ii, key in enumerate(chunks_iter):
+
+                chan_start, chan_stop = self.chunk_params[key]['channel_range']
+                chan_label = "{0}_{1}".format(chan_start, chan_stop)
+
+                logger.info("Splitting chunk number {0} for channels {1}~{2}".format(ii, chan_start,
+                                                                                    chan_stop))
+
+                this_chunk_imagename = "{0}_{1}".format(imagename, chan_label)
+
+                if os.path.exists(this_chunk_imagename):
+                    if overwrite:
+                        os.system("rm -rf {}".format(this_chunk_imagename))
+                    else:
+                        logger.info("Chunked vis for channels {} already exists. Skipping".format(key))
+                        continue
+
+                if verbose:
+                    print("On channel "+str(chan+1)+" of "+str(start+nchan))
+
+                lower_corner = [0] * ndims
+                upper_corner = copy(cube_shape)
+
+                # Set the channel
+                lower_corner[spec_axis] = chan_start
+                upper_corner[spec_axis] = chan_stop
+
+                box = myrg.box(lower_corner, upper_corner)
+
+                # Now make sliced image
+                im_slice = ia.subimage(this_chunk_imagename,
+                                       box)
+                im_slice.done()
+
+            myia.done()
+            myia.close()
+
+
         def task_initialize_clean_call(
                 self,
                 chunk_num,
