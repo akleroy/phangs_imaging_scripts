@@ -9,7 +9,7 @@ This code needs to be run inside CASA.
 
 from multiprocessing.sharedctypes import Value
 import os, sys, re, shutil
-from copy import deepcopy
+from copy import deepcopy, copy
 import glob
 import logging
 
@@ -500,8 +500,8 @@ if casa_enabled:
                 box = myrg.box(lower_corner, upper_corner)
 
                 # Now make sliced image
-                im_slice = ia.subimage(this_chunk_imagename,
-                                       box)
+                im_slice = myia.subimage(this_chunk_imagename,
+                                         box)
                 im_slice.done()
 
             myia.done()
