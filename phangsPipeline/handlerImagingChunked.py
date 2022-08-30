@@ -81,6 +81,13 @@ if casa_enabled:
             self.config = config
             self.product = product
 
+            # Enforce that chunked imaging be used for cubes only.
+            # Otherwise, there's no need for this approach:
+            is_line_product = self.product in self._kh.get_line_products()
+            if not is_line_product:
+                raise Exception("ImagingChunkedHandler is only implemented for creating data cubes."
+                                " Use the normal imaging approach for imaging continuum data.")
+
             # TODO: need the changeto call moved elsewhere
             self._this_imaging_dir = self._kh.get_imaging_dir_for_target(self.target, changeto=True)
 
@@ -498,6 +505,8 @@ if casa_enabled:
             #TODO: revisit once the rest of sdintimaging is patched back in
             if self.imaging_method == 'sdintimaging':
                 # Put in sdintimaging specific parameters to point at the SD image and PSF
+                raise NotImplementedError
+
                 image_name = clean_call.get_param('imagename')
                 clean_call.set_param('usedata', 'sdint')
 
@@ -803,6 +812,7 @@ if casa_enabled:
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("Resetting to " + tag + " imaging:")
                         logger.info(str(this_clean_call.get_param('imagename')))
+                        logger.info("This is chunk {0} out of {1}.".format(ii, len(chunks_iter)))
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("")
 
@@ -815,6 +825,14 @@ if casa_enabled:
 
                 # If it exists, try to revert the whole cube.
                 if revert_cube:
+                    if verbose:
+                        logger.info("")
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("Resetting to " + tag + " imaging:")
+                        logger.info(str(clean_call.get_param('imagename')))
+                        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                        logger.info("")
+
                     imr.copy_imaging(
                         input_root=clean_call.get_param('imagename') + '_' + tag,
                         output_root=clean_call.get_param('imagename'),
@@ -839,6 +857,8 @@ if casa_enabled:
 
             # TODO: check the import and align can be done efficiently per chunk
             # Otherwise, we need the ability to only do this operation once, then split
+
+            raise NotImplementedError
 
             if target is None:
                 logger.warning("Require a target. Returning.")
@@ -894,10 +914,11 @@ if casa_enabled:
         def task_multiscale_clean(
                 self,
                 chunk_num=None,
-                clean_call=None,
                 imaging_method='tclean',
                 convergence_fracflux=0.01,
                 backup=True,
+                gather_chunks_into_cube=False,
+                remove_chunks=False,
         ):
             """
             Run a multiscale clean loop to convergence. This task
@@ -908,72 +929,82 @@ if casa_enabled:
             image as {imagename}_multiscale.image
             """
 
-            chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
-
-            this_clean_call = self.task_initialize_clean_call(chunk_num, stage='multiscale')
-
-            if clean_call.get_param('deconvolver') not in ['multiscale', 'mtmfs']:
-                logger.warning("I expected a multiscale or mtmfs deconvolver but got " + str(
-                    clean_call.get_param('deconvolver')) + ".")
-                raise Exception("Incorrect clean call! Should have a multiscale or mtmfs deconvolver.")
-
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Running clean call to convergence for:")
-            logger.info(clean_call.get_param('imagename'))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-
             if self._dry_run:
                 return ()
             if not casa_enabled:
                 return ()
 
-            imr.clean_loop(clean_call=clean_call,
-                           imaging_method=imaging_method,
-                           record_file=clean_call.get_param('imagename') + '_multiscale_record.txt',
-                           niter_base_perchan=10,
-                           niter_growth_model='geometric',
-                           niter_growth_factor=2.0,
-                           niter_saturation_perchan=1000,
-                           niter_other_input=None,
-                           cycleniter_base=100,
-                           cycleniter_growth_model='linear',
-                           cycleniter_growth_factor=1.0,
-                           cycleniter_saturation_value=1000,
-                           cycleniter_other_input=None,
-                           threshold_type='snr',
-                           threshold_value=4.0,
-                           min_loops=3,
-                           max_loops=20,
-                           max_total_niter=None,
-                           convergence_fracflux=convergence_fracflux,
-                           convergence_totalflux=None,
-                           convergence_fluxperniter=None,
-                           use_absolute_delta=True,
-                           stop_at_negative=True,
-                           remask_each_loop=False,
-                           force_dirty_image=False,
-                           )
-            # log_ext='multiscale',
-            if backup:
-                imr.copy_imaging(
-                    input_root=clean_call.get_param('imagename'),
-                    output_root=clean_call.get_param('imagename') + '_multiscale',
-                    imaging_method=imaging_method,
-                    wipe_first=True)
+            chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            return ()
+            for ii, chunk_num in enumerate(chunks_iter):
+
+                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+
+                # Make the chunk clean call:
+                this_clean_call = self.task_initialize_clean_call(chunk_num, stage='multiscale')
+
+                if this_clean_call.get_param('deconvolver') not in ['multiscale', 'mtmfs']:
+                    logger.warning("I expected a multiscale or mtmfs deconvolver but got " + str(
+                        this_clean_call.get_param('deconvolver')) + ".")
+                    raise Exception("Incorrect clean call! Should have a multiscale or mtmfs deconvolver.")
+
+                logger.info("")
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("Running clean call to convergence for:")
+                logger.info(this_clean_call.get_param('imagename'))
+                logger.info("This is {0} out of {1} to be imaged".format(ii, len(chunks_iter)))
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("")
+
+                imr.clean_loop(clean_call=this_clean_call,
+                            imaging_method=imaging_method,
+                            record_file=this_clean_call.get_param('imagename') + '_multiscale_record.txt',
+                            niter_base_perchan=10,
+                            niter_growth_model='geometric',
+                            niter_growth_factor=2.0,
+                            niter_saturation_perchan=1000,
+                            niter_other_input=None,
+                            cycleniter_base=100,
+                            cycleniter_growth_model='linear',
+                            cycleniter_growth_factor=1.0,
+                            cycleniter_saturation_value=1000,
+                            cycleniter_other_input=None,
+                            threshold_type='snr',
+                            threshold_value=4.0,
+                            min_loops=3,
+                            max_loops=20,
+                            max_total_niter=None,
+                            convergence_fracflux=convergence_fracflux,
+                            convergence_totalflux=None,
+                            convergence_fluxperniter=None,
+                            use_absolute_delta=True,
+                            stop_at_negative=True,
+                            remask_each_loop=False,
+                            force_dirty_image=False,
+                            )
+
+                if backup:
+                    imr.copy_imaging(
+                        input_root=this_clean_call.get_param('imagename'),
+                        output_root=this_clean_call.get_param('imagename') + '_multiscale',
+                        imaging_method=imaging_method,
+                        wipe_first=True)
+
+            if gather_chunks_into_cube:
+                self.task_gather_into_cube(root_name='multiscale',
+                                           remove_chunks=remove_chunks)
+
+
 
         @CleanCallFunctionDecorator
         def task_singlescale_mask(
                 self,
-                clean_call=None,
-                product=None,
+                chunk_num=None,
                 imaging_method='tclean',
                 high_snr=None,
                 low_snr=None,
                 absolute=False,
+                force_mask_by_cube=True,
         ):
             """
             Create a signal-to-noise based mask within the existing clean
@@ -985,21 +1016,10 @@ if casa_enabled:
             If low_snr is None, will default to 2.0 (line imaging), or 1.0 (continuum imaging)
             """
 
-            if product is None:
-                logger.error("Require a product. Returning.")
-                raise Exception("Require a product. Returning.")
-                return ()
-
-            # Get fname dict
-            fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'),
-                                          imaging_method=imaging_method)
-
             # get imagename
 
-            imagename = fname_dict['image']
-            if not os.path.isdir(imagename):
-                logger.error("Image not found: " + imagename)
-                return ()
+            imagename = self._fname_dict(self.image_root,
+                                         imaging_method=self.imaging_method)['image']
 
             # print message
             logger.info("")
@@ -1014,21 +1034,29 @@ if casa_enabled:
             if not casa_enabled:
                 return()
 
-            # check if line product
-            is_line_product = product in self._kh.get_line_products()
-
+            # NOTE: we've removed the non-line defaults here as this approach should only be used for
+            # line imaging.
             if high_snr is None:
-                if is_line_product:
-                    high_snr = 4.0
-                else:
-                    high_snr = 2.5
+                high_snr = 4.0
             if low_snr is None:
-                if is_line_product:
-                    low_snr = 2.0
-                else:
-                    low_snr = 1.0
+                low_snr = 2.0
 
-            if is_line_product:
+            # Split here to force gather and mask using the whole cube vs. mask by individual channels:
+            if force_mask_by_cube:
+
+                raise NotImplementedError("Needs a routine to split the mask cube back into channels.")
+
+                if not os.path.isdir(imagename):
+                    logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                    logger.info("Creating the full line cube for signal masking.")
+                    logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                    self.task_gather_into_cube(root_name='',
+                                                remove_chunks=False)
+
+                    if not os.path.isdir(imagename):
+                        logger.error("Image not found: " + imagename)
+                        logger.error("Cube construction failed. Check that all chunks have been imaged")
+                        return ()
 
                 # signal_mask
                 msr.signal_mask(imaging_method=imaging_method,
@@ -1041,29 +1069,40 @@ if casa_enabled:
                                 low_snr=low_snr,
                                 absolute=absolute)
 
+                # TODO: add a channel splitting routine given a cube name
+
             else:
 
-                # for continuum product, we need to make 2D mask
-                # and note that the mask has a suffix .mask.tt0
+                # This path masks per channel:
 
-                # here we also use a lower high_snr and low_snr
-                # for continuum cleaning
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("Applying signal masking on individual channels, not the whole cube.")
+                logger.info("Enable `force_mask_by_cube` to enable signal masking on the whole cube.")
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
 
-                # signal_mask
-                msr.signal_mask(imaging_method=imaging_method,
-                                cube_root=fname_dict['root'],
-                                out_file=fname_dict['mask'],
-                                suffix_in=fname_dict['suffix'],
-                                suffix_out='',
-                                operation='AND',
-                                high_snr=high_snr,
-                                low_snr=low_snr,
-                                absolute=absolute,
-                                do_roll=False)
+                chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            clean_call.set_param('usemask', 'user')
+                for ii, chunk_num in enumerate(chunks_iter):
 
-            return ()
+                    logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                    logger.info("Signal masking chunk {0} of {1}".format(ii, len(chunks_iter)))
+                    logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+
+                    image_root = self.chunk_params[chunk_num]['full_imagename']
+                    mask_name = "{}.mask".format(self.chunk_params[chunk_num]['full_imagename'])
+
+                    # signal_mask
+                    msr.signal_mask(imaging_method=imaging_method,
+                                    cube_root=image_root,
+                                    out_file=mask_name,
+                                    suffix_in='',
+                                    suffix_out='',
+                                    operation='AND',
+                                    high_snr=high_snr,
+                                    low_snr=low_snr,
+                                    absolute=absolute,
+                                    do_roll=False)
+
 
         @CleanCallFunctionDecorator
         def task_singlescale_clean(
@@ -1094,6 +1133,10 @@ if casa_enabled:
             logger.info(clean_call.get_param('imagename'))
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
             logger.info("")
+
+            # Moved this from single scale masking.
+            # Add in before the single scale clean loop:
+            clean_call.set_param('usemask', 'user')
 
             if self._dry_run:
                 return ()
