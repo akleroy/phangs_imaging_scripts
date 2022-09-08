@@ -231,7 +231,7 @@ def feather_two_cubes(
 
     # Check inputs
 
-    if (os.path.isdir(sd_file) == False):
+    if (os.path.isdir(sd_file) == False) and (os.path.isfile(sd_file) == False):
         logger.error("Single dish file not found: "+sd_file)
         return(False)
 
@@ -287,29 +287,26 @@ def feather_two_cubes(
         sd_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
 
-        assert np.all(interf_shape == sd_shape)
+        if not np.all(interf_shape == sd_shape):
+            print('interf_shape', interf_shape)
+            print('sd_shape', sd_shape)
+            raise Exception('Error! The interf_file '+interf_file+
+                ' and sd_file '+sd_file+
+                ' have different dimensions! Cannot run feather_two_cubes!')
         
-        no_memory_issue = True
+        has_memory_issue = False
         interf_mask = None
         sd_mask = None
-        if np.prod(interf_shape) >= 2880*2880*393: # known memory issue
-            no_memory_issue = False
-        if no_memory_issue: # try to see if there is a memory issue for reading 'interf_file'
-            # in which case the getchunk will return a flat array instead of the cube shape
-            myia.open(interf_file)
-            interf_mask = myia.getchunk(getmask=True)
-            myia.close()
-            if not np.all(interf_mask.shape == interf_shape): # shape does not match, has memory issue
-                no_memory_issue = False
-        if no_memory_issue: # try to see if there is a memory issue for reading 'sd_file'
-            # in which case the getchunk will return a flat array instead of the cube shape
-            myia.open(sd_file)
-            sd_mask = myia.getchunk(getmask=True)
-            myia.close()
-            if not np.all(sd_mask.shape == sd_shape): # shape does not match, has memory issue
-                no_memory_issue = False
         
-        if no_memory_issue:
+        if not has_memory_issue:
+            has_memory_issue, interf_mask = ccr.check_getchunk_putchunk_memory_issue(
+                interf_file, myia=None, return_mask=True)
+        
+        if not has_memory_issue:
+            has_memory_issue, sd_mask = ccr.check_getchunk_putchunk_memory_issue(
+                sd_file, myia=None, return_mask=True)
+        
+        if not has_memory_issue:
             
             # If there is no getchunk/putchunk memory issue, directly proceed to combine the masks. 
             

@@ -35,6 +35,94 @@ logger.setLevel(logging.DEBUG)
 
 #endregion
 
+#region Check getchunk putchunk memory issue
+
+def check_getchunk_putchunk_memory_issue(
+    infile, 
+    myia=None,
+    return_myia=False,
+    return_data=False,
+    return_mask=False,
+    return_shape=False,
+    huge_cube_workaround=True,
+    ):
+    """
+    Check whether the input data cube is too large to run getchunk/putchunk globally. 
+    If so, we will need to run getchunk/putchunk channel-by-channel. 
+    
+    We will first check the cube size. If it is obviously too large, then we will directly
+    mark this case as having a memory issue. Otherwise we will try to run `getchunk` and/or 
+    `getchunk(getmask=True)` to see whether it returns a cube data array. In the case of 
+    having a memory issue, `getchunk` will return a flattend array whose shape is different
+    from the input data cube.
+    
+    This memory issue is also noted in https://casa.nrao.edu/docs/casaref/image.putchunk.html 
+    as: "If all the pixels didn’t easily fit in memory, you would iterate through the image 
+    chunk by chunk to avoid exhausting virtual memory."
+    
+    Args:
+        infile: input image file.
+        myia: optional, if not given then we will run `myia = au.createCasaTool(casaStuff.iatool)` then `myia.open(infile)`.
+        return_data: if True then we will return the data if `getchunk()` runs properly withut a memory issue.
+        return_mask: if True then we will return the mask if `getchunk(getmask=True)` runs properly withut a memory issue.
+        return_shape: if True then we will return the shape of the cube data.
+        huge_cube_workaround: historical arg for compatibility. Setting it to False will disable per-channel processing and may cause error.
+    
+    Returns:
+        Tuple of 1-5 variables: 
+            check_no_memory_issue (boolean), 
+            myia object (if return_myia is True),
+            data array (if return_data is True),
+            mask array (if return_mask is True),
+            shape list (if return_shape is True)
+    """
+    has_memory_issue = False
+    cube_data = None
+    cube_mask = None
+    has_opened_file = False
+    if myia is None:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(infile)
+        has_opened_file = True
+    if not myia.isopen():
+        myia.open(infile)
+        has_opened_file = True
+    cube_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
+    if np.prod(cube_shape) >= 2880*2880*393: # known memory issue
+        has_memory_issue = True
+    if not has_memory_issue: # try to see if there is a memory issue
+        # in which case the getchunk will return a flat array instead of the cube shape
+        if return_data or not return_mask:
+            cube_data = myia.getchunk() # data.shape = [X, Y, CHANNEL, [STOKES]]
+            check_shape = cube_data.shape
+        if return_mask:
+            cube_mask = myia.getchunk(getmask=True) # mask.shape = [X, Y, CHANNEL, [STOKES]]
+            check_shape = cube_mask.shape
+        if not np.all(check_shape == cube_shape): # shape does not match, has memory issue
+            has_memory_issue = True
+            cube_data = None
+            cube_mask = None
+    
+    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
+        has_memory_issue = False
+    
+    #has_memory_issue = True #<DEBUG><DZLIU># uncomment this to always apply per-channel getchunk/putchunk
+    
+    list_to_return = [has_memory_issue]
+    if return_myia:
+        list_to_return.append(myia)
+    elif has_opened_file:
+        myia.close()
+    if return_data:
+        list_to_return.append(cube_data)
+    if return_mask:
+        list_to_return.append(cube_mask)
+    if return_shape:
+        list_to_return.append(cube_shape)
+    return tuple(list_to_return)
+
+#endregion
+
 #region Copying, scaling, etc.
 
 def copy_dropdeg(
@@ -119,29 +207,12 @@ def get_mask(infile, huge_cube_workaround=True):
     myia = au.createCasaTool(casaStuff.iatool)
     
     myia.open(infile)
-    cube_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
-    myia.close()
     
-    assert len(cube_shape) in [2, 3, 4]
+    has_memory_issue, mask = check_getchunk_putchunk_memory_issue(
+        infile, myia=myia, return_mask=True, 
+        huge_cube_workaround=huge_cube_workaround)
     
-    myia.open(infile)
-    
-    no_memory_issue = True
-    cube_mask = None
-    if np.prod(cube_shape) >= 2880*2880*393: # known memory issue
-        no_memory_issue = False
-    if no_memory_issue: # try to see if there is a memory issue
-        # in which case the getchunk will return a flat array instead of the cube shape
-        cube_mask = myia.getchunk(getmask=True) # cube_mask.shape = [X, Y, CHANNEL, [STOKES]]
-        if not np.all(cube_mask.shape == cube_shape): # shape does not match, has memory issue
-            no_memory_issue = False
-    
-    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
-        no_memory_issue = True
-    
-    if no_memory_issue: # getchunk was successful, no memory issue
-        mask = cube_mask
-    else:
+    if has_memory_issue: # getchunk was unsuccessful, has memory issue
         # putchunk channel by channel
         logger.debug('getchunk channel by channel for known memory issue')
         mask = np.full(cube_shape, fill_value=False)
@@ -203,29 +274,21 @@ def copy_mask(infile, outfile, huge_cube_workaround=True):
     myia = au.createCasaTool(casaStuff.iatool)
     
     myia.open(outfile)
+    
     out_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
-    myia.close()
     
-    assert np.all(mask.shape == out_shape) # input and output shape must be the same
+    # input and output shape must be the same
+    if not np.all(mask.shape == out_shape):
+        myia.close()
+        raise Exception('Error! The infile and outfile have different dimensions! Cannot copy mask.')
     
-    myia.open(outfile)
+    has_memory_issue = check_getchunk_putchunk_memory_issue(
+        outfile, myia=myia, 
+        huge_cube_workaround=huge_cube_workaround)
     
-    no_memory_issue = True
-    out_mask = None
-    if np.prod(out_shape) >= 2880*2880*393: # known memory issue
-        no_memory_issue = False
-    if no_memory_issue: # try to see if there is a memory issue
-        # in which case the getchunk will return a flat array instead of the cube shape
-        out_mask = myia.getchunk(getmask=True) # out_mask.shape = [X, Y, CHANNEL, [STOKES]]
-        if not np.all(out_mask.shape == out_shape): # shape does not match, has memory issue
-            no_memory_issue = False
-    
-    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
-        no_memory_issue = True
-    
-    if no_memory_issue: # getchunk was successful, no memory issue
+    if not has_memory_issue: # getchunk was successful, no memory issue
         myia.putregion(pixelmask=mask)
-    else:
+    else: # getchunk was unsuccessful, has memory issue
         # putregion channel by channel
         logger.debug('putregion channel by channel for known memory issue')
         myrg = au.createCasaTool(casaStuff.rgtool)
@@ -301,31 +364,16 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     
     myia = au.createCasaTool(casaStuff.iatool)
     
-    myia.open(infile)
-    cube_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
-    myia.close()
+    myia.open(outfile)
     
-    assert len(cube_shape) in [2, 3, 4]
+    has_memory_issue, vals = check_getchunk_putchunk_memory_issue(
+        outfile, myia=myia, return_data=True, 
+        huge_cube_workaround=huge_cube_workaround)
     
-    myia.open(infile)
-    
-    no_memory_issue = True
-    vals = None
-    if np.prod(cube_shape) >= 2880*2880*393: # known memory issue
-        no_memory_issue = False
-    if no_memory_issue: # try to see if there is a memory issue
-        # in which case the getchunk will return a flat array instead of the cube shape
-        vals = myia.getchunk() # vals.shape = [X, Y, CHANNEL, [STOKES]]
-        if not np.all(vals.shape == cube_shape): # shape does not match, has memory issue
-            no_memory_issue = False
-    
-    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
-        no_memory_issue = True
-    
-    if no_memory_issue: # getchunk was successful, no memory issue
+    if not has_memory_issue: # getchunk was successful, no memory issue
         vals *= value
         myia.putchunk(vals)
-    else:
+    else: # getchunk was unsuccessful, has memory issue
         # putchunk channel by channel
         logger.debug('putchunk channel by channel for known memory issue')
         if len(cube_shape) == 2:
