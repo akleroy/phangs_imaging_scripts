@@ -43,7 +43,7 @@ class TestingHandlerVis(unittest.TestCase):
     
     def setup_necessary_directories(self):
         for this_dir in ['uvdata', 'singledish']: 
-            assert os.path.isdir(self.test_data_dir+os.sep+this_dir)
+            assert os.path.isdir(self.test_data_dir+os.sep+this_dir), 'Testing data not found: '+self.test_data_dir+os.sep+this_dir
         for this_dir in ['cleanmasks', 'reduction']: 
             if not os.path.isdir(self.test_data_dir+os.sep+this_dir):
                 os.makedirs(self.test_data_dir+os.sep+this_dir)
@@ -64,9 +64,9 @@ class TestingHandlerVis(unittest.TestCase):
         
     def tearDown(self):
         os.chdir(self.current_dir)
-        for this_dir in ['cleanmasks', 'reduction']: 
-            if os.path.isdir(self.test_data_dir+os.sep+this_dir):
-                shutil.rmtree(self.test_data_dir+os.sep+this_dir)
+        #for this_dir in ['cleanmasks', 'reduction']: 
+        #    if os.path.isdir(self.test_data_dir+os.sep+this_dir):
+        #        shutil.rmtree(self.test_data_dir+os.sep+this_dir)
 
 
 

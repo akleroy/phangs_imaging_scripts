@@ -44,30 +44,30 @@ class TestingHandlerImaging(unittest.TestCase):
     
     def setup_necessary_directories(self):
         for this_dir in ['uvdata', 'singledish']: 
-            assert os.path.isdir(self.test_data_dir+os.sep+this_dir)
+            assert os.path.isdir(self.test_data_dir+os.sep+this_dir), 'Testing data not found: '+self.test_data_dir+os.sep+this_dir
         for this_dir in ['cleanmasks', 'reduction']: 
             if not os.path.isdir(self.test_data_dir+os.sep+this_dir):
                 os.makedirs(self.test_data_dir+os.sep+this_dir)
     
-    def test_task_initialize_clean_call(self):
-        import phangsPipeline
-        from phangsPipeline import handlerKeys as kh
-        from phangsPipeline import handlerImaging as imh
-        os.chdir(self.working_dir)
-        self.setup_necessary_directories()
-        this_kh = kh.KeyHandler(master_key=self.test_keys_dir+os.sep+'master_key.txt')
-        this_imh = imh.ImagingHandler(key_handler=this_kh)
-        os.chdir(os.path.join(self.test_data_dir, 'reduction', 'imaging', 'ngc4321'))
-        clean_call = this_imh.task_initialize_clean_call(
-            target='ngc4321', config='7m', product='co10',
-            )
-        #print('clean_call', clean_call)
-        cell, imsize = this_imh.task_pick_cell_and_imsize(
-            clean_call=clean_call,
-            check_overrides=True,
-            target='ngc4321', config='7m', product='co10',
-            )
-        os.chdir(self.current_dir)
+    # def test_task_initialize_clean_call(self):
+    #     import phangsPipeline
+    #     from phangsPipeline import handlerKeys as kh
+    #     from phangsPipeline import handlerImaging as imh
+    #     os.chdir(self.working_dir)
+    #     self.setup_necessary_directories()
+    #     this_kh = kh.KeyHandler(master_key=self.test_keys_dir+os.sep+'master_key.txt')
+    #     this_imh = imh.ImagingHandler(key_handler=this_kh)
+    #     os.chdir(os.path.join(self.test_data_dir, 'reduction', 'imaging', 'ngc4321'))
+    #     clean_call = this_imh.task_initialize_clean_call(
+    #         target='ngc4321', config='7m', product='co10',
+    #         )
+    #     #print('clean_call', clean_call)
+    #     cell, imsize = this_imh.task_pick_cell_and_imsize(
+    #         clean_call=clean_call,
+    #         check_overrides=True,
+    #         target='ngc4321', config='7m', product='co10',
+    #         )
+    #     os.chdir(self.current_dir)
     
     def test_loop_imaging(self):
         import phangsPipeline
@@ -84,9 +84,9 @@ class TestingHandlerImaging(unittest.TestCase):
     
     def tearDown(self):
         os.chdir(self.current_dir)
-        for this_dir in ['cleanmasks', 'reduction']: 
-            if os.path.isdir(self.test_data_dir+os.sep+this_dir):
-                shutil.rmtree(self.test_data_dir+os.sep+this_dir)
+        #for this_dir in ['cleanmasks', 'reduction']: 
+        #    if os.path.isdir(self.test_data_dir+os.sep+this_dir):
+        #        shutil.rmtree(self.test_data_dir+os.sep+this_dir)
 
 
 
