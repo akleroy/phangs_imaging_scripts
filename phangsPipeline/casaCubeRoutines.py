@@ -57,7 +57,7 @@ def check_getchunk_putchunk_memory_issue(
     from the input data cube.
     
     This memory issue is also noted in https://casa.nrao.edu/docs/casaref/image.putchunk.html 
-    as: "If all the pixels didn’t easily fit in memory, you would iterate through the image 
+    as: "If all the pixels didn't easily fit in memory, you would iterate through the image 
     chunk by chunk to avoid exhausting virtual memory."
     
     Args:
