@@ -17,30 +17,35 @@ import unittest
 class TestingPipelineLogger(unittest.TestCase):
     """docstring for TestingPipelineLogger"""
     
-    def set_sys_path(self):
-        if '__file__' in globals():
-            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if script_dir not in sys.path:
-                sys.path.insert(1, script_dir)
-        #print('sys.path', sys.path)
+    def __init__(self, *args, **kwargs):
+        super(TestingPipelineLogger, self).__init__(*args, **kwargs)
+        import phangsPipeline
+        self.current_dir = os.getcwd()
+        self.module_dir = os.path.dirname(os.path.abspath(phangsPipeline.__path__[0]))
+        self.working_dir = os.path.join(self.module_dir, 'phangsPipelineTests')
+        self.test_data_dir = os.path.join(self.working_dir, 'test_data')
+        self.test_log_file = os.path.join(self.working_dir, 'test_log_file.txt')
     
     def test_logfile(self):
-        self.set_sys_path()
         from phangsPipeline.pipelineLogger import PipelineLogger
-        with PipelineLogger('TestingPipelineLogger', level='DEBUG', logfile='logfile.txt') as logger:
+        with PipelineLogger('TestingPipelineLogger', level='DEBUG', logfile=self.test_log_file) as logger:
             logger.info('testing info to logfile')
             logger.warning('testing warning to logfile')
             logger.debug('testing debug to logfile')
             logger.error('testing error to logfile')
     
     def test_all(self):
-        self.set_sys_path()
         from phangsPipeline.pipelineLogger import PipelineLogger
         with PipelineLogger('TestingPipelineLogger', level='DEBUG') as logger:
             logger.info('testing info')
             logger.warning('testing warning')
             logger.debug('testing debug')
             logger.error('testing error')
+        
+    def tearDown(self):
+        if os.path.isfile(self.test_log_file):
+            os.remove(self.test_log_file)
+
 
 
 class TestingPipelineLoggerInCasa():
@@ -50,19 +55,11 @@ class TestingPipelineLoggerInCasa():
         pass
     
     def suite(self=None):
-        #modules = (
-        #    'TestingPipelineLogger',
-        #)
         testsuite = unittest.TestSuite()
-        #for module in map(__import__, modules):
-        #    testsuite.addTest(unittest.findTestCases(module))
         testsuite.addTest(unittest.makeSuite(TestingPipelineLogger))
         return testsuite
     
     def run(self):
-        #del sys.modules['phangsPipelineTests']
-        #del sys.modules['phangsPipelineTests.test_pipelineLogger']
-        #import phangsPipelineTests; phangsPipelineTests.TestingPipelineLoggerInCasa().run() 
         unittest.main(defaultTest='phangsPipelineTests.TestingPipelineLoggerInCasa.suite', exit=False)
 
 

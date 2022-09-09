@@ -27,23 +27,20 @@ class TestingCasaCubeRoutines(unittest.TestCase):
     
     def __init__(self, *args, **kwargs):
         super(TestingCasaCubeRoutines, self).__init__(*args, **kwargs)
+        import phangsPipeline
+        self.current_dir = os.getcwd()
+        self.module_dir = os.path.dirname(os.path.abspath(phangsPipeline.__path__[0]))
+        self.working_dir = os.path.join(self.module_dir, 'phangsPipelineTests')
+        self.test_data_dir = os.path.join(self.working_dir, 'test_data')
+        self.test_keys_dir = os.path.join(self.working_dir, 'test_keys')
         for filename in ['test.fits', 'test.image', 'test2.image', 'test3.image']:
-            if os.path.isfile(filename):
-                os.remove(filename)
-            elif os.path.isdir(filename):
-                shutil.rmtree(filename)
+            filepath = os.path.join(self.test_data_dir, filename)
+            if os.path.isfile(filepath):
+                os.remove(filepath)
+            elif os.path.isdir(filepath):
+                shutil.rmtree(filepath)
     
-    def set_sys_path(self):
-        if '__file__' in globals():
-            script_dir = os.path.dirname(os.path.abspath(__file__))+os.sep+'analysis_scripts'
-            if script_dir not in sys.path:
-                sys.path.insert(1, script_dir)
-            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if script_dir not in sys.path:
-                sys.path.insert(1, script_dir)
-        #print('sys.path', sys.path)
-    
-    def make_test_image(self, filename = 'test.fits', nx = 3000, ny = 3000, nchan = 393, nstokes = None, radius = 800.0, overwrite = True):
+    def make_test_image(self, filename, nx = 3000, ny = 3000, nchan = 393, nstokes = None, radius = 800.0, overwrite = True):
         import numpy as np
         try:
             from astropy.io import fits
@@ -124,36 +121,39 @@ class TestingCasaCubeRoutines(unittest.TestCase):
         self.assertTrue(os.path.isdir(outname))
     
     def test_get_mask(self):
-        self.set_sys_path()
         from phangsPipeline import casaCubeRoutines as ccr
-        self.make_test_image('test.fits', overwrite=False)
-        self.import_test_image('test.fits', 'test.image', overwrite=False)
-        self.assertTrue(os.path.isdir('test.image'))
-        ccr.get_mask('test.image')
-        shutil.rmtree('test.image')
+        self.make_test_image(self.test_data_dir+os.sep+'test.fits', overwrite=False)
+        self.import_test_image(self.test_data_dir+os.sep+'test.fits', 
+                               self.test_data_dir+os.sep+'test.image', overwrite=False)
+        self.assertTrue(os.path.isdir(self.test_data_dir+os.sep+'test.image'))
+        ccr.get_mask(self.test_data_dir+os.sep+'test.image')
+        shutil.rmtree(self.test_data_dir+os.sep+'test.image')
     
     def test_copy_mask(self):
-        self.set_sys_path()
         from phangsPipeline import casaCubeRoutines as ccr
-        self.make_test_image('test.fits', overwrite=False)
-        self.import_test_image('test.fits', 'test.image', overwrite=False)
-        self.import_test_image('test.fits', 'test2.image', overwrite=False)
-        ccr.copy_mask('test.image', 'test2.image')
-        shutil.rmtree('test.image')
-        shutil.rmtree('test2.image')
+        self.make_test_image(self.test_data_dir+os.sep+'test.fits', overwrite=False)
+        self.import_test_image(self.test_data_dir+os.sep+'test.fits', 
+                               self.test_data_dir+os.sep+'test.image', overwrite=False)
+        self.import_test_image(self.test_data_dir+os.sep+'test.fits', 
+                               self.test_data_dir+os.sep+'test2.image', overwrite=False)
+        ccr.copy_mask(self.test_data_dir+os.sep+'test.image', 
+                      self.test_data_dir+os.sep+'test2.image')
+        shutil.rmtree(self.test_data_dir+os.sep+'test.image')
+        shutil.rmtree(self.test_data_dir+os.sep+'test2.image')
     
     def test_multiply_cube_by_value(self):
-        self.set_sys_path()
         from phangsPipeline import casaStuff
         from phangsPipeline import casaCubeRoutines as ccr
-        self.make_test_image('test.fits', overwrite=False)
-        self.import_test_image('test.fits', 'test3.image', overwrite=False)
-        ccr.multiply_cube_by_value('test3.image', 5.0, 'Jy/beam')
-        shutil.rmtree('test3.image')
+        self.make_test_image(self.test_data_dir+os.sep+'test.fits', overwrite=False)
+        self.import_test_image(self.test_data_dir+os.sep+'test.fits', 
+                               self.test_data_dir+os.sep+'test3.image', overwrite=False)
+        ccr.multiply_cube_by_value(self.test_data_dir+os.sep+'test3.image', 
+                                   5.0, 'Jy/beam')
+        shutil.rmtree(self.test_data_dir+os.sep+'test3.image')
         
     def tearDown(self):
-        if os.path.isfile('test.fits'):
-            os.remove('test.fits')
+        if os.path.isfile(self.test_data_dir+os.sep+'test.fits'):
+            os.remove(self.test_data_dir+os.sep+'test.fits')
 
 
 
@@ -164,19 +164,11 @@ class TestingCasaCubeRoutinesInCasa():
         pass
     
     def suite(self=None):
-        #modules = (
-        #    'TestingCasaCubeRoutines',
-        #)
         testsuite = unittest.TestSuite()
-        #for module in map(__import__, modules):
-        #    testsuite.addTest(unittest.findTestCases(module))
         testsuite.addTest(unittest.makeSuite(TestingCasaCubeRoutines))
         return testsuite
     
     def run(self):
-        #del sys.modules['phangsPipelineTests']
-        #del sys.modules['phangsPipelineTests.test_casaCubeRoutines']
-        #import phangsPipelineTests; phangsPipelineTests.TestingCasaCubeRoutinesInCasa().run() 
         unittest.main(defaultTest='phangsPipelineTests.TestingCasaCubeRoutinesInCasa.suite', exit=False)
 
 
