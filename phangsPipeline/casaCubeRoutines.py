@@ -215,7 +215,7 @@ def get_mask(infile, huge_cube_workaround=True):
     if has_memory_issue: # getchunk was unsuccessful, has memory issue
         # putchunk channel by channel
         logger.debug('getchunk channel by channel for known memory issue')
-        mask = np.full(cube_shape, fill_value=False)
+        mask = np.full(cube_shape, fill_value=False, dtype=bool)
         if len(cube_shape) == 2:
             blc = [0, 0] # [X, Y]
             trc = [-1, -1] # [X, Y]
