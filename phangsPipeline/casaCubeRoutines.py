@@ -208,8 +208,8 @@ def get_mask(infile, huge_cube_workaround=True):
     
     myia.open(infile)
     
-    has_memory_issue, mask = check_getchunk_putchunk_memory_issue(
-        infile, myia=myia, return_mask=True, 
+    has_memory_issue, mask, cube_shape = check_getchunk_putchunk_memory_issue(
+        infile, myia=myia, return_mask=True, return_shape=True, 
         huge_cube_workaround=huge_cube_workaround)
     
     if has_memory_issue: # getchunk was unsuccessful, has memory issue
@@ -366,8 +366,8 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     
     myia.open(infile)
     
-    has_memory_issue, vals = check_getchunk_putchunk_memory_issue(
-        infile, myia=myia, return_data=True, 
+    has_memory_issue, vals, cube_shape = check_getchunk_putchunk_memory_issue(
+        infile, myia=myia, return_data=True, return_shape=True, 
         huge_cube_workaround=huge_cube_workaround)
     
     if not has_memory_issue: # getchunk was successful, no memory issue
