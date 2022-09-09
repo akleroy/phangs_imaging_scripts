@@ -364,10 +364,10 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     
     myia = au.createCasaTool(casaStuff.iatool)
     
-    myia.open(outfile)
+    myia.open(infile)
     
     has_memory_issue, vals = check_getchunk_putchunk_memory_issue(
-        outfile, myia=myia, return_data=True, 
+        infile, myia=myia, return_data=True, 
         huge_cube_workaround=huge_cube_workaround)
     
     if not has_memory_issue: # getchunk was successful, no memory issue
