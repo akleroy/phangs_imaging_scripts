@@ -152,6 +152,20 @@ class KeyHandler:
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
+    
+    def _parse_path(self, input_path):
+        """
+        Parse relative path.
+        """
+        if input_path.startswith('/') or input_path.startswith(os.sep):
+            output_path = input_path
+        elif input_path.startswith('~') or input_path.startswith('$'):
+            output_path = os.path.expanduser(input_path)
+        else:
+            output_path = os.path.abspath(input_path)
+        if not (output_path.endswith('/') or output_path.endswith(os.sep)):
+            output_path += '/'
+        return output_path
 
     ##############################################################
     # READ THE MASTER KEY
@@ -222,7 +236,7 @@ class KeyHandler:
             this_value = words[1]
 
             if this_key == 'imaging_root':
-                self._imaging_root = this_value
+                self._imaging_root = self._parse_path(this_value)
                 if first_imaging_root:
                     first_imaging_root = False
                 else:
@@ -230,7 +244,7 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'postprocess_root':
-                self._postprocess_root = this_value
+                self._postprocess_root = self._parse_path(this_value)
                 if first_postprocess_root:
                     first_postprocess_root = False
                 else:
@@ -238,7 +252,7 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'derived_root':
-                self._derived_root = this_value
+                self._derived_root = self._parse_path(this_value)
                 if first_derived_root:
                     first_derived_root = False
                 else:
@@ -246,7 +260,7 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'release_root':
-                self._release_root = this_value
+                self._release_root = self._parse_path(this_value)
                 if first_release_root:
                     first_release_root = False
                 else:
@@ -254,7 +268,7 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'key_dir':
-                self._key_dir = this_value
+                self._key_dir = self._parse_path(this_value)
                 if first_key_dir:
                     first_key_dir = False
                 else:
@@ -262,16 +276,16 @@ class KeyHandler:
                 lines_read += 1
 
             if this_key == 'ms_root':
-                self._ms_roots.append(this_value)
+                self._ms_roots.append(self._parse_path(this_value))
                 lines_read += 1
 
             if this_key == 'singledish_root':
-                self._sd_roots.append(this_value)
+                self._sd_roots.append(self._parse_path(this_value))
                 lines_read += 1
 
             if this_key == 'cleanmask_root':
                 self._cleanmask_root = this_value
-                self._cleanmask_roots.append(this_value)
+                self._cleanmask_roots.append(self._parse_path(this_value))
                 lines_read += 1
 
             if this_key == 'casaversion_key':

@@ -4,3 +4,9 @@ from .test_casaCubeRoutines import TestingCasaCubeRoutines
 from .test_casaCubeRoutines import TestingCasaCubeRoutinesInCasa
 from .test_casaFeatherRoutines import TestingCasaFeatherRoutines
 from .test_casaFeatherRoutines import TestingCasaFeatherRoutinesInCasa
+from .test_handlerKeys import TestingHandlerKeys
+from .test_handlerKeys import TestingHandlerKeysInCasa
+from .test_handlerImaging import TestingHandlerImaging
+from .test_handlerImaging import TestingHandlerImagingInCasa
+from .test_handlerVis import TestingHandlerVis
+from .test_handlerVis import TestingHandlerVisInCasa

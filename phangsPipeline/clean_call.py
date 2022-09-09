@@ -79,21 +79,21 @@ class CleanCall:
         logger.info("Reading a clean input parameter file.")
         logger.info("Reading: "+fname)
 
-        infile = open(fname, 'r')
-        
-        lines_read = 0
-        while True:
-            line = infile.readline()
-            line = line.replace(" ","")
-            line = line.replace("\n","")
-            if len(line) == 0:
-                break
-            if line[0] == '#' or line == '\n':
+        with open(fname, 'r') as infile:
+            
+            lines_read = 0
+            while True:
+                line = infile.readline()
+                line = line.replace(" ","")
+                line = line.replace("\n","")
+                if len(line) == 0:
+                    break
+                if line[0] == '#' or line == '\n':
+                    continue
+                if line.count('=') == 0:
+                    continue
+                exec(re.sub(r'^([a-zA-Z0-9_]+) *= *(.+) *$', r'self.clean_params["\1"] = \2', line) )
                 continue
-            if line.count('=') == 0:
-                continue
-            exec(re.sub(r'^([a-zA-Z0-9_]+) *= *(.+) *$', r'self.clean_params["\1"] = \2', line) )
-            continue
 
         return()
         
