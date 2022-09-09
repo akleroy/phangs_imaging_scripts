@@ -272,7 +272,7 @@ def feather_two_cubes(
         myia = au.createCasaTool(casaStuff.iatool)
 
         # As noted in [https://casa.nrao.edu/docs/casaref/image.putchunk.html], 
-        # "If all the pixels didn’t easily fit in memory, you would iterate through 
+        # "If all the pixels didn't easily fit in memory, you would iterate through 
         # the image chunk by chunk to avoid exhausting virtual memory."
         # So here we do this iteration if the image cube is too large, 
         # say [3600, 3600,  393] (but [2880, 2880, 393] is okay). 
