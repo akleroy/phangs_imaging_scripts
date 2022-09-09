@@ -5,6 +5,8 @@ How to run this test inside CASA:
 sys.path.append('../casa_analysis_scripts')
 sys.path.append('../analysis_scripts')
 sys.path.append('.')
+import importlib
+#importlib.reload = reload
 import phangsPipeline
 importlib.reload(phangsPipeline)
 importlib.reload(phangsPipeline.casaCubeRoutines)

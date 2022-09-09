@@ -2,10 +2,18 @@
 How to run this test inside CASA:
 
 ```
-sys.path.append('../scripts/analysis_scripts')
-sys.path.append('../scripts/phangs_imaging_scripts')
+sys.path.append('../casa_analysis_scripts')
+sys.path.append('../analysis_scripts')
+sys.path.append('.')
+import importlib
+#importlib.reload = reload
+import phangsPipeline
+importlib.reload(phangsPipeline)
+importlib.reload(phangsPipeline.casaCubeRoutines)
+importlib.reload(phangsPipeline.casaFeatherRoutines)
 import phangsPipelineTests
 importlib.reload(phangsPipelineTests)
+importlib.reload(phangsPipelineTests.test_casaCubeRoutines)
 phangsPipelineTests.TestingCasaCubeRoutinesInCasa().run()
 ```
 """
