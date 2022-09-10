@@ -499,13 +499,13 @@ if casa_enabled:
                 if deltara is not None:
                     logger.info('applying overriding deltara '+str(deltara)+' arcsec')
                     deltara = np.abs(float(deltara))
-                    imsize[0] = int(np.ceil(deltara/cell_arcsec))
+                    imsize[0] = int(np.ceil(deltara/cell_arcsec/2.0)*2) # need an even number
                 if len(imsize) == 1:
                     imsize = [imsize[0], imsize[0]]
                 if deltadec is not None:
                     logger.info('applying overriding deltadec '+str(deltadec)+' arcsec')
                     deltadec = np.abs(float(deltadec))
-                    imsize[1] = int(np.ceil(deltadec/cell_arcsec))
+                    imsize[1] = int(np.ceil(deltadec/cell_arcsec/2.0)*2) # need an even number
             
                 # Print info
                 if deltara is not None or deltadec is not None:
