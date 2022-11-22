@@ -335,7 +335,9 @@ def trim_cube(
 
     myia = au.createCasaTool(casaStuff.iatool)
     myia.open(outfile + '.temp')
-    myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
+    os.system('rm -rf '+outfile + '.temp_deg')
+    deg_im = myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
+    deg_im.done()
     myia.close()
 
     mask = get_mask(outfile, huge_cube_workaround=True)
