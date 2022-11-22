@@ -26,6 +26,16 @@ try:
     from tclean import tclean
     from uvcontsub import uvcontsub
     from visstat import visstat
+    from importasdm import importasdm
+    from listobs import listobs
+    from flagcmd import flagcmd
+    from gencal import gencal
+    from sdcal import sdcal
+    from sdbaseline import sdbaseline
+    from sdimaging import sdimaging
+
+    from recipes.almahelpers import tsysspwmap
+
 
     # Version
 
@@ -66,8 +76,19 @@ except (ImportError, ModuleNotFoundError):
                            statwt,
                            tclean,
                            uvcontsub,
-                           visstat)
+                           visstat,
+                           importasdm,
+                           listobs,
+                           flagcmd,
+                           gencal,
+                           sdcal,
+                           sdbaseline,
+                           sdimaging,
+                           tsdimaging)
+
     from casatasks.private import sdint_helper
+
+    from recipes.almahelpers import tsysspwmap
 
     from .taskSDIntImaging import sdintimaging
 
