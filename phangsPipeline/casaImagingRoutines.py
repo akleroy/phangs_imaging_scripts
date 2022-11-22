@@ -135,16 +135,30 @@ def estimate_cell_and_imsize(
 
 def wipe_imaging(
         image_root=None,
-        imaging_method='tclean'
+        imaging_method='tclean',
 ):
     """
     Wipe files associated with a cube or continuum imaging. Tries to
     delete all images and supporting products, including the output of
     any MFS imaging.
+
+    Parameters
+    ----------
+    image_root : str
+        Image root name to delete.
+    imaging_method : str
+        'tclean' or 'sdintimaging'
+
     """
 
     if image_root == None:
         return
+
+    allowed_imaging_methods = ['tclean', 'sdintimaging']
+
+    if imaging_method not in allowed_imaging_methods:
+        raise ValueError('imaging_method must be one of {0}. Given {1}'
+                         .format(allowed_imaging_methods, imaging_method))
 
     logger.debug('wipe_imaging under "' + os.getcwd() + '"')
 
@@ -178,7 +192,8 @@ def copy_imaging(
         input_root=None,
         output_root=None,
         imaging_method='tclean',
-        wipe_first=True):
+        wipe_first=True,
+        chan_num=None):
     """
     Copy all of the files from a cube or continuum imaging output by
     clean to have a new root name. Most commonly used to make a backup
@@ -318,7 +333,7 @@ def execute_clean_call(
         logger.error("No visibility defined in clean_call. Returning.")
         return
 
-    if not clean_call.has_param('imagename'):
+    if not clean_call.has_param('imagename') or clean_call.get_param('imagename') is None:
         logger.error("No imagename defined in clean_call. Returning.")
         return
 
