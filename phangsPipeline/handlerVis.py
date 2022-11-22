@@ -149,7 +149,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                         obsnum=this_obsnum,
                         product=this_product,
                         intent=intent,
-                        timebin=timebin,                        
+                        timebin=timebin,
                         require_full_line_coverage=require_full_line_coverage,
                         overwrite=overwrite,
                     )
@@ -611,6 +611,45 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         ranges_to_exclude = lines.get_ghz_range_for_list(
             line_list=lines_to_exclude, vsys_kms=vsys, vwidth_kms=vwidth)
 
+        # Check for manually defined frequency windows:
+        manual_range_to_exclude = self._kh.get_contsub_excludefreqrange(product=product)
+        if manual_range_to_exclude is not None:
+            # This needs to incorporate it into the range, and should look for overlap
+            # to extend the already excluded region.
+
+            distinct_ranges = []
+
+            for this_range in manual_range_to_exclude:
+                if not len(this_range) == 2:
+                    raise ValueError("Parameter `exclude_freq_ranges_ghz` in target_definitions.txt must be a list"
+                                     f" of 2 element lists with a low and high frequency. Given: {this_range}")
+                freq_low = min(this_range)
+                freq_high = max(this_range)
+
+                # NOTE: this assumes only 1 defined are from ranges_to_exclude
+                existfreq_low = min(ranges_to_exclude[0])
+                existfreq_high = max(ranges_to_exclude[0])
+
+                # Does this fall completely within the existing range for a single target.
+                if existfreq_low <= freq_low and existfreq_high >= freq_high:
+                    # No need to adjust. Keep original
+                    distinct_ranges.append(list(ranges_to_exclude[0]))
+                    continue
+                # Is it completely separate?
+                elif existfreq_low >= freq_high or existfreq_high <= freq_low:
+                    # Include the original and new
+                    distinct_ranges.append(list(ranges_to_exclude[0]))
+                    distinct_ranges.append(this_range)
+                # Does it extend the lower side?
+                elif existfreq_low >= freq_low and existfreq_high >= freq_high:
+                    distinct_ranges.append([freq_low, existfreq_high])
+                # Does it extend the upper side?
+                elif existfreq_low <= freq_low and existfreq_high <= freq_high:
+                    distinct_ranges.append([existfreq_low, freq_high])
+
+            # Reduce the range list to unique ranges.
+            ranges_to_exclude = list(set([tuple(this_range) for this_range in distinct_ranges]))
+
         # Query the keyhandler for the details of continuum subtraction
 
         fitorder = self._kh.get_contsub_fitorder(product=product)
@@ -925,7 +964,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 os.path.isdir(this_infile)
 
         # If no ms data found for the given target, then just return.
-        # This could happen if the target name is a mosaic target, 
+        # This could happen if the target name is a mosaic target,
         # and each ms data will be named by the mosaic parts.
 
         if len(infile_dict) == 0:
