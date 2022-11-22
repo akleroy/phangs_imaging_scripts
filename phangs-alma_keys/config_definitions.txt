@@ -6,14 +6,14 @@
 # "configurations" that to be processed and combined by the
 # pipeline. Here, the user provides detailed parameters for each
 # product and config. The file has three columns:
- 
+
 # Column 1: type of field (see below)
 
 # Column 2: name (this can be anything, it will appear in file names
 # and be used by the handlers and keys)
 
 # Column 3: parameters (write as literal dictionaries with no spaces)
- 
+
 # ------------------------------------------------------------------------
 # Column 1 : "type of field"
 # ------------------------------------------------------------------------
@@ -69,6 +69,12 @@
 # cubes in units of km/s. Depending on the chosen regridding algorithm
 # this may be the exact channel width or an approximate target.
 
+# 'exclude_freq_ranges_ghz': given as a list of list, this gives a set
+# [low, high] frequency range in GHz to avoid when using uvcontsub.
+# e.g. 'exclude_freq_ranges_ghz':[[1.40,1.42]].
+# This is useful when multiple targets emit in the same transition along
+# a line-of-sight (e.g., Galactic and extragalactic 21-cm HI).
+
 # ------------------------------------------------------------------------
 # cont_product : a continuum data product
 # ------------------------------------------------------------------------
@@ -94,7 +100,7 @@
 # can be anything, e.g., 'BCD' or '12m+7m'.
 
 # These parameters need to be included:
- 
+
 # 'array_tags' : defines a list of "array_tag"s to be concatenated
 # into this config. These array tags are assigned to each measurement
 # set in the "ms_file_key.txt", which lists the visibility data. Thus,
@@ -104,7 +110,7 @@
 # "12mext"). This is fundamentally up to the user to decide. Despite
 # the names used by PHANGS-ALMA (12m, 7m) the pipeline does NOT
 # attempt to detect and assign data to arrays on its own.
- 
+
 # 'clean_scales_arcsec' : These are the scales used for multiscale
 # cleaning of data from this array. The units are arcseconds.
 
@@ -117,7 +123,7 @@
 # anything, e.g., 'BCD+tp' or '12m+7m+tp'.
 
 # These parameters need to be included:
- 
+
 # 'interf_config' : each feather config needs to map back to an
 # interferometric config. This mapping is used to carry out the
 # feathering process. This field defines the interf_config
