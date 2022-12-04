@@ -646,6 +646,9 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 # Does it extend the upper side?
                 elif existfreq_low <= freq_low and existfreq_high <= freq_high:
                     distinct_ranges.append([existfreq_low, freq_high])
+                # Does it completely enclose the range?
+                elif existfreq_low >= freq_low and existfreq_high <= freq_high:
+                    distinct_ranges.append([freq_low, freq_high])
 
             # Reduce the range list to unique ranges.
             ranges_to_exclude = list(set([tuple(this_range) for this_range in distinct_ranges]))
