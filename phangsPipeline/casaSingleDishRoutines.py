@@ -977,7 +977,8 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
     if os.path.exists(path_script+'file_flags.py'): 
-        execfile(path_script+'file_flags.py')    #<TODO><DZLIU># 
+        #execfile(path_script+'file_flags.py')
+        exec(compile(open(path_script+'file_flags.py').read(), path_script+'file_flags.py', 'exec'), globals(), locals())
     
     # 2.4 Create Tsys map 
     logger.info("2.4 Creating Tsysmaps" )
