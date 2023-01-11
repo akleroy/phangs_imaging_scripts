@@ -27,13 +27,33 @@ try:
     from uvcontsub import uvcontsub
     from visstat import visstat
 
-    # Version
+    # version tuple
 
-    simple_version = '.'.join((casa['version'].split('.'))[0:2])
+    casa_version = tuple(map(int, casa['build']['version'].replace('-','.').split('.')[0:3])) # tested CASA 4, 5
+    
+    # singledish processing imports
+    
+    if casa_version < (5, 0): # for singledish processing with precasa5
+        from sdsave import sdsave
+        from sdlist import sdlist
+        from sdcal2 import sdcal2
+        from sdscale import sdscale
+        from sdplot import sdplot
 
+    from plotms import plotms
+    from viewer import viewer
+    from gencal import gencal
+    from plotbandpass import plotbandpass
+    from sdbaseline import sdbaseline
+    from sdimaging import sdimaging
+    from sdcal import sdcal
+    from taskinit import msmdtool
+    from taskinit import tbtool
+    from recipes.almahelpers import tsysspwmap
+    
     # sdintimaging imports
 
-    if simple_version >= '5.7':
+    if casa_version >= (5. 7):
         from sdintimaging import sdintimaging
 
 except (ImportError, ModuleNotFoundError):
@@ -67,16 +87,40 @@ except (ImportError, ModuleNotFoundError):
                            tclean,
                            uvcontsub,
                            visstat)
+    
+    # sdintimaging imports
+    
     from casatasks.private import sdint_helper
-
     from .taskSDIntImaging import sdintimaging
 
-    # Rename some things for compatibility
-
+    # singledish processing imports
+    # see some documents at 
+    # - https://casadocs.readthedocs.io/en/stable/api/casatasks.html?highlight=sdcal#single-dish
+    # - https://casadocs.readthedocs.io/en/stable/notebooks/synthesis_calibration.html?highlight=recipes
+    
     iatool = image
     rgtool = regionmanager
     imtool = imager
     msmdtool = msmetadata
     tbtool = table
 
-    simple_version = casatools.version()
+    import almatasks
+    from almatasks.private.almahelpers import tsysspwmap
+    import casaplotms
+    plotms = casaplotms.gotasks.plotms.plotms
+    import casaviewer
+    viewer = casaviewer.gotasks.imview.imview
+    import casashell
+    gencal = casashell.private.gencal.gencal
+    plotbandpass = casashell.private.plotbandpass.plotbandpass
+    sdbaseline = casashell.private.sdbaseline.sdbaseline
+    sdimaging = casashell.private.sdimaging.sdimaging
+    sdcal = casashell.private.sdcal.sdcal
+
+    # version tuple
+    
+    casa_version = casatools.version()
+
+
+
+
