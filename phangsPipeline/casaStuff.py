@@ -98,15 +98,17 @@ except (ImportError, ModuleNotFoundError):
     from .taskSDIntImaging import sdintimaging
 
     # singledish processing imports
-    # see some documents at 
-    # - https://casadocs.readthedocs.io/en/stable/api/casatasks.html?highlight=sdcal#single-dish
-    # - https://casadocs.readthedocs.io/en/stable/notebooks/synthesis_calibration.html?highlight=recipes
-    
+    #   see some documents at 
+    #   - https://casadocs.readthedocs.io/en/stable/api/casatasks.html?highlight=sdcal#single-dish
+    #   - https://casadocs.readthedocs.io/en/stable/notebooks/synthesis_calibration.html?highlight=recipes
+        
     iatool = image
     rgtool = regionmanager
     imtool = imager
     msmdtool = msmetadata
     tbtool = table
+    
+    from casatasks import (importasdm, listobs, flagcmd, flagdata)
 
     import almatasks
     from almatasks.private.almahelpers import tsysspwmap
