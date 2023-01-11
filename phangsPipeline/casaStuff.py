@@ -40,6 +40,10 @@ try:
         from sdscale import sdscale
         from sdplot import sdplot
 
+    from importasdm import importasdm
+    from listobs import listobs
+    from flagcmd import flagcmd
+    from flagdata import flagdata
     from plotms import plotms
     from viewer import viewer
     from gencal import gencal
