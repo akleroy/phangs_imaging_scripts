@@ -53,7 +53,7 @@ try:
     
     # sdintimaging imports
 
-    if casa_version >= (5. 7):
+    if casa_version >= (5, 7):
         from sdintimaging import sdintimaging
 
 except (ImportError, ModuleNotFoundError):
