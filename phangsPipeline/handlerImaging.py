@@ -318,6 +318,8 @@ if casa_enabled:
                 suffix_in=None,
                 extra_ext_out=None,
                 stage='dirty',
+                use_chunks=True,
+                chunksize=1,
         ):
             """
             Initialize a clean call object for a target, config, product
@@ -341,7 +343,8 @@ if casa_enabled:
                     'Error! Could not get imaging recipe for config ' + config + ' product ' + product + '. Please check your "imaging_recipes.txt".')
 
             # Initialize the clean call with the appropriate recipe list
-            clean_call = CleanCall(recipe_list)
+            clean_call = CleanCall(recipe_list, use_chunks=use_chunks,
+                                   chunksize=chunksize)
 
             # Get the visibility name
             vis_file = utilsFilenames.get_vis_filename(
@@ -1254,3 +1257,5 @@ if casa_enabled:
             return
 
         # end of recipe_phangsalma_imaging()
+
+

@@ -41,7 +41,13 @@ except (ImportError, ModuleNotFoundError):
     # This is for CASA6
 
     import casatools
-    from casatools import (table, image, imager, msmetadata, synthesisimager, synthesisutils)
+    from casatools import (table,
+                           image,
+                           imager,
+                           msmetadata,
+                           synthesisimager,
+                           synthesisutils,
+                           regionmanager)
 
     import casatasks
     from casatasks import (casalog,
@@ -77,5 +83,6 @@ except (ImportError, ModuleNotFoundError):
     imtool = imager
     msmdtool = msmetadata
     tbtool = table
+    rgtool = regionmanager
 
     simple_version = casatools.version()
