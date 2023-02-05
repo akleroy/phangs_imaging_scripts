@@ -657,6 +657,92 @@ def trim_rind(
     myia.close()
     return(True)
 
+
+def trim_coarse_beam_edge_channels(
+        infile=None,
+        outfile=None,
+        inpbfile=None,
+        outpbfile=None,
+        overwrite=False,
+        inplace=True,
+    ):
+    """Trim the edge channels which have significantly coarser beam sizes in a per-plane beam image cube.
+    """
+        
+    if infile is None:
+        logger.error("Missing required input.")
+        return(False)
+    
+    if os.path.isdir(infile) == False:
+        logger.error("Input file not found: "+infile)
+        return(False)
+    
+    if inplace == False:
+        if os.path.exists(outfile):
+            if overwrite:
+                os.system('rm -rf '+outfile)
+            else:
+                logger.warning("Output file already present: "+outfile)
+                return(True)
+
+    # get image header
+    image_header = casaStuff.imhead(infile)
+    
+    # if there is no per-plane beam, return True
+    if 'perplanebeams' not in image_header:
+        return(True)
+    
+    # get per-plane beam array
+    nchan = image_header['shape'][-1]
+    beam_array = np.array([image_header['perplanebeams']['beams']['*%d'%(i)]['*0']['major']['value'] for i in range(nchan)])
+    
+    # get beam threshold value by 3-sigma clipping
+    beam_thresh = np.median(beam_array) + 3.0 * np.std(beam_array)
+    beam_array2 = beam_array[beam_array<beam_thresh]
+    beam_thresh2 = np.median(beam_array2) + 3.0 * np.std(beam_array2)
+    
+    # get left and right boundarys
+    chan_valid = np.argwhere(beam_array<beam_thresh2).ravel()
+    chan_left = chan_valid[0]
+    chan_right = chan_valid[-1]
+    
+    # run imsubimage
+    if chan_left > 0 or chan_right < nchan-1:
+        if inplace:
+            if os.path.isdir(infile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+infile+'.trim.coarse.beam.edge.channels.tmp')
+            os.system('mv '+infile+' '+infile+'.trim.coarse.beam.edge.channels.tmp')
+            target_infile = infile+'.trim.coarse.beam.edge.channels.tmp'
+            target_outfile = infile
+        else:
+            target_infile = infile
+            target_outfile = outfile
+        
+        casaStuff.imsubimage(imagename=target_infile, outfile=target_outfile, chans="%d~%d"%(chan_left, chan_right))
+
+        if inplace:
+            if os.path.isdir(infile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+infile+'.trim.coarse.beam.edge.channels.tmp')
+
+        # also process pbfile
+        if inplace:
+            if os.path.isdir(inpbfile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+inpbfile+'.trim.coarse.beam.edge.channels.tmp')
+            os.system('mv '+inpbfile+' '+inpbfile+'.trim.coarse.beam.edge.channels.tmp')
+            target_infile = inpbfile+'.trim.coarse.beam.edge.channels.tmp'
+            target_outfile = inpbfile
+        else:
+            target_infile = inpbfile
+            target_outfile = outpbfile
+
+        casaStuff.imsubimage(imagename=target_infile, outfile=target_outfile, chans="%d~%d"%(chan_left, chan_right))
+
+        if inplace:
+            if os.path.isdir(inpbfile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+inpbfile+'.trim.coarse.beam.edge.channels.tmp')
+    
+    return(True)
+
 def primary_beam_correct(
     infile=None,
     pbfile=None,
