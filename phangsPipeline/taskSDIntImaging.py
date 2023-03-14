@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 
 from casatasks.private.imagerhelpers.imager_base import PySynthesisImager
 from casatasks.private.imagerhelpers.input_parameters import ImagerParameters
-from casatasks.private.cleanhelper import write_tclean_history, get_func_params
+#from casatasks.private.cleanhelper import write_tclean_history, get_func_params
 from casatasks.private.sdint_helper import *
 
 # Pull MPI in, if available
@@ -723,6 +723,7 @@ def sdintimaging(
     # so they won't be picked up. They need time to disappear on NFS or slow hw.
     # Copied from tclean.
     try:
+        from casatasks.private.cleanhelper import write_tclean_history, get_func_params
         params = get_func_params(sdintimaging, locals())
         write_tclean_history(imagename, 'sdintimaging', params, casaStuff.casalog)
     except Exception as exc:
