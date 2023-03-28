@@ -361,19 +361,19 @@ def read_spw(filename,source):
     spws_scie = [int(i) for i in spws_scie]
 
     # Read number of channels, frequency at channel zero and compute representative frequency
-    freq_zero_scie  = range(len(spws_scie))
-    chan_width_scie = range(len(spws_scie))
-    num_chan_scie   = range(len(spws_scie))
-    freq_rep_scie   = range(len(spws_scie))
+    freq_zero_scie  = list(range(len(spws_scie)))
+    chan_width_scie = list(range(len(spws_scie)))
+    num_chan_scie   = list(range(len(spws_scie)))
+    freq_rep_scie   = list(range(len(spws_scie)))
     for i in range(len(spws_scie)):
         freq_zero_scie[i]  = float(mytb.getcol('REF_FREQUENCY',startrow=spws_scie[i],nrow=1))
         chan_width_scie[i] = float(mytb.getcol('CHAN_WIDTH',startrow=spws_scie[i],nrow=1)[0])
         num_chan_scie[i]   = float(mytb.getcol('NUM_CHAN',startrow=spws_scie[i],nrow=1))
         freq_rep_scie[i]   = (num_chan_scie[i]/2*chan_width_scie[i]+freq_zero_scie[i])/1e6
-    freq_zero_tsys  = range(len(spws_tsys))
-    chan_width_tsys = range(len(spws_tsys))
-    num_chan_tsys   = range(len(spws_tsys))
-    freq_rep_tsys   = range(len(spws_tsys))
+    freq_zero_tsys  = list(range(len(spws_tsys)))
+    chan_width_tsys = list(range(len(spws_tsys)))
+    num_chan_tsys   = list(range(len(spws_tsys)))
+    freq_rep_tsys   = list(range(len(spws_tsys)))
     for i in range(len(spws_tsys)):
         freq_zero_tsys[i]  = float(mytb.getcol('REF_FREQUENCY',startrow=spws_tsys[i],nrow=1))
         chan_width_tsys[i] = float(mytb.getcol('CHAN_WIDTH',startrow=spws_tsys[i],nrow=1)[0])
@@ -570,7 +570,7 @@ def str_spw4baseline(filename_in,freq_rest,vel_line,spw_line,coords):
     date = (date.split()[0]).replace('-','/')+'/'+date.split()[1]
     vel_line_s = vel_line.split(';')
     nlines = len(vel_line_s)
-    channels_v = range(nlines*2)
+    channels_v = list(range(nlines*2))
     for i in range(nlines):
         vel_str = vel_line_s[i]
         chan1_line,chan2_line,nchan_line,spw_line = convert_vel2chan_line(filename_in,freq_rest,vel_str,spw_line,coords,date)
@@ -977,7 +977,8 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
     if os.path.exists(path_script+'file_flags.py'): 
-        execfile(path_script+'file_flags.py')    #<TODO><DZLIU># 
+        #execfile(path_script+'file_flags.py')
+        exec(compile(open(path_script+'file_flags.py').read(), path_script+'file_flags.py', 'exec'), globals(), locals())
     
     # 2.4 Create Tsys map 
     logger.info("2.4 Creating Tsysmaps" )

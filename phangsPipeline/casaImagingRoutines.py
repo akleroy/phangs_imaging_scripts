@@ -343,10 +343,10 @@ def execute_clean_call(
     # the list of expected_kwargs and only return keys inside it.
     if imaging_method == 'tclean':
         logger.debug("Running CASA " + str(clean_call))
-        expected_kwargs = inspect.getargspec(casaStuff.tclean)[0]
+        expected_kwargs = inspect.getfullargspec(casaStuff.tclean)[0]
     elif imaging_method == 'sdintimaging':
         logger.debug("Running CASA " + str(clean_call).replace('tclean', 'sdintimaging'))
-        expected_kwargs = inspect.getargspec(casaStuff.sdintimaging)[0]
+        expected_kwargs = inspect.getfullargspec(casaStuff.sdintimaging)[0]
     else:
         logger.error('Unexpected imaging method %s' % imaging_method)
         raise Exception('Unexpected imaging method %s' % imaging_method)
@@ -355,6 +355,8 @@ def execute_clean_call(
     active_kwargs = {}  # kwarg dict
 
     if expected_kwargs is not None:
+        if 'self' in expected_kwargs:
+            expected_kwargs.remove('self')
         missing_kwargs = []  # list
         unused_kwargs = []  # list
         for k in expected_kwargs:

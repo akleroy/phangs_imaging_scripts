@@ -26,8 +26,100 @@ from .pipelineVersion import version as pipeVer
 # CASA stuff
 from . import casaStuff
 
+# Logging
+#from .pipelineLogger import PipelineLogger
+#logger = PipelineLogger(__name__)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+#endregion
+
+#region Check getchunk putchunk memory issue
+
+def check_getchunk_putchunk_memory_issue(
+    infile, 
+    myia=None,
+    return_myia=False,
+    return_data=False,
+    return_mask=False,
+    return_shape=False,
+    huge_cube_workaround=True,
+    ):
+    """
+    Check whether the input data cube is too large to run getchunk/putchunk globally. 
+    If so, we will need to run getchunk/putchunk channel-by-channel. 
+    
+    We will first check the cube size. If it is obviously too large, then we will directly
+    mark this case as having a memory issue. Otherwise we will try to run `getchunk` and/or 
+    `getchunk(getmask=True)` to see whether it returns a cube data array. In the case of 
+    having a memory issue, `getchunk` will return a flattend array whose shape is different
+    from the input data cube.
+    
+    This memory issue is also noted in https://casa.nrao.edu/docs/casaref/image.putchunk.html 
+    as: "If all the pixels didn't easily fit in memory, you would iterate through the image 
+    chunk by chunk to avoid exhausting virtual memory."
+    
+    Args:
+        infile: input image file.
+        myia: optional, if not given then we will run `myia = au.createCasaTool(casaStuff.iatool)` then `myia.open(infile)`.
+        return_data: if True then we will return the data if `getchunk()` runs properly withut a memory issue.
+        return_mask: if True then we will return the mask if `getchunk(getmask=True)` runs properly withut a memory issue.
+        return_shape: if True then we will return the shape of the cube data.
+        huge_cube_workaround: historical arg for compatibility. Setting it to False will disable per-channel processing and may cause error.
+    
+    Returns:
+        Tuple of 1-5 variables: 
+            check_no_memory_issue (boolean), 
+            myia object (if return_myia is True),
+            data array (if return_data is True),
+            mask array (if return_mask is True),
+            shape list (if return_shape is True)
+    """
+    has_memory_issue = False
+    cube_data = None
+    cube_mask = None
+    has_opened_file = False
+    if myia is None:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(infile)
+        has_opened_file = True
+    if not myia.isopen():
+        myia.open(infile)
+        has_opened_file = True
+    cube_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
+    if np.prod(cube_shape) >= 2880*2880*393: # known memory issue
+        has_memory_issue = True
+    if not has_memory_issue: # try to see if there is a memory issue
+        # in which case the getchunk will return a flat array instead of the cube shape
+        if return_data or not return_mask:
+            cube_data = myia.getchunk() # data.shape = [X, Y, CHANNEL, [STOKES]]
+            check_shape = cube_data.shape
+        if return_mask:
+            cube_mask = myia.getchunk(getmask=True) # mask.shape = [X, Y, CHANNEL, [STOKES]]
+            check_shape = cube_mask.shape
+        if not np.all(check_shape == cube_shape): # shape does not match, has memory issue
+            has_memory_issue = True
+            cube_data = None
+            cube_mask = None
+    
+    if not huge_cube_workaround: # if workaround is not allowed, go the simplest way
+        has_memory_issue = False
+    
+    #has_memory_issue = True #<DEBUG><DZLIU># uncomment this to always apply per-channel getchunk/putchunk
+    
+    list_to_return = [has_memory_issue]
+    if return_myia:
+        list_to_return.append(myia)
+    elif has_opened_file:
+        myia.close()
+    if return_data:
+        list_to_return.append(cube_data)
+    if return_mask:
+        list_to_return.append(cube_mask)
+    if return_shape:
+        list_to_return.append(cube_shape)
+    return tuple(list_to_return)
 
 #endregion
 
@@ -85,33 +177,74 @@ def get_mask(infile, huge_cube_workaround=True):
     Get a mask from a CASA image file. Includes a switch for large cubes, where getchunk can segfault.
     """
 
-    if huge_cube_workaround:
-        os.system('rm -rf ' + infile + '.temp_deg_ordered')
-        casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
-                          order='0132')
-
-        casaStuff.makemask(mode='copy', inpimage=infile + '.temp_deg_ordered',
-                           inpmask=infile + '.temp_deg_ordered:mask0',
-                           output=infile + '.temp_mask', overwrite=True)
-
-        casaStuff.exportfits(imagename=infile + '.temp_mask',
-                             fitsimage=infile + '.temp.fits',
-                             stokeslast=False, overwrite=True)
-        hdu = pyfits.open(infile + '.temp.fits')[0]
-        mask = hdu.data.T[:, :, 0, :]
-
-        os.system('rm -rf ' + infile + '.temp_deg_ordered')
-        os.system('rm -rf ' + infile + '.temp_mask')
-        os.system('rm -rf ' + infile + '.temp.fits')
-
-    else:
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(infile+'.temp_deg')
-        mask = myia.getchunk(getmask=True)
-        myia.close()
-
-    os.system('rm -rf ' + infile + '.temp_deg')
-
+    #if huge_cube_workaround:
+    #    os.system('rm -rf ' + infile + '.temp_deg_ordered')
+    #    casaStuff.imtrans(imagename=infile + '.temp_deg', outfile=infile + '.temp_deg_ordered',
+    #                      order='0132')
+    #
+    #    casaStuff.makemask(mode='copy', inpimage=infile + '.temp_deg_ordered',
+    #                       inpmask=infile + '.temp_deg_ordered:mask0',
+    #                       output=infile + '.temp_mask', overwrite=True)
+    #
+    #    casaStuff.exportfits(imagename=infile + '.temp_mask',
+    #                         fitsimage=infile + '.temp.fits',
+    #                         stokeslast=False, overwrite=True)
+    #    hdu = pyfits.open(infile + '.temp.fits')[0]
+    #    mask = hdu.data.T[:, :, 0, :]
+    #
+    #    os.system('rm -rf ' + infile + '.temp_deg_ordered')
+    #    os.system('rm -rf ' + infile + '.temp_mask')
+    #    os.system('rm -rf ' + infile + '.temp.fits')
+    #
+    #else:
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(infile+'.temp_deg')
+    #    mask = myia.getchunk(getmask=True)
+    #    myia.close()
+    #
+    #os.system('rm -rf ' + infile + '.temp_deg')
+    
+    myia = au.createCasaTool(casaStuff.iatool)
+    
+    myia.open(infile)
+    
+    has_memory_issue, mask, cube_shape = check_getchunk_putchunk_memory_issue(
+        infile, myia=myia, return_mask=True, return_shape=True, 
+        huge_cube_workaround=huge_cube_workaround)
+    
+    if has_memory_issue: # getchunk was unsuccessful, has memory issue
+        # putchunk channel by channel
+        logger.debug('getchunk channel by channel for known memory issue')
+        mask = np.full(cube_shape, fill_value=False, dtype=bool)
+        if len(cube_shape) == 2:
+            blc = [0, 0] # [X, Y]
+            trc = [-1, -1] # [X, Y]
+            cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+            mask[:, :] = cube_mask_per_chan
+        elif len(cube_shape) == 3:
+            nchan = cube_shape[2]
+            for ichan in range(nchan):
+                blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                mask[:, :, ichan] = cube_mask_per_chan[:, :, 0]
+        elif len(cube_shape) == 4:
+            nstokes = cube_shape[3]
+            nchan = cube_shape[2] # It's okay if Stokes and Spectral axes are swapped.
+            for istokes in range(nstokes):
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    #logger.debug('get_mask blc {} trc {}'.format(blc, trc))
+                    cube_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                    mask[:, :, ichan, istokes] = cube_mask_per_chan[:, :, 0, 0]
+        else:
+            raise Exception('Could not proceed with cube dimension ' + str(len(cube_shape)))
+    
+    myia.close()
+    
+    assert np.all(mask.shape == cube_shape)
+    
     return mask
 
 
@@ -120,19 +253,86 @@ def copy_mask(infile, outfile, huge_cube_workaround=True):
     Copy a mask from infile to outfile. Includes a switch for large cubes, where getchunk/putchunk can segfault
     """
 
-    if huge_cube_workaround:
-        os.system('rm -rf ' + outfile + '/mask0')
-        os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
-    else:
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(infile)
-        mask = myia.getchunk(getmask=True)
+    #if huge_cube_workaround:
+    #    os.system('rm -rf ' + outfile + '/mask0')
+    #    os.system('cp -r ' + infile + '/mask0' + ' ' + outfile + '/mask0')
+    #else:
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(infile)
+    #    mask = myia.getchunk(getmask=True)
+    #    myia.close()
+    #
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(outfile)
+    #    mask = myia.putregion(pixelmask=mask)
+    #    myia.close()
+    
+    mask = get_mask(infile)
+    
+    # use putregion to update pixel mask
+    
+    myia = au.createCasaTool(casaStuff.iatool)
+    
+    myia.open(outfile)
+    
+    out_shape = myia.shape() # [X, Y, CHANNEL, [STOKES]]
+    
+    # input and output shape must be the same
+    if not np.all(mask.shape == out_shape):
         myia.close()
-
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(outfile)
-        mask = myia.putregion(pixelmask=mask)
-        myia.close()
+        raise Exception('Error! The infile and outfile have different dimensions! Cannot copy mask.')
+    
+    has_memory_issue = check_getchunk_putchunk_memory_issue(
+        outfile, myia=myia, 
+        huge_cube_workaround=huge_cube_workaround)
+    
+    if not has_memory_issue: # getchunk was successful, no memory issue
+        myia.putregion(pixelmask=mask)
+    else: # getchunk was unsuccessful, has memory issue
+        # putregion channel by channel
+        logger.debug('putregion channel by channel for known memory issue')
+        myrg = au.createCasaTool(casaStuff.rgtool)
+        nx = out_shape[0]
+        ny = out_shape[1]
+        #logger.debug('copy_mask mask.shape {}'.format(mask.shape))
+        if len(out_shape) == 2:
+            blc = [0, 0]
+            trc = [nx-1, ny-1]
+            r1 = myrg.box(blc, trc)
+            #logger.debug('copy_mask putregion blc {} trc {}'.format(blc, trc))
+            myia.putregion(pixelmask=mask, region=r1)
+        elif len(out_shape) == 3:
+            specaxis = 2
+            nchan = out_shape[specaxis]
+            blc = [0, 0, 0]
+            trc = [nx-1, ny-1, 0]
+            for ichan in range(nchan):
+                blc[specaxis] = ichan
+                trc[specaxis] = ichan
+                r1 = myrg.box(blc, trc)
+                #logger.debug('copy_mask putregion blc {} trc {}'.format(blc, trc))
+                myia.putregion(pixelmask=np.take(mask, ichan, axis=specaxis), region=r1)
+        elif len(out_shape) == 4:
+            mycs = myia.coordsys()
+            specaxis = mycs.axiscoordinatetypes().index('Spectral')
+            stokesaxis = mycs.axiscoordinatetypes().index('Stokes')
+            nchan = out_shape[specaxis]
+            nstokes = out_shape[stokesaxis]
+            blc = [0, 0, 0, 0]
+            trc = [nx-1, ny-1, 0, 0]
+            for istokes in range(nstokes):
+                for ichan in range(nchan):
+                    blc[specaxis] = ichan
+                    trc[specaxis] = ichan
+                    blc[stokesaxis] = istokes
+                    trc[stokesaxis] = istokes
+                    r1 = myrg.box(blc, trc)
+                    #logger.debug('copy_mask putregion blc {} trc {}'.format(blc, trc))
+                    myia.putregion(pixelmask=np.take(np.take(mask, blc[3], axis=3), blc[2], axis=2), region=r1)
+        else:
+            raise Exception('Could not proceed with cube dimension ' + str(len(out_shape)))
+        myrg.done()
+    myia.close()
 
     return True
 
@@ -143,29 +343,69 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     getchunk/putchunk may fail.
     """
 
-    if huge_cube_workaround:
-        casaStuff.exportfits(imagename=infile,
-                             fitsimage=infile + '.fits',
-                             overwrite=True)
-        hdu = pyfits.open(infile + '.fits')[0]
-        hdu.data *= value
-
-        hdu.writeto(infile + '.fits', clobber=True)
-        casaStuff.importfits(fitsimage=infile + '.fits',
-                             imagename=infile,
-                             overwrite=True)
-        os.system('rm -rf ' + infile + '.fits')
-    else:
-        myia = au.createCasaTool(casaStuff.iatool)
-        myia.open(infile)
-        vals = myia.getchunk()
+    #if huge_cube_workaround:
+    #    casaStuff.exportfits(imagename=infile,
+    #                         fitsimage=infile + '.fits',
+    #                         overwrite=True)
+    #    hdu = pyfits.open(infile + '.fits')[0]
+    #    hdu.data *= value
+    #
+    #    hdu.writeto(infile + '.fits', clobber=True)
+    #    casaStuff.importfits(fitsimage=infile + '.fits',
+    #                         imagename=infile,
+    #                         overwrite=True)
+    #    os.system('rm -rf ' + infile + '.fits')
+    #else:
+    #    myia = au.createCasaTool(casaStuff.iatool)
+    #    myia.open(infile)
+    #    vals = myia.getchunk()
+    #    vals *= value
+    #    myia.putchunk(vals)
+    
+    myia = au.createCasaTool(casaStuff.iatool)
+    
+    myia.open(infile)
+    
+    has_memory_issue, vals, cube_shape = check_getchunk_putchunk_memory_issue(
+        infile, myia=myia, return_data=True, return_shape=True, 
+        huge_cube_workaround=huge_cube_workaround)
+    
+    if not has_memory_issue: # getchunk was successful, no memory issue
         vals *= value
         myia.putchunk(vals)
-        myia.close()
-
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(infile)
-    myia.setbrightnessunit(brightness_unit)
+    else: # getchunk was unsuccessful, has memory issue
+        # putchunk channel by channel
+        logger.debug('putchunk channel by channel for known memory issue')
+        if len(cube_shape) == 2:
+            blc = [0, 0] # [X, Y]
+            trc = [-1, -1] # [X, Y]
+            vals = myia.getchunk(blc, trc)
+            vals *= value
+            myia.putchunk(vals, blc)
+        elif len(cube_shape) == 3:
+            nchan = cube_shape[2]
+            for ichan in range(nchan):
+                blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                vals = myia.getchunk(blc, trc)
+                vals *= value
+                myia.putchunk(vals, blc)
+        elif len(cube_shape) == 4:
+            nstokes = cube_shape[3]
+            nchan = cube_shape[2] # It's okay if Stokes and Spectral axes are swapped.
+            for istokes in range(nstokes):
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL, STOKES]
+                    vals = myia.getchunk(blc, trc)
+                    vals *= value
+                    myia.putchunk(vals, blc)
+        else:
+            raise Exception('Could not proceed with cube dimension ' + str(len(cube_shape)))
+    
+    if brightness_unit is not None:
+        myia.setbrightnessunit(brightness_unit)
+    
     myia.close()
 
     return True
@@ -333,24 +573,27 @@ def trim_cube(
 
     # Figure out the extent of the image inside the cube
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(outfile + '.temp')
-    myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
-    myia.close()
+    #myia = au.createCasaTool(casaStuff.iatool)
+    #myia.open(outfile + '.temp')
+    #myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
+    #myia.close()
+    #
+    #mask = get_mask(outfile + '.temp_deg')
+    
+    mask = get_mask(outfile + '.temp')
 
-    mask = get_mask(outfile, huge_cube_workaround=True)
-
-    this_shape = mask.shape
-
-    mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    #mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))
     xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
     xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
 
-    mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    #mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    mask_spec_y = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 1]))
     ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
     ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
 
-    mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
+    #mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
+    mask_spec_z = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 2]))
     zmin = np.max([0,np.min(np.where(mask_spec_z))-pad])
     zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[2]-1])
 
@@ -412,6 +655,92 @@ def trim_rind(
     mask = nd.binary_erosion(mask, elt[:,:,np.newaxis, np.newaxis])
     myia.putregion(pixelmask=mask)
     myia.close()
+    return(True)
+
+
+def trim_coarse_beam_edge_channels(
+        infile=None,
+        outfile=None,
+        inpbfile=None,
+        outpbfile=None,
+        overwrite=False,
+        inplace=True,
+    ):
+    """Trim the edge channels which have significantly coarser beam sizes in a per-plane beam image cube.
+    """
+        
+    if infile is None:
+        logger.error("Missing required input.")
+        return(False)
+    
+    if os.path.isdir(infile) == False:
+        logger.error("Input file not found: "+infile)
+        return(False)
+    
+    if inplace == False:
+        if os.path.exists(outfile):
+            if overwrite:
+                os.system('rm -rf '+outfile)
+            else:
+                logger.warning("Output file already present: "+outfile)
+                return(True)
+
+    # get image header
+    image_header = casaStuff.imhead(infile)
+    
+    # if there is no per-plane beam, return True
+    if 'perplanebeams' not in image_header:
+        return(True)
+    
+    # get per-plane beam array
+    nchan = image_header['shape'][-1]
+    beam_array = np.array([image_header['perplanebeams']['beams']['*%d'%(i)]['*0']['major']['value'] for i in range(nchan)])
+    
+    # get beam threshold value by 3-sigma clipping
+    beam_thresh = np.median(beam_array) + 3.0 * np.std(beam_array)
+    beam_array2 = beam_array[beam_array<beam_thresh]
+    beam_thresh2 = np.median(beam_array2) + 3.0 * np.std(beam_array2)
+    
+    # get left and right boundarys
+    chan_valid = np.argwhere(beam_array<beam_thresh2).ravel()
+    chan_left = chan_valid[0]
+    chan_right = chan_valid[-1]
+    
+    # run imsubimage
+    if chan_left > 0 or chan_right < nchan-1:
+        if inplace:
+            if os.path.isdir(infile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+infile+'.trim.coarse.beam.edge.channels.tmp')
+            os.system('mv '+infile+' '+infile+'.trim.coarse.beam.edge.channels.tmp')
+            target_infile = infile+'.trim.coarse.beam.edge.channels.tmp'
+            target_outfile = infile
+        else:
+            target_infile = infile
+            target_outfile = outfile
+        
+        casaStuff.imsubimage(imagename=target_infile, outfile=target_outfile, chans="%d~%d"%(chan_left, chan_right))
+
+        if inplace:
+            if os.path.isdir(infile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+infile+'.trim.coarse.beam.edge.channels.tmp')
+
+        # also process pbfile
+        if inplace:
+            if os.path.isdir(inpbfile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+inpbfile+'.trim.coarse.beam.edge.channels.tmp')
+            os.system('mv '+inpbfile+' '+inpbfile+'.trim.coarse.beam.edge.channels.tmp')
+            target_infile = inpbfile+'.trim.coarse.beam.edge.channels.tmp'
+            target_outfile = inpbfile
+        else:
+            target_infile = inpbfile
+            target_outfile = outpbfile
+
+        casaStuff.imsubimage(imagename=target_infile, outfile=target_outfile, chans="%d~%d"%(chan_left, chan_right))
+
+        if inplace:
+            if os.path.isdir(inpbfile+'.trim.coarse.beam.edge.channels.tmp'):
+                os.system('rm -rf '+inpbfile+'.trim.coarse.beam.edge.channels.tmp')
+    
     return(True)
 
 def primary_beam_correct(
@@ -555,7 +884,7 @@ def convolve_to_round_beam(
                        )
 
     # Copy over mask
-    copy_mask(infile, outfile, huge_cube_workaround=True)
+    copy_mask(infile, outfile)
 
     return(target_bmaj)
 
@@ -647,7 +976,7 @@ def convert_jytok(
 
     jytok = calc_jytok(hdr=hdr)
 
-    multiply_cube_by_value(target_file, jytok, brightness_unit='K', huge_cube_workaround=True)
+    multiply_cube_by_value(target_file, jytok, brightness_unit='K')
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
@@ -692,7 +1021,7 @@ def convert_ktojy(
 
     jytok = calc_jytok(hdr=hdr)
 
-    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam', huge_cube_workaround=True)
+    multiply_cube_by_value(target_file, 1/jytok, 'Jy/beam')
 
     casaStuff.imhead(target_file, mode='put', hdkey='JYTOK', hdvalue=jytok)
 
