@@ -15,6 +15,7 @@ if ('casa' in locals()) or ('casa' in globals()):
     casa_version = tuple(map(int, casa['build']['version'].replace('-','.').split('.')[0:3])) # tested CASA 4, 5
 else:
     # This works in CASA 6 where the casatools has a version attribute
+    import casatools
     casa_version = (casatools.version()[0], casatools.version()[1], casatools.version()[2])
 
 print("CASA version: ", casa_version)
