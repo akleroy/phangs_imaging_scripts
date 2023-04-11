@@ -382,11 +382,17 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
         if name.strip() == 'galaxy':
             continue
         dist_mpc = t.split(delim)[1]
-        if re.match(r'^[0-9eE.+-]+$', dist_mpc):
-            out_dict[name] = {}
-            out_dict[name]['distance'] = float(dist_mpc)
-            # logger.debug('distance of '+t.split(delim)[0]+' is '+t.split(delim)[1]+' Mpc')
-            lines_read += 1
+        
+        #if re.match(r'^[0-9eE.+-]+$', dist_mpc) is not None:
+        try:
+            float(dist_mpc)
+        except ValueError:
+            continue
+
+        out_dict[name] = {}
+        out_dict[name]['distance'] = float(dist_mpc)
+        # logger.debug('distance of '+t.split(delim)[0]+' is '+t.split(delim)[1]+' Mpc')
+        lines_read += 1
 
         # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
     logger.info("Read " + str(lines_read) + " lines into a target/distance dictionary.")
