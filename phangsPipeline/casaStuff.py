@@ -10,8 +10,12 @@
 
 # Obtain a version tuple (note the syntax change from < 6 to > 6)
 
+try:
+    from taskinit import *
+except ModuleNotFoundError:
+    pass
+
 if ('casa' in locals()) or ('casa' in globals()):
-    # Works in CASA 4 and 5 where casa is an object
     casa_version = tuple(map(int, casa['build']['version'].replace('-','.').split('.')[0:3])) # tested CASA 4, 5
 else:
     # This works in CASA 6 where the casatools has a version attribute
