@@ -382,7 +382,8 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
         if name.strip() == 'galaxy':
             continue
         dist_mpc = t.split(delim)[1]
-        
+        # Suspect that re.match may be missing some cases across diff. python versions.
+        # Checked added here that dist_mpc is indeed a float.
         #if re.match(r'^[0-9eE.+-]+$', dist_mpc) is not None:
         try:
             float(dist_mpc)
