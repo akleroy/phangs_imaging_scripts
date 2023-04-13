@@ -465,9 +465,19 @@ def extract_flagging(filename, pipeline, flag_dir='', flag_file=''):
 def convert_vel2chan(filename,freq_rest,vel_cube,spw_line,vel_source,spws_info,coords):
     
     spws_scie,freq_rep_scie,chan_width_scie,num_chan_scie = spws_info[0],spws_info[2],spws_info[4],spws_info[5]
-    freq_rep_line   = freq_rep_scie[np.where(np.array(spws_scie)    == spw_line)[0]]
-    chan_width_line = (chan_width_scie[np.where(np.array(spws_scie) == spw_line)[0]])/1e6
-    num_chan_line   = num_chan_scie[np.where(np.array(spws_scie)    == spw_line)[0]]
+
+    # AKL - had to cast lists -> array then index with 0
+    freq_rep_line   = np.array(freq_rep_scie)[np.where(np.array(spws_scie)    == spw_line)[0]]
+    chan_width_line = (np.array(chan_width_scie)[np.where(np.array(spws_scie) == spw_line)[0]])/1e6
+    num_chan_line   = np.array(num_chan_scie)[np.where(np.array(spws_scie)    == spw_line)[0]]
+
+    if len(freq_rep_line) == 1:
+        freq_rep_line   = freq_rep_line[0] 
+        chan_width_line = chan_width_line[0]
+        num_chan_line   = num_chan_line[0]
+    else:
+        raise Exception("I expected only one value in convert vel2chan!")
+
     
     vel1 = float((vel_cube.split('~'))[0])
     vel2 = float((vel_cube.split('~'))[1])
