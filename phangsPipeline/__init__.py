@@ -29,5 +29,5 @@ if casa_enabled:
 try:
     from .handlerAlmaDownload import AlmaDownloadHandler
     __all__.append("AlmaDownloadHandler")
-except:
+except ImportError:
     pass
