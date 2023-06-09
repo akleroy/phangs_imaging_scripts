@@ -271,7 +271,12 @@ def write_mask(infile, outfile, mask, huge_cube_workaround=True):
         for wcs_name in wcs_names:
             hdu.header[wcs_name.upper()] = header[wcs_name]
 
-        hdu.writeto(outfile + '.fits', clobber=True)
+        # Variations between pyfits and astropy
+        try:
+            hdu.writeto(outfile + '.fits', clobber=True)
+        except TypeError:
+            hdu.writeto(outfile + '.fits', overwrite=True)
+
         casaStuff.importfits(fitsimage=outfile + '.fits',
                              imagename=outfile,
                              overwrite=True)

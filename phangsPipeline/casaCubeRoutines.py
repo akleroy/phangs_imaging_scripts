@@ -350,7 +350,7 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     #    hdu = pyfits.open(infile + '.fits')[0]
     #    hdu.data *= value
     #
-    #    hdu.writeto(infile + '.fits', clobber=True)
+    #    hdu.writeto(infile + '.fits', overwrite=True)
     #    casaStuff.importfits(fitsimage=infile + '.fits',
     #                         imagename=infile,
     #                         overwrite=True)
@@ -516,7 +516,10 @@ def export_and_cleanup(
     hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + pipeVer
 
     # Overwrite
-    hdu.writeto(outfile, clobber=True)
+    try:
+        hdu.writeto(outfile, clobber=True)
+    except TypeError:
+        hdu.writeto(outfile, overwrite=True)
 
     return()
 
