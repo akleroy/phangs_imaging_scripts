@@ -395,7 +395,7 @@ def signal_mask(
         del old_mask
 
     logger.info('Recasting as an int.')
-    # this might be better: mask.astype(np.int, copy=False)
+    # this might be better: mask.astype(int, copy=False)
     # mask = mask.astype(int)
     mask = mask.astype(np.int32)
 
