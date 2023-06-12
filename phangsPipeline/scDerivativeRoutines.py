@@ -1135,7 +1135,7 @@ def write_vquad(cubein,
     window : astropy.Quantity
         Spectral window over which the data should be smoothed
 
-    maxshift : np.float
+    maxshift : float
         Maximum number of channels that the algorithm can shift the
         peak estimator (default = 0.5).  Set to None to suppress clipping.
 
