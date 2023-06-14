@@ -58,7 +58,7 @@ def nchan_thresh_mask(cube, thresh=5., nchan=2):
                             where=(~np.isnan(cube)),
                             out=np.full(cube.shape, False, dtype=bool))
 
-    kernel = np.ones(nchan, dtype=np.bool)
+    kernel = np.ones(nchan, dtype=bool)
     kernel = kernel[:,np.newaxis,np.newaxis]
 
     mask = morph.binary_opening(mask, kernel)
@@ -176,7 +176,7 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
 
     if iters_v > 0:
 
-        struct = np.ones(iters_v, dtype=np.bool)
+        struct = np.ones(iters_v, dtype=bool)
         struct = struct[:, np.newaxis, np.newaxis]
 
         if iters_xy > 0:
@@ -200,7 +200,7 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
         good_regions = np.unique(regions[mask])
 
         # create a new mask that includes only these good new regions
-        mask = np.zeros_like(mask, dtype=np.bool)
+        mask = np.zeros_like(mask, dtype=bool)
         for hit in good_regions:
             mask[regions == hit] = True
 
@@ -492,7 +492,7 @@ def make_vfield_mask(cube, vfield, window,
     # Write to disk
     # -------------------------------------------------
     
-    mask = SpectralCube(mask.astype(np.int), wcs=cube.wcs,
+    mask = SpectralCube(mask.astype(int), wcs=cube.wcs,
                         header=cube.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
     
@@ -586,13 +586,13 @@ def join_masks(orig_mask_in, new_mask_in,
         x, y, _ = new_mask.wcs.wcs_world2pix(*(orig_mask.world[0,:,:][::-1]), 0)
         _, _, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:,0,0][::-1]), 0)
 
-        x = np.rint(x).astype(np.int)
-        y = np.rint(y).astype(np.int)
-        z = np.rint(z).astype(np.int)
-        new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool)
+        x = np.rint(x).astype(int)
+        y = np.rint(y).astype(int)
+        z = np.rint(z).astype(int)
+        new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=bool)
 
         # Create new mask
-        new_mask_vals = np.zeros(orig_mask.shape, dtype=np.bool)
+        new_mask_vals = np.zeros(orig_mask.shape, dtype=bool)
         # Find all values that are in bounds
         inbounds = reduce((lambda A, B: np.logical_and(A, B)),
                           [(z[:,np.newaxis,np.newaxis] >= 0),
@@ -603,9 +603,9 @@ def join_masks(orig_mask_in, new_mask_in,
                            (x[np.newaxis,:,:] < new_mask.shape[2])])
 #        inbounds = np.logical_and.reduce(
         # Look 'em up in the new_mask
-        new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=np.int))[inbounds],
-                                                (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=np.int))[inbounds],
-                                                (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=np.int))[inbounds]]
+        new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=int))[inbounds],
+                                                (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds],
+                                                (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds]]
 
     else:
 
@@ -613,7 +613,7 @@ def join_masks(orig_mask_in, new_mask_in,
         new_mask = new_mask.reproject(orig_mask.header, order=order)
         new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
         new_mask_vals = np.array(new_mask.filled_data[:].value > thresh,
-                                 dtype=np.bool)
+                                 dtype=bool)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Combine
@@ -621,11 +621,11 @@ def join_masks(orig_mask_in, new_mask_in,
 
     if operation.strip().lower() == 'or':
         mask = np.logical_or(np.array(orig_mask.filled_data[:].value > thresh,
-                                      dtype=np.bool),
+                                      dtype=bool),
                              new_mask_vals)
     elif operation.strip().lower() == 'and':
         mask = np.logical_and(np.array(orig_mask.filled_data[:].value > thresh,
-                                       dtype=np.bool),
+                                       dtype=bool),
                               new_mask_vals)
     elif operation.strip().lower() == 'sum':
         mask = (orig_mask.filled_data[:].value) + new_mask_vals
@@ -637,7 +637,7 @@ def join_masks(orig_mask_in, new_mask_in,
     # Write to disk, return output, etc.
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    mask = SpectralCube(mask.astype(np.int), wcs=orig_mask.wcs,
+    mask = SpectralCube(mask.astype(int), wcs=orig_mask.wcs,
                         header=orig_mask.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
 

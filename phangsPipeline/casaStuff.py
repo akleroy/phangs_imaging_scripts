@@ -10,6 +10,8 @@
 
 # Obtain a version tuple (note the syntax change from < 6 to > 6)
 
+from packaging import version
+
 try:
     from taskinit import *
 except ModuleNotFoundError:
@@ -17,12 +19,14 @@ except ModuleNotFoundError:
 
 if ('casa' in locals()) or ('casa' in globals()):
     casa_version = tuple(map(int, casa['build']['version'].replace('-','.').split('.')[0:3])) # tested CASA 4, 5
+    casa_version_str = '.'.join([str(casa_version_no) for casa_version_no in casa_version])
 else:
     # This works in CASA 6 where the casatools has a version attribute
     import casatools
     casa_version = (casatools.version()[0], casatools.version()[1], casatools.version()[2])
+    casa_version_str = '.'.join([str(casa_version_no) for casa_version_no in casa_version])
 
-print("CASA version: ", casa_version)
+print("CASA version: ", casa_version_str)
 
 # Import specific CASA tasks. Not all of these are used by this
 # package, so this could be pared in the future.
@@ -107,7 +111,11 @@ if casa_version[0] >= 6:
                            tclean,
                            uvcontsub,
                            visstat)
-    
+
+    # TODO: For now, uvcontsub doesn't work as we want it in newer CASA versions, fall back to old version
+    if version.parse(casa_version_str) >= version.parse('6.5.2'):
+        from casatasks import uvcontsub_old as uvcontsub
+
     # sdintimaging imports
     
     from casatasks.private import sdint_helper
@@ -131,15 +139,46 @@ if casa_version[0] >= 6:
     import almatasks
     
     import casaplotms
-    plotms = casaplotms.gotasks.plotms.plotms
+
+    # Depending on version, imports can be different
+    try:
+        plotms = casaplotms.gotasks.plotms.plotms
+    except AttributeError:
+        plotms = casaplotms.plotms
+
     import casaviewer
-    viewer = casaviewer.gotasks.imview.imview
+
+    try:
+        viewer = casaviewer.gotasks.imview.imview
+    except AttributeError:
+        viewer = casaviewer.imview
+
     import casashell
-    gencal = casashell.private.gencal.gencal
-    plotbandpass = casashell.private.plotbandpass.plotbandpass
-    sdbaseline = casashell.private.sdbaseline.sdbaseline
-    sdimaging = casashell.private.sdimaging.sdimaging
-    sdcal = casashell.private.sdcal.sdcal
+
+    try:
+        gencal = casashell.private.gencal.gencal
+    except AttributeError:
+        from casatasks import gencal
+
+    try:
+        plotbandpass = casashell.private.plotbandpass.plotbandpass
+    except AttributeError:
+        from casatasks import plotbandpass
+
+    try:
+        sdbaseline = casashell.private.sdbaseline.sdbaseline
+    except AttributeError:
+        from casatasks import sdbaseline
+
+    try:
+        sdimaging = casashell.private.sdimaging.sdimaging
+    except AttributeError:
+        from casatasks import sdimaging
+
+    try:
+        sdcal = casashell.private.sdcal.sdcal
+    except AttributeError:
+        from casatasks import sdcal
 
 # sdintimaging import
 

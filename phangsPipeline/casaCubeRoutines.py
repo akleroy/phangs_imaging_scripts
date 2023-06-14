@@ -350,7 +350,7 @@ def multiply_cube_by_value(infile, value, brightness_unit, huge_cube_workaround=
     #    hdu = pyfits.open(infile + '.fits')[0]
     #    hdu.data *= value
     #
-    #    hdu.writeto(infile + '.fits', clobber=True)
+    #    hdu.writeto(infile + '.fits', overwrite=True)
     #    casaStuff.importfits(fitsimage=infile + '.fits',
     #                         imagename=infile,
     #                         overwrite=True)
@@ -516,7 +516,10 @@ def export_and_cleanup(
     hdr['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + pipeVer
 
     # Overwrite
-    hdu.writeto(outfile, clobber=True)
+    try:
+        hdu.writeto(outfile, clobber=True)
+    except TypeError:
+        hdu.writeto(outfile, overwrite=True)
 
     return()
 
@@ -815,11 +818,23 @@ def align_to_target(
             logger.error("Output exists and overwrite set to false - "+outfile)
             return(False)
 
+    # If we have less than 50 (output) pixels along an axis to be regridded, we need to
+    # decrease the decimation factor
+    decimate = 10
+    input_hdr = casaStuff.imhead(infile)
+    output_hdr = casaStuff.imhead(template)
+    input_shape = input_hdr['shape']
+    output_shape = output_hdr['shape']
+    regrid_axes = np.where(input_shape != output_shape)[0]
+    if np.any(output_shape[regrid_axes] < 50):
+        decimate = 1
+
     casaStuff.imregrid(
         imagename=infile,
         template=template,
         output=outfile,
         interpolation=interpolation,
+        decimate=decimate,
         asvelocity=asvelocity,
         axes=axes,
         overwrite=True)

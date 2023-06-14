@@ -125,7 +125,7 @@ def moment_generator(
         # here or (better) build a masking routine to apply masks with
         # arbitrary astrometry.
 
-        mask = np.array(mask.filled_data[:].value, dtype=np.bool)
+        mask = np.array(mask.filled_data[:].value, dtype=bool)
         cube = cube.with_mask(mask, inherit_mask=False)
 
     # Read in the noise (if present)

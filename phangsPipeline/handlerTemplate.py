@@ -431,10 +431,10 @@ class HandlerTemplate:
         considered.
         """
 
-        if len(self.get_cont_products()) is 0:
+        if len(self.get_cont_products()) == 0:
             return(self.get_line_products())
 
-        if len(self.get_line_products()) is 0:
+        if len(self.get_line_products()) == 0:
             return(self.get_cont_products())
         
         return(self.get_line_products() + self.get_cont_products())

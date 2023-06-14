@@ -15,11 +15,13 @@ from .handlerSingleDish import SingleDishHandler
 from .handlerVis import VisHandler
 from .handlerPostprocess import PostProcessHandler
 from .handlerDerived import DerivedHandler
+from .handlerRelease import ReleaseHandler
 
 if casa_enabled:
     from .handlerImaging import ImagingHandler
 
-__all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "PostProcessHandler", "DerivedHandler"]
+__all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "PostProcessHandler", "DerivedHandler",
+           "ReleaseHandler"]
 
 if casa_enabled:
     __all__.append("ImagingHandler")
@@ -27,5 +29,5 @@ if casa_enabled:
 try:
     from .handlerAlmaDownload import AlmaDownloadHandler
     __all__.append("AlmaDownloadHandler")
-except:
+except ImportError:
     pass

@@ -340,7 +340,7 @@ def old_write_moment1_hybrid(cube,
                                     inherit_mask=False)
         
     elif type(broad_mask) is np.ndarray:
-        broad_cube = cube.with_mask(broad_mask.astype(np.bool),
+        broad_cube = cube.with_mask(broad_mask.astype(bool),
                                     inherit_mask=False)
 
     (mom0broad,
