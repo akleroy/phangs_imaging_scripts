@@ -80,6 +80,28 @@ Then exit CASA and
 
 These two scripts are the ones listed above. They are heavily annotated and should provide a good starting point.
 
+### SINGLE DISH PROCESSING (still in development)
+
+The pipeline also includes scripts to execute the single dish processing described by Herrera et al. (2020). These capabilities are still somewhat in development.
+
+To use this capability:
+
+1. The measurement set key (e.g., ms_file_key) should include entries
+   labeled "tp" or similar. These "tp" entries in the measurements set
+   should refer to the root directory for the delivered data set
+   (i.e., up one level from calibrated/ scripts/ etc.).
+
+2. The configuration key (e.g., config_definitions) should include a
+   "singledish_config" named, e.g., "tp" or similar to be associated
+   with the measurement set entries. Associated keywords are
+   'bl_order' and 'chan_dv_kms'.
+   
+3. Output singledish file names need to be defined in the
+   singledish_key file. These are also later used to feather or sdint
+   image the interferometric data.
+
+4. Then there is a script 
+
 ### CONTENTS OF THE PIPELINE IN MORE DETAIL
 
 **Architecture**: The pipeline is organized and run by a series of

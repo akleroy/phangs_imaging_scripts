@@ -30,10 +30,10 @@ print("CASA version: ", casa_version_str)
 
 # Import specific CASA tasks. Not all of these are used by this
 # package, so this could be pared in the future.
-        
+
 if casa_version[0] < 6:
     from taskinit import *
-    
+
     from concat import concat
     from exportfits import exportfits
     from feather import feather
@@ -70,10 +70,12 @@ if casa_version[0] < 6:
     from sdcal import sdcal
     from taskinit import msmdtool
     from taskinit import tbtool
-        
+    from taskinit import metool
+    from taskinit import qatool
+
 # imports for singledish processing when CASA version < 5
-    
-if casa_version[0] < 5: 
+
+if casa_version[0] < 5:
     from sdsave import sdsave
     from sdlist import sdlist
     from sdcal2 import sdcal2
@@ -81,11 +83,13 @@ if casa_version[0] < 5:
     from sdplot import sdplot
 
 # Imports for CASA versions above 6
-    
+
 if casa_version[0] >= 6:
 
     import casatools
-    from casatools import (table, image, imager, msmetadata, synthesisimager, synthesisutils, regionmanager)
+    from casatools import (table, image, imager, msmetadata,
+                           synthesisimager, synthesisutils, regionmanager,
+                           measures, quanta)
 
     import casatasks
     from casatasks import (casalog,
@@ -117,27 +121,29 @@ if casa_version[0] >= 6:
         from casatasks import uvcontsub_old as uvcontsub
 
     # sdintimaging imports
-    
+
     from casatasks.private import sdint_helper
 
     #from .taskSDIntImaging import sdintimaging
     from casatasks import sdintimaging
 
     # singledish processing imports
-    #   see some documents at 
+    #   see some documents at
     #   - https://casadocs.readthedocs.io/en/stable/api/casatasks.html?highlight=sdcal#single-dish
     #   - https://casadocs.readthedocs.io/en/stable/notebooks/synthesis_calibration.html?highlight=recipes
-        
+
     iatool = image
     rgtool = regionmanager
     imtool = imager
     msmdtool = msmetadata
     tbtool = table
-    
+    metool = measures
+    qatool = quanta
+
     from casatasks import (importasdm, listobs, flagcmd, flagdata)
 
     import almatasks
-    
+
     import casaplotms
 
     # Depending on version, imports can be different
@@ -186,7 +192,7 @@ if (casa_version[0] >= 5) and (casa_version[1] >= 7):
     from sdintimaging import sdintimaging
 
 # tsysspwmap import
-    
+
 if casa_version[0] <= 5:
     from recipes.almahelpers import tsysspwmap
 else:
