@@ -10,19 +10,26 @@ import glob
 import logging
 
 import numpy as np
-import pyfits  # CASA has pyfits, not astropy
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
 
 # Pipeline versionining
-from pipelineVersion import version as pipeVer
+from .pipelineVersion import version as pipeVer
 
 # CASA stuff
 from . import casaStuff
 
 # Other pipeline stuff
 from . import casaCubeRoutines as ccr
+
+# Logging
+#from .pipelineLogger import PipelineLogger
+#logger = PipelineLogger(__name__)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -41,7 +48,7 @@ def prep_sd_for_feather(
     do_checkunits=True,
     overwrite=False):
     """
-    Prepare single dish data for feathering. 
+    Prepare single dish data for feathering.
 
     sdfile_in : the input single dish file. Can be a FITS file (with
     do_import) or a CASA image.
@@ -72,7 +79,7 @@ def prep_sd_for_feather(
     """
 
     # Check inputs
-    
+
     if (os.path.isdir(interf_file) == False):
         logger.error("Interferometric file not found: "+interf_file)
         return(None)
@@ -87,27 +94,27 @@ def prep_sd_for_feather(
 
     # Initialize file handling
 
-    current_infile = sdfile_in    
+    current_infile = sdfile_in
     current_outfile = sdfile_out
     tempfile_name = sdfile_out+'.temp'
-    
+
     # Import from FITS if needed. Keep blanks as not-a-numbers.
-    
+
     if do_import:
         if ((current_infile[-4:] == 'FITS') or \
                 (current_infile[-4:] == 'fits')) and \
                 os.path.isfile(current_infile):
             logger.info("Importing from FITS.")
-                    
+
             casaStuff.importfits(
-                fitsimage=current_infile, 
+                fitsimage=current_infile,
                 imagename=current_outfile,
                 zeroblanks=False,
                 overwrite=overwrite)
             current_infile = current_outfile
 
     # Drop degenerate axes using a call to imsubimage
-            
+
     if do_dropdeg:
         if current_infile == current_outfile:
             if os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name):
@@ -117,7 +124,7 @@ def prep_sd_for_feather(
                     logger.error("Temp file needed but exists and overwrite=False - "+tempfile_name)
                     return(None)
             os.system('cp -r '+current_infile+' '+tempfile_name)
-            current_infile = tempfile_name            
+            current_infile = tempfile_name
             os.system('rm -rf '+current_outfile)
 
         if os.path.isdir(current_outfile) or os.path.isfile(current_outfile):
@@ -128,7 +135,7 @@ def prep_sd_for_feather(
                 return(None)
 
         casaStuff.imsubimage(
-            imagename=current_infile, 
+            imagename=current_infile,
             outfile=current_outfile,
             dropdeg=True)
 
@@ -145,7 +152,7 @@ def prep_sd_for_feather(
                     logger.error("Temp file needed but exists and overwrite=False - "+tempfile_name)
                     return(None)
             os.system('cp -r '+current_infile+' '+tempfile_name)
-            current_infile = tempfile_name            
+            current_infile = tempfile_name
             os.system('rm -rf '+current_outfile)
 
         casaStuff.imregrid(
@@ -167,8 +174,8 @@ def prep_sd_for_feather(
         if unit == 'K':
             logger.info("Unit is Kelvin. Converting.")
             ccr.convert_ktojy(
-                infile=current_outfile, 
-                overwrite=overwrite, 
+                infile=current_outfile,
+                overwrite=overwrite,
                 inplace=True)
 
     # Remove leftover temporary files.
@@ -224,10 +231,10 @@ def feather_two_cubes(
 
     # Check inputs
 
-    if (os.path.isdir(sd_file) == False):
+    if (os.path.isdir(sd_file) == False) and (os.path.isfile(sd_file) == False):
         logger.error("Single dish file not found: "+sd_file)
         return(False)
-        
+
     if (os.path.isdir(interf_file) == False):
         logger.error("Interferometric file not found: "+interf_file)
         return(False)
@@ -242,7 +249,7 @@ def feather_two_cubes(
     os.system('rm -rf '+sd_file+'.temp')
     os.system('rm -rf '+interf_file+'.temp')
     os.system('rm -rf '+out_file+'.temp')
-    
+
     os.system('rm -rf '+sd_file+'.temp.temp')
     os.system('rm -rf '+interf_file+'.temp.temp')
     os.system('rm -rf '+out_file+'.temp.temp')
@@ -254,8 +261,8 @@ def feather_two_cubes(
     # interferometer map, so that only regions in common should
     # survive.
 
-    if do_blank:        
-        
+    if do_blank:
+
         current_interf_file = interf_file+'.temp'
         current_sd_file = sd_file+'.temp'
 
@@ -264,39 +271,137 @@ def feather_two_cubes(
 
         myia = au.createCasaTool(casaStuff.iatool)
 
+        # As noted in [https://casa.nrao.edu/docs/casaref/image.putchunk.html], 
+        # "If all the pixels didn't easily fit in memory, you would iterate through 
+        # the image chunk by chunk to avoid exhausting virtual memory."
+        # So here we do this iteration if the image cube is too large, 
+        # say [3600, 3600,  393] (but [2880, 2880, 393] is okay). 
+        # In principle we can do channel by channel putchunk for all cubes, 
+        # just not sure how much extra time it will need. 
+        
         myia.open(interf_file)
-        interf_mask = myia.getchunk(getmask=True)
+        interf_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
 
         myia.open(sd_file)
-        sd_mask = myia.getchunk(getmask=True)
+        sd_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
+
+        if not np.all(interf_shape == sd_shape):
+            print('interf_shape', interf_shape)
+            print('sd_shape', sd_shape)
+            raise Exception('Error! The interf_file '+interf_file+
+                ' and sd_file '+sd_file+
+                ' have different dimensions! Cannot run feather_two_cubes!')
         
-        # CASA calls unmasked values True and masked values False. The
-        # region with values in both cubes is the product.
+        has_memory_issue = False
+        interf_mask = None
+        sd_mask = None
+        
+        if not has_memory_issue:
+            has_memory_issue, interf_mask = ccr.check_getchunk_putchunk_memory_issue(
+                interf_file, myia=None, return_mask=True)
+        
+        if not has_memory_issue:
+            has_memory_issue, sd_mask = ccr.check_getchunk_putchunk_memory_issue(
+                sd_file, myia=None, return_mask=True)
+        
+        if not has_memory_issue:
+            
+            # If there is no getchunk/putchunk memory issue, directly proceed to combine the masks. 
+            
+            # CASA calls unmasked values True and masked values False. The
+            # region with values in both cubes is the product.
+            
+            combined_mask = sd_mask*interf_mask
+            
+            # This isn't a great solution. Just zero out the masked
+            # values. It will do what we want in the FFT but the CASA mask
+            # bookkeeping is being left in the dust. The workaround is
+            # complicated, though, because you can't directly manipulate
+            # pixel masks for some reason.
+            
+            if np.sum(combined_mask == False) > 0:
+                myia.open(current_interf_file)
+                interf_data = myia.getchunk()
+                interf_data[combined_mask == False] = 0.0
+                myia.putchunk(interf_data)
+                myia.close()
+            
+                myia.open(current_sd_file)
+                sd_data = myia.getchunk()
+                sd_data[combined_mask == False] = 0.0
+                myia.putchunk(sd_data)
+                myia.close()
+        
+        else:
+            
+            assert len(interf_shape) in [3, 4]
+            
+            if len(interf_shape) == 3:
+                nchan = interf_shape[2]
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                    trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                    myia.open(current_interf_file)
+                    interf_data_per_chan = myia.getchunk(blc, trc)
+                    interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                    myia.close()
+                    myia.open(current_sd_file)
+                    sd_data_per_chan = myia.getchunk(blc, trc)
+                    sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                    myia.close()
 
-        combined_mask = sd_mask*interf_mask
+                    combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
 
-        # This isn't a great solution. Just zero out the masked
-        # values. It will do what we want in the FFT but the CASA mask
-        # bookkeeping is being left in the dust. The workaround is
-        # complicated, though, because you can't directly manipulate
-        # pixel masks for some reason.
+                    # CASA calls unmasked values True and masked values False. The
+                    # region with values in both cubes is the product.
+                    
+                    boolean_mask_per_chan = (combined_mask_per_chan == False)
+                    if np.any(boolean_mask_per_chan):
+                        interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                        sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                        myia.open(current_interf_file)
+                        myia.putchunk(interf_data_per_chan, blc)
+                        myia.close()
+                        myia.open(current_sd_file)
+                        myia.putchunk(sd_data_per_chan, blc)
+                        myia.close()
+            
+            elif len(interf_shape) == 4:
+                nchan = interf_shape[2]
+                nstokes = interf_shape[3] # It's okay if Spectral and Stokes axes are swapped.
+                for istokes in range(nstokes):
+                    for ichan in range(nchan):
+                        blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL]
+                        trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL]
+                        myia.open(current_interf_file)
+                        interf_data_per_chan = myia.getchunk(blc, trc)
+                        interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                        myia.close()
+                        myia.open(current_sd_file)
+                        sd_data_per_chan = myia.getchunk(blc, trc)
+                        sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                        myia.close()
 
-        if np.sum(combined_mask == False) > 0:
-            myia.open(current_interf_file)
-            interf_data = myia.getchunk()
-            interf_data[combined_mask == False] = 0.0
-            myia.putchunk(interf_data)
-            myia.close()
+                        combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
 
-            myia.open(current_sd_file)
-            sd_data = myia.getchunk()
-            sd_data[combined_mask == False] = 0.0
-            myia.putchunk(sd_data)
-            myia.close()
+                        # CASA calls unmasked values True and masked values False. The
+                        # region with values in both cubes is the product.
+                        
+                        boolean_mask_per_chan = (combined_mask_per_chan == False)
+                        if np.any(boolean_mask_per_chan):
+                            interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                            sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                            myia.open(current_interf_file)
+                            myia.putchunk(interf_data_per_chan, blc)
+                            myia.close()
+                            myia.open(current_sd_file)
+                            myia.putchunk(sd_data_per_chan, blc)
+                            myia.close()
 
     else:
+        
         current_interf_file = interf_file
         current_sd_file = sd_file
 
@@ -306,21 +411,21 @@ def feather_two_cubes(
     if do_apodize:
 
         casaStuff.impbcor(imagename=current_sd_file,
-                     pbimage=apod_file, 
-                     outfile=current_sd_file+'.temp', 
+                     pbimage=apod_file,
+                     outfile=current_sd_file+'.temp',
                      mode='multiply')
         current_sd_file = current_sd_file+'.temp'
-        
+
         casaStuff.impbcor(imagename=current_interf_file,
-                     pbimage=apod_file, 
-                     outfile=current_interf_file+'.temp', 
+                     pbimage=apod_file,
+                     outfile=current_interf_file+'.temp',
                      mode='multiply')
         current_interf_file = current_interf_file+'.temp'
 
     # Call feather, followed by an imsubimage to deal with degenerate
     # axis stuff.
 
-    if overwrite:        
+    if overwrite:
         os.system('rm -rf '+out_file)
     os.system('rm -rf '+out_file+'.temp')
     casaStuff.feather(imagename=out_file+'.temp',
@@ -328,7 +433,7 @@ def feather_two_cubes(
                  lowres=current_sd_file,
                  sdfactor=1.0,
                  lowpassfiltersd=False)
-    casaStuff.imsubimage(imagename=out_file+'.temp', 
+    casaStuff.imsubimage(imagename=out_file+'.temp',
                     outfile=out_file,
                     dropdeg=True)
     os.system('rm -rf '+out_file+'.temp')
@@ -339,9 +444,9 @@ def feather_two_cubes(
         os.system('rm -rf '+out_file+'.temp')
         os.system('mv '+out_file+' '+out_file+'.temp')
         casaStuff.impbcor(imagename=out_file+'.temp',
-                     pbimage=apod_file, 
-                     outfile=out_file, 
-                     mode='divide', 
+                     pbimage=apod_file,
+                     outfile=out_file,
+                     mode='divide',
                      cutoff=apod_cutoff)
 
     # Remove temporary files

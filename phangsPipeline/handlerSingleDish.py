@@ -19,22 +19,19 @@ logger.setLevel(logging.DEBUG)
 
 
 # Check casa environment by importing CASA-only packages
-try:
-    import taskinit
-    casa_enabled = True
-except ImportError:
-    casa_enabled = False
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    import casaSingleDishRoutines as csdr
+    from . import casaSingleDishRoutines as csdr
 else:
     logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import handlerTemplate
-import utilsFilenames
-import utilsLines
+from . import handlerTemplate
+from . import utilsFilenames
+from . import utilsLines
+
 
 class SingleDishHandler(handlerTemplate.HandlerTemplate):
     """
@@ -185,7 +182,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         kwargs = {}
         kwargs['path_galaxy'] = path_galaxy                            # 
         kwargs['flag_file']  = ''                                      # 
-        kwargs['doplots']    = True                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
+        kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
         kwargs['bl_order']   = 1                                       # Order for the baseline fitting
         kwargs['source']     = target                                  # Source name
         kwargs['freq_rest']  = freq_rest_MHz                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))

@@ -3,11 +3,11 @@ Stand alone routines to carry out basic noise estimation, masking, and
 mask manipulation steps in CASA.
 """
 
-# 
+#
 # 20200210 dzliu: moved "stat_clean_cube()" to here, as it is required by "signal_mask()"
 # 20200210 dzliu: changed "casa." to "casaStuff.", as "casa" is a dict used by CASA itself.
 # 20200210 dzliu: changed "print +(.*)$" to "logger.info(\1)"
-# 
+#
 
 # region Imports and definitions
 
@@ -18,13 +18,17 @@ import logging
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.special import erfc
-import pyfits  # CASA has pyfits, not astropy
+
+try:
+    import pyfits  # CASA has pyfits, not astropy
+except ImportError:
+    import astropy.io.fits as pyfits
 
 # Analysis utilities
 import analysisUtils as au
 
 # Pipeline versionining
-from pipelineVersion import version as pipeVer
+from .pipelineVersion import version as pipeVer
 
 # CASA stuff
 from . import casaStuff
@@ -52,7 +56,7 @@ def mad(
     as_sigma (default True) : scale the output so that the returned
     value represents the RMS or 1-sigma value for a normal
     distribution. For Gaussian noise, this implies that the result can
-    just be used as a standard noise estimate.  
+    just be used as a standard noise estimate.
     """
 
     if data is None:
@@ -220,12 +224,12 @@ def stat_cube(
 
 # region Mask creation and manipulation
 
-def read_cube(infile, allow_huge=True):
+def read_cube(infile, huge_cube_workaround=True):
     """
     Read cube from CASA image file. Includes a switch for large cubes, where getchunk may fail.
     """
 
-    if allow_huge:
+    if huge_cube_workaround:
         casaStuff.exportfits(imagename=infile,
                              fitsimage=infile + '.fits',
                              stokeslast=False, overwrite=True)
@@ -243,7 +247,7 @@ def read_cube(infile, allow_huge=True):
     return cube
 
 
-def write_mask(infile, outfile, mask, allow_huge=True):
+def write_mask(infile, outfile, mask, huge_cube_workaround=True):
     """
     Write a CASA mask out as a CASA image. Includes a switch for large cubes, where putchunk may fail.
     """
@@ -251,7 +255,7 @@ def write_mask(infile, outfile, mask, allow_huge=True):
     os.system('rm -rf ' + outfile)
     os.system('cp -r ' + infile + ' ' + outfile)
 
-    if allow_huge:
+    if huge_cube_workaround:
         casaStuff.exportfits(imagename=outfile,
                              fitsimage=outfile + '.fits',
                              stokeslast=False, overwrite=True)
@@ -267,7 +271,12 @@ def write_mask(infile, outfile, mask, allow_huge=True):
         for wcs_name in wcs_names:
             hdu.header[wcs_name.upper()] = header[wcs_name]
 
-        hdu.writeto(outfile + '.fits', clobber=True)
+        # Variations between pyfits and astropy
+        try:
+            hdu.writeto(outfile + '.fits', clobber=True)
+        except TypeError:
+            hdu.writeto(outfile + '.fits', overwrite=True)
+
         casaStuff.importfits(fitsimage=outfile + '.fits',
                              imagename=outfile,
                              overwrite=True)
@@ -283,6 +292,7 @@ def write_mask(infile, outfile, mask, allow_huge=True):
 
 
 def signal_mask(
+        imaging_method='tclean',
         cube_root=None,
         out_file=None,
         suffix_in='',
@@ -297,6 +307,9 @@ def signal_mask(
     A simple signal mask creation routine used to make masks on the
     fly during imaging. Leverages CASA statistics and scipy.
     """
+
+    if imaging_method == 'sdintimaging':
+        cube_root += '.joint.cube'
 
     if not os.path.isdir(cube_root + '.image' + suffix_in):
         logger.error('Data file not found: "' + cube_root + '.image' + suffix_in + '"')
@@ -319,7 +332,7 @@ def signal_mask(
         spec_axis = 3
 
     logger.info('Reading cube.')
-    cube = read_cube(cube_root + '.image' + suffix_in, allow_huge=True)
+    cube = read_cube(cube_root + '.image' + suffix_in, huge_cube_workaround=True)
 
     logger.info('Building high mask.')
     if absolute:
@@ -365,7 +378,7 @@ def signal_mask(
 
     if operation == 'AND' or operation == 'OR':
         if os.path.isdir(cube_root + '.mask' + suffix_out):
-            old_mask = read_cube(cube_root + '.mask' + suffix_out, allow_huge=True)
+            old_mask = read_cube(cube_root + '.mask' + suffix_out, huge_cube_workaround=True)
         else:
             logger.info("Operation AND/OR requested but no previous mask found.")
             logger.info("... will set operation=NEW.")
@@ -382,14 +395,14 @@ def signal_mask(
         del old_mask
 
     logger.info('Recasting as an int.')
-    # this might be better: mask.astype(np.int, copy=False)
+    # this might be better: mask.astype(int, copy=False)
     # mask = mask.astype(int)
     mask = mask.astype(np.int32)
 
     # Export the image to fits, put in the mask and convert back to a CASA image
     logger.info('Writing mask to disk')
 
-    write_mask(cube_root + '.image' + suffix_in, cube_root + '.mask' + suffix_out, mask, allow_huge=True)
+    write_mask(cube_root + '.image' + suffix_in, cube_root + '.mask' + suffix_out, mask, huge_cube_workaround=True)
 
 
 def apply_additional_mask(
@@ -467,8 +480,8 @@ def import_and_align_mask(
     # Check if 2D or 3D
     logger.debug('Template data axis names: ' + str(hdr['axisnames']) + ', shape: ' + str(hdr['shape']))
     logger.debug('Mask data axis names: ' + str(maskhdr['axisnames']) + ', shape: ' + str(maskhdr['shape']))
-    is_template_2D = (np.prod(list(hdr['shape'])) == np.prod(list(hdr['shape'])[0:2]))
-    is_mask_2D = (np.prod(list(maskhdr['shape'])) == np.prod(list(maskhdr['shape'])[0:2]))
+    is_template_2D = (np.prod(list(hdr['shape'])) == np.prod(list(hdr['shape'])[:2]))
+    is_mask_2D = (np.prod(list(maskhdr['shape'])) == np.prod(list(maskhdr['shape'])[:2]))
     if is_template_2D and not is_mask_2D:
         logger.debug('Template image is 2D but mask is 3D, collapsing the mask over channel axes: ' + str(
             np.arange(maskhdr['ndim'] - 1, 2 - 1, -1)))
@@ -479,7 +492,7 @@ def import_and_align_mask(
         # print('**********************')
         # print('type(mask)', type(mask), 'mask.dtype', mask.dtype, 'mask.shape', mask.shape) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
         # print('**********************')
-        # 
+        #
         # collapse channel and higher axes
         # mask = np.any(mask.astype(int).astype(bool), axis=np.arange(maskhdr['ndim']-1, 2-1, -1)) # Note that here array shapes are in F dimension order, i.e., axis 0 is RA, axis 1 is Dec, axis 2 is Frequency, etc.
         # mask = mask.astype(int)
@@ -493,7 +506,7 @@ def import_and_align_mask(
         # newimage = myia.newimagefromarray(outfile=out_file+'.temp_collapsed', pixels=mask.astype(int), overwrite=True)
         # newimage.done()
         # myia.close()
-        # 
+        #
         # collapse channel and higher axes
         os.system('rm -rf ' + out_file + '.temp_collapsed' + ' 2>/dev/null')
         myia.open(out_file + '.temp_copy')
@@ -545,17 +558,16 @@ def import_and_align_mask(
         myia.putchunk(data)
         myia.close()
     else:
-        # Need to make sure this works for two dimensional cases, too.
         if (hdr['axisnames'][3] == 'Frequency') and (hdr['ndim'] == 4):
             myia.open(out_file)
             data = myia.getchunk(dropdeg=False)
-            data[:, :, 0, :] = mask
+            data[:, :, 0, :] = mask.reshape((data.shape[0], data.shape[1], -1))
             myia.putchunk(data)
             myia.close()
         elif (hdr['axisnames'][2] == 'Frequency') and (hdr['ndim'] == 4):
             myia.open(out_file)
             data = myia.getchunk(dropdeg=False)
-            data[:, :, :, 0] = mask
+            data[:, :, :, 0] = mask.reshape((data.shape[0], data.shape[1], -1))
             myia.putchunk(data)
             myia.close()
         else:

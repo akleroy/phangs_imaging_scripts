@@ -12,7 +12,7 @@ from astropy.io import fits
 from astropy.stats import mad_std
 from spectral_cube import SpectralCube
 
-from pipelineVersion import version, tableversion
+from .pipelineVersion import tableversion, version
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -26,18 +26,18 @@ def mad_zero_centered(data, mask=None):
     Estimates the noise in a data set using the median absolute
     deviation. Assumes a normal distribution and that the data are
     centered on zero. Excludes any masked regions.
-    
+
     Parameters:
     -----------
-    
+
     data : np.array
 
         Array of data (floats)
-    
+
     Keywords:
     ---------
-    
-    mask : np.bool
+
+    mask : bool
 
         Boolean array with True indicating where data can be used in
         the noise estimate. (i.e., True is noise). If none is supplied
@@ -53,7 +53,7 @@ def mad_zero_centered(data, mask=None):
     # Make a trivial mask (to simplify the code) if none has been supplied
     if mask is None:
         mask = np.isfinite(data)
-    
+
     # Check that we have enough data to estimate the noise
     nData = mask.sum()
     if nData == 0:
@@ -68,11 +68,11 @@ def mad_zero_centered(data, mask=None):
     # Make a first estimate of the noise based on the negatives.
 
     data_lt_zero = np.logical_and(
-        np.less(data, 0, 
+        np.less(data, 0,
                 where=where_data_valid,
                 out=np.full(where_data_valid.shape,
                             False, dtype=bool)), mask)
-    
+
     mad1 = mad_to_std_fac * np.abs(np.median(data[data_lt_zero]))
 
     # Make a second estimate now including the positives less than
@@ -89,7 +89,7 @@ def mad_zero_centered(data, mask=None):
 
     return(mad2)
 
-def noise_cube(data, mask=None, 
+def noise_cube(data, mask=None,
                nThresh=30, iterations=1,
                do_map=True, do_spec=True,
                box=None, spec_box=None,
@@ -102,29 +102,29 @@ def noise_cube(data, mask=None,
     Makes an empirical estimate of the noise in a cube assuming that
     it is normally distributed about zero. Treats the spatial and
     spectral dimensions as separable.
-    
+
     Parameters:
     -----------
-    
+
     data : np.array
         Array of data (floats)
-    
+
     Keywords:
     ---------
-    
-    mask : np.bool
 
-        Boolean array with False indicating where data can be 
+    mask : bool
+
+        Boolean array with False indicating where data can be
         used in the noise estimate. (i.e., True is signal)
-    
-    do_map : np.bool
-    
+
+    do_map : bool
+
         Estimate spatial variations in the noise. Default is True. If
         set to False, all locations in a plane have the same noise
         estimate.
 
-    do_spec : np.bool
-    
+    do_spec : bool
+
         Estimate spectral variations in the noise. Default is True. If
         set to False, all channels in a spectrum have the same noise
         estimate.
@@ -134,31 +134,31 @@ def noise_cube(data, mask=None,
         Spatial size of the box over which noise is calculated in
         pixels.  Default: no box, every pixel gets its own noise
         estimte.
-    
+
     spec_box : int
 
         Spectral size of the box overwhich the noise is calculated.
         Default: no box, each channel gets its own noise estimate.
-    
+
     nThresh : int
         Minimum number of data to be used in an individual noise estimate.
-    
+
     iterations : int
-        Number of times to iterate the noise solution to force Gaussian 
+        Number of times to iterate the noise solution to force Gaussian
         statistics.  Default: no iterations.
-    
+
     bandpass_smooth_window : int
-        Number of channels used in bandpass smoothing kernel.  Defaults to 
-        nChan / 4 where nChan number of channels.  Set to zero to suppress 
+        Number of channels used in bandpass smoothing kernel.  Defaults to
+        nChan / 4 where nChan number of channels.  Set to zero to suppress
         smoothing. Uses Savitzky-Golay smoothing
-        
+
     bandpass_smooth_order : int
         Polynomial order used in smoothing kernel.  Defaults to 3.
-    
+
     """
 
     # TBD: add error checking
-    
+
     # Create a mask that identifies voxels to be fitting the noise
 
     noisemask = np.isfinite(data)
@@ -173,9 +173,9 @@ def noise_cube(data, mask=None,
     # If the user has supplied a spatial box size, recast this into a
     # step size that critically samples the box and a halfbox size
     # used for convenience.
-    
+
     if box is not None:
-        step = np.floor(box/2.5).astype(np.int)
+        step = np.floor(box/2.5).astype(int)
         halfbox = int(box // 2)
 
     # Include all pixels adjacent to the spatial
@@ -190,12 +190,12 @@ def noise_cube(data, mask=None,
         extray, extrax = np.where(rind)
     else:
         extray, extrax = None, None
-        
+
     # If the user has supplied a spectral box size, use this to
     # calculate a spectral step size.
 
     if spec_box is not None:
-        spec_step = np.floor(spec_box / 2).astype(np.int)
+        spec_step = np.floor(spec_box / 2).astype(int)
         boxv = int(spec_box // 2)
     else:
         boxv = 0
@@ -209,9 +209,9 @@ def noise_cube(data, mask=None,
     # estimation.
 
     noise_cube_out = np.ones_like(data)
-      
+
     # Iterate
-  
+
     for ii in np.arange(iterations):
 
         if not do_map:
@@ -219,7 +219,7 @@ def noise_cube(data, mask=None,
             # If spatial variations are turned off then estimate a
             # single value and fill the noise map with this value.
 
-            noise_value = mad_zero_centered(data, mask=noisemask)            
+            noise_value = mad_zero_centered(data, mask=noisemask)
             noise_map = np.zeros(data.shape[1:]) + noise_value
 
         else:
@@ -254,7 +254,7 @@ def noise_cube(data, mask=None,
                 if np.sum(minicube_mask) > nThresh:
                     noise_map[y, x] = mad_zero_centered(minicube,
                                                         mask=minicube_mask)
-            
+
             if extrax is not None and extray is not None:
                 for x, y in zip(extrax, extray):
 
@@ -266,7 +266,7 @@ def noise_cube(data, mask=None,
                     if np.sum(minicube_mask) > nThresh:
                         noise_map[y, x] = mad_zero_centered(minicube,
                                                             mask=minicube_mask)
-                
+
             noise_map[boundary] = np.nan
 
             # If we are using a box size greater than an individual pixel
@@ -318,9 +318,10 @@ def noise_cube(data, mask=None,
         if not do_spec:
 
             # If spectral variations are turned off then assume that
-            # the noise_map describes all channels of the cube.
+            # the noise_map describes all channels of the cube. In
+            # that case the spectrum is just a series of ones.
 
-            pass
+            noise_spec = np.ones(data.shape[0])
             
         else:
 
@@ -329,12 +330,12 @@ def noise_cube(data, mask=None,
             zz = np.arange(data.shape[0])
             for z in zz:
 
-                # Idententify the range of channels to be considered
+                # Identify the range of channels to be considered
                 # in this estimate.
 
                 lowz = np.clip(z - boxv, 0, data.shape[0])
                 hiz = np.clip(z + boxv + 1, 0, data.shape[0])
-                
+
                 # Extract a slab from the cube and normalize it by the
                 # noise map. Now any measured noise variations are
                 # relative to those in the noise map.
@@ -342,7 +343,7 @@ def noise_cube(data, mask=None,
                 slab = data[lowz:hiz, :, :] / noise_map[np.newaxis, :, :]
                 slab_mask = noisemask[lowz:hiz, :, :]
                 noise_spec[z] = mad_zero_centered(slab, mask=slab_mask)
-                
+
             # Smooth the spectral variations in the noise.
 
             if bandpass_smooth_window > 0:
@@ -381,7 +382,7 @@ def noise_cube(data, mask=None,
 
             data = data / noise_cube
             noise_cube_out *= noise_cube
-        
+
 
     # If iterating return the iterated noise cube.
 
@@ -398,18 +399,18 @@ def recipe_phangs_noise(
 
     Wrap noise_cube with a set of preferred parameters for the
     PHANGS-ALMA CO work.
-    
+
     Parameters:
     -----------
-    
+
     cube : np.array
 
         Array of data (floats)
-    
+
     Keywords:
     ---------
-    
-    mask : np.bool
+
+    mask : bool
 
         Boolean array with False indicating where data can be used in
         the noise estimate. (i.e., True is signal).
@@ -438,7 +439,7 @@ def recipe_phangs_noise(
         box = np.ceil(2.5 * pixels_per_beam**0.5)
         noise_kwargs['box'] = box
 
-    # Default to an odd bandpass smothing window 
+    # Default to an odd bandpass smothing window
     if 'bandpass_smooth_window' not in noise_kwargs:
         spectral_smooth = np.ceil(cube.shape[0] / 5) // 2 * 2 + 1
         noise_kwargs['bandpass_smooth_window'] = spectral_smooth
@@ -468,7 +469,7 @@ def recipe_phangs_noise(
         else:
             noise_kwargs['mask'] = None
 
-            
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Run the noise estimate
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -478,7 +479,7 @@ def recipe_phangs_noise(
     badmask = nd.binary_dilation(badmask,
                                  structure=nd.generate_binary_structure(3, 2))
     data[badmask] = np.nan
-    rms = noise_cube(data, 
+    rms = noise_cube(data,
                      **noise_kwargs)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -491,18 +492,22 @@ def recipe_phangs_noise(
 
     # Recast from numpy array to spectral cube
     header = cube.header
-    header['DATAMIN'] = np.nanmin(rms)
-    header['DATAMAX'] = np.nanmax(rms)
+    datamin = np.nanmin(rms)
+    datamax = np.nanmax(rms)
+    if np.isfinite(datamin):
+        header['DATAMIN'] = datamin
+    if np.isfinite(datamax):
+        header['DATAMAX'] = datamax
     header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
     if tableversion:
         header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
     rms = SpectralCube(rms, wcs=cube.wcs, header=header,
                        meta={'BUNIT':cube.header['BUNIT']})
-    
+
     # Write to disk, if desired
     if outfile is not None:
         rms.write(outfile, overwrite=overwrite)
-        
+
     if return_spectral_cube:
         return(rms)
     else:

@@ -67,7 +67,7 @@ def moment_generator(
         moment=None, momkwargs=None,
         outfile=None, errorfile=None,
         channel_correlation=None,
-        context=None):
+        context=None, assignkunits=False):
 
     """
     Generate one moment map from input cube, noise, and masks.
@@ -106,7 +106,7 @@ def moment_generator(
         raise NotImplementedError
 
     cube.allow_huge_operations = True
-
+        
     # Force Kelvin. We will be unit agnostic later.
     cube = cube.to(u.K)
     
@@ -125,7 +125,7 @@ def moment_generator(
         # here or (better) build a masking routine to apply masks with
         # arbitrary astrometry.
 
-        mask = np.array(mask.filled_data[:].value, dtype=np.bool)
+        mask = np.array(mask.filled_data[:].value, dtype=bool)
         cube = cube.with_mask(mask, inherit_mask=False)
 
     # Read in the noise (if present)

@@ -13,8 +13,10 @@ from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
 from spectral_cube import SpectralCube
 
-from pipelineVersion import version, tableversion
+from .pipelineVersion import tableversion, version
+
 from .scNoiseRoutines import mad_zero_centered
+from .scDerivativeRoutines import convert_and_reproject
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -55,14 +57,14 @@ def nchan_thresh_mask(cube, thresh=5., nchan=2):
     mask = np.greater_equal(cube, thresh,
                             where=(~np.isnan(cube)),
                             out=np.full(cube.shape, False, dtype=bool))
-    
-    kernel = np.ones(nchan, dtype=np.bool)
+
+    kernel = np.ones(nchan, dtype=bool)
     kernel = kernel[:,np.newaxis,np.newaxis]
 
     mask = morph.binary_opening(mask, kernel)
 
     return(mask)
-    
+
 def reject_small_regions(mask, min_volume=0, min_area=0):
     """
     Remove small regions from a mask. Small can be defined in either
@@ -78,7 +80,7 @@ def reject_small_regions(mask, min_volume=0, min_area=0):
     Keywords:
     ---------
 
-    minvolume : int    
+    minvolume : int
         Minimum volume in pixels. Default 0.
 
     minarea : int
@@ -89,7 +91,7 @@ def reject_small_regions(mask, min_volume=0, min_area=0):
     # TBD Error checking on types, dimensionality, etc.
 
     # Blob color the cube and loop over regions
-    
+
     regions, regct = nd.label(mask)
     objslices = nd.find_objects(regions)
 
@@ -100,7 +102,7 @@ def reject_small_regions(mask, min_volume=0, min_area=0):
             volume =  np.sum(subcube == (ii+1))
             if volume < min_volume:
                 mask[regions == (ii+1)] = False
-            
+
         if min_area > 0:
             if mask.ndim == 3:
                 area = np.sum(np.any(subcube == (ii+1), axis=0))
@@ -144,10 +146,10 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
     Keywords:
     ---------
 
-    iters_xy : int    
+    iters_xy : int
         Number of iterations of expansion in spatial dimensions.
 
-    iters_v : int    
+    iters_v : int
         Number of iterations of expansion in spectral dimension.
 
     constraint : np.array that can be broadcast to mask
@@ -174,7 +176,7 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
 
     if iters_v > 0:
 
-        struct = np.ones(iters_v, dtype=np.bool)
+        struct = np.ones(iters_v, dtype=bool)
         struct = struct[:, np.newaxis, np.newaxis]
 
         if iters_xy > 0:
@@ -198,18 +200,18 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
         good_regions = np.unique(regions[mask])
 
         # create a new mask that includes only these good new regions
-        mask = np.zeros_like(mask, dtype=np.bool)
+        mask = np.zeros_like(mask, dtype=bool)
         for hit in good_regions:
             mask[regions == hit] = True
 
     return(mask)
 
-def cprops_mask(data, noise=None, 
+def cprops_mask(data, noise=None,
                 hi_thresh=5, hi_nchan=2,
                 lo_thresh=None, lo_nchan=None,
                 min_pix=None, min_area=None,
                 min_beams=None, ppbeam=None,
-                grow_xy=None, grow_v=None, 
+                grow_xy=None, grow_v=None,
                 prior_hi = None,
                 prior_lo = None,
                 invert=False):
@@ -264,7 +266,7 @@ def cprops_mask(data, noise=None,
         Number of iterations to grow the final mask in the xy plane.
 
     grow_v : int
-        Number of iterations to grow the final mask in velocity 
+        Number of iterations to grow the final mask in velocity
 
     prior_hi : np. array
         Mask that will be applied to the high significance mask before
@@ -303,7 +305,7 @@ def cprops_mask(data, noise=None,
     if ((min_beams is not None)
         or (min_pix is not None)
         or (min_area is not None)):
-        
+
         if min_pix is None:
             min_pix = 0
 
@@ -333,16 +335,176 @@ def cprops_mask(data, noise=None,
 
         # Now expand the original mask into the lower mask
         mask = grow_mask(hi_mask, constraint=lo_mask)
-        
+
     # If requested, grow the mask in xy and v directions. Sequential
     # calls mean that the xy is applied then the v.
 
     if grow_xy is not None:
         mask = grow_mask(mask, iters_xy=grow_xy)
-    
+
     if grow_v is not None:
         mask = grow_mask(mask, iters_v=grow_v)
+
+    return(mask)
+
+def mask_around_value(cube, target=None, delta=None):
+    """General function to make a mask that includes only values within
+    delta of some target value or cube.
     
+    Parameters:
+
+    -----------
+
+    cube : array
+
+    target : array or float
+
+        The target value
+
+    delta : the tolerance
+
+        When cube is within delta of target, return True
+
+    Keywords:
+    ---------
+
+    TBD
+
+    """
+
+    # -------------------------------------------------
+    # Generate the mask
+    # -------------------------------------------------
+
+    mask = np.abs(cube - target) <= delta
+
+    # -------------------------------------------------
+    # Return
+    # -------------------------------------------------
+
+    return(mask)
+
+def make_vfield_mask(cube, vfield, window,
+                     outfile=None, overwrite=True):
+    """Make a mask that includes only pixels within +/- some velocity
+    window of a provided velocity field, which can be two-d or one-d.
+    
+    Parameters:
+
+    -----------
+
+    data : string or SpectralCube
+        
+        The original data cube.
+
+    vfield : float or two-d array or string
+
+        The velocity field to use as a template. If a string, it's
+        read as a file.
+
+    window : float or two-d array or string
+
+        The velocity field to use as a template. If a string, it's
+        read as a file.
+
+    Keywords:
+    ---------
+
+    TBD
+
+    """
+    
+    # -------------------------------------------------
+    # Get spectral information from the cube
+    # -------------------------------------------------
+
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+    spvalue = spaxis.value
+    nz, ny, nx = cube.shape
+
+    # -------------------------------------------------
+    # Convert and align the velocity field as needed
+    # -------------------------------------------------
+
+    # Make sure the velocity is a quanity
+    if type(vfield) != u.quantity.Quantity:
+        # Guess matched units
+        vfield = u.quantity.Quantity(vfield,spunit)
+    
+    # Just convert if it's a scalar
+    if np.ndim(vfield.data) <= 1:
+        vfield = vfield.to(spunit)
+        vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
+    else:
+        # reproject if it's a projection
+        if type(vfield) is Projection:            
+            vfield = convert_and_reproject(vfield, template=cube.header, unit=spunit)
+        else:            
+            vfield = vfield.to(spunit)
+
+    # Check sizes    
+    if (cube.shape[1] != vfield.shape[0]) or (cube.shape[2] != vfield.shape[1]):
+        return(np.nan)
+
+    # -------------------------------------------------
+    # Convert and align the window as needed
+    # -------------------------------------------------
+
+    # Make sure the window is a quanity
+    if type(window) != u.quantity.Quantity:
+        # Guess matched units
+        window = u.quantity.Quantity(window,spunit)
+    
+    # Just convert if it's a scalar
+    if np.ndim(window.data) <= 1:
+        window = window.to(spunit)        
+        window = u.quantity.Quantity(np.ones((ny, nx))*window.value, window.unit)
+    else:
+        # reproject if it's a projection
+        if type(window) is Projection:            
+            window = convert_and_reproject(window, template=cube.header, unit=spunit)
+        else:            
+            window = window.to(spunit)
+
+    # Check sizes
+    if (cube.shape[1] != window.shape[0]) or (cube.shape[2] != window.shape[1]):
+        return(np.nan)    
+
+    # -------------------------------------------------
+    # Generate a velocity cube and a vfield cube
+    # -------------------------------------------------
+
+    spaxis_cube = np.ones((ny, nx))[None,:,:] * spvalue[:,None,None]    
+    vfield_cube = (vfield.value)[None,:,:] * np.ones(nz)[:,None,None]
+    window_cube = (window.value)[None,:,:] * np.ones(nz)[:,None,None]
+
+    # -------------------------------------------------
+    # Make the mask
+    # -------------------------------------------------
+
+    mask = mask_around_value( \
+        spaxis_cube,
+        target=vfield_cube,
+        delta=window_cube)
+
+    # -------------------------------------------------
+    # Write to disk
+    # -------------------------------------------------
+    
+    mask = SpectralCube(mask.astype(int), wcs=cube.wcs,
+                        header=cube.header,
+                        meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
+    
+    # Write to disk, if desired
+    if outfile is not None:        
+        header = mask.header
+        header['DATAMAX'] = 1
+        header['DATAMIN'] = 0
+        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+                              header=header)
+        hdu.writeto(outfile, overwrite=overwrite)
+
     return(mask)
 
 def join_masks(orig_mask_in, new_mask_in, 
@@ -351,14 +513,14 @@ def join_masks(orig_mask_in, new_mask_in,
                thresh=0.5,
                ):
     """
-    Reproject and combine a new mask 
+    Reproject and combine a new mask
 
     Parameters:
 
     -----------
 
     orig_mask_in : string or SpectralCube
-        
+
         The original mask.
 
     new_mask_in : string or SpectralCube
@@ -372,7 +534,7 @@ def join_masks(orig_mask_in, new_mask_in,
         Order of interpolation. Passed to spectral cube.
 
     operation : string
-        method to combine the masks 'or' or 'and' 
+        method to combine the masks 'or' or 'and'
 
     outfile : string
         Filename where the mask will be written. The mask is also
@@ -424,13 +586,13 @@ def join_masks(orig_mask_in, new_mask_in,
         x, y, _ = new_mask.wcs.wcs_world2pix(*(orig_mask.world[0,:,:][::-1]), 0)
         _, _, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:,0,0][::-1]), 0)
 
-        x = np.rint(x).astype(np.int)
-        y = np.rint(y).astype(np.int)
-        z = np.rint(z).astype(np.int)
-        new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=np.bool)
+        x = np.rint(x).astype(int)
+        y = np.rint(y).astype(int)
+        z = np.rint(z).astype(int)
+        new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=bool)
 
         # Create new mask
-        new_mask_vals = np.zeros(orig_mask.shape, dtype=np.bool)
+        new_mask_vals = np.zeros(orig_mask.shape, dtype=bool)
         # Find all values that are in bounds
         inbounds = reduce((lambda A, B: np.logical_and(A, B)),
                           [(z[:,np.newaxis,np.newaxis] >= 0),
@@ -441,30 +603,30 @@ def join_masks(orig_mask_in, new_mask_in,
                            (x[np.newaxis,:,:] < new_mask.shape[2])])
 #        inbounds = np.logical_and.reduce(
         # Look 'em up in the new_mask
-        new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=np.int))[inbounds],
-                                                (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=np.int))[inbounds],
-                                                (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=np.int))[inbounds]]
-        
+        new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=int))[inbounds],
+                                                (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds],
+                                                (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds]]
+
     else:
 
         logger.warn('Joining masks with reprojection')
         new_mask = new_mask.reproject(orig_mask.header, order=order)
         new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
         new_mask_vals = np.array(new_mask.filled_data[:].value > thresh,
-                                 dtype=np.bool)
-        
+                                 dtype=bool)
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Combine
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if operation.strip().lower() == 'or':
         mask = np.logical_or(np.array(orig_mask.filled_data[:].value > thresh,
-                                      dtype=np.bool),
-                             new_mask_vals)    
-    elif operation.strip().lower() == 'and':      
+                                      dtype=bool),
+                             new_mask_vals)
+    elif operation.strip().lower() == 'and':
         mask = np.logical_and(np.array(orig_mask.filled_data[:].value > thresh,
-                                       dtype=np.bool),
-                              new_mask_vals)    
+                                       dtype=bool),
+                              new_mask_vals)
     elif operation.strip().lower() == 'sum':
         mask = (orig_mask.filled_data[:].value) + new_mask_vals
     else:
@@ -475,12 +637,12 @@ def join_masks(orig_mask_in, new_mask_in,
     # Write to disk, return output, etc.
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    mask = SpectralCube(mask.astype(np.int), wcs=orig_mask.wcs,
+    mask = SpectralCube(mask.astype(int), wcs=orig_mask.wcs,
                         header=orig_mask.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
-    
+
     # Write to disk, if desired
-    if outfile is not None:        
+    if outfile is not None:
         header = mask.header
         header['DATAMAX'] = 1
         header['DATAMIN'] = 0
@@ -492,9 +654,9 @@ def join_masks(orig_mask_in, new_mask_in,
     return(mask)
 
 def recipe_phangs_strict_mask(
-    incube, innoise, outfile=None, 
+    incube, innoise, outfile=None,
     coverage=None, coverage_thresh=0.95,
-    mask_kwargs=None, 
+    mask_kwargs=None,
     return_spectral_cube=False,
     overwrite=False):
     """
@@ -604,11 +766,11 @@ def recipe_phangs_strict_mask(
 
     prior_hi = None
     if coverage is not None:
-        
+
         prior_hi = coverage_cube.filled_data[:].value > coverage_thresh
 
     mask = cprops_mask(cube.filled_data[:].value,
-                       rms.filled_data[:].value, 
+                       rms.filled_data[:].value,
                        prior_hi = prior_hi,
                        **mask_kwargs)
 
@@ -620,10 +782,10 @@ def recipe_phangs_strict_mask(
     if not return_spectral_cube and (outfile is None):
         return(mask)
 
-    # Recast from numpy array to spectral cube    
+    # Recast from numpy array to spectral cube
     mask = SpectralCube(mask*1.0, wcs=cube.wcs, header=cube.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
-    
+
     # Write to disk, if desired
     if outfile is not None:
         header = mask.header
@@ -633,7 +795,7 @@ def recipe_phangs_strict_mask(
                               header=header)
         hdu.writeto(outfile, overwrite=overwrite)
 
-        
+
     if return_spectral_cube:
         return(mask)
     else:
@@ -672,8 +834,8 @@ def recipe_phangs_broad_mask(
         onto the template mask and then combined via logical or to
         form the final mask.
 
-    grow_xy : int    
-        
+    grow_xy : int
+
         Number of spatial dilations of the mask.
 
     grow_v : int
@@ -693,7 +855,7 @@ def recipe_phangs_broad_mask(
         inclusion in the broadmask.
 
     """
-    
+
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Error checking and work out inputs
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
@@ -715,7 +877,7 @@ def recipe_phangs_broad_mask(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     for other_mask in list_of_masks:
-        
+
         if type(other_mask) is SpectralCube:
             other_mask = other_mask
         elif type(template_mask) == type("hello"):
@@ -729,13 +891,13 @@ def recipe_phangs_broad_mask(
         mask = join_masks(mask, other_mask, operation='sum'
                           , order='fast_nearest_neighbor')
 
-    if recipe is 'anyscale':
+    if recipe == 'anyscale':
         mask_values = mask.filled_data[:].value > 0
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
                             , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
         mask.allow_huge_operations = True
 
-    if recipe is 'somescales':
+    if recipe == 'somescales':
         mask_values = mask.filled_data[:].value > (fraction_of_scales
                                                   * len(list_of_masks))
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
@@ -747,22 +909,22 @@ def recipe_phangs_broad_mask(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if (grow_xy is not None) or (grow_v is not None):
-        
+
         mask_values = mask.filled_data[:].value
         if grow_xy is not None:
             mask_values = grow_mask(mask_values, iters_xy=grow_xy)
         if grow_v is not None:
             mask_values = grow_mask(mask_values, iters_v=grow_v)
-    
+
         mask = SpectralCube(mask_values*1.0, wcs=mask.wcs, header=mask.header
                             , meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
-    
+
         mask.allow_huge_operations = True
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Write to disk and return
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    
+
     # Write to disk, if desired
     if outfile is not None:
         header = mask.header
@@ -775,7 +937,7 @@ def recipe_phangs_broad_mask(
                               header=header)
         hdu.writeto(outfile, overwrite=overwrite)
 
-        
+
     if return_spectral_cube:
         return(mask)
     else:

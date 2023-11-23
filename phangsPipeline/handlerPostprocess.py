@@ -23,53 +23,26 @@ logger.setLevel(logging.DEBUG)
 
 
 # Check casa environment by importing CASA-only packages
-#try:
-#    import taskinit
-#    casa_enabled = True
-#except ImportError:
-#    casa_enabled = False
-#
-#if casa_enabled:
-#    logger.debug('casa_enabled = True')
-#    import casaCubeRoutines as ccr
-#    import casaMosaicRoutines as cmr
-#    import casaFeatherRoutines as cfr
-#    reload(ccr)
-#    reload(cmr)
-#    reload(cfr)
-#else:
-#    logger.debug('casa_enabled = False')
-#    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-#
-#import handlerTemplate
-#import utilsFilenames
-#import utilsResolutions
-
-# adding phangsPipeline to sys.path and import packages
-if ','.join(sys.path).count('phangsPipeline') == 0:
-    try:
-        for path_to_add in [os.path.dirname(os.path.abspath(__file__)), 
-                            os.path.dirname(os.path.abspath(__file__))+os.sep+'phangsPipeline']:
-            if not (path_to_add in sys.path):
-                sys.path.append(path_to_add)
-    except:
-        pass
+from .casa_check import is_casa_installed
+casa_enabled = is_casa_installed()
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
     from . import casaCubeRoutines as ccr
     from . import casaMosaicRoutines as cmr
     from . import casaFeatherRoutines as cfr
-    reload(ccr)
-    reload(cmr)
-    reload(cfr)
+    # reload(ccr)
+    # reload(cmr)
+    # reload(cfr)
 else:
     logger.debug('casa_enabled = False')
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from . import handlerTemplate
 from . import utilsFilenames
 from . import utilsResolutions
+
+from .clean_call import CleanCall
+
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):
     """
@@ -83,7 +56,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         key_handler = None,
         dry_run = False,
         ):
-        
+
         # inherit template class
         handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
 
@@ -98,6 +71,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target=None,
         config=None,
         product=None,
+        imaging_method='tclean',
         extra_ext='',
         ):
         """
@@ -136,23 +110,37 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
         # Original cube
-                    
+
         tag = 'orig'
+
+        if imaging_method == 'tclean':
+            casaext = '.image'
+        elif imaging_method == 'sdintimaging':
+            casaext = '.joint.cube.image'
+        else:
+            logger.error('imaging_method %s not recognised' % imaging_method)
+            raise Exception('imaging_method %s not recognised' % imaging_method)
+
         orig_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = None,
             casa = True,
-            casaext = '.image')
+            casaext = casaext)
         fname_dict[tag] = orig_file
-        
+
         # Original primary beam file
+
+        if imaging_method == 'tclean':
+            casaext = '.pb'
+        elif imaging_method == 'sdintimaging':
+            casaext = '.joint.cube.pb'
 
         tag = 'pb'
         pb_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
             ext = None,
             casa = True,
-            casaext = '.pb')
+            casaext = casaext)
         fname_dict[tag] = pb_file
 
         # Original single dish file (note that this comes with a
@@ -162,7 +150,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         tag = 'orig_sd'
         if has_sd:
             orig_sd_file = self._kh.get_sd_filename(
-                target = target, product = product)            
+                target = target, product = product)
             fname_dict[tag] = orig_sd_file
         else:
             fname_dict[tag] = ''
@@ -255,7 +243,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             ext = 'singledish_weight'+extra_ext,
             casa = True,
             casaext = '.image')
-        fname_dict[tag] = sd_weight_file 
+        fname_dict[tag] = sd_weight_file
 
         # Singledish data aliged to a common grid for mosaicking
 
@@ -265,7 +253,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             ext = 'singledish_aligned'+extra_ext,
             casa = True,
             casaext = '.image')
-        fname_dict[tag] = sd_align_file 
+        fname_dict[tag] = sd_align_file
 
         # Singledish weight for use in linear mosaicking now on a
         # common astrometric grid
@@ -276,7 +264,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             ext = 'singledish_weight_aligned'+extra_ext,
             casa = True,
             casaext = '.image')
-        fname_dict[tag] = sd_weight_aligned_file 
+        fname_dict[tag] = sd_weight_aligned_file
 
         # Compressed files with edges trimmed off and smallest
         # reasonable pixel size.
@@ -288,7 +276,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             casa = True,
             casaext = '.image')
         fname_dict[tag] = trimmed_file
-        
+
         tag = 'pbcorr_trimmed'
         pbcorr_trimmed_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
@@ -296,7 +284,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             casa = True,
             casaext = '.image')
         fname_dict[tag] = pbcorr_trimmed_file
-        
+
         tag = 'trimmed_pb'
         trimmed_pb_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
@@ -321,7 +309,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             ext = 'trimmed_k'+extra_ext,
             casa = False)
         fname_dict[tag] = trimmed_k_fits
-        
+
         tag = 'pbcorr_trimmed_k'
         pbcorr_trimmed_k_file = utilsFilenames.get_cube_filename(
             target = target, config = config, product = product,
@@ -345,7 +333,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         fname_dict[tag] = trimmed_pb_fits
 
         # Return
-        
+
         return(fname_dict)
 
 #endregion
@@ -357,9 +345,11 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         extra_ext_in = '',
         extra_ext_out = '',
         check_files = True,
+        trim_coarse_beam_edge_channels = False,
         ):
         """
         For one target, product, config combination copy the
@@ -372,23 +362,23 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_imaging_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
-                
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
+
         # Copy the primary beam and the interferometric imaging
-        
+
         for this_tag in ['orig', 'pb']:
-            
+
             infile = fname_dict_in[this_tag]
             outfile = fname_dict_out[this_tag]
-        
+
             # Check input file existence
             if check_files:
                 if not (os.path.isdir(indir+infile)):
                     logger.warning("Missing "+indir+infile)
                     continue
-    
+
             logger.info("")
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
             logger.info("Staging data for:")
@@ -397,14 +387,23 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             logger.info("")
             # logger.info("Using ccr.copy_dropdeg.")
             logger.info("Staging "+outfile)
-            
-            if not self._dry_run:
+
+            if (not self._dry_run) and casa_enabled:
                 os.system('rm -rf ' + outdir + outfile)
                 os.system('cp -r ' + indir + infile + ' ' + outdir + outfile)
                 # ccr.copy_dropdeg(
                 #     infile=indir+infile,
                 #     outfile=outdir+outfile,
                 #     overwrite=True)
+
+        # in case of merged datasets with non-identical frequency setups imaged with per-plane beam, 
+        # some edge channels will have much coarser beam, we trim these edge channels here. 
+        if trim_coarse_beam_edge_channels:
+            ccr.trim_coarse_beam_edge_channels(
+                infile=outdir+fname_dict_out['orig'],
+                inpbfile=outdir+fname_dict_out['pb'],
+                inplace=True,
+            )
 
         return()
 
@@ -413,6 +412,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             target = None,
             product = None,
             config = None,
+            imaging_method='tclean',
             extra_ext = '',
             check_files = True,
             ):
@@ -424,7 +424,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Generate file names
 
         file_dir = self._kh.get_postprocess_dir_for_target(target)
-        fname_dict = self._fname_dict(target=target, config=config, product=product, extra_ext=extra_ext)
+        fname_dict = self._fname_dict(target=target, config=config, product=product, extra_ext=extra_ext,
+                                      imaging_method=imaging_method)
 
         # Copy the primary beam and the interferometric imaging
 
@@ -454,6 +455,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         in_tag = 'orig',
         out_tag = 'pbcorr',
         extra_ext_in = '',
@@ -470,16 +472,21 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
+
+        # Pull in the pblimit for setting the cutoff
+        recipe_list = self._kh.get_imaging_recipes(config=config, product=product)
+        clean_call = CleanCall(recipe_list)
+        cutoff = clean_call.get_param('pblimit')
 
         infile = fname_dict_in[in_tag]
         outfile = fname_dict_out[out_tag]
         pbfile = fname_dict_in['pb']
 
         # Check input file existence
-         
+
         if check_files:
             if not (os.path.isdir(indir+infile)):
                 logger.warning("Missing "+indir+infile)
@@ -489,24 +496,25 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 return()
 
         # Apply the primary beam correction to the data.
-        
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Primary beam correction for:")
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         logger.info("Using ccr.primary_beam_correct")
         logger.info("Correcting to "+outfile)
         logger.info("Correcting from "+infile)
         logger.info("Correcting using "+pbfile)
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             ccr.primary_beam_correct(
                 infile=indir+infile,
                 outfile=outdir+outfile,
                 pbfile=indir+pbfile,
+                cutoff=cutoff,
                 overwrite=True)
 
         return()
@@ -516,6 +524,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         in_tag = 'pbcorr',
         out_tag = 'pbcorr_round',
         extra_ext_in = '',
@@ -535,14 +544,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
-        
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
+
         infile = fname_dict_in[in_tag]
         outfile = fname_dict_out[out_tag]
 
-        # Check input file existence        
+        # Check input file existence
 
         if check_files:
             if not (os.path.isdir(indir+infile)):
@@ -550,21 +559,21 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 return()
 
         # Convolve the data to have a round beam.
-        
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Convolving to a round beam for:")
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         logger.info("Using ccr.convolve_to_round_beam")
         logger.info("Convolving from "+infile)
         logger.info("Convolving to "+outfile)
         if force_beam_as is not None:
             logger.info("Forcing beam to "+str(force_beam_as))
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             ccr.convolve_to_round_beam(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -603,8 +612,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         infile = fname_dict_in['orig_sd']
         outfile = fname_dict_out[out_tag]
 
-        # Check input file existence        
-        
+        # Check input file existence
+
         if check_files:
             if (not (os.path.isdir(indir+infile))) and \
                     (not (os.path.isfile(indir+infile))):
@@ -622,13 +631,13 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         logger.info("Using cfr.prep_sd_for_feather.")
         logger.info("Prepping "+outfile)
         logger.info("Original file "+infile)
         logger.info("Using interferometric template "+template)
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             cfr.prep_sd_for_feather(
                 sdfile_in=indir+infile,
                 sdfile_out=outdir+outfile,
@@ -636,7 +645,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 do_import=True,
                 do_dropdeg=True,
                 do_align=True,
-                do_checkunits=True,                                
+                do_checkunits=True,
                 overwrite=True)
 
         return()
@@ -646,6 +655,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         image_tag = 'pbcorr_round',
         in_tag = 'pb',
         input_type = 'pb',
@@ -667,16 +677,16 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
-        
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
+
         image_file = fname_dict_in[image_tag]
         infile = fname_dict_in[in_tag]
-        outfile = fname_dict_out[out_tag]        
+        outfile = fname_dict_out[out_tag]
 
-        # Check input file existence        
-        
+        # Check input file existence
+
         if check_files:
             if not (os.path.isdir(indir+infile)):
                 logger.warning("Missing "+infile)
@@ -694,13 +704,13 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
-        
+
         logger.info("Using cmr.generate_weight_file.")
         logger.info("Making weight file "+outfile)
         logger.info("Based off of primary beam file "+infile)
         logger.info("Measuring noise from file "+image_file)
-                        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             cmr.generate_weight_file(
                 image_file = indir+image_file,
                 input_file = indir+infile,
@@ -736,12 +746,12 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             target=target, config=config, product=product, extra_ext=extra_ext_in)
         fname_dict_out = self._fname_dict(
             target=target, config=config, product=product, extra_ext=extra_ext_out)
-                        
+
         image_file = fname_dict_in[image_tag]
         outfile = fname_dict_out[out_tag]
 
-        # Check input file existence        
-    
+        # Check input file existence
+
         if check_files:
             if not (os.path.isdir(indir+image_file)):
                 logger.warning("Missing "+image_file)
@@ -756,12 +766,12 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
-        
+
         logger.info("Using cmr.generate_weight_file.")
         logger.info("Making weight file "+outfile)
         logger.info("Measuring noise from file "+image_file)
-            
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             cmr.generate_weight_file(
                 image_file = indir+image_file,
                 input_value = 1.0,
@@ -769,7 +779,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 outfile = indir + outfile,
                 scale_by_noise = True,
                 overwrite=True)
-                
+
         return()
 
     def task_feather(
@@ -785,7 +795,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         apodize = False,
         apod_ext = 'pb',
         copy_weights = True,
-        check_files = True,       
+        check_files = True,
         ):
         """
         For one target, product, config combination, feather together
@@ -812,9 +822,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             interf_config=config)
 
         fname_dict_out = self._fname_dict(
-            target=target, config=feather_config, product=product, 
+            target=target, config=feather_config, product=product,
             extra_ext=extra_ext_out)
-                        
+
         interf_file = fname_dict_in[interf_tag]
         sd_file = fname_dict_in[sd_tag]
         if len(fname_dict_out) == 0:
@@ -825,17 +835,17 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         # Error checking
 
-        # Check input file existence        
-    
+        # Check input file existence
+
         # Feather the single dish and interferometer data
-                
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Feathering interferometer and single dish data for:")
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         logger.info("Using cfr.feather_two_cubes.")
         logger.info("Feathering "+outfile)
         logger.info("Feathering interferometric data "+interf_file)
@@ -844,7 +854,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Feather has a couple of algorithmic choices
         # associated with it. Run the method that the
         # user has selected.
-        
+
         if apodize:
 
             apod_file = fname_dict_in[apod_ext]
@@ -861,10 +871,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                     apod_file=indir+apod_file,
                     apod_cutoff=0.0,
                     overwrite=True)
-                
+
         else:
-            
-            if not self._dry_run:
+
+            if (not self._dry_run) and casa_enabled:
                 cfr.feather_two_cubes(
                     interf_file=indir+interf_file,
                     sd_file=indir+sd_file,
@@ -876,7 +886,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                     overwrite=True)
 
         if copy_weights:
-                
+
             interf_weight_exists = False
             interf_weight_file = fname_dict_in['weight']
             if os.path.isdir(indir+interf_weight_file):
@@ -891,22 +901,98 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 logger.info(str(target)+" , "+str(product)+" , "+str(config))
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("")
-                
+
                 out_weight_file=fname_dict_out['weight']
 
                 logger.info("Copying from "+interf_weight_file)
                 logger.info("Copying to "+out_weight_file)
-                if not self._dry_run:
-                    ccr.copy_dropdeg(infile=indir+interf_weight_file, 
-                                     outfile=outdir+out_weight_file, 
+                if (not self._dry_run) and casa_enabled:
+                    ccr.copy_dropdeg(infile=indir+interf_weight_file,
+                                     outfile=outdir+out_weight_file,
                                      overwrite=True)
         return()
+
+    def task_rename_sdintimaging(self,
+                                 target=None,
+                                 product=None,
+                                 config=None,
+                                 imaging_method='sdintimaging'):
+
+        if target is None:
+            logger.warning('Missing target')
+            return
+        if product is None:
+            logger.warning('Missing product')
+            return
+        if config is None:
+            logger.warning('Missing config')
+            return
+
+        if imaging_method != 'sdintimaging':
+            logger.warning('This should only be run for sdintimaging')
+            return
+
+        fname_dict_in = self._fname_dict(target=target, product=product, config=config,
+                                         imaging_method=imaging_method)
+
+        imaging_dir = self._kh.get_imaging_dir_for_target(target)
+        using_sdint = os.path.isdir(imaging_dir + fname_dict_in['orig'])
+        is_mosaic = self._kh.is_target_linmos(target)
+
+        # If not a mosaic and we're not sdintimaging, skip
+
+        if not using_sdint and not is_mosaic:
+            return
+
+        if is_mosaic:
+
+            # In the case where we have a mosaic, look for the telltale sdint files
+
+            mosaic_parts = self._kh.get_parts_for_linmos(target)
+            for mosaic_part in mosaic_parts:
+                fname_dict_mosaic = self._fname_dict(
+                    target=mosaic_part, product=product, config=config,
+                    imaging_method=imaging_method)
+                imaging_dir = self._kh.get_imaging_dir_for_target(mosaic_part)
+                using_sdint = os.path.isdir(imaging_dir + fname_dict_mosaic['orig'])
+                if using_sdint:
+                    break
+            if not using_sdint:
+                return
+
+        outdir = self._kh.get_postprocess_dir_for_target(target)
+        feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
+        fname_dict_out = self._fname_dict(target=target, product=product, config=feather_config)
+
+        logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Renaming sdintimaging outputs for:")
+        logger.info(str(target)+" , "+str(product)+" , "+str(config))
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        for key in fname_dict_in.keys():
+            item = fname_dict_in[key]
+
+            # Make sure we don't just delete the whole postprocess folder
+            if item == '':
+                continue
+
+            file_name = outdir + item
+            if os.path.exists(file_name):
+                new_file_name = outdir + fname_dict_out[key]
+                command = 'mv -f %s %s' % (file_name, new_file_name)
+                os.system('rm -rf %s' % new_file_name)
+                os.system(command)
+
+        return
 
     def task_compress(
             self,
             target = None,
             product = None,
             config = None,
+            imaging_method='tclean',
             in_tag = 'pbcorr_round',
             out_tag = 'pbcorr_trimmed',
             do_trimrind = True,
@@ -928,9 +1014,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
 
         infile = fname_dict_in['pbcorr_round']
         outfile = fname_dict_out['pbcorr_trimmed']
@@ -938,7 +1024,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         infile_pb = fname_dict_in['pb']
         outfile_pb = fname_dict_out['trimmed_pb']
 
-        # Check input file existence        
+        # Check input file existence
 
         if check_files:
             if not (os.path.isdir(indir+infile)):
@@ -956,8 +1042,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("Producing "+outfile+" using ccr.trim_cube.")
         logger.info("Trimming from original file "+infile)
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             ccr.trim_cube(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -971,7 +1057,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                     infile=outdir+outfile,
                     inplace=True,
                     pixels=1)
-                
+
 
         if do_pb_too is False:
             return()
@@ -980,7 +1066,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             if not (os.path.isdir(indir+infile_pb)):
                 logger.warning("Missing "+infile_pb)
                 return()
-            
+
         template = fname_dict_out['pbcorr_trimmed']
 
         if check_files:
@@ -1010,6 +1096,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         in_tag = 'pbcorr_trimmed',
         out_tag = 'pbcorr_trimmed_k',
         extra_ext_in = '',
@@ -1026,14 +1113,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
-            
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
+
         infile = fname_dict_in[in_tag]
         outfile = fname_dict_out[out_tag]
 
-        # Check input file existence        
+        # Check input file existence
 
         if check_files:
             if not (os.path.isdir(indir+infile)):
@@ -1041,19 +1128,19 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 return()
 
         # Change units from Jy/beam to Kelvin.
-                        
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Converting units for:")
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         logger.info("Using ccr.convert_jytok")
         logger.info("Creating "+outfile)
         logger.info("Converting from original file "+infile)
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             ccr.convert_jytok(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -1068,6 +1155,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         in_tag = 'pbcorr_trimmed_k',
         out_tag = 'pbcorr_trimmed_k_fits',
         do_pb_too = True,
@@ -1087,14 +1175,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         indir = self._kh.get_postprocess_dir_for_target(target)
         outdir = self._kh.get_postprocess_dir_for_target(target)
         fname_dict_in = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_in)
+            target=target, config=config, product=product, extra_ext=extra_ext_in, imaging_method=imaging_method)
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, extra_ext=extra_ext_out)
-        
+            target=target, config=config, product=product, extra_ext=extra_ext_out, imaging_method=imaging_method)
+
         infile = fname_dict_in[in_tag]
         outfile = fname_dict_out[out_tag]
-        
-        # Check input file existence        
+
+        # Check input file existence
 
         if check_files:
             if not (os.path.isdir(indir+infile)):
@@ -1102,14 +1190,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 return()
 
         # Export to FITS and clean up output
-        
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Exporting data to FITS and cleaning up cubes for:")
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-        
+
         logger.info("Using ccr.export_and_cleanup.")
         logger.info("Export to "+outfile)
         logger.info("Writing from input cube "+infile)
@@ -1130,7 +1218,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         if do_pb_too is False:
             return()
 
-        # Check input file existence        
+        # Check input file existence
 
         infile_pb = fname_dict_in[in_pb_tag]
         outfile_pb = fname_dict_out[out_pb_tag]
@@ -1142,12 +1230,12 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         logger.info("Writing from primary beam "+infile_pb)
         logger.info("Writing output primary beam "+outfile_pb)
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             ccr.export_and_cleanup(
                 infile=indir+infile_pb,
                 outfile=outdir+outfile_pb,
-                overwrite=True,    
+                overwrite=True,
                 remove_cards=[],
                 add_cards={'OBJECT':target.upper()},
                 add_history=[],
@@ -1185,9 +1273,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         infile_list = []
         outfile_list = []
-        
+
         for this_part in mosaic_parts:
-                            
+
             this_part_dict_in = self._fname_dict(
                 target=this_part, config=config, product=product,
                 extra_ext=extra_ext_in,
@@ -1200,7 +1288,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
             infile_list.append(indir+this_part_dict_in[in_tag])
             outfile_list.append(outdir+this_part_dict_out[out_tag])
-            
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Convolving for mosaic for:")
@@ -1212,15 +1300,15 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Convolving "+target)
         logger.info("Convolving original files "+str(infile_list))
         logger.info("Convolving to convolved output "+str(outfile_list))
-        
+
         # Allow overrides for the pixel padding (the
         # number of pixels added to the greatest
         # common beam for calculating the target
         # resolution) and the target resolution.
-            
+
         pixel_padding = 2.0
         target_res = None
-                        
+
         # TBD - check override dict for target
         # resolution and (maybe?) pixel padding.
 
@@ -1253,13 +1341,13 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         mosaic, align all parts of the mosaic to a common astrometric
         grid for combination into a single image.
         """
-        
+
         # Map the input and output tags to one another in a dictionary
 
         if (type(in_tags) != type([])) or type(out_tags) != type([]):
             logger.error("Input and output tag lists must be lists.")
             return(None)
-            
+
         if len(in_tags) != len(out_tags):
             logger.error("Mismatch in input and output list tag list.")
             return(None)
@@ -1277,21 +1365,21 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         infile_list = []
         outfile_list = []
-        
+
         for this_part in mosaic_parts:
-            
+
             this_part_dict_in = self._fname_dict(
                 target=this_part, config=config, product=product,
                 extra_ext=extra_ext_in,
                 )
-            
+
             this_part_dict_out = self._fname_dict(
                 target=this_part, config=config, product=product,
                 extra_ext=extra_ext_out,
                 )
-            
+
             for this_tag_in in in_tags:
-                
+
                 this_tag_out = out_tag_dict[this_tag_in]
                 infile_list.append(indir+this_part_dict_in[this_tag_in])
                 outfile_list.append(outdir+this_part_dict_out[this_tag_out])
@@ -1302,29 +1390,29 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-            
+
         logger.info("Using cmr.common_grid_for_mosaic.")
         logger.info("Aligning "+target)
         logger.info("Convolving original files "+str(infile_list))
         logger.info("Convolving to convolved output "+str(outfile_list))
-        
+
         # TBD implement overrides
-            
-        ra_ctr = None 
+
+        ra_ctr = None
         dec_ctr = None
-        delta_ra = None 
+        delta_ra = None
         delta_dec = None
-        
-        if not self._dry_run:
+
+        if (not self._dry_run) and casa_enabled:
             cmr.common_grid_for_mosaic(
                 infile_list = infile_list,
                 outfile_list = outfile_list,
-                ra_ctr = ra_ctr, 
+                ra_ctr = ra_ctr,
                 dec_ctr = dec_ctr,
-                delta_ra = delta_ra, 
+                delta_ra = delta_ra,
                 delta_dec = delta_dec,
                 allow_big_image = False,
-                too_big_pix=1e4,   
+                too_big_pix=1e4,
                 asvelocity=True,
                 interpolation='cubic',
                 axes=[-1],
@@ -1358,10 +1446,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         outdir = self._kh.get_postprocess_dir_for_target(target)
 
         fname_dict_out = self._fname_dict(
-            target=target, config=config, product=product, 
+            target=target, config=config, product=product,
             extra_ext=extra_ext_out)
 
-        outfile = fname_dict_out[out_tag]        
+        outfile = fname_dict_out[out_tag]
 
         mosaic_parts = self._kh.get_parts_for_linmos(target)
 
@@ -1369,14 +1457,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         weightfile_list = []
 
         # Get the input and weight files for  individual parts.
-        
+
         for this_part in mosaic_parts:
 
             this_part_dict_in = self._fname_dict(
                 target=this_part, config=config, product=product,
                 extra_ext=extra_ext_in,
                 )
-            
+
             infile_list.append(indir+this_part_dict_in[image_tag])
             weightfile_list.append(indir+this_part_dict_in[weight_tag])
 
@@ -1386,7 +1474,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info(str(target)+" , "+str(product)+" , "+str(config))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
-            
+
         logger.info("Using cmr.mosaic_aligned_data.")
         logger.info("Creating "+outfile)
         logger.info("Mosaicking original files "+str(infile_list))
@@ -1398,19 +1486,21 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 weightfile_list = weightfile_list,
                 outfile = outdir+outfile,
                 overwrite=True)
-                
+
         return()
 
 #endregion
 
 #region Recipes execute a set of linked tasks for one data set.
-    
+
     def recipe_prep_one_target(
         self,
         target = None,
         product = None,
         config = None,
         check_files = True,
+        imaging_method = 'tclean',
+        trim_coarse_beam_edge_channels = False, 
         ):
         """
         Recipe that takes data from imaging through all steps that
@@ -1427,11 +1517,11 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # mosaic, has single dish data, etc.
 
         fname_dict = self._fname_dict(
-            target=target, product=product, config=config)
+            target=target, product=product, config=config, imaging_method=imaging_method)
 
         imaging_dir = self._kh.get_imaging_dir_for_target(target)
         has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
-        has_singledish = self._kh.has_singledish(target=target, product=product)        
+        has_singledish = self._kh.has_singledish(target=target, product=product)
         is_part_of_mosaic = self._kh.is_target_in_mosaic(target)
 
         if not has_imaging:
@@ -1442,25 +1532,30 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         self.task_stage_interf_data(
             target=target, config=config, product=product,
-            check_files=check_files
+            check_files=check_files,
+            imaging_method=imaging_method,
+            trim_coarse_beam_edge_channels=trim_coarse_beam_edge_channels,
             )
 
         self.task_pbcorr(
             target=target, config=config, product=product,
-            check_files=check_files
+            check_files=check_files,
+            imaging_method=imaging_method
             )
 
         self.task_round_beam(
             target=target, config=config, product=product,
-            check_files=check_files
+            check_files=check_files,
+            imaging_method=imaging_method
             )
 
         self.task_remove_degenerate_axes(
             target=target, config=config, product=product,
-            check_files=check_files
+            check_files=check_files,
+            imaging_method=imaging_method
             )
 
-        if has_singledish:
+        if has_singledish and imaging_method not in ['sdintimaging']:
             self.task_stage_singledish(
                 target=target, config=config, product=product,
                 check_files=check_files
@@ -1470,9 +1565,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             self.task_make_interf_weight(
                 target=target, config=config, product=product,
                 check_files=check_files, scale_by_noise=True,
+                imaging_method=imaging_method
                 )
 
-        if is_part_of_mosaic and has_singledish:
+        if is_part_of_mosaic and has_singledish and imaging_method not in ['sdintimaging']:
             self.task_make_singledish_weight(
                 target=target, config=config, product=product,
                 check_files=check_files,
@@ -1485,6 +1581,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         target = None,
         product = None,
         config = None,
+        imaging_method='tclean',
         check_files = True,
         extra_ext_in = '',
         extra_ext_out = '',
@@ -1503,27 +1600,40 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             return()
 
         mosaic_parts = self._kh.get_parts_for_linmos(target)
-            
+
+        if imaging_method == 'sdintimaging':
+            has_imaging = False
+            for mosaic_part in mosaic_parts:
+                fname_dict = self._fname_dict(
+                    target=mosaic_part, product=product, config=config,
+                    imaging_method=imaging_method)
+                imaging_dir = self._kh.get_imaging_dir_for_target(mosaic_part)
+                has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                if has_imaging:
+                    break
+            if not has_imaging:
+                imaging_method = 'tclean'
+
         # Check if the individual parts have single dish data. If they
         # do, flip the single dish flag to true.
 
         parts_have_singledish = False
 
         for this_part in mosaic_parts:
-            
-            this_part_has_sd = self._kh.has_singledish(target=this_part, product=product) 
+
+            this_part_has_sd = self._kh.has_singledish(target=this_part, product=product)
 
             if this_part_has_sd:
                 parts_have_singledish = True
-            
+
         # Check if this is a feather configuration. If so, then flip
         # the single dish flag to false. This overrides the presence
         # of data - we don't treat the singledish for feathered data.
 
-        if config in self.get_feather_configs():
+        if config in self.get_feather_configs() or imaging_method in ['sdintimaging']:
 
             parts_have_singledish = False
-    
+
         self.task_convolve_parts_for_mosaic(
             target = target,
             product = product,
@@ -1554,7 +1664,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             extra_ext_out = extra_ext_in,
             check_files = check_files,
             )
-            
+
         self.task_linear_mosaic(
             target = target,
             product = product,
@@ -1581,7 +1691,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 )
 
         return()
- 
+
     def recipe_cleanup_one_target(
         self,
         target = None,
@@ -1600,19 +1710,19 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
             do_trimrind=True,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext
             )
 
         self.task_convert_units(
             target=target, config=config, product=product,
             check_files=check_files,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext
             )
 
         self.task_export_to_fits(
             target=target, config=config, product=product,
             check_files=check_files, do_pb_too=True,
-            extra_ext_in=ext_ext, extra_ext_out=ext_ext,
+            extra_ext_in=ext_ext, extra_ext_out=ext_ext
             )
 
         return()
@@ -1630,7 +1740,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         Convolve a target, product, config combination to a succession
         of angulars scale using the task that convolves to a round
         beam.
-        """        
+        """
 
         res_list = self._kh.get_res_for_config(config)
         if res_list is None:
@@ -1643,7 +1753,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             #res_tag = self._kh.get_tag_for_res(this_res)
             res_tag = utilsResolutions.get_tag_for_res(this_res)
             res_arcsec = utilsResolutions.get_angular_resolution_for_res(this_res, distance = self._kh.get_distance_for_target(target_name))
-            
+
             # Check if the requested beam is smaller than the current one
 
             self.task_round_beam(
@@ -1667,12 +1777,14 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
     def loop_postprocess(
         self,
+        imaging_method='tclean',
         do_all=False,
         do_prep=False,
         do_feather=False,
         do_mosaic=False,
         do_cleanup=False,
         do_summarize=False,
+        trim_coarse_beam_edge_channels=False,
         feather_apod=False,
         feather_noapod=False,
         feather_before_mosaic=False,
@@ -1697,11 +1809,11 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             logger.info("Defaulting to no apodization.")
             feather_noapod = True
 
-        if len(self.get_targets()) == 0:            
+        if len(self.get_targets()) == 0:
             logger.error("Need a target list.")
             return(None)
- 
-        if len(self.get_all_products()) == 0:            
+
+        if len(self.get_all_products()) == 0:
             logger.error("Need a products list.")
             return(None)
 
@@ -1711,17 +1823,30 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # Prepare the interferometer data that has imaging for further
         # postprocessing. Includes staging the single dish data,
         # making weights, etc. These are in the recipe_prep_one_target
-        
+
         if do_prep:
 
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True):
-                           
-                fname_dict = self._fname_dict(
-                    target=this_target, product=this_product, config=this_config)
-                        
-                imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
-                has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+
+                has_imaging = False
+
+                if imaging_method == 'sdintimaging':
+                    fname_dict = self._fname_dict(
+                        target=this_target, product=this_product, config=this_config,
+                        imaging_method=imaging_method)
+                    imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                    has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                    if has_imaging:
+                        imaging_method_prep = 'sdintimaging'
+
+                if not has_imaging:
+                    fname_dict = self._fname_dict(
+                        target=this_target, product=this_product, config=this_config)
+                    imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                    has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
+                    if has_imaging:
+                        imaging_method_prep = 'tclean'
 
                 if not has_imaging:
                     logger.debug("Skipping "+this_target+" because it lacks imaging.")
@@ -1730,39 +1855,52 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
                 self.recipe_prep_one_target(
                     target = this_target, product = this_product, config = this_config,
-                    check_files = True)
+                    check_files = True, 
+                    trim_coarse_beam_edge_channels = trim_coarse_beam_edge_channels, 
+                    imaging_method = imaging_method_prep)
 
         # Feather the interferometer configuration data that has
         # single dish imaging. We'll return to feather mosaicked
         # intereferometer and single dish data in the next steps.
-                        
+
         if do_feather:
 
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
 
+                if imaging_method == 'sdintimaging':
+                    fname_dict = self._fname_dict(
+                        target=this_target, product=this_product, config=this_config,
+                        imaging_method=imaging_method)
+                    imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
+                    using_sdint = os.path.isdir(imaging_dir + fname_dict['orig'])
+                    if using_sdint:
+                        logger.debug('Skipping feathering for %s, %s, %s because using sdintimaging' %
+                                     (this_target, this_product, this_config))
+                        continue
+
                 fname_dict = self._fname_dict(
                     target=this_target, product=this_product, config=this_config)
-                        
+
                 imaging_dir = self._kh.get_imaging_dir_for_target(this_target)
                 has_imaging = os.path.isdir(imaging_dir + fname_dict['orig'])
-                has_singledish = self._kh.has_singledish(target=this_target, product=this_product)        
-                
+                has_singledish = self._kh.has_singledish(target=this_target, product=this_product)
+
                 is_part_of_mosaic = self._kh.is_target_in_mosaic(this_target)
                 if is_part_of_mosaic and not feather_before_mosaic:
                     logger.debug("Skipping "+this_target+" because feather_before_mosaic is False.")
                     continue
-                            
+
                 if not has_imaging:
                     logger.debug("Skipping "+this_target+" because it lacks imaging.")
                     logger.debug(imaging_dir+fname_dict['orig'])
                     continue
-                            
+
                 if not has_singledish:
                     logger.debug("Skipping "+this_target+" because it lacks single dish.")
                     continue
 
-                if feather_apod:                            
+                if feather_apod:
                     self.task_feather(
                         target = this_target, product = this_product, config = this_config,
                         apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
@@ -1772,16 +1910,16 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 if feather_noapod:
                     self.task_feather(
                         target = this_target, product = this_product, config = this_config,
-                        apodize=False, extra_ext_out='',check_files=True, 
+                        apodize=False, extra_ext_out='',check_files=True,
                         copy_weights=True,
                         )
-                    
-        # Mosaic the intereferometer, single dish, and feathered data.
+
+        # Mosaic the interferometer, single dish, and feathered data.
 
         if do_mosaic:
-            
+
             # Loop over interferometer configurations
-            
+
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
 
@@ -1793,19 +1931,20 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 # single dish data (need to verify if parts
                 # have single dish, enforce the same
                 # astrometric grid).
-                
+
                 self.recipe_mosaic_one_target(
                     target = this_target, product = this_product, config = this_config,
                     check_files = True,
+                    imaging_method=imaging_method,
                     extra_ext_in = '',
                     extra_ext_out = '',
                     )
 
             # Loop over feather configurations
-            
+
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_feather=True):
-                    
+
                 # Mosaic the previously feathered data.
 
                 if feather_apod:
@@ -1822,41 +1961,52 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         check_files = True,
                         extra_ext_in = '',
                         extra_ext_out = '_prefeather',
-                        )                            
-                        
+                        )
+
         # This round of feathering targets only mosaicked data. All
         # other data have been feathered above already.
 
         if do_feather:
 
+            # N.B. if using sdintimaging this will just crash out since it hasn't staged any singledish. This is
+            # intended!
+
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
-            
+
                 is_mosaic = self._kh.is_target_linmos(this_target)
                 if not is_mosaic:
                     continue
 
-                if feather_apod:                  
+                if feather_apod:
                     self.task_feather(
                         target = this_target, product = this_product, config = this_config,
                         apodize=True, apod_ext='pb',extra_ext_out='_apod',check_files=True,
                         )
-                            
+
                 if feather_noapod:
                     self.task_feather(
                         target = this_target, product = this_product, config = this_config,
                         apodize=False, extra_ext_out='',check_files=True,
                         )
-                      
+
         # Trim and downsample the data, convert to Kelvin, etc.
-  
+
         if do_cleanup:
 
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,
                                 do_products=True,
                                 do_configs=True):
-                
+
+                # At this point, if using sdintimaging rename all the interf config files to their associated feathered
+                # config files
+
+                if imaging_method == 'sdintimaging':
+
+                    self.task_rename_sdintimaging(target=this_target, product=this_product, config=this_config,
+                                                  imaging_method=imaging_method)
+
                 self.recipe_cleanup_one_target(
                     target = this_target,
                     product = this_product,
@@ -1869,5 +2019,5 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         if do_summarize:
 
             pass
-                                
+
 #endregion
