@@ -706,7 +706,7 @@ def read_config_key(fname='', existing_dict=None, delim=None):
             
         if this_type == "singledish_config":
             expected_params = {
-                'bl_order': 1,
+                'bl_order': 1, # baseline polynomial order
                 'chan_dv_kms': 2.5, # for imaging cube, in default this is the channel_kms for the line_product in "config_definitions.txt"
                 'vwidth_kms': 800.0, # for imaging cube, in default this is the vwidth set in "target_definitions.txt"
                 'vel_line': '800~1800', # for ms cube baseline extraction, multiple lines can be marked as '800~1000;1200~1400'. In default this is derived from vwidth_kms.
