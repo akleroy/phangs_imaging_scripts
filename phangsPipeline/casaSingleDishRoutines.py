@@ -870,9 +870,13 @@ def import_and_split_ant(filename, precycle7=True, doallants=True, dosplitants=T
             # we also do this 'if'. 
             intent = ''
             pickFirstRaster = True
-            if au.casadef.casa_version < '4.3.0': #<20211213># same as in analysisUtils.py def getTPSampling, we do this 'if'
+            check_casa_older_than_430 = False
+            try:
+                if au.casadef.casa_version < '4.3.0': #<20211213># same as in analysisUtils.py def getTPSampling, we do this 'if'
+                    check_casa_older_than_430 = True
+            except:
                 pass
-            else:
+            if not check_casa_older_than_430:
                 # To make sure analysisUtils.py getTPSampling function can call mymsmd.timesforintent(intent) correctly, 
                 # we need to input a correct intent. 
                 # We just try to call mymsmd.timesforintent(intent) to see which intent string can return a non-zero list. 
