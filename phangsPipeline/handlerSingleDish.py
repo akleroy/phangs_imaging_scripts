@@ -98,7 +98,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
                 self._kh.loop_over_input_ms(target = target, config = 'tp'):
                 sd_file = self._kh.get_file_for_input_ms(target = this_target, \
                     project = this_project, array_tag = this_arraytag, obsnum = this_obsnum)
-            fname_dict[tag].append(sd_file)
+                fname_dict[tag].append(sd_file)
+                logger.debug("Adding single dish raw data to process: "+sd_file)
 
         # Return
         
@@ -155,7 +156,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         name_line = line_name.upper() + '_%.0fkmsres'%(max_chanwidth_kms)
         
         # copy raw data over
-        path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_' + target + extra_ext_out + os.sep
+        path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_' + target + '_' + product + extra_ext_out + os.sep
         path_galaxy = os.path.abspath(path_galaxy) + os.sep
         input_raw_data = os.path.abspath(input_raw_data) + os.sep
         input_raw_datadir = os.path.abspath(input_raw_data) + os.sep
@@ -233,8 +234,28 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         # Call tasks
         
         if len(fname_dict['sd_raw_data_list']) > 1:
-            logger.warning('Warning! Multiple single dish raw data entries are found in the ms_file_key! We will only process the first one! [TODO]')
+            #logger.warning('Warning! Multiple single dish raw data entries are found in the ms_file_key! We will only process the first one! [TODO]')
             #<TODO># We can only process one single dish raw data for now. Not sure how to combine those. Unless we specify line_product in the ms_file_key?
+            logger.warning("Multiple single dish raw data entries are found in the ms_file_key! We will create a folder to process them in one go!")
+            common_sd_raw_data_path = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_' + target + '_' + product + "_multidatasets" + os.sep
+            logger.info("Creating temporary folder to process multiple single dish raw data sets: "+common_sd_raw_data_path)
+            if not os.path.isdir(common_sd_raw_data_path):
+                os.makedirs(common_sd_raw_data_path)
+            for copying_subfolder in ['calibration', 'raw', 'script']:
+                if not os.path.isdir(common_sd_raw_data_path+copying_subfolder):
+                    os.makedirs(common_sd_raw_data_path+copying_subfolder)
+            for idx in range(len(fname_dict['sd_raw_data_list'])):
+                input_sd_raw_data_path = fname_dict['sd_raw_data_list'][idx]
+                if not input_sd_raw_data_path.endswith(os.sep):
+                    input_sd_raw_data_path += os.sep
+                for copying_subfolder in ['calibration', 'raw', 'script']:
+                    with open(common_sd_raw_data_path+copying_subfolder+os.sep+"copied_from_datasets.txt", "a+") as fp:
+                        fp.seek(0)
+                        if input_sd_raw_data_path+'\n' not in fp.readlines():
+                            logger.info("Copying "+input_sd_raw_data_path+copying_subfolder+os.sep+"*"+" to "+common_sd_raw_data_path+copying_subfolder+os.sep)
+                            os.system("cp -r "+input_sd_raw_data_path+copying_subfolder+os.sep+"*"+" "+common_sd_raw_data_path+copying_subfolder+os.sep) # no whitespace in path
+                            fp.write(input_sd_raw_data_path+'\n')
+            fname_dict['sd_raw_data_list'] = [common_sd_raw_data_path]
         
         for idx in range(len(fname_dict['sd_raw_data_list'])):
             self.task_execute_single_dish_pipeline(
@@ -245,7 +266,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
                 )
             if idx > 0:
                 break 
-                #<TODO># We can only process one single dish raw data for now. Not sure how to combine those. Unless we specify line_product in the ms_file_key?
+                #<DONE># We can only process one single dish raw data for now. Not sure how to combine those. Unless we specify line_product in the ms_file_key?
+                #<20240118># Now we create a temporary directory and copy different scheduling block data sets to the same place then run the ALMA_TP_tools
 
         return
 

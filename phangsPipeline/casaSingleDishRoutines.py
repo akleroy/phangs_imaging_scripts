@@ -1870,12 +1870,14 @@ def run_ALMA_TP_tools(
 
     # Defining Execution Blocks (EBS) names
     EBsnames = [f for f in os.listdir(path_raw) if f.endswith('.asdm.sdm')]
+    logger.info("> Found "+str(len(EBsnames))+" EBs: "+", ".join([os.path.basename(t) for t in EBsnames]))
 
     #if 'EBexclude' in globals():
     if EBexclude is not None:
         if np.isscalar(EBexclude):
             EBexclude = [EBexclude]
         EBsnames = [s for s in EBsnames if s[0:-9] not in EBexclude]
+        logger.info("> Found "+str(len(EBsnames))+" EBs: "+", ".join([os.path.basename(t) for t in EBsnames])+" (after applying EBexclude)")
 
     if len(do_step) == 0:
         do_step = [1,2,3,4,5,6,7,8]
@@ -1887,6 +1889,8 @@ def run_ALMA_TP_tools(
             EBs = EBs.replace('.ms.scriptForSDCalibration.py', '.asdm.sdm')
         filename = 'u'+re.search('u(.+?).asdm.sdm', EBs).group(1)+'.ms'
         file_exists = check_exists(filename)                             # Check weather the raw data exists
+        if not file_exists:
+            logger.warning("> Warning! File is not found: "+filename)
         #
         if file_exists == True:
             if 1 in do_step:
