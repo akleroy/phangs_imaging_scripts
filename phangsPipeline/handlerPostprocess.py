@@ -349,6 +349,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         extra_ext_in = '',
         extra_ext_out = '',
         check_files = True,
+        trim_coarse_beam_edge_channels = False,
         ):
         """
         For one target, product, config combination copy the
@@ -394,6 +395,15 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 #     infile=indir+infile,
                 #     outfile=outdir+outfile,
                 #     overwrite=True)
+
+        # in case of merged datasets with non-identical frequency setups imaged with per-plane beam, 
+        # some edge channels will have much coarser beam, we trim these edge channels here. 
+        if trim_coarse_beam_edge_channels:
+            ccr.trim_coarse_beam_edge_channels(
+                infile=outdir+fname_dict_out['orig'],
+                inpbfile=outdir+fname_dict_out['pb'],
+                inplace=True,
+            )
 
         return()
 
@@ -1489,7 +1499,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         product = None,
         config = None,
         check_files = True,
-        imaging_method='tclean'
+        imaging_method = 'tclean',
+        trim_coarse_beam_edge_channels = False, 
         ):
         """
         Recipe that takes data from imaging through all steps that
@@ -1522,7 +1533,8 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         self.task_stage_interf_data(
             target=target, config=config, product=product,
             check_files=check_files,
-            imaging_method=imaging_method
+            imaging_method=imaging_method,
+            trim_coarse_beam_edge_channels=trim_coarse_beam_edge_channels,
             )
 
         self.task_pbcorr(
@@ -1772,6 +1784,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         do_mosaic=False,
         do_cleanup=False,
         do_summarize=False,
+        trim_coarse_beam_edge_channels=False,
         feather_apod=False,
         feather_noapod=False,
         feather_before_mosaic=False,
@@ -1842,7 +1855,9 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
                 self.recipe_prep_one_target(
                     target = this_target, product = this_product, config = this_config,
-                    check_files = True, imaging_method=imaging_method_prep)
+                    check_files = True, 
+                    trim_coarse_beam_edge_channels = trim_coarse_beam_edge_channels, 
+                    imaging_method = imaging_method_prep)
 
         # Feather the interferometer configuration data that has
         # single dish imaging. We'll return to feather mosaicked

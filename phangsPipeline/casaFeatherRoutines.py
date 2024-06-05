@@ -27,6 +27,10 @@ from . import casaStuff
 # Other pipeline stuff
 from . import casaCubeRoutines as ccr
 
+# Logging
+#from .pipelineLogger import PipelineLogger
+#logger = PipelineLogger(__name__)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -227,7 +231,7 @@ def feather_two_cubes(
 
     # Check inputs
 
-    if (os.path.isdir(sd_file) == False):
+    if (os.path.isdir(sd_file) == False) and (os.path.isfile(sd_file) == False):
         logger.error("Single dish file not found: "+sd_file)
         return(False)
 
@@ -267,39 +271,137 @@ def feather_two_cubes(
 
         myia = au.createCasaTool(casaStuff.iatool)
 
+        # As noted in [https://casa.nrao.edu/docs/casaref/image.putchunk.html], 
+        # "If all the pixels didn't easily fit in memory, you would iterate through 
+        # the image chunk by chunk to avoid exhausting virtual memory."
+        # So here we do this iteration if the image cube is too large, 
+        # say [3600, 3600,  393] (but [2880, 2880, 393] is okay). 
+        # In principle we can do channel by channel putchunk for all cubes, 
+        # just not sure how much extra time it will need. 
+        
         myia.open(interf_file)
-        interf_mask = myia.getchunk(getmask=True)
+        interf_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
 
         myia.open(sd_file)
-        sd_mask = myia.getchunk(getmask=True)
+        sd_shape = myia.shape() # [X, Y, CHANNEL]
         myia.close()
 
-        # CASA calls unmasked values True and masked values False. The
-        # region with values in both cubes is the product.
+        if not np.all(interf_shape == sd_shape):
+            print('interf_shape', interf_shape)
+            print('sd_shape', sd_shape)
+            raise Exception('Error! The interf_file '+interf_file+
+                ' and sd_file '+sd_file+
+                ' have different dimensions! Cannot run feather_two_cubes!')
+        
+        has_memory_issue = False
+        interf_mask = None
+        sd_mask = None
+        
+        if not has_memory_issue:
+            has_memory_issue, interf_mask = ccr.check_getchunk_putchunk_memory_issue(
+                interf_file, myia=None, return_mask=True)
+        
+        if not has_memory_issue:
+            has_memory_issue, sd_mask = ccr.check_getchunk_putchunk_memory_issue(
+                sd_file, myia=None, return_mask=True)
+        
+        if not has_memory_issue:
+            
+            # If there is no getchunk/putchunk memory issue, directly proceed to combine the masks. 
+            
+            # CASA calls unmasked values True and masked values False. The
+            # region with values in both cubes is the product.
+            
+            combined_mask = sd_mask*interf_mask
+            
+            # This isn't a great solution. Just zero out the masked
+            # values. It will do what we want in the FFT but the CASA mask
+            # bookkeeping is being left in the dust. The workaround is
+            # complicated, though, because you can't directly manipulate
+            # pixel masks for some reason.
+            
+            if np.sum(combined_mask == False) > 0:
+                myia.open(current_interf_file)
+                interf_data = myia.getchunk()
+                interf_data[combined_mask == False] = 0.0
+                myia.putchunk(interf_data)
+                myia.close()
+            
+                myia.open(current_sd_file)
+                sd_data = myia.getchunk()
+                sd_data[combined_mask == False] = 0.0
+                myia.putchunk(sd_data)
+                myia.close()
+        
+        else:
+            
+            assert len(interf_shape) in [3, 4]
+            
+            if len(interf_shape) == 3:
+                nchan = interf_shape[2]
+                for ichan in range(nchan):
+                    blc = [0, 0, ichan] # [X, Y, CHANNEL]
+                    trc = [-1, -1, ichan] # [X, Y, CHANNEL]
+                    myia.open(current_interf_file)
+                    interf_data_per_chan = myia.getchunk(blc, trc)
+                    interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                    myia.close()
+                    myia.open(current_sd_file)
+                    sd_data_per_chan = myia.getchunk(blc, trc)
+                    sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                    myia.close()
 
-        combined_mask = sd_mask*interf_mask
+                    combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
 
-        # This isn't a great solution. Just zero out the masked
-        # values. It will do what we want in the FFT but the CASA mask
-        # bookkeeping is being left in the dust. The workaround is
-        # complicated, though, because you can't directly manipulate
-        # pixel masks for some reason.
+                    # CASA calls unmasked values True and masked values False. The
+                    # region with values in both cubes is the product.
+                    
+                    boolean_mask_per_chan = (combined_mask_per_chan == False)
+                    if np.any(boolean_mask_per_chan):
+                        interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                        sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                        myia.open(current_interf_file)
+                        myia.putchunk(interf_data_per_chan, blc)
+                        myia.close()
+                        myia.open(current_sd_file)
+                        myia.putchunk(sd_data_per_chan, blc)
+                        myia.close()
+            
+            elif len(interf_shape) == 4:
+                nchan = interf_shape[2]
+                nstokes = interf_shape[3] # It's okay if Spectral and Stokes axes are swapped.
+                for istokes in range(nstokes):
+                    for ichan in range(nchan):
+                        blc = [0, 0, ichan, istokes] # [X, Y, CHANNEL]
+                        trc = [-1, -1, ichan, istokes] # [X, Y, CHANNEL]
+                        myia.open(current_interf_file)
+                        interf_data_per_chan = myia.getchunk(blc, trc)
+                        interf_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                        myia.close()
+                        myia.open(current_sd_file)
+                        sd_data_per_chan = myia.getchunk(blc, trc)
+                        sd_mask_per_chan = myia.getchunk(blc, trc, getmask=True)
+                        myia.close()
 
-        if np.sum(combined_mask == False) > 0:
-            myia.open(current_interf_file)
-            interf_data = myia.getchunk()
-            interf_data[combined_mask == False] = 0.0
-            myia.putchunk(interf_data)
-            myia.close()
+                        combined_mask_per_chan = interf_mask_per_chan * sd_mask_per_chan
 
-            myia.open(current_sd_file)
-            sd_data = myia.getchunk()
-            sd_data[combined_mask == False] = 0.0
-            myia.putchunk(sd_data)
-            myia.close()
+                        # CASA calls unmasked values True and masked values False. The
+                        # region with values in both cubes is the product.
+                        
+                        boolean_mask_per_chan = (combined_mask_per_chan == False)
+                        if np.any(boolean_mask_per_chan):
+                            interf_data_per_chan[boolean_mask_per_chan] = 0.0
+                            sd_data_per_chan[boolean_mask_per_chan] = 0.0
+                            myia.open(current_interf_file)
+                            myia.putchunk(interf_data_per_chan, blc)
+                            myia.close()
+                            myia.open(current_sd_file)
+                            myia.putchunk(sd_data_per_chan, blc)
+                            myia.close()
 
     else:
+        
         current_interf_file = interf_file
         current_sd_file = sd_file
 
