@@ -7,7 +7,6 @@ This code needs to be run inside CASA.
 
 """
 
-from multiprocessing.sharedctypes import Value
 import os, sys, re, shutil
 from copy import deepcopy, copy
 import glob
@@ -278,6 +277,8 @@ if casa_enabled:
             using the do_XXX booleans. Other choices affect algorithms
             used.
             """
+
+            raise NotImplementedError("Should be ready, but you should run a test case")
 
             if do_all:
                 do_dirty_image = True
@@ -745,7 +746,7 @@ if casa_enabled:
                 for chunk_num in self.chunk_params:
 
                     this_imagename = "{0}{1}.{2}".format(self.chunk_params[chunk_num]['full_imagename'],
-                                                         root_name_label, img_type)
+                                                        root_name_label, img_type)
 
                     if not os.path.exists(this_imagename):
                         missing_chunks.append(chunk_num)
@@ -758,7 +759,7 @@ if casa_enabled:
 
                 if len(chunk_fname_dict[img_type]) != self.nchunks:
                     logger.error("Existing imaging products for type {} do not match the expected number of chunks.".format(img_type) +
-                                 "This cube will not be made.")
+                                "This cube will not be made.")
                     continue
 
                 if len(missing_chunks) > 0:
@@ -867,13 +868,6 @@ if casa_enabled:
 
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Resetting to " + tag + " imaging:")
-            logger.info(str(clean_call.get_param('imagename')))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-
             if (not self._dry_run) and casa_enabled:
 
                 for ii, chunk_num in enumerate(chunks_iter):
@@ -899,11 +893,13 @@ if casa_enabled:
 
                 # If it exists, try to revert the whole cube.
                 if revert_cube:
+                    raise NotImplementedError
+
                     if verbose:
                         logger.info("")
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("Resetting to " + tag + " imaging:")
-                        logger.info(str(clean_call.get_param('imagename')))
+                        logger.info(str(this_clean_call.get_param('imagename')))
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("")
 
@@ -1078,7 +1074,7 @@ if casa_enabled:
                 high_snr=None,
                 low_snr=None,
                 absolute=False,
-                force_mask_by_cube=True,
+                force_mask_by_cube=False,
         ):
             """
             Create a signal-to-noise based mask within the existing clean
@@ -1125,7 +1121,7 @@ if casa_enabled:
                     logger.info("Creating the full line cube for signal masking.")
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                     self.task_gather_into_cube(root_name='',
-                                                remove_chunks=False)
+                                               remove_chunks=False)
 
                     if not os.path.isdir(imagename):
                         logger.error("Image not found: " + imagename)
@@ -1181,9 +1177,11 @@ if casa_enabled:
         @CleanCallFunctionDecorator
         def task_singlescale_clean(
                 self,
-                clean_call=None,
+                chunk_num=None,
                 imaging_method='tclean',
                 convergence_fracflux=0.01,
+                gather_chunks_into_cube=False,
+                remove_chunks=False,
                 threshold_value=1.0,
                 backup=True,
         ):
@@ -1196,67 +1194,101 @@ if casa_enabled:
             image as {imagename}_singlescale.image
             """
 
-            if not (clean_call.get_param('deconvolver') in ['hogbom','mtmfs']):
-                logger.warning("I expected a singlescale or mtmfs deconvolver but got "+str(clean_call.get_param('deconvolver'))+".")
-                raise Exception("Incorrect clean call! Should have a hogbom or mtmfs deconvolver.")
-                return ()
-
-            logger.info("")
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("Running clean call to convergence for:")
-            logger.info(clean_call.get_param('imagename'))
-            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
-            logger.info("")
-
-            # Moved this from single scale masking.
-            # Add in before the single scale clean loop:
-            clean_call.set_param('usemask', 'user')
-
             if self._dry_run:
                 return ()
             if not casa_enabled:
                 return ()
 
-            imr.clean_loop(clean_call=clean_call,
-                           imaging_method=imaging_method,
-                           record_file=clean_call.get_param('imagename') + '_singlescale_record.txt',
-                           niter_base_perchan=10,
-                           niter_growth_model='geometric',
-                           niter_growth_factor=2.0,
-                           niter_saturation_perchan=1000,
-                           niter_other_input=None,
-                           cycleniter_base=100,
-                           cycleniter_growth_model='linear',
-                           cycleniter_growth_factor=1.0,
-                           cycleniter_saturation_value=1000,
-                           cycleniter_other_input=None,
-                           threshold_type='snr',
-                           threshold_value=threshold_value,
-                           min_loops=3,
-                           max_loops=20,
-                           max_total_niter=None,
-                           convergence_fracflux=convergence_fracflux,
-                           convergence_totalflux=None,
-                           convergence_fluxperniter=None,
-                           use_absolute_delta=True,
-                           stop_at_negative=False,
-                           remask_each_loop=False,
-                           force_dirty_image=False,
-                           )
-            # log_ext='singlescale',
-            if backup:
-                imr.copy_imaging(
-                    input_root=clean_call.get_param('imagename'),
-                    output_root=clean_call.get_param('imagename') + '_singlescale',
-                    imaging_method=imaging_method,
-                    wipe_first=True)
+
+            chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
+
+            for ii, chunk_num in enumerate(chunks_iter):
+
+                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+
+                # Make the chunk clean call:
+                this_clean_call = self.task_initialize_clean_call(chunk_num, stage='singlescale')
+
+                if this_clean_call.get_param('deconvolver') not in ['hogbom','mtmfs']:
+                    logger.warning("I expected a singlescale or mtmfs deconvolver but got: " + this_clean_call.get_param('deconvolver'))
+                    raise Exception("Incorrect clean call! Should have a hogbom or mtmfs deconvolver.")
+
+                logger.info("")
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("Running clean call to convergence for:")
+                logger.info(this_clean_call.get_param('imagename'))
+                logger.info("This is {0} out of {1} to be imaged".format(ii, len(chunks_iter)))
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
+                logger.info("")
+
+                # Moved this from single scale masking.
+                # Add in before the single scale clean loop:
+                this_clean_call.set_param('usemask', 'user')
+
+                imr.clean_loop(clean_call=this_clean_call,
+                            imaging_method=imaging_method,
+                            record_file=this_clean_call.get_param('imagename') + '_singlescale_record.txt',
+                            niter_base_perchan=10,
+                            niter_growth_model='geometric',
+                            niter_growth_factor=2.0,
+                            niter_saturation_perchan=1000,
+                            niter_other_input=None,
+                            cycleniter_base=100,
+                            cycleniter_growth_model='linear',
+                            cycleniter_growth_factor=1.0,
+                            cycleniter_saturation_value=1000,
+                            cycleniter_other_input=None,
+                            threshold_type='snr',
+                            threshold_value=threshold_value,
+                            min_loops=3,
+                            max_loops=20,
+                            max_total_niter=None,
+                            convergence_fracflux=convergence_fracflux,
+                            convergence_totalflux=None,
+                            convergence_fluxperniter=None,
+                            use_absolute_delta=True,
+                            stop_at_negative=False,
+                            remask_each_loop=False,
+                            force_dirty_image=False,
+                            )
+
+                if backup:
+                    imr.copy_imaging(
+                        input_root=this_clean_call.get_param('imagename'),
+                        output_root=this_clean_call.get_param('imagename') + '_singlescale',
+                        imaging_method=imaging_method,
+                        wipe_first=True)
+
+            if gather_chunks_into_cube:
+                self.task_gather_into_cube(root_name='singlescale',
+                                           remove_chunks=remove_chunks)
 
             return ()
 
         @CleanCallFunctionDecorator
+        def task_complete_gather_into_cubes(self, root_name='all', remove_chunks=False):
+            '''
+            Intended to create a final set of cubes.
+            '''
+
+            accepted_root_names = ['dirty', 'singlescale', 'multiscale', None]
+
+            if root_name == 'all':
+                root_names = accepted_root_names
+            else:
+                if root_name not in accepted_root_names:
+                    raise Exception("Cannot find {0} in accepted types: {1}".format(root_name, accepted_root_names))
+                root_names = [root_name]
+
+            for root in root_names:
+
+                self.task_gather_into_cube(root_name=root,
+                                           remove_chunks=remove_chunks)
+
+
+        @CleanCallFunctionDecorator
         def task_export_to_fits(
                 self,
-                clean_call=None,
                 imaging_method='tclean',
                 tag=None,
         ):
@@ -1265,9 +1297,12 @@ if casa_enabled:
             append _tag to the file.
             """
 
-            image_root = str(clean_call.get_param('imagename'))
             if tag is not None:
-                image_root += '_' + tag
+                root_name_label = "_{}".format(tag)
+            else:
+                root_name_label = ""
+
+            image_root = "{0}{1}".format(self.image_root, root_name_label)
 
             logger.info("")
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -1280,5 +1315,202 @@ if casa_enabled:
 
             return ()
 
-    # TODO: re-implement new chunked version of the phangs-alma recipe
+        def task_cleanup(self):
+            '''
+            Cleanup additional products:
+            * prev imaging products per chunk
+            * split MS files
+            '''
+
+            root_name = 'prev'
+            if root_name is not None:
+                root_name_label = "_{}".format(root_name)
+            else:
+                root_name_label = ""
+
+            search_str = "{0}*{1}*".format(self.image_root, root_name_label)
+            os.system("rm -rf {}".format(search_str))
+
+            chunks_iter = self.return_valid_chunks(chunk_num=None)
+
+            for ii, chunk_num in enumerate(chunks_iter):
+
+                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+
+                # Make the chunk clean call:
+                this_clean_call = self.task_initialize_clean_call(chunk_num, stage='singlescale')
+
+                if os.path.isdir(this_clean_call.get_param('vis')):
+                    casaStuff.rmtables(this_clean_call.get_param('vis'))
+
+
+        # Remove split chunks of the MS
+
+        #############################
+        # recipe_imaging_one_target #
+        #############################
+
+        def recipe_phangsalma_imaging(
+                self,
+                extra_ext_in=None,
+                suffix_in=None,
+                extra_ext_out=None,
+                imaging_method='tclean',
+                do_split_vis=True,
+                do_dirty_image=True,
+                do_revert_to_dirty=True,
+                do_read_clean_mask=True,
+                do_multiscale_clean=True,
+                do_revert_to_multiscale=True,
+                do_singlescale_mask=True,
+                singlescale_mask_high_snr=None,
+                singlescale_mask_low_snr=None,
+                singlescale_mask_absolute=False,
+                do_singlescale_clean=True,
+                do_revert_to_singlescale=True,
+                do_recombine_cubes=True,
+                do_export_to_fits=True,
+                convergence_fracflux=0.01,
+                singlescale_threshold_value=1.0,
+                dynamic_sizing=True,
+                force_square=False,
+                export_dirty=False,
+                export_multiscale=False,
+                overwrite=False,
+        ):
+            """
+            PHANGS-ALMA basic imaging recipe.
+
+            Major steps:
+
+            (1) Dirty imaging
+            (2) Align a broad clean mask (if present)
+            (3) Lightly masked multiscale clean to S/N ~ 4
+            (4) Heavily masked single scale clean until convergence
+            (5) Export to FITS
+
+            Operates by passing a "clean_call" object between steps. Can
+            restart from any individual step.
+
+            Input file names: {target}_{config}_{product}_{extra_ext_in}.ms{.suffix_in}
+
+            Output file names: {target}_{config}_{product}_{extra_ext_out}.image
+
+            imaging_method_override allows for some switches if you don't want to use a
+            particular algorithm for a particular setup. This should be supplied as a
+            dictionary containing 'target', 'config', and 'product' keys that match up
+            with a particular setup (these can be lists or 'all'), and a 'new_imaging_method'
+            key that the target/product/config setup should switch to (either tclean or sdintimaging)
+            """
+
+            if imaging_method == 'sdintimaging':
+                raise NotImplementedError
+                sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
+                feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
+                if not sd_fits_file or not feather_config:
+                    logger.warning('No singledish setup for %s, %s, %s, reverting to standard tclean' %
+                                   (target, product, config))
+                    imaging_method = 'tclean'
+                else:
+                    sd_image_file = self.task_setup_sdintimaging(clean_call, target=target, product=product,
+                                                                 overwrite=overwrite)
+                    if not sd_image_file:
+                        logger.error('Error in setting up singledish for sdintimaging')
+
+                    # Set the clean call parameters as necessary.
+                    clean_call.set_param('usedata', 'sdint')
+                    clean_call.set_param('sdimage', sd_image_file)
+
+                    # Catch the case where the frequency axis might go the wrong way round by specifying this exactly to
+                    # the SD parameters
+                    sdintlib = casaStuff.sdint_helper.SDINT_helper()
+                    cube_params = sdintlib.setup_cube_params(sdcube=sd_image_file)
+                    clean_call.set_param('nchan', cube_params['nchan'])
+                    clean_call.set_param('start', cube_params['start'])
+                    clean_call.set_param('width', cube_params['width'])
+
+            # Split the vis per chunks:
+            if do_split_vis:
+                self.task_split_chunked_vis()
+
+
+            # Make a dirty image (niter=0)
+
+            if do_dirty_image:
+                self.task_make_dirty_image(imaging_method=imaging_method,
+                                           gather_chunks_into_cube=export_dirty)
+
+            if do_export_to_fits and export_dirty:
+                self.task_export_to_fits(imaging_method=imaging_method,
+                                         root_name='dirty')
+
+            # Reset the current imaging to the dirty image.
+
+            if do_revert_to_dirty:
+                self.task_revert_to_imaging(imaging_method=imaging_method,
+                                            tag='dirty')
+
+            # Read and align the clean mask to the astrometry of the image.
+
+            do_read_clean_mask = False
+            if do_read_clean_mask:
+                raise NotImplementedError
+            #     self.task_read_clean_mask(
+            #         # AKL - propose to deprecate interaction with the clean_call here
+            #         clean_call=clean_call,
+            #         target=target, config=config, product=product,
+            #         imaging_method=imaging_method)
+
+            # Run a multiscale clean until it converges.
+
+            if do_multiscale_clean:
+                self.task_multiscale_clean(imaging_method=imaging_method,
+                                           convergence_fracflux=convergence_fracflux,
+                                           gather_chunks_into_cube=export_multiscale,
+                                           )
+
+            if do_export_to_fits and export_multiscale:
+                self.task_export_to_fits(imaging_method=imaging_method,
+                                         tag='multiscale')
+
+            # Reset the current imaging to the results of the multiscale clean.
+
+            if do_revert_to_multiscale:
+                self.task_revert_to_imaging(imaging_method=imaging_method,
+                                            tag='multiscale')
+
+            # Make a signal-to-noise based mask for use in singlescale clean.
+
+            if do_singlescale_mask:
+                self.task_singlescale_mask(imaging_method=imaging_method,
+                                           high_snr=singlescale_mask_high_snr,
+                                           low_snr=singlescale_mask_low_snr,
+                                           absolute=singlescale_mask_absolute)
+
+            # Run a singlescale clean until it converges.
+
+            if do_singlescale_clean:
+                self.task_singlescale_clean(imaging_method=imaging_method,
+                                            convergence_fracflux=convergence_fracflux,
+                                            threshold_value=singlescale_threshold_value,
+                                            gather_chunks_into_cube=False)
+
+            # Reset the current imaging to the results of the singlescale clean.
+
+            if do_revert_to_singlescale:
+                self.task_revert_to_imaging(imaging_method=imaging_method,
+                                            tag='singlescale')
+
+            # Ensure products are re-combined into cubes:
+            if do_recombine_cubes:
+                self.task_complete_gather_into_cubes(root_name='all')
+
+            # Export the products of the current clean to FITS files.
+            if do_export_to_fits:
+                self.task_export_to_fits(imaging_method=imaging_method)
+
+            # Return
+
+            return
+
 
