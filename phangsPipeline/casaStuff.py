@@ -72,7 +72,8 @@ except (ImportError, ModuleNotFoundError):
                            statwt,
                            tclean,
                            uvcontsub,
-                           visstat)
+                           visstat,
+                           rmtables)
     from casatasks.private import sdint_helper
 
     from .taskSDIntImaging import sdintimaging

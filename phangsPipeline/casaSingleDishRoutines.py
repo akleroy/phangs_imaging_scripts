@@ -361,19 +361,19 @@ def read_spw(filename,source):
     spws_scie = [int(i) for i in spws_scie]
 
     # Read number of channels, frequency at channel zero and compute representative frequency
-    freq_zero_scie  = range(len(spws_scie))
-    chan_width_scie = range(len(spws_scie))
-    num_chan_scie   = range(len(spws_scie))
-    freq_rep_scie   = range(len(spws_scie))
+    freq_zero_scie  = [None] * len(spws_scie)
+    chan_width_scie = [None] * len(spws_scie)
+    num_chan_scie   = [None] * len(spws_scie)
+    freq_rep_scie   = [None] * len(spws_scie)
     for i in range(len(spws_scie)):
         freq_zero_scie[i]  = float(mytb.getcol('REF_FREQUENCY',startrow=spws_scie[i],nrow=1))
         chan_width_scie[i] = float(mytb.getcol('CHAN_WIDTH',startrow=spws_scie[i],nrow=1)[0])
         num_chan_scie[i]   = float(mytb.getcol('NUM_CHAN',startrow=spws_scie[i],nrow=1))
         freq_rep_scie[i]   = (num_chan_scie[i]/2*chan_width_scie[i]+freq_zero_scie[i])/1e6
-    freq_zero_tsys  = range(len(spws_tsys))
-    chan_width_tsys = range(len(spws_tsys))
-    num_chan_tsys   = range(len(spws_tsys))
-    freq_rep_tsys   = range(len(spws_tsys))
+    freq_zero_tsys  = [None] * len(spws_scie)
+    chan_width_tsys = [None] * len(spws_scie)
+    num_chan_tsys   = [None] * len(spws_scie)
+    freq_rep_tsys   = [None] * len(spws_scie)
     for i in range(len(spws_tsys)):
         freq_zero_tsys[i]  = float(mytb.getcol('REF_FREQUENCY',startrow=spws_tsys[i],nrow=1))
         chan_width_tsys[i] = float(mytb.getcol('CHAN_WIDTH',startrow=spws_tsys[i],nrow=1)[0])
@@ -976,8 +976,11 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     # 2.3 Do initial flagging 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
-    if os.path.exists(path_script+'file_flags.py'): 
-        execfile(path_script+'file_flags.py')    #<TODO><DZLIU># 
+    if os.path.exists(path_script+'file_flags.py'):
+        try:
+            execfile(path_script+'file_flags.py')    #<TODO><DZLIU># 
+        except NameError:  # Does not exist in python3
+            exec(open(path_script+"file_flags.py").read())
     
     # 2.4 Create Tsys map 
     logger.info("2.4 Creating Tsysmaps" )
@@ -1589,18 +1592,26 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     else:
         imsize     = int(round(maxsize/cell)*1.5)
         
+
     start_vel      = source_vel_kms-vwidth_kms/2
     nchans_vel     = int(round(vwidth_kms/chan_dv_kms))
     
     if os.path.exists('ALMA_TP.'+source+'.'+name_line+'.image'):
         shutil.rmtree('ALMA_TP.'+source+'.'+name_line+'.image')
     
+    # Try concatenating MSs to handle the too many files issue in CASA 5
+    ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+'.ms_concat'
+    #if os.path.exists(ms_concat_filename):
+    #    shutil.rmtree(ms_concat_filename)
+    #casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
+
+
     logger.info("Start imaging")
     logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
     logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
     logger.info('Msnames: %s'%(Msnames))
-    casaStuff.sdimaging(infiles = Msnames,
+    casaStuff.tsdimaging(infiles = ms_concat_filename,
         mode = 'velocity',
         nchan = nchans_vel,
         width = str(chan_dv_kms)+'km/s',
@@ -1614,7 +1625,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         imsize = imsize,
         cell = str(cell)+'arcsec',
         overwrite = True,
-        outfile = 'ALMA_TP.'+source+'.'+name_line+'.image')
+        outfile = 'ALMA_TP.'+source+'.'+name_line)
     
     # Correct the brightness unit in the image header  
     casaStuff.imhead(imagename = 'ALMA_TP.'+source+'.'+name_line+'.image',
@@ -1671,7 +1682,8 @@ def export_fits(name_line, source, output_file):
     
     # 
     imagename = 'ALMA_TP.'+source+'.'+name_line+'.image'
-    weightname = 'ALMA_TP.'+source+'.'+name_line+'.image.weight'
+    #weightname = 'ALMA_TP.'+source+'.'+name_line+'.image.weight'
+    weightname = 'ALMA_TP.'+source+'.'+name_line+'.weight'
     imagefile = imagename + '.fits'
     weightfile = weightname + '.fits'
     
