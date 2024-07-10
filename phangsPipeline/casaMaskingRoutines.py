@@ -271,7 +271,12 @@ def write_mask(infile, outfile, mask, huge_cube_workaround=True):
         for wcs_name in wcs_names:
             hdu.header[wcs_name.upper()] = header[wcs_name]
 
-        hdu.writeto(outfile + '.fits', clobber=True)
+        # Variations between pyfits and astropy
+        try:
+            hdu.writeto(outfile + '.fits', clobber=True)
+        except TypeError:
+            hdu.writeto(outfile + '.fits', overwrite=True)
+
         casaStuff.importfits(fitsimage=outfile + '.fits',
                              imagename=outfile,
                              overwrite=True)
@@ -390,7 +395,7 @@ def signal_mask(
         del old_mask
 
     logger.info('Recasting as an int.')
-    # this might be better: mask.astype(np.int, copy=False)
+    # this might be better: mask.astype(int, copy=False)
     # mask = mask.astype(int)
     mask = mask.astype(np.int32)
 

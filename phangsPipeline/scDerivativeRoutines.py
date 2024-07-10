@@ -916,11 +916,15 @@ def write_tmax(cubein,
 
     mask = cubein.get_mask_array()
     mask_spec = np.any(mask, axis=(1,2))
-    lo = np.min(np.where(mask_spec))
-    hi = np.max(np.where(mask_spec))
+
     mask = np.zeros_like(mask,dtype='bool')
-    mask[lo:hi,:,:] = True
+    if np.sum(mask_spec) != 0:
+        lo = np.min(np.where(mask_spec))
+        hi = np.max(np.where(mask_spec))
+        mask[lo:hi,:,:] = True
+
     mask *= np.isfinite(cubein.unmasked_data[:])
+
     new_cube = cubein.with_mask(mask, inherit_mask=False)
 
     # spectral smoothing if desired
@@ -1135,7 +1139,7 @@ def write_vquad(cubein,
     window : astropy.Quantity
         Spectral window over which the data should be smoothed
 
-    maxshift : np.float
+    maxshift : float
         Maximum number of channels that the algorithm can shift the
         peak estimator (default = 0.5).  Set to None to suppress clipping.
 

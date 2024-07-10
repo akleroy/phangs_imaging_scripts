@@ -777,11 +777,11 @@ def generate_weight_file(
 
     if input_file is None and input_value is not None:
 
-        if input_type is 'noise':
+        if input_type == 'noise':
             weight_value = 1./input_value**2
-        if input_type is 'pb':
+        if input_type == 'pb':
             weight_value = input_value**2
-        if input_type is 'weight':
+        if input_type == 'weight':
             weight_value = input_value
 
         weight_image = data*0.0 + weight_value
@@ -791,11 +791,11 @@ def generate_weight_file(
 
     if input_file is not None:
 
-        if input_type is 'noise':
+        if input_type == 'noise':
             weight_image = 1./data**2
-        if input_type is 'pb':
+        if input_type == 'pb':
             weight_image = data**2
-        if input_type is 'weight':
+        if input_type == 'weight':
             weight_image = data
 
     # Now we have a weight image. If request, scale the data by a factor.

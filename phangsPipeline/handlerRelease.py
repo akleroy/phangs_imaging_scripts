@@ -36,7 +36,6 @@ if casa_enabled:
 else:
     logger.debug('casa_enabled = False')
 
-from . import utils
 from . import utilsResolutions
 from . import utilsFilenames
 from . import utilsLines

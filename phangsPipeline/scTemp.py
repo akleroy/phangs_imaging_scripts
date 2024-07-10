@@ -66,7 +66,7 @@ def batch_moment_generator(
     if mask is not None:
         if type(mask) is str:
             mask_hdu = fits.open(mask)
-            mask = np.array(mask_hdu[0].data, dtype=np.bool)
+            mask = np.array(mask_hdu[0].data, dtype=bool)
         cube = cube.with_mask(mask, inherit_mask=False)
     elif generate_mask:
         cube, rms = phangs_mask(cube, mask_kwargs=mask_kwargs,
