@@ -56,6 +56,16 @@ if casa_version[0] < 6:
     from tclean import tclean
     from uvcontsub import uvcontsub
     from visstat import visstat
+    from importasdm import importasdm
+    from listobs import listobs
+    from flagcmd import flagcmd
+    from gencal import gencal
+    from sdcal import sdcal
+    from sdbaseline import sdbaseline
+    from sdimaging import sdimaging
+
+    from recipes.almahelpers import tsysspwmap
+
 
     from importasdm import importasdm
     from listobs import listobs
@@ -114,7 +124,20 @@ if casa_version[0] >= 6:
                            statwt,
                            tclean,
                            uvcontsub,
+                           visstat,
+                           importasdm,
+                           listobs,
+                           flagcmd,
+                           gencal,
+                           sdcal,
+                           sdbaseline,
+                           sdimaging,
+                           tsdimaging,
                            visstat)
+
+    from casatasks.private import sdint_helper
+
+    # from recipes.almahelpers import tsysspwmap
 
     # TODO: For now, uvcontsub doesn't work as we want it in newer CASA versions, fall back to old version
     if version.parse(casa_version_str) >= version.parse('6.5.2'):
@@ -124,8 +147,8 @@ if casa_version[0] >= 6:
 
     from casatasks.private import sdint_helper
 
-    #from .taskSDIntImaging import sdintimaging
-    from casatasks import sdintimaging
+    from .taskSDIntImaging import sdintimaging
+    # from casatasks import sdintimaging
 
     # singledish processing imports
     #   see some documents at

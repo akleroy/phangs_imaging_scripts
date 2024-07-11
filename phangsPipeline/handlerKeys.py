@@ -1822,6 +1822,27 @@ class KeyHandler:
 
         return statwt_edge
 
+    def get_contsub_excludefreqrange(self, product=None):
+        """
+        Get the frequency range to force excluding for continuum subtraction for a line product.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+
+        exclude_freq_ranges_ghz = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'exclude_freq_ranges_ghz' in self._config_dict['line_product'][product]:
+                    exclude_freq_ranges_ghz = self._config_dict['line_product'][product]['exclude_freq_ranges_ghz']
+
+        if exclude_freq_ranges_ghz is None:
+            logging.info('No exclude_freq_ranges_ghz found for ' + product + ' .')
+
+        return exclude_freq_ranges_ghz
+
     def get_contsub_fitorder(self, product=None):
         """
         Get the fitorder to be used for continuum subtraction for a line product.

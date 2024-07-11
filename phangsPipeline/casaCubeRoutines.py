@@ -576,17 +576,18 @@ def trim_cube(
 
     # Figure out the extent of the image inside the cube
 
-    #myia = au.createCasaTool(casaStuff.iatool)
-    #myia.open(outfile + '.temp')
-    #myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
-    #myia.close()
-    #
-    #mask = get_mask(outfile + '.temp_deg')
-    
-    mask = get_mask(outfile + '.temp')
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(outfile + '.temp')
+    os.system('rm -rf '+outfile + '.temp_deg')
+    deg_im = myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
+    deg_im.done()
+    myia.close()
 
-    #mask_spec_x = np.sum(np.sum(mask*1.0,axis=2),axis=1) > 0
+    mask = get_mask(outfile, huge_cube_workaround=True)
+
+    this_shape = mask.shape
     mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))
+
     xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
     xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
 

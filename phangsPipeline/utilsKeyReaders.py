@@ -191,7 +191,7 @@ def read_ms_key(fname='', existing_dict=None, delim=None):
 
     infile = open(fname, 'r')
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()
@@ -275,7 +275,7 @@ def read_targetproductfile_key(fname='', existing_dict=None, delim=None):
 
     infile = open(fname, 'r')
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()
@@ -354,19 +354,19 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
     """
     Read a distance key.
     """
-    # 
+    #
     # Initialize the dictionary
     if existing_dict is None:
         out_dict = {}
     else:
         out_dict = existing_dict
-    # 
+    #
     # Check file existence
     if not os.path.isfile(fname):
         logger.error("I tried to read key " + fname + " but it does not exist.")
         # raise Exception('Error! File not found: "'+fname+'"') #<TODO><DL># should we throw a exception
         return out_dict
-    # 
+    #
     # Read file
     logger.info("Reading: " + fname)
 
@@ -397,7 +397,7 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
 
         # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
     logger.info("Read " + str(lines_read) + " lines into a target/distance dictionary.")
-    # 
+    #
     # return out_dict
     return out_dict
 
@@ -431,7 +431,7 @@ def read_nametoname_key(fname='', existing_dict=None, delim=None, as_list=False)
 
     infile = open(fname, 'r')
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()
@@ -496,7 +496,7 @@ def read_target_key(fname='', existing_dict=None, delim=None):
 
     infile = open(fname, 'r')
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()
@@ -645,7 +645,7 @@ def read_config_key(fname='', existing_dict=None, delim=None):
     else:
         out_dict = existing_dict
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()
@@ -712,6 +712,7 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'fitorder': 0,
                 'combinespw': False,
                 'lines_to_flag': [],
+                'exclude_freq_ranges_ghz': [],
             }
 
         if this_type == "cont_product":
@@ -780,7 +781,7 @@ def read_moment_key(fname='', existing_dict=None, delim=None):
 
     infile = open(fname, 'r')
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()
@@ -868,7 +869,7 @@ def read_override_key(fname='', existing_dict=None, delim=None):
     else:
         out_dict = existing_dict
 
-    # Loop over the lines    
+    # Loop over the lines
     lines_read = 0
     while True:
         line = infile.readline()

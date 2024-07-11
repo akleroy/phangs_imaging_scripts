@@ -350,7 +350,7 @@ def cprops_mask(data, noise=None,
 def mask_around_value(cube, target=None, delta=None):
     """General function to make a mask that includes only values within
     delta of some target value or cube.
-    
+
     Parameters:
 
     -----------
@@ -388,13 +388,13 @@ def make_vfield_mask(cube, vfield, window,
                      outfile=None, overwrite=True):
     """Make a mask that includes only pixels within +/- some velocity
     window of a provided velocity field, which can be two-d or one-d.
-    
+
     Parameters:
 
     -----------
 
     data : string or SpectralCube
-        
+
         The original data cube.
 
     vfield : float or two-d array or string
@@ -413,7 +413,7 @@ def make_vfield_mask(cube, vfield, window,
     TBD
 
     """
-    
+
     # -------------------------------------------------
     # Get spectral information from the cube
     # -------------------------------------------------
@@ -431,19 +431,19 @@ def make_vfield_mask(cube, vfield, window,
     if type(vfield) != u.quantity.Quantity:
         # Guess matched units
         vfield = u.quantity.Quantity(vfield,spunit)
-    
+
     # Just convert if it's a scalar
     if np.ndim(vfield.data) <= 1:
         vfield = vfield.to(spunit)
         vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
     else:
         # reproject if it's a projection
-        if type(vfield) is Projection:            
+        if type(vfield) is Projection:
             vfield = convert_and_reproject(vfield, template=cube.header, unit=spunit)
-        else:            
+        else:
             vfield = vfield.to(spunit)
 
-    # Check sizes    
+    # Check sizes
     if (cube.shape[1] != vfield.shape[0]) or (cube.shape[2] != vfield.shape[1]):
         return(np.nan)
 
@@ -455,27 +455,27 @@ def make_vfield_mask(cube, vfield, window,
     if type(window) != u.quantity.Quantity:
         # Guess matched units
         window = u.quantity.Quantity(window,spunit)
-    
+
     # Just convert if it's a scalar
     if np.ndim(window.data) <= 1:
-        window = window.to(spunit)        
+        window = window.to(spunit)
         window = u.quantity.Quantity(np.ones((ny, nx))*window.value, window.unit)
     else:
         # reproject if it's a projection
-        if type(window) is Projection:            
+        if type(window) is Projection:
             window = convert_and_reproject(window, template=cube.header, unit=spunit)
-        else:            
+        else:
             window = window.to(spunit)
 
     # Check sizes
     if (cube.shape[1] != window.shape[0]) or (cube.shape[2] != window.shape[1]):
-        return(np.nan)    
+        return(np.nan)
 
     # -------------------------------------------------
     # Generate a velocity cube and a vfield cube
     # -------------------------------------------------
 
-    spaxis_cube = np.ones((ny, nx))[None,:,:] * spvalue[:,None,None]    
+    spaxis_cube = np.ones((ny, nx))[None,:,:] * spvalue[:,None,None]
     vfield_cube = (vfield.value)[None,:,:] * np.ones(nz)[:,None,None]
     window_cube = (window.value)[None,:,:] * np.ones(nz)[:,None,None]
 
@@ -495,9 +495,9 @@ def make_vfield_mask(cube, vfield, window,
     mask = SpectralCube(mask.astype(int), wcs=cube.wcs,
                         header=cube.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
-    
+
     # Write to disk, if desired
-    if outfile is not None:        
+    if outfile is not None:
         header = mask.header
         header['DATAMAX'] = 1
         header['DATAMIN'] = 0
@@ -507,7 +507,7 @@ def make_vfield_mask(cube, vfield, window,
 
     return(mask)
 
-def join_masks(orig_mask_in, new_mask_in, 
+def join_masks(orig_mask_in, new_mask_in,
                order='bilinear', operation='or',
                outfile=None,
                thresh=0.5,
