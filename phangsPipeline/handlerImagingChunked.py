@@ -60,7 +60,7 @@ if casa_enabled:
             product,
             key_handler,
             dry_run = False,
-            chunksize=1,
+            chunksize=10,
             imaging_method='tclean',
             recipe='phangsalma',
             set_cell_imsize_on_init=True,
@@ -178,6 +178,9 @@ if casa_enabled:
             for chunk_num, (chan_start, chan_end) in enumerate(zip(self.chunk_channel_starts,
                                                                    self.chunk_channel_ends)):
 
+                chan_end = int(chan_end)
+                chan_start = int(chan_start)
+
                 self.chunk_params[chunk_num] = deepcopy(base_chunk_params)
 
                 # Channel range
@@ -186,7 +189,8 @@ if casa_enabled:
                 # Vis file names
                 chan_label = "{0}_{1}".format(chan_start, chan_end)
 
-                this_vis_name = "{0}_chan{1}".format(self.vis_file, chan_label)
+                # this_vis_name = "{0}_chan{1}".format(self.vis_file, chan_label)
+                this_vis_name = self.vis_file
 
                 self.chunk_params[chunk_num]['vis_name'] = this_vis_name
 
@@ -278,8 +282,6 @@ if casa_enabled:
             used.
             """
 
-            raise NotImplementedError("Should be ready, but you should run a test case")
-
             if do_all:
                 do_dirty_image = True
                 # debateable ...
@@ -307,14 +309,11 @@ if casa_enabled:
 
             if self.recipe == 'phangsalma':
                 self.recipe_phangsalma_imaging(
-                    target=self.target,
-                    product=self.product,
-                    config=self.config,
                     extra_ext_in=extra_ext_in,
                     suffix_in=suffix_in,
                     extra_ext_out=extra_ext_out,
                     imaging_method=self.imaging_method,
-                    imaging_method_override=None,
+                    # imaging_method_override=None,
                     do_dirty_image=do_dirty_image,
                     do_revert_to_dirty=do_revert_to_dirty,
                     do_read_clean_mask=do_read_clean_mask,
@@ -384,55 +383,58 @@ if casa_enabled:
         # Tasks - discrete steps on target, product, config combinations #
         ##################################################################
 
-        def task_split_chunked_vis(self, overwrite=False, chunk_num=None):
-            '''
-            Split out the specified chunk of channels.
+        # CASA Memo 13 shows that the MS splitting is likely not needed
+        # https://drive.google.com/file/d/1_8JeN-MtDEqUYjRn7eIUbqcE0EyJeSqW/view
 
-            Parameters
-            ----------
-            overwrite : bool
-                Overwrite an existing MS file for the chunk.
-            chunk_num : int, list or None
-                If None, will loop through all chunks. If a list or integer are given,
-                this will loop through only the specified chunk numbers defined in
-                `ImagingChunkedHandler.chunk_params`.
-            '''
+        # def task_split_chunked_vis(self, overwrite=False, chunk_num=None):
+        #     '''
+        #     Split out the specified chunk of channels.
 
-            chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
+        #     Parameters
+        #     ----------
+        #     overwrite : bool
+        #         Overwrite an existing MS file for the chunk.
+        #     chunk_num : int, list or None
+        #         If None, will loop through all chunks. If a list or integer are given,
+        #         this will loop through only the specified chunk numbers defined in
+        #         `ImagingChunkedHandler.chunk_params`.
+        #     '''
 
-            # TODO: move to helper function.
-            mytb = au.createCasaTool(casaStuff.tbtool)
-            mytb.open(self.full_vis_file, nomodify = True)
-            colnames = mytb.colnames()
-            if 'CORRECTED_DATA' in colnames:
-                logger.info("Data has a CORRECTED column. Will use that.")
-                use_column = 'CORRECTED'
-            else:
-                logger.info("Data lacks a CORRECTED column. Will use DATA column.")
-                use_column = 'DATA'
-            mytb.close()
+        #     chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            for ii, key in enumerate(chunks_iter):
+        #     # TODO: move to helper function.
+        #     mytb = au.createCasaTool(casaStuff.tbtool)
+        #     mytb.open(self.full_vis_file, nomodify = True)
+        #     colnames = mytb.colnames()
+        #     if 'CORRECTED_DATA' in colnames:
+        #         logger.info("Data has a CORRECTED column. Will use that.")
+        #         use_column = 'CORRECTED'
+        #     else:
+        #         logger.info("Data lacks a CORRECTED column. Will use DATA column.")
+        #         use_column = 'DATA'
+        #     mytb.close()
 
-                this_vis_chunk = self.chunk_params[key]['full_vis_name']
-                chan_start, chan_stop = self.chunk_params[key]['channel_range']
+        #     for ii, key in enumerate(chunks_iter):
 
-                logger.info("Splitting chunk number {0} for channels {1}~{2}".format(ii, chan_start,
-                                                                                    chan_stop))
+        #         this_vis_chunk = self.chunk_params[key]['full_vis_name']
+        #         chan_start, chan_stop = self.chunk_params[key]['channel_range']
 
-                if os.path.exists(this_vis_chunk):
-                    if overwrite:
-                        os.system("rm -rf {}".format(this_vis_chunk))
-                    else:
-                        logger.info("Chunked vis for channels {} already exists. Skipping".format(key))
-                        continue
+        #         logger.info("Splitting chunk number {0} for channels {1}~{2}".format(ii, chan_start,
+        #                                                                             chan_stop))
 
-                #TODO: how to handle multiple SPWs? This assumes the data has been staged so that the
-                # channel numbers would all match in frequency.
+        #         if os.path.exists(this_vis_chunk):
+        #             if overwrite:
+        #                 os.system("rm -rf {}".format(this_vis_chunk))
+        #             else:
+        #                 logger.info("Chunked vis for channels {} already exists. Skipping".format(key))
+        #                 continue
 
-                casaStuff.split(vis=self.full_vis_file, outputvis=this_vis_chunk,
-                                spw='*:{0}~{1}'.format(chan_start, chan_stop),
-                                datacolumn=use_column)
+        #         #TODO: how to handle multiple SPWs? This assumes the data has been staged so that the
+        #         # channel numbers would all match in frequency.
+
+        #         casaStuff.split(vis=self.full_vis_file, outputvis=this_vis_chunk,
+        #                         spw='*:{0}~{1}'.format(chan_start, chan_stop),
+        #                         datacolumn=use_column)
 
 
         def task_split_cube_to_chunks(self, imagename, overwrite=False, chunk_num=None,
@@ -574,7 +576,13 @@ if casa_enabled:
 
             # Set to the channel range given we split out max {chunksize} number of channels
             # Thus we can just specify -1 to image all channel in the split MS.
-            clean_call.set_param('nchan', -1)
+            chan_start, chan_end = self.chunk_params[chunk_num]['channel_range']
+            nchan = (chan_end - chan_start) + 1
+            clean_call.set_param('nchan', nchan)
+
+            # Set start and width
+            clean_call.set_param('start', chan_start)
+            clean_call.set_param('width', 1)
 
 
             #TODO: revisit once the rest of sdintimaging is patched back in
@@ -1428,11 +1436,6 @@ if casa_enabled:
                     clean_call.set_param('nchan', cube_params['nchan'])
                     clean_call.set_param('start', cube_params['start'])
                     clean_call.set_param('width', cube_params['width'])
-
-            # Split the vis per chunks:
-            if do_split_vis:
-                self.task_split_chunked_vis()
-
 
             # Make a dirty image (niter=0)
 
