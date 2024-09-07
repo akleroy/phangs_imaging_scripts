@@ -63,7 +63,9 @@ line_families = {
         'h38alpha', 'h39alpha', 'h40alpha', 'h41alpha',
         'h42alpha', 'h43alpha', 'h44alpha', 'h45alpha',
         'h53alpha', 'h54alpha', 'h55alpha', 'h56alpha', 'h57alpha', 'h58alpha',
-    ]
+    ],
+    'oh': ['oh1612', 'oh1665', 'oh1667', 'oh1720'],
+    'cch': ['cch10_21'],
     }
 
 # The line list dictionary
@@ -213,6 +215,11 @@ line_list = {
     'h56alpha': 36.466260,
     'h57alpha': 34.596383,
     'h58alpha': 32.852196,
+    'oh1612': 1.61223090,
+    'oh1665': 1.66540180,
+    'oh1667': 1.66735900,
+    'oh1720': 1.72052990,
+    'cch10_21': 87.31692500, # N= 1-0, J=3/2-1/2, F= 2-1
     }
 
 

@@ -6,7 +6,7 @@ from astropy.io import fits
 from astropy.convolution import Box1DKernel
 from astropy.convolution import convolve, convolve_fft
 from radio_beam import Beam
-from spectral_cube import SpectralCube, LazyMask
+from spectral_cube import SpectralCube, LazyMask, Projection
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -58,10 +58,16 @@ def smooth_cube(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     # Require a valid cube or map input
+    twod = False
     if type(incube) is SpectralCube:
         cube = incube
     elif type(incube) == type("hello"):
-        cube = SpectralCube.read(incube)
+        hdulist = fits.open(incube)
+        if hdulist[0].header['NAXIS'] == 2:
+            cube = Projection.from_hdu(hdulist)
+            twod = True
+        else:
+            cube = SpectralCube.read(incube)
     else:
         logger.error("Input must be a SpectralCube object or a filename.")
 
@@ -115,11 +121,18 @@ def smooth_cube(
         logger.info("... fractional change: "+str(delta))
         
         if make_coverage_cube:
-            coverage = SpectralCube(np.isfinite(cube.unmasked_data[:])*1.0,
-                                    wcs=cube.wcs,
-                                    header=cube.header,
-                                    meta={'BUNIT': ' ', 'BTYPE': 'Coverage'})
-            coverage = coverage.with_mask(LazyMask(np.isfinite,cube=coverage))
+            if twod:
+                coverage = Projection(np.isfinite(hdulist[0].data)*1.0,
+                                      wcs=cube.wcs, header=cube.header,
+                                      beam=cube.beam)
+            else:
+                coverage = SpectralCube(
+                    np.isfinite(cube.unmasked_data[:])*1.0,
+                    wcs=cube.wcs,
+                    header=cube.header,
+                    meta={'BUNIT': ' ', 'BTYPE': 'Coverage'})
+                coverage = \
+                    coverage.with_mask(LazyMask(np.isfinite,cube=coverage))            
             
             # Allow huge operations. If the speed or segfaults become a huge
             # problem, we will adjust our strategy here.
@@ -128,11 +141,21 @@ def smooth_cube(
 
         if delta > tol:
             logger.info("... proceeding with convolution.")
-            cube = cube.convolve_to(target_beam,
-                                    nan_treatment=nan_treatment)
+            if twod:
+                cube = cube.convolve_to(target_beam,
+                                        nan_treatment=nan_treatment,
+                                        allow_huge=True)
+            else: 
+                cube = cube.convolve_to(target_beam,
+                                        nan_treatment=nan_treatment)
             if make_coverage_cube:
-                coverage = coverage.convolve_to(target_beam,
-                                                nan_treatment=nan_treatment)
+                if twod:
+                    coverage = coverage.convolve_to(target_beam,
+                                                    nan_treatment=nan_treatment,
+                                                    allow_huge=True)
+                else:
+                    coverage = coverage.convolve_to(target_beam,
+                                                    nan_treatment=nan_treatment)
 
         if np.abs(delta) < tol:
             logger.info("... current resolution meets tolerance.")
@@ -148,7 +171,7 @@ def smooth_cube(
     # This is only a boxcar smooth right now and does not downsample
     # or update the header.
 
-    if velocity_resolution is not None:
+    if velocity_resolution is not None and twod == False:
         if type(velocity_resolution) is str:
             velocity_resolution = u.Quantity(velocity_resolution)
 
@@ -173,7 +196,7 @@ def smooth_cube(
                 hdu = fits.PrimaryHDU(np.array(coverage.filled_data[:], dtype=dtype),
                                       header=coverage.header)
                 hdu.writeto(coveragefile, overwrite=overwrite)
-            if collapse_coverage:
+            if collapse_coverage and twod==False:
                 if coveragefile and not coverage2dfile:
                     coverage2dfile = coveragefile.replace('.fits','2d.fits')
                 coverage_collapser(coverage,

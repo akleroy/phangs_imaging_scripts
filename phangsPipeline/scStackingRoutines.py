@@ -48,7 +48,7 @@ def ShuffleCube(DataCube, centroid_map, chunk=1000):
     centroids = centroid_map[y, x]
     sortindex = np.argsort(spaxis)
     channel_shift = -1 * np.interp(centroids, spaxis[sortindex],
-                                   np.array(relative_channel[sortindex], dtype=np.float))
+                                   np.array(relative_channel[sortindex], dtype=float))
     NewCube = np.empty(DataCube.shape)
     NewCube.fill(np.nan)
     nchunk = (len(x) // chunk)
@@ -96,7 +96,7 @@ def BinByMask(DataCube, mask, centroid_map, weight_map=None):
     centroids = centroid_map[y, x].to(DataCube.spectral_axis.unit).value
     sortindex = np.argsort(spaxis)
     channel_shift = -1 * np.interp(centroids, spaxis[sortindex],
-                                   np.array(relative_channel[sortindex], dtype=np.float))
+                                   np.array(relative_channel[sortindex], dtype=float))
     spectra = DataCube.filled_data[:, y, x].value
     shifted_spectra = channelShiftVec(spectra, channel_shift)
     if weight_map is not None:

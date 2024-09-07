@@ -89,6 +89,7 @@ class CleanCall:
 
         with open(fname, 'r') as infile:
 
+            lines_read = 0
             while True:
                 line = infile.readline()
                 line = line.replace(" ","")

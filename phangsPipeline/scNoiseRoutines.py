@@ -37,7 +37,7 @@ def mad_zero_centered(data, mask=None):
     Keywords:
     ---------
 
-    mask : np.bool
+    mask : bool
 
         Boolean array with True indicating where data can be used in
         the noise estimate. (i.e., True is noise). If none is supplied
@@ -112,18 +112,18 @@ def noise_cube(data, mask=None,
     Keywords:
     ---------
 
-    mask : np.bool
+    mask : bool
 
         Boolean array with False indicating where data can be
         used in the noise estimate. (i.e., True is signal)
 
-    do_map : np.bool
+    do_map : bool
 
         Estimate spatial variations in the noise. Default is True. If
         set to False, all locations in a plane have the same noise
         estimate.
 
-    do_spec : np.bool
+    do_spec : bool
 
         Estimate spectral variations in the noise. Default is True. If
         set to False, all channels in a spectrum have the same noise
@@ -175,7 +175,7 @@ def noise_cube(data, mask=None,
     # used for convenience.
 
     if box is not None:
-        step = np.floor(box/2.5).astype(np.int)
+        step = np.floor(box/2.5).astype(int)
         halfbox = int(box // 2)
 
     # Include all pixels adjacent to the spatial
@@ -195,7 +195,7 @@ def noise_cube(data, mask=None,
     # calculate a spectral step size.
 
     if spec_box is not None:
-        spec_step = np.floor(spec_box / 2).astype(np.int)
+        spec_step = np.floor(spec_box / 2).astype(int)
         boxv = int(spec_box // 2)
     else:
         boxv = 0
@@ -410,7 +410,7 @@ def recipe_phangs_noise(
     Keywords:
     ---------
 
-    mask : np.bool
+    mask : bool
 
         Boolean array with False indicating where data can be used in
         the noise estimate. (i.e., True is signal).
