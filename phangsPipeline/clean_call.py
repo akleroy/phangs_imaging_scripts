@@ -252,7 +252,7 @@ class CleanCall:
         # The difference between these should be chunksize - 1 for all but the last one:
         assert all((chunk_ends - chunk_starts)[:-1] == chunksize - 1)
 
-        return chunk_starts, chunk_ends
+        return chunk_starts.astype(int), chunk_ends.astype(int)
 
     ##################################
     # Hook up to executions of clean #
