@@ -839,7 +839,7 @@ if casa_enabled:
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                     logger.info("Making dirty image for chunk {}:".format(chunk_num))
                     logger.info(str(this_clean_call.get_param('imagename')))
-                    logger.info("This is {0} out of {1} to be imaged".format(ii, len(chunks_iter)))
+                    logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)+1))
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                     logger.info("")
 
@@ -886,7 +886,7 @@ if casa_enabled:
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("Resetting to " + tag + " imaging:")
                         logger.info(str(this_clean_call.get_param('imagename')))
-                        logger.info("This is chunk {0} out of {1}.".format(ii, len(chunks_iter)))
+                        logger.info("This is chunk {0} out of {1}.".format(ii+1, len(chunks_iter)+1))
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("")
 
@@ -1028,7 +1028,7 @@ if casa_enabled:
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("Running clean call to convergence for:")
                 logger.info(this_clean_call.get_param('imagename'))
-                logger.info("This is {0} out of {1} to be imaged".format(ii, len(chunks_iter)))
+                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)+1))
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("")
 
@@ -1223,7 +1223,7 @@ if casa_enabled:
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("Running clean call to convergence for:")
                 logger.info(this_clean_call.get_param('imagename'))
-                logger.info("This is {0} out of {1} to be imaged".format(ii, len(chunks_iter)))
+                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter+1)))
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("")
 
