@@ -251,6 +251,7 @@ if casa_enabled:
 
         def run_imaging(
                 self,
+                chunk_num=None,
                 do_all=False,
                 do_dirty_image=False,
                 do_revert_to_dirty=False,
@@ -271,8 +272,6 @@ if casa_enabled:
                 extra_ext_out=None,
                 dynamic_sizing=True,
                 force_square=False,
-                export_dirty=False,
-                export_multiscale=False,
                 overwrite=False,
         ):
             """
@@ -309,6 +308,7 @@ if casa_enabled:
 
             if self.recipe == 'phangsalma':
                 self.recipe_phangsalma_imaging(
+                    chunk_num=chunk_num,
                     extra_ext_in=extra_ext_in,
                     suffix_in=suffix_in,
                     extra_ext_out=extra_ext_out,
@@ -330,8 +330,6 @@ if casa_enabled:
                     singlescale_threshold_value=singlescale_threshold_value,
                     dynamic_sizing=dynamic_sizing,
                     force_square=force_square,
-                    export_dirty=export_dirty,
-                    export_multiscale=export_multiscale,
                     overwrite=overwrite,
                 )
 
@@ -1360,6 +1358,7 @@ if casa_enabled:
 
         def recipe_phangsalma_imaging(
                 self,
+                chunk_num=None,
                 extra_ext_in=None,
                 suffix_in=None,
                 extra_ext_out=None,
@@ -1382,7 +1381,6 @@ if casa_enabled:
                 singlescale_threshold_value=1.0,
                 dynamic_sizing=True,
                 force_square=False,
-                export_dirty=False,
                 export_multiscale=False,
                 overwrite=False,
         ):
@@ -1439,18 +1437,18 @@ if casa_enabled:
 
             # Make a dirty image (niter=0)
 
-            if do_dirty_image:
-                self.task_make_dirty_image(imaging_method=imaging_method,
-                                           gather_chunks_into_cube=export_dirty)
+            gather_chunks_into_cube = False if chunk_num is not None else True
 
-            if do_export_to_fits and export_dirty:
-                self.task_export_to_fits(imaging_method=imaging_method,
-                                         root_name='dirty')
+            if do_dirty_image:
+                self.task_make_dirty_image(chunk_num=chunk_num,
+                                           imaging_method=imaging_method,
+                                           gather_chunks_into_cube=gather_chunks_into_cube)
 
             # Reset the current imaging to the dirty image.
 
             if do_revert_to_dirty:
-                self.task_revert_to_imaging(imaging_method=imaging_method,
+                self.task_revert_to_imaging(chunk_num=chunk_num,
+                                            imaging_method=imaging_method,
                                             tag='dirty')
 
             # Read and align the clean mask to the astrometry of the image.
@@ -1467,25 +1465,24 @@ if casa_enabled:
             # Run a multiscale clean until it converges.
 
             if do_multiscale_clean:
-                self.task_multiscale_clean(imaging_method=imaging_method,
+                self.task_multiscale_clean(chunk_num=chunk_num,
+                                           imaging_method=imaging_method,
                                            convergence_fracflux=convergence_fracflux,
-                                           gather_chunks_into_cube=export_multiscale,
+                                           gather_chunks_into_cube=gather_chunks_into_cube,
                                            )
-
-            if do_export_to_fits and export_multiscale:
-                self.task_export_to_fits(imaging_method=imaging_method,
-                                         tag='multiscale')
 
             # Reset the current imaging to the results of the multiscale clean.
 
             if do_revert_to_multiscale:
-                self.task_revert_to_imaging(imaging_method=imaging_method,
+                self.task_revert_to_imaging(chunk_num=chunk_num,
+                                            imaging_method=imaging_method,
                                             tag='multiscale')
 
             # Make a signal-to-noise based mask for use in singlescale clean.
 
             if do_singlescale_mask:
-                self.task_singlescale_mask(imaging_method=imaging_method,
+                self.task_singlescale_mask(chunk_num=chunk_num,
+                                           imaging_method=imaging_method,
                                            high_snr=singlescale_mask_high_snr,
                                            low_snr=singlescale_mask_low_snr,
                                            absolute=singlescale_mask_absolute)
@@ -1493,7 +1490,8 @@ if casa_enabled:
             # Run a singlescale clean until it converges.
 
             if do_singlescale_clean:
-                self.task_singlescale_clean(imaging_method=imaging_method,
+                self.task_singlescale_clean(chunk_num=chunk_num,
+                                            imaging_method=imaging_method,
                                             convergence_fracflux=convergence_fracflux,
                                             threshold_value=singlescale_threshold_value,
                                             gather_chunks_into_cube=False)
@@ -1501,19 +1499,23 @@ if casa_enabled:
             # Reset the current imaging to the results of the singlescale clean.
 
             if do_revert_to_singlescale:
-                self.task_revert_to_imaging(imaging_method=imaging_method,
+                self.task_revert_to_imaging(chunk_num=chunk_num,
+                                            imaging_method=imaging_method,
                                             tag='singlescale')
 
             # Ensure products are re-combined into cubes:
             if do_recombine_cubes:
-                self.task_complete_gather_into_cubes(root_name='all')
+                if chunk_num is None:
+                    self.task_complete_gather_into_cubes(root_name='all')
+                                # Export the products of the current clean to FITS files.
+                    if do_export_to_fits:
+                        self.task_export_to_fits(imaging_method=imaging_method)
 
-            # Export the products of the current clean to FITS files.
-            if do_export_to_fits:
-                self.task_export_to_fits(imaging_method=imaging_method)
+                else:
+                    import warnings
+                    warnings.warn(f"Recombination of cubes requires all chunks to be run. Given only chunk {chunk_num}.")
 
-            # Return
 
-            return
+
 
 
