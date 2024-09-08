@@ -222,6 +222,9 @@ class CleanCall:
             logger.warn("use_chunks has not been enabled. Call `CleanCall` with `use_chunks=True`.")
             return
 
+        if not isinstance(chunksize, int):
+            raise ValueError("chunksize must be an integer.")
+
         if chunksize < 1:
             raise ValueError("chunksize must be positive.")
 
