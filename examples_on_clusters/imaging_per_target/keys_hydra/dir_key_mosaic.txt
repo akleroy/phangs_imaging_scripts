@@ -1,0 +1,144 @@
+##########################################################################
+# DIRECTORY MAPPING KEY
+##########################################################################
+
+# Key to map from target to working directory name.
+
+# BY DEFAULT the working directory for any target is a directory with
+# the same name as the target. The programs will create this directory
+# in the imaging, postprocessing, etc. directories.
+
+# This key allows targets to be mapped to other directories.
+
+# The most common use is to combine several targets into a single
+# directory. This comes up for PHANGS-ALMA in the context of linear
+# mosaics. Several targets are observed and then larter combined into
+# a single data cube. Thus we prefer to image and process these parts
+# together in a single directory.
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 2: working directory name
+
+# In PHANGS-ALMA the convention is to map parts to a working directory
+# with the name of the full galaxy. For example:
+
+#circinus_1       circinus
+#circinus_2       circinus
+
+##########################################################################
+
+# 2017
+m33_a_06_row3-tile5 m33
+m33_b_06_row3-tile4 m33
+m33_j_06_row2-tile1 m33
+
+# 2019
+m33_a_06_row3-tile3 m33
+m33_b_06_row3-tile2 m33
+m33_c_06_row3-tile1 m33
+m33_d_06_row2-tile5 m33
+m33_e_06_row2-tile4 m33
+m33_f_06_row2-tile3 m33
+m33_g_06_row2-tile2 m33
+m33_h_06_row1-tile5 m33
+m33_i_06_row1-tile4 m33
+m33_j_06_row1-tile3 m33
+m33_k_06_row1-tile2 m33
+m33_l_06_row1-tile1 m33
+
+# 2021
+m33_a_06_row2-tile6    m33
+m33_b_06_row2-tile0    m33
+m33_c_06_row2-tile-1   m33
+m33_d_06_row2-tile-2   m33
+m33_e_06_row2-tile-3   m33
+m33_f_06_row2-tile-4   m33
+m33_g_06_row2-tile7    m33
+m33_h_06_row2-tile8    m33
+m33_i_06_row2-tile9    m33
+m33_j_06_row1-tile0    m33
+m33_k_06_row1-tile-1   m33
+m33_l_06_row1-tile-2   m33
+m33_m_06_row1-tile-3   m33
+m33_n_06_row1-tile-4   m33
+m33_o_06_row1-tile-5   m33
+m33_p_06_row1-tile6    m33
+m33_q_06_row1-tile7    m33
+m33_r_06_row1-tile8    m33
+m33_s_06_row1-tile9    m33
+m33_t_06_row3-tile0    m33
+m33_u_06_row3-tile-1   m33
+m33_v_06_row3-tile-2   m33
+m33_w_06_row3-tile-3   m33
+m33_x_06_row3-tile-4   m33
+m33_y_06_row3-tile-5   m33
+m33_z_06_row3-tile6    m33
+m33_aa_06_row3-tile7   m33
+m33_ab_06_row3-tile8   m33
+m33_ac_06_row3-tile9   m33
+m33_ad_06_row4-tile2   m33
+m33_ae_06_row4-tile3   m33
+m33_af_06_row4-tile1   m33
+m33_ag_06_row4-tile5   m33
+m33_ah_06_row4-tile4   m33
+m33_ai_06_row4-tile0   m33
+m33_aj_06_row4-tile-1  m33
+m33_ak_06_row4-tile-2  m33
+m33_al_06_row4-tile-3  m33
+m33_am_06_row4-tile-4  m33
+m33_an_06_row4-tile6   m33
+m33_ao_06_row4-tile7   m33
+m33_ap_06_row4-tile8   m33
+m33_aq_06_row4-tile9   m33
+m33_ar_06_row5-tile1   m33
+m33_as_06_row5-tile2   m33
+m33_at_06_row5-tile3   m33
+m33_au_06_row5-tile4   m33
+m33_av_06_row5-tile5   m33
+m33_aw_06_row5-tile0   m33
+m33_ax_06_row5-tile-1  m33
+m33_ay_06_row5-tile-2  m33
+m33_az_06_row5-tile6   m33
+m33_ba_06_row5-tile7   m33
+m33_bb_06_row5-tile8   m33
+m33_bc_06_row6-tile1   m33
+m33_bd_06_row6-tile2   m33
+m33_be_06_row6-tile3   m33
+m33_bf_06_row6-tile4   m33
+m33_bg_06_row6-tile5   m33
+m33_bh_06_row6-tile0   m33
+m33_bi_06_row6-tile-1  m33
+m33_bj_06_row6-tile-2  m33
+m33_bk_06_row6-tile-3  m33
+m33_bl_06_row6-tile-4  m33
+m33_bm_06_row6-tile6   m33
+m33_bn_06_row6-tile7   m33
+m33_bo_06_row7-tile1   m33
+m33_bp_06_row7-tile2   m33
+m33_bq_06_row7-tile3   m33
+m33_br_06_row7-tile4   m33
+m33_bs_06_row7-tile5   m33
+m33_bt_06_row7-tile0   m33
+m33_bu_06_row7-tile-1  m33
+m33_bv_06_row7-tile-2  m33
+m33_bw_06_row7-tile-3  m33
+m33_bx_06_row7-tile6   m33
+m33_by_06_row8-tile0   m33
+m33_bz_06_row8-tile1   m33
+m33_ca_06_row8-tile2   m33
+m33_cb_06_row8-tile3   m33
+m33_cc_06_row8-tile4   m33
+m33_cd_06_row8-tile-1  m33
+m33_ce_06_row9-tile3   m33
+m33_cf_06_row9-tile4   m33
+m33_cg_06_row9-tile5   m33
+m33_ch_06_row9-tile2   m33
+m33_ci_06_row9-tile1h  m33
+m33_cj_06_row9-tile2h  m33
+m33_ck_06_row10-tile1h m33
+m33_cl_06_row11-tile1h m33
+m33_cm_06_row11-tile2h m33
+
+
