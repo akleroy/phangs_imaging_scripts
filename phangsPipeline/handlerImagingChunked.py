@@ -87,7 +87,9 @@ if casa_enabled:
                 raise Exception("ImagingChunkedHandler is only implemented for creating data cubes."
                                 " Use the normal imaging approach for imaging continuum data.")
 
-            # TODO: need the changeto call moved elsewhere
+            if chunksize == 1:
+                raise Exception("chunksize must be greater than 1.")
+
             self._this_imaging_dir = self._kh.get_imaging_dir_for_target(self.target, changeto=True)
 
             # Get the visibility name
@@ -143,6 +145,7 @@ if casa_enabled:
             self.base_clean_call = CleanCall(self.recipe_list, use_chunks=True, nchan=self.nchan)
 
             self.chunksize = chunksize
+
 
             self.chunk_channel_starts, self.chunk_channel_ends = \
                 self.base_clean_call.return_chunked_channel_ranges(chunksize=chunksize)
