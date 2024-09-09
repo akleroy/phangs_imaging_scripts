@@ -1,0 +1,234 @@
+##########################################################################
+# TARGET DEFINITION KEY
+##########################################################################
+
+# Key to define the targets in a project.
+
+# In the ms_key each measurement set is mapped to a target. This key
+# defined targets according to their phase center, systemic velocity
+# and velocity width. These are used in processing the u-v data and
+# then imaging the data.
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 2: phase center r.a. string
+# Column 3: phase center dec string
+# Column 4: source velocity [km/s]
+# Column 5: velocity width [km/s]
+
+# Note that the phase center isn't the same as the object center. This
+# is an importnat distinction mainly in the case of mosaics that cover
+# only part of the object (our linear mosaic cases..
+
+# PHANGS-ALMA examples:
+
+#circinus     14h13m10.0s   -65d20m21s    429    700
+#circinus_1   14h12m58.4s   -65d21m43s    429    700
+#circinus_2   14h13m17.1s   -65d19m24s    429    700
+#ic1954       03h31m31.4s   -51d54m17s    1062   500
+#ngc3621      11h18m16.5s   -32d48m51s    730    700
+#ngc3621_1    11h18m18.3s   -32d49m47s    730    700
+#ngc3621_2    11h18m15.0s   -32d48m06s    730    700
+
+##########################################################################
+
+# DELETE AFTER HERE FOR NEW PROJECT, FULL PHANGS-ALMA CASE FOLLOWS
+
+m33   01h33m50.89s +30d39m36.8s -180 300
+
+# 2017
+# Custom center and width b/c the SPW bandwidth was smaller in this cycle
+
+# -232 to -70 km/s
+m33_a_06_row3-tile5 01h34m13s +30d32m50s  -150  120
+
+m33_b_06_row3-tile4 01h34m03s +30d33m16s  -150  120
+
+# -262 to -100 km/s
+m33_j_06_row2-tile1 01h33m33s +30d41m09s  -180  120
+
+
+# 2019
+m33_a_06_row3-tile3 01h33m52.186s +30d33m40.750s  -180  300
+m33_b_06_row3-tile2 01h33m41.282s +30d34m05.554s  -180  300
+m33_c_06_row3-tile1 01h33m30.376s +30d34m30.300s  -180  300
+m33_d_06_row2-tile5 01h34m17.520s +30d39m29.979s  -180  300
+m33_e_06_row2-tile4 01h34m06.607s +30d39m54.896s  -180  300
+m33_f_06_row2-tile3 01h33m55.692s +30d40m19.756s  -180  300
+m33_g_06_row2-tile2 01h33m44.776s +30d40m44.560s  -180  300
+m33_h_06_row1-tile5 01h34m30.586s +30d45m47.417s  -180  300
+m33_i_06_row1-tile4 01h34m19.661s +30d46m12.335s  -180  300
+m33_j_06_row1-tile3 01h34m08.735s +30d46m37.195s  -180  300
+m33_k_06_row1-tile2 01h33m57.806s +30d47m01.998s  -180  300
+m33_l_06_row1-tile1 01h33m46.877s +30d47m26.744s  -180  300
+
+
+# 2021
+m33_a_06_row2-tile6  01h34m28.4537s +30d39m04.9644s  -180  300
+m33_b_06_row2-tile0  01h33m22.9601s +30d41m33.954s  -180  300
+m33_c_06_row2-tile-1  01h33m12.0391s +30d41m58.5852s  -180  300
+m33_d_06_row2-tile-2  01h33m01.1165s +30d42m23.1624s  -180  300
+m33_e_06_row2-tile-3  01h32m50.1924s +30d42m47.6784s  -180  300
+m33_f_06_row2-tile-4  01h32m39.2666s +30d43m12.1404s  -180  300
+m33_g_06_row2-tile7  01h34m39.3636s +30d38m39.9336s  -180  300
+m33_h_06_row2-tile8  01h34m50.2723s +30d38m14.8452s  -180  300
+m33_i_06_row2-tile9  01h35m01.1791s +30d37m49.6992s  -180  300
+m33_j_06_row1-tile0  01h33m35.9669s +30d47m51.3924s  -180  300
+m33_k_06_row1-tile-1  01h33m25.0339s +30d48m16.0236s  -180  300
+m33_l_06_row1-tile-2  01h33m14.0995s +30d48m40.5972s  -180  300
+m33_m_06_row1-tile-3  01h33m03.1634s +30d49m05.1132s  -180  300
+m33_n_06_row1-tile-4  01h32m52.2259s +30d49m29.5716s  -180  300
+m33_o_06_row1-tile-5  01h32m41.2867s +30d49m53.9724s  -180  300
+m33_p_06_row1-tile6  01h34m41.5318s +30d45m22.3992s  -180  300
+m33_q_06_row1-tile7  01h34m52.4537s +30d44m57.3684s  -180  300
+m33_r_06_row1-tile8  01h35m03.3742s +30d44m32.28s  -180  300
+m33_s_06_row1-tile9  01h35m14.293s +30d44m07.134s  -180  300
+m33_t_06_row3-tile0  01h33m19.4911s +30d34m54.948s  -180  300
+m33_u_06_row3-tile-1  01h33m08.5826s +30d35m19.5792s  -180  300
+m33_v_06_row3-tile-2  01h32m57.6725s +30d35m44.1564s  -180  300
+m33_w_06_row3-tile-3  01h32m46.7611s +30d36m08.676s  -180  300
+m33_x_06_row3-tile-4  01h32m35.8478s +30d36m33.138s  -180  300
+m33_y_06_row3-tile-5  01h32m24.9334s +30d36m57.546s  -180  300
+m33_z_06_row3-tile6  01h34m24.9096s +30d32m25.9584s  -180  300
+m33_aa_06_row3-tile7  01h34m35.8073s +30d32m00.9276s  -180  300
+m33_ab_06_row3-tile8  01h34m46.7035s +30d31m35.8392s  -180  300
+m33_ac_06_row3-tile9  01h34m57.5978s +30d31m10.6968s  -180  300
+m33_ad_06_row4-tile2  01h33m28.2727s +30d27m48.0744s  -180  300
+m33_ae_06_row4-tile3  01h33m39.1649s +30d27m23.2704s  -180  300
+m33_af_06_row4-tile1  01h33m17.3791s +30d28m12.8208s  -180  300
+m33_ag_06_row4-tile5  01h34m00.9444s +30d26m33.4932s  -180  300
+m33_ah_06_row4-tile4  01h33m50.0554s +30d26m58.4088s  -180  300
+m33_ai_06_row4-tile0  01h33m06.4838s +30d28m37.5096s  -180  300
+m33_aj_06_row4-tile-1  01h32m55.5871s +30d29m02.1444s  -180  300
+m33_ak_06_row4-tile-2  01h32m44.6887s +30d29m26.7216s  -180  300
+m33_al_06_row4-tile-3  01h32m33.7891s +30d29m51.2412s  -180  300
+m33_am_06_row4-tile-4  01h32m22.8878s +30d30m15.7068s  -180  300
+m33_an_06_row4-tile6  01h34m11.8318s +30d26m08.52s  -180  300
+m33_ao_06_row4-tile7  01h34m22.7179s +30d25m43.4892s  -180  300
+m33_ap_06_row4-tile8  01h34m33.6022s +30d25m18.4044s  -180  300
+m33_aq_06_row4-tile9  01h34m44.485s +30d24m53.262s  -180  300
+m33_ar_06_row5-tile1  01h33m04.3598s +30d21m55.3824s  -180  300
+m33_as_06_row5-tile2  01h33m15.2417s +30d21m30.6324s  -180  300
+m33_at_06_row5-tile3  01h33m26.1221s +30d21m05.832s  -180  300
+m33_au_06_row5-tile4  01h33m37.001s +30d20m40.9704s  -180  300
+m33_av_06_row5-tile5  01h33m47.8783s +30d20m16.0548s  -180  300
+m33_aw_06_row5-tile0  01h32m53.4763s +30d22m20.0712s  -180  300
+m33_ax_06_row5-tile-1  01h32m42.5914s +30d22m44.706s  -180  300
+m33_ay_06_row5-tile-2  01h32m31.7047s +30d23m09.2832s  -180  300
+m33_az_06_row5-tile6  01h33m58.7542s +30d19m51.0816s  -180  300
+m33_ba_06_row5-tile7  01h34m09.6286s +30d19m26.0544s  -180  300
+m33_bb_06_row5-tile8  01h34m20.5013s +30d19m00.9696s  -180  300
+m33_bc_06_row6-tile1  01h33m59.917s +30d53m44.142s  -180  300
+m33_bd_06_row6-tile2  01h34m10.8588s +30d53m19.3956s  -180  300
+m33_be_06_row6-tile3  01h34m21.799s +30d52m54.5916s  -180  300
+m33_bf_06_row6-tile4  01h34m32.7377s +30d52m29.7336s  -180  300
+m33_bg_06_row6-tile5  01h34m43.6747s +30d52m04.8144s  -180  300
+m33_bh_06_row6-tile0  01h33m48.9737s +30d54m08.8272s  -180  300
+m33_bi_06_row6-tile-1  01h33m38.0287s +30d54m33.4584s  -180  300
+m33_bj_06_row6-tile-2  01h33m27.0823s +30d54m58.032s  -180  300
+m33_bk_06_row6-tile-3  01h33m16.1342s +30d55m22.548s  -180  300
+m33_bl_06_row6-tile-4  01h33m05.1847s +30d55m47.0064s  -180  300
+m33_bm_06_row6-tile6  01h34m54.6101s +30d51m39.8376s  -180  300
+m33_bn_06_row6-tile7  01h35m05.544s +30d51m14.8068s  -180  300
+m33_bo_06_row7-tile1  01h34m12.9355s +31d00m01.5804s  -180  300
+m33_bp_06_row7-tile2  01h34m23.8894s +30d59m36.834s  -180  300
+m33_bq_06_row7-tile3  01h34m34.8415s +30d59m12.03s  -180  300
+m33_br_06_row7-tile4  01h34m45.7922s +30d58m47.172s  -180  300
+m33_bs_06_row7-tile5  01h34m56.7413s +30d58m22.2528s  -180  300
+m33_bt_06_row7-tile0  01h34m01.9802s +31d00m26.2656s  -180  300
+m33_bu_06_row7-tile-1  01h33m51.0233s +31d00m50.8968s  -180  300
+m33_bv_06_row7-tile-2  01h33m40.0649s +31d01m15.4668s  -180  300
+m33_bw_06_row7-tile-3  01h33m29.1048s +31d01m39.9828s  -180  300
+m33_bx_06_row7-tile6  01h35m07.6886s +30d57m57.276s  -180  300
+m33_by_06_row8-tile0  01h34m14.9866s +31d06m43.704s  -180  300
+m33_bz_06_row8-tile1  01h34m25.9541s +31d06m19.0188s  -180  300
+m33_ca_06_row8-tile2  01h34m36.9199s +31d05m54.2724s  -180  300
+m33_cb_06_row8-tile3  01h34m47.8843s +31d05m29.472s  -180  300
+m33_cc_06_row8-tile4  01h34m58.8468s +31d05m04.6104s  -180  300
+m33_cd_06_row8-tile-1  01h34m04.0176s +31d07m08.3316s  -180  300
+m33_ce_06_row9-tile3  01h33m13.0795s +30d14m48.39s  -180  300
+m33_cf_06_row9-tile4  01h33m23.947s +30d14m23.532s  -180  300
+m33_cg_06_row9-tile5  01h33m34.8125s +30d13m58.6164s  -180  300
+m33_ch_06_row9-tile2  01h33m02.2109s +30d15m13.194s  -180  300
+m33_ci_06_row9-tile1h  01h32m43.0829s +30d18m09.3456s  -180  300
+m33_cj_06_row9-tile2h  01h32m41.2387s +30d15m49.6944s  -180  300
+m33_ck_06_row10-tile1h  01h33m08.3954s +30d10m20.604s  -180  300
+m33_cl_06_row11-tile1h  01h34m52.5787s +31d09m55.5768s  -180  300
+m33_cm_06_row11-tile2h  01h34m21.4908s +31d11m06.8964s  -180  300
+
+
+# 2018.A.00054.S
+
+M_33_j_06_7M 01h34m00s +30d49m08s -180 300
+M_33_b_06_7M 01h34m00s +30d41m39s -180 300
+M_33_u_06_7M 01h34m00s +30d32m17s -180 300
+M_33_m_06_7M 01h34m00s +30d39m46s -180 300
+M_33_q_06_7M 01h34m00s +30d36m01s -180 300
+M_33_f_06_7M 01h34m00s +30d45m23s -180 300
+M_33_s_06_7M 01h34m00s +30d34m09s -180 300
+M_33_p_06_7M 01h34m00s +30d36m58s -180 300
+M_33_o_06_7M 01h34m00s +30d37m54s -180 300
+M_33_t_06_7M 01h34m00s +30d33m13s -180 300
+M_33_a_06_7M 01h34m00s +30d40m42s -180 300
+M_33_k_06_7M 01h34m00s +30d50m04s -180 300
+M_33_d_06_7M 01h34m00s +30d43m31s -180 300
+M_33_i_06_7M 01h34m00s +30d48m12s -180 300
+M_33_n_06_7M 01h34m00s +30d38m50s -180 300
+M_33_r_06_7M 01h34m00s +30d35m05s -180 300
+M_33_e_06_7M 01h34m00s +30d44m27s -180 300
+M_33_g_06_7M 01h34m00s +30d46m20s -180 300
+M_33_l_06_7M 01h34m00s +30d31m20s -180 300
+M_33_h_06_7M 01h34m00s +30d47m16s -180 300
+M_33_c_06_7M 01h34m00s +30d42m35s -180 300
+
+
+# 2022.1.00403.S
+
+m33_a_06_brick1_box1 01h33m45.35592s +30d45m17.388s -180 300
+m33_b_06_brick1_box16 01h34m37.884s +30d46m19.251s -180 300
+m33_c_06_brick1_box2 01h33m47.11008s +30d47m26.2176s -180 300
+m33_d_06_brick1_box3 01h33m48.8652s +30d49m35.0472s -180 300
+m33_e_06_brick1_box4 01h33m56.17488s +30d44m52.89s -180 300
+m33_f_06_brick1_box5 01h33m57.93264s +30d47m01.7124s -180 300
+m33_g_06_brick1_box6 01h33m59.69184s +30d49m10.5348s -180 300
+m33_h_06_brick1_box7 01h34m06.99216s +30d44m28.338s -180 300
+m33_i_06_brick1_box8 01h34m08.754s +30d46m37.1532s -180 300
+m33_j_06_brick1_box9 01h34m10.51704s +30d48m45.9648s -180 300
+m33_k_06_brick1_box10 01h34m17.808s +30d44m03.732s -180 300
+m33_l_06_brick1_box11 01h34m19.57368s +30d46m12.5364s -180 300
+m33_m_06_brick1_box12 01h34m21.3408s +30d48m21.3408s -180 300
+m33_n_06_brick1_box13 01h34m28.6224s +30d43m39.0684s -180 300
+m33_o_06_brick1_box14 01h34m30.39192s +30d45m47.862s -180 300
+m33_p_06_brick1_box15 01h34m32.16288s +30d47m56.6592s -180 300
+m33_q_06_brick2_box1 01h33m32.3388s +30d38m59.9496s -180 300
+m33_r_06_brick2_box2 01h33m34.09104s +30d41m08.7792s -180 300
+m33_s_06_brick2_box3 01h33m35.84424s +30d43m17.6088s -180 300
+m33_t_06_brick2_box4 01h33m43.146s +30d38m35.4516s -180 300
+m33_u_06_brick2_box5 01h33m44.90184s +30d40m44.274s -180 300
+m33_v_06_brick2_box6 01h33m46.65912s +30d42m53.0964s -180 300
+m33_w_06_brick2_box7 01h33m53.95152s +30d38m10.8996s -180 300
+m33_x_06_brick2_box8 01h33m55.71144s +30d40m19.7148s -180 300
+m33_y_06_brick2_box9 01h33m57.47256s +30d42m28.5264s -180 300
+m33_z_06_brick2_box10 01h34m04.7556s +30d37m46.2936s -180 300
+m33_aa_06_brick2_box11 01h34m06.51936s +30d39m55.098s -180 300
+m33_ab_06_brick2_box12 01h34m08.28432s +30d42m03.9024s -180 300
+m33_ac_06_brick2_box13 01h34m15.55824s +30d37m21.63s -180 300
+m33_ad_06_brick2_box14 01h34m17.32584s +30d39m30.4272s -180 300
+m33_ae_06_brick2_box15 01h34m19.09464s +30d41m39.2208s -180 300
+m33_af_06_brick3_box1 01h33m28.85928s +30d32m20.9436s -180 300
+m33_ag_06_brick3_box2 01h33m30.60936s +30d34m29.7732s -180 300
+m33_ah_06_brick3_box3 01h33m32.36064s +30d36m38.6064s -180 300
+m33_ai_06_brick3_box4 01h33m39.654s +30d31m56.4456s -180 300
+m33_aj_06_brick3_box5 01h33m41.40792s +30d34m05.268s -180 300
+m33_ak_06_brick3_box6 01h33m43.16328s +30d36m14.0904s -180 300
+m33_al_06_brick3_box7 01h33m50.44728s +30d31m31.8936s -180 300
+m33_am_06_brick3_box8 01h33m52.20504s +30d33m40.7088s -180 300
+m33_an_06_brick3_box9 01h33m53.96424s +30d35m49.5204s -180 300
+m33_ao_06_brick3_box10 01h34m01.23888s +30d31m07.2876s -180 300
+m33_ap_06_brick3_box11 01h34m03.00072s +30d33m16.092s -180 300
+m33_aq_06_brick3_box12 01h34m04.76352s +30d35m24.8964s -180 300
+m33_ar_06_brick3_box13 01h34m12.02904s +30d30m42.624s -180 300
+m33_as_06_brick3_box14 01h34m13.79472s +30d32m51.4212s -180 300
+m33_at_06_brick3_box15 01h34m15.5616s +30d35m00.2148s -180 300
+

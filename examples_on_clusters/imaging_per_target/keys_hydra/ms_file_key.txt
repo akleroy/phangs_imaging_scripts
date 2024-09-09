@@ -1,0 +1,535 @@
+##########################################################################
+# MEASUREMENT SET FILE/INPUT KEY
+##########################################################################
+
+# Key to define files of input visibility data.
+
+# The pipeline begins with calibrated visibility data, which are
+# defined in this file. In this key, each measurement set (column 4)
+# is mapped to an individual target, project, array tag, and numerical
+# tag ('multiobs' suffix).
+
+# The syntax for the key is space or tab delimited:
+
+# Column 1: target name
+# Column 2: project tag
+# Column 3: array tag with "multiobs" suffix
+# Column 4: path of the measurement set
+
+# The paths are relative to ANY ms_root directory defined in the
+# master key.
+
+# The targets need to map to the target definitions, and the array
+# tags need to mesh with the config definitions.
+
+# The project tag should probably be the VLA or ALMA project code or
+# something similar.
+
+
+
+# 2017.1.00901.S
+
+# NOTE: disabled for now as this fails on applying statwt b/c the bandwidth
+# was smaller in this cycle compared to the others.
+
+m33_a_06_row3-tile5     2017.1.00901.S  all   7m    1   Brick3Tile5_2017.1.00901.S_uid___A002_Xd1ff61_X2c09.ms
+
+m33_b_06_row3-tile4     2017.1.00901.S  all   7m    1   Brick3Tile4_2017.1.00901.S_uid___A002_Xd20b17_X257c.ms
+
+m33_j_06_row2-tile1     2017.1.00901.S  all   7m    1   Brick2Tile1_2017.1.00901.S_uid___A002_Xcfd24b_Xbf40.ms
+
+# 2019.1.01182.S
+
+m33_a_06_row3-tile3     2019.1.01182.S  all   7m    1    Brick3Tile3_2019.1.01182.S_uid___A002_Xe1baa0_X6b27.ms
+
+m33_b_06_row3-tile2     2019.1.01182.S  all   7m    1    Brick3Tile2_2019.1.01182.S_uid___A002_Xe1d2cb_X1a7d.ms
+
+m33_c_06_row3-tile1     2019.1.01182.S  all   7m    1    Brick3Tile1_2019.1.01182.S_uid___A002_Xe1baa0_X265a.ms
+
+m33_d_06_row2-tile5     2019.1.01182.S  all   7m    1    Brick2Tile5_2019.1.01182.S_uid___A002_Xe27761_X1126.ms
+m33_d_06_row2-tile5     2019.1.01182.S  all   7m    2    Brick2Tile5_2019.1.01182.S_uid___A002_Xe27761_X5994.ms
+
+m33_e_06_row2-tile4     2019.1.01182.S  all   7m    1    Brick2Tile4_2019.1.01182.S_uid___A002_Xe20b32_X1801.ms
+
+m33_f_06_row2-tile3     2019.1.01182.S  all   7m    1    Brick2Tile3_2019.1.01182.S_uid___A002_Xe20b32_X7344.ms
+
+m33_g_06_row2-tile2     2019.1.01182.S  all   7m    1    Brick2Tile2_2019.1.01182.S_uid___A002_Xe1f219_X8ce.ms
+
+m33_h_06_row1-tile5     2019.1.01182.S  all   7m    1    Brick1Tile5_2019.1.01182.S_uid___A002_Xe247d0_Xeeda.ms
+
+m33_i_06_row1-tile4     2019.1.01182.S  all   7m    1    Brick1Tile4_2019.1.01182.S_uid___A002_Xe29133_Xa4b9.ms
+
+m33_j_06_row1-tile3     2019.1.01182.S  all   7m    1    Brick1Tile3_2019.1.01182.S_uid___A002_Xe29133_X249a.ms
+
+m33_k_06_row1-tile2     2019.1.01182.S  all   7m    1    Brick1Tile2_2019.1.01182.S_uid___A002_Xe29133_X9a9d.ms
+
+m33_l_06_row1-tile1     2019.1.01182.S  all   7m    1    Brick1Tile1_2019.1.01182.S_uid___A002_Xe29133_X1e6a.ms
+
+# 2021
+m33_a_06_row2-tile6  2021.1.00999.S   all  7m  1  M33_a_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_b_06_row2-tile0  2021.1.00999.S   all  7m  1  M33_b_06_7M_2021.1.00999.S_uid___A002_Xf6abb4_Xda.ms.split.cal
+m33_b_06_row2-tile0  2021.1.00999.S   all  7m  2  M33_b_06_7M_2021.1.00999.S_uid___A002_Xfc8dc8_Xa9d1.ms.split.cal
+m33_b_06_row2-tile0  2021.1.00999.S   all  7m  3  M33_b_06_7M_2021.1.00999.S_uid___A002_Xfd5dbb_Xc42.ms.split.cal
+
+m33_c_06_row2-tile-1  2021.1.00999.S   all  7m  1  M33_c_06_7M_2021.1.00999.S_uid___A002_Xf26b6c_X114e.ms
+
+m33_d_06_row2-tile-2  2021.1.00999.S   all  7m  1  M33_d_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_e_06_row2-tile-3  2021.1.00999.S   all  7m  1  M33_e_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_f_06_row2-tile-4  2021.1.00999.S   all  7m  1  M33_f_06_7M_2021.1.00999.S_uid___A002_Xf24d47_Xaf7d.ms
+
+m33_g_06_row2-tile7  2021.1.00999.S   all  7m  1  M33_g_06_7M_2021.1.00999.S_uid___A002_Xfca6fd_X9a88.ms.split.cal
+m33_g_06_row2-tile7  2021.1.00999.S   all  7m  2  M33_g_06_7M_2021.1.00999.S_uid___A002_Xfda0c7_X2ef9.ms.split.cal
+
+m33_h_06_row2-tile8  2021.1.00999.S   all  7m  1  M33_h_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_i_06_row2-tile9  2021.1.00999.S   all  7m  1  M33_i_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_j_06_row1-tile0  2021.1.00999.S   all  7m  1  M33_j_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_k_06_row1-tile-1  2021.1.00999.S   all  7m  1  M33_k_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_l_06_row1-tile-2  2021.1.00999.S   all  7m  1  M33_l_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_m_06_row1-tile-3  2021.1.00999.S   all  7m  1  M33_m_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_n_06_row1-tile-4  2021.1.00999.S   all  7m  1  M33_n_06_7M_2021.1.00999.S_uid___A002_Xfc5b59_X3a17.ms.split.cal
+m33_n_06_row1-tile-4  2021.1.00999.S   all  7m  2  M33_n_06_7M_2021.1.00999.S_uid___A002_Xfdb69b_X3bc5.ms.split.cal
+
+m33_o_06_row1-tile-5  2021.1.00999.S   all  7m  1  M33_o_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_p_06_row1-tile6  2021.1.00999.S   all  7m  1  M33_p_06_7M_2021.1.00999.S_uid___A002_Xf287d3_X3a48.ms
+
+m33_q_06_row1-tile7  2021.1.00999.S   all  7m  1  M33_q_06_7M_2021.1.00999.S_uid___A002_Xfe62c1_X496b.ms.split.cal
+
+m33_r_06_row1-tile8  2021.1.00999.S   all  7m  1  M33_r_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_s_06_row1-tile9  2021.1.00999.S   all  7m  1  M33_s_06_7M_2021.1.00999.S_uid___A002_Xf287d3_Xdd4e.ms.split.cal
+
+m33_t_06_row3-tile0  2021.1.00999.S   all  7m  1  M33_t_06_7M_2021.1.00999.S_uid___A002_Xf287d3_X15b08.ms.split.cal
+m33_t_06_row3-tile0  2021.1.00999.S   all  7m  2  M33_t_06_7M_2021.1.00999.S_uid___A002_Xfc22b7_X4fb6.ms.split.cal
+
+m33_u_06_row3-tile-1  2021.1.00999.S   all  7m  1  M33_u_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_v_06_row3-tile-2  2021.1.00999.S   all  7m  1  M33_v_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_w_06_row3-tile-3  2021.1.00999.S   all  7m  1  M33_w_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_x_06_row3-tile-4  2021.1.00999.S   all  7m  1  M33_x_06_7M_2021.1.00999.S_uid___A002_Xf287d3_Xe264.ms.split.cal
+
+m33_y_06_row3-tile-5  2021.1.00999.S   all  7m  1  M33_y_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_z_06_row3-tile6  2021.1.00999.S   all  7m  1  M33_z_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_aa_06_row3-tile7  2021.1.00999.S   all  7m  1  M33_aa_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ab_06_row3-tile8  2021.1.00999.S   all  7m  1  M33_ab_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ac_06_row3-tile9  2021.1.00999.S   all  7m  1  M33_ac_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ad_06_row4-tile2  2021.1.00999.S   all  7m  1  M33_ad_06_7M_2021.1.00999.S_uid___A002_Xfdb69b_X418d.ms.split.cal
+m33_ad_06_row4-tile2  2021.1.00999.S   all  7m  2  M33_ad_06_7M_2021.1.00999.S_uid___A002_Xfdc8ec_X1860.ms.split.cal
+
+m33_ae_06_row4-tile3  2021.1.00999.S   all  7m  1  M33_ae_06_7M_2021.1.00999.S_uid___A002_Xfe1962_X6f4.ms.split.cal
+m33_ae_06_row4-tile3  2021.1.00999.S   all  7m  2  M33_ae_06_7M_2021.1.00999.S_uid___A002_Xfe83cd_X3650.ms.split.cal
+
+m33_af_06_row4-tile1  2021.1.00999.S   all  7m  1  M33_af_06_7M_2021.1.00999.S_uid___A002_Xf49cca_X10634.ms
+
+m33_ag_06_row4-tile5  2021.1.00999.S   all  7m  1  M33_ag_06_7M_2021.1.00999.S_uid___A002_Xfe3986_X3393.ms.split.cal
+
+m33_ah_06_row4-tile4  2021.1.00999.S   all  7m  1  M33_ah_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ai_06_row4-tile0  2021.1.00999.S   all  7m  1  M33_ai_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_aj_06_row4-tile-1  2021.1.00999.S   all  7m  1  M33_aj_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ak_06_row4-tile-2  2021.1.00999.S   all  7m  1  M33_ak_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_al_06_row4-tile-3  2021.1.00999.S   all  7m  1  M33_al_06_7M_2021.1.00999.S_uid___A002_Xf49cca_X5938.ms.split.cal
+m33_al_06_row4-tile-3  2021.1.00999.S   all  7m  2  M33_al_06_7M_2021.1.00999.S_uid___A002_Xf788e8_X4c12.ms.split.cal
+
+m33_am_06_row4-tile-4  2021.1.00999.S   all  7m  1  M33_am_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_an_06_row4-tile6  2021.1.00999.S   all  7m  1  M33_an_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ao_06_row4-tile7  2021.1.00999.S   all  7m  1  M33_ao_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ap_06_row4-tile8  2021.1.00999.S   all  7m  1  M33_ap_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_aq_06_row4-tile9  2021.1.00999.S   all  7m  1  M33_aq_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ar_06_row5-tile1  2021.1.00999.S   all  7m  1  M33_ar_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_as_06_row5-tile2  2021.1.00999.S   all  7m  1  M33_as_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_at_06_row5-tile3  2021.1.00999.S   all  7m  1  M33_at_06_7M_2021.1.00999.S_uid___A002_Xf20692_X12bb9.ms.split.cal
+m33_at_06_row5-tile3  2021.1.00999.S   all  7m  2  M33_at_06_7M_2021.1.00999.S_uid___A002_Xf287d3_X18ca7.ms.split.cal
+
+m33_au_06_row5-tile4  2021.1.00999.S   all  7m  1  M33_au_06_7M_2021.1.00999.S_uid___A002_Xf26b6c_X6130.ms
+
+m33_av_06_row5-tile5  2021.1.00999.S   all  7m  1  M33_av_06_7M_2021.1.00999.S_uid___A002_Xf1bb4a_X12338.ms.split.cal
+
+m33_aw_06_row5-tile0  2021.1.00999.S   all  7m  1  M33_aw_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ax_06_row5-tile-1  2021.1.00999.S   all  7m  1  M33_ax_06_7M_2021.1.00999.S_uid___A002_Xf26b6c_Xa257.ms.split.cal
+
+m33_ay_06_row5-tile-2  2021.1.00999.S   all  7m  1  M33_ay_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_az_06_row5-tile6  2021.1.00999.S   all  7m  1  M33_az_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ba_06_row5-tile7  2021.1.00999.S   all  7m  1  M33_ba_06_7M_2021.1.00999.S_uid___A002_Xf24d47_X62d0.ms
+
+m33_bb_06_row5-tile8  2021.1.00999.S   all  7m  1  M33_bb_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bc_06_row6-tile1  2021.1.00999.S   all  7m  1  M33_bc_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bd_06_row6-tile2  2021.1.00999.S   all  7m  1  M33_bd_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_be_06_row6-tile3  2021.1.00999.S   all  7m  1  M33_be_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bf_06_row6-tile4  2021.1.00999.S   all  7m  1  M33_bf_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bg_06_row6-tile5  2021.1.00999.S   all  7m  1  M33_bg_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bh_06_row6-tile0  2021.1.00999.S   all  7m  1  M33_bh_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bi_06_row6-tile-1  2021.1.00999.S   all  7m  1  M33_bi_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bj_06_row6-tile-2  2021.1.00999.S   all  7m  1  M33_bj_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bk_06_row6-tile-3  2021.1.00999.S   all  7m  1  M33_bk_06_7M_2021.1.00999.S_uid___A002_Xf934b1_X4d71.ms.split.cal
+m33_bk_06_row6-tile-3  2021.1.00999.S   all  7m  2  M33_bk_06_7M_2021.1.00999.S_uid___A002_Xfda0c7_X369d.ms.split.cal
+
+m33_bl_06_row6-tile-4  2021.1.00999.S   all  7m  1  M33_bl_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bm_06_row6-tile6  2021.1.00999.S   all  7m  1  M33_bm_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bn_06_row6-tile7  2021.1.00999.S   all  7m  1  M33_bn_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bo_06_row7-tile1  2021.1.00999.S   all  7m  1  M33_bo_06_7M_2021.1.00999.S_uid___A002_Xf24d47_Xb495.ms.split.cal
+
+m33_bp_06_row7-tile2  2021.1.00999.S   all  7m  1  M33_bp_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bq_06_row7-tile3  2021.1.00999.S   all  7m  1  M33_bq_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_br_06_row7-tile4  2021.1.00999.S   all  7m  1  M33_br_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bs_06_row7-tile5  2021.1.00999.S   all  7m  1  M33_bs_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bt_06_row7-tile0  2021.1.00999.S   all  7m  1  M33_bt_06_7M_2021.1.00999.S_uid___A002_Xf26b6c_X6933.ms
+
+m33_bu_06_row7-tile-1  2021.1.00999.S   all  7m  1  M33_bu_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bv_06_row7-tile-2  2021.1.00999.S   all  7m  1  M33_bv_06_7M_2021.1.00999.S_uid___A002_Xf24d47_X67cc.ms.split.cal
+
+m33_bw_06_row7-tile-3  2021.1.00999.S   all  7m  1  M33_bw_06_7M_2021.1.00999.S_uid___A002_Xf20692_X19f58.ms
+
+m33_bx_06_row7-tile6  2021.1.00999.S   all  7m  1  M33_bx_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_by_06_row8-tile0  2021.1.00999.S   all  7m  1  M33_by_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_bz_06_row8-tile1  2021.1.00999.S   all  7m  1  M33_bz_06_7M_2021.1.00999.S_uid___A002_Xfc69ac_Xa475.ms.split.cal
+m33_bz_06_row8-tile1  2021.1.00999.S   all  7m  2  M33_bz_06_7M_2021.1.00999.S_uid___A002_Xfd8c42_X3979.ms.split.cal
+
+m33_ca_06_row8-tile2  2021.1.00999.S   all  7m  1  M33_ca_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_cb_06_row8-tile3  2021.1.00999.S   all  7m  1  M33_cb_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_cc_06_row8-tile4  2021.1.00999.S   all  7m  1  M33_cc_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_cd_06_row8-tile-1  2021.1.00999.S   all  7m  1  M33_cd_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ce_06_row9-tile3  2021.1.00999.S   all  7m  1  M33_ce_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_cf_06_row9-tile4  2021.1.00999.S   all  7m  1  M33_cf_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_cg_06_row9-tile5  2021.1.00999.S   all  7m  1  M33_cg_06_7M_2021.1.00999.S_uid___A002_Xf49cca_Xf7f8.ms.split.cal
+
+m33_ch_06_row9-tile2  2021.1.00999.S   all  7m  1  M33_ch_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_ci_06_row9-tile1h  2021.1.00999.S   all  7m  1  M33_ci_06_7M_2021.1.00999.S_uid___A002_Xf1bb4a_Xdcc1.ms
+
+m33_cj_06_row9-tile2h  2021.1.00999.S   all  7m  1  M33_cj_06_7M_2021.1.00999.S_uid___A002_Xf20692_X16fc5.ms
+m33_cj_06_row9-tile2h  2021.1.00999.S   all  7m  2  M33_cj_06_7M_2021.1.00999.S_uid___A002_Xf287d3_X156e1.ms
+
+m33_ck_06_row10-tile1h  2021.1.00999.S   all  7m  1  M33_ck_06_7M_2021.1.00999.S_uid___A002_Xf3e416_X2d36.ms
+
+m33_cl_06_row11-tile1h  2021.1.00999.S   all  7m  1  M33_cl_06_7M_2021.1.00999.S_calibrated_final.ms
+
+m33_cm_06_row11-tile2h  2021.1.00999.S   all  7m  1  M33_cm_06_7M_2021.1.00999.S_calibrated_final.ms
+
+
+# 2018.A.00058.S
+
+M_33_a_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_a_06_7M/uid___A002_Xe45e29_X81db.ms.split.cal
+M_33_a_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_a_06_7M/uid___A002_Xe48598_X729.ms.split.cal
+M_33_a_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_a_06_7M/uid___A002_Xe48598_X9b8e.ms.split.cal
+M_33_a_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_a_06_7M/uid___A002_Xe48598_X124d3.ms.split.cal
+M_33_a_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_a_06_7M/uid___A002_Xe48598_X95d4.ms.split.cal
+
+M_33_b_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_b_06_7M/uid___A002_Xe03886_X5c18.ms.split.cal
+M_33_b_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_b_06_7M/uid___A002_Xe03886_X64a6.ms.split.cal
+M_33_b_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_b_06_7M/uid___A002_Xe0740c_X39e2.ms.split.cal
+M_33_b_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_b_06_7M/uid___A002_Xe03886_X604e.ms.split.cal
+M_33_b_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_b_06_7M/uid___A002_Xe03886_Xf15.ms.split.cal
+
+M_33_c_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee1748_Xfcc.ms.split.cal
+M_33_c_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee1eb6_X148da.ms.split.cal
+M_33_c_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee1eb6_Xfe1d.ms.split.cal
+M_33_c_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee522e_Xc82.ms.split.cal
+M_33_c_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee1eb6_X1022f.ms.split.cal
+M_33_c_06_7M  2018.A.00058.S   all  7m   6 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee1eb6_X14dc7.ms.split.cal
+M_33_c_06_7M  2018.A.00058.S   all  7m   7 2018.A.00058.S/M_33_c_06_7M/uid___A002_Xee522e_X13c5.ms.split.cal
+
+M_33_d_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_d_06_7M/uid___A002_Xe32bed_Xba55.ms.split.cal
+M_33_d_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_d_06_7M/uid___A002_Xe44309_X8e47.ms.split.cal
+M_33_d_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_d_06_7M/uid___A002_Xe45e29_X7df7.ms.split.cal
+M_33_d_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_d_06_7M/uid___A002_Xe44309_X1a7a.ms.split.cal
+M_33_d_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_d_06_7M/uid___A002_Xe44309_X9a5d.ms.split.cal
+
+M_33_e_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_e_06_7M/uid___A002_Xede40d_X40e3.ms.split.cal
+M_33_e_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_e_06_7M/uid___A002_Xee1748_X13a7.ms.split.cal
+M_33_e_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_e_06_7M/uid___A002_Xee1eb6_Xaf16.ms.split.cal
+M_33_e_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_e_06_7M/uid___A002_Xee01ae_X427a.ms.split.cal
+M_33_e_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_e_06_7M/uid___A002_Xee1748_Xc26.ms.split.cal
+M_33_e_06_7M  2018.A.00058.S   all  7m   6 2018.A.00058.S/M_33_e_06_7M/uid___A002_Xee1eb6_Xb6cd.ms.split.cal
+
+M_33_f_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_f_06_7M/uid___A002_Xe07f3e_X107c5.ms.split.cal
+M_33_f_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_f_06_7M/uid___A002_Xe07f3e_X10bcc.ms.split.cal
+M_33_f_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_f_06_7M/uid___A002_Xe07f3e_X18972.ms.split.cal
+M_33_f_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_f_06_7M/uid___A002_Xe07f3e_Xbabc.ms.split.cal
+
+M_33_g_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xee5a15_X2172.ms.split.cal
+M_33_g_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xee5a15_X2b01.ms.split.cal
+M_33_g_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xee7674_X3039.ms.split.cal
+M_33_g_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xeea188_X3f2e.ms.split.cal
+M_33_g_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xee5a15_X257b.ms.split.cal
+M_33_g_06_7M  2018.A.00058.S   all 7m   6 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xee7674_X2c06.ms.split.cal
+M_33_g_06_7M  2018.A.00058.S   all 7m   7 2018.A.00058.S/M_33_g_06_7M/uid___A002_Xee7674_X3324.ms.split.cal
+
+M_33_h_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_h_06_7M/uid___A002_Xe539c7_X4e06.ms.split.cal
+M_33_h_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_h_06_7M/uid___A002_Xe5808e_Xb3b4.ms.split.cal
+M_33_h_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_h_06_7M/uid___A002_Xed07bd_X15fd.ms.split.cal
+M_33_h_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_h_06_7M/uid___A002_Xe5808e_Xac77.ms.split.cal
+M_33_h_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_h_06_7M/uid___A002_Xe59f51_X5d0.ms.split.cal
+
+M_33_i_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_i_06_7M/uid___A002_Xe4f0a6_X1787.ms.split.cal
+M_33_i_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_i_06_7M/uid___A002_Xe50c9e_X11ad.ms.split.cal
+M_33_i_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_i_06_7M/uid___A002_Xe539c7_Xb7bc.ms.split.cal
+M_33_i_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_i_06_7M/uid___A002_Xe4f0a6_X9bd8.ms.split.cal
+M_33_i_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_i_06_7M/uid___A002_Xe539c7_X45f2.ms.split.cal
+M_33_i_06_7M  2018.A.00058.S   all 7m   6 2018.A.00058.S/M_33_i_06_7M/uid___A002_Xe5731a_Xa7a.ms.split.cal
+
+M_33_j_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_j_06_7M/uid___A002_Xe02ab0_X3d0f.ms.split.cal
+M_33_j_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_j_06_7M/uid___A002_Xe02ab0_X450b.ms.split.cal
+M_33_j_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_j_06_7M/uid___A002_Xe03886_X54a.ms.split.cal
+M_33_j_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_j_06_7M/uid___A002_Xe02ab0_X4119.ms.split.cal
+M_33_j_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_j_06_7M/uid___A002_Xe02ab0_X4940.ms.split.cal
+
+M_33_k_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_k_06_7M/uid___A002_Xe48598_X12ad1.ms.split.cal
+M_33_k_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_k_06_7M/uid___A002_Xe48598_X2382d.ms.split.cal
+M_33_k_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_k_06_7M/uid___A002_Xe4f0a6_Xf13.ms.split.cal
+M_33_k_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_k_06_7M/uid___A002_Xe48598_X1c487.ms.split.cal
+M_33_k_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_k_06_7M/uid___A002_Xe4f0a6_X9352.ms.split.cal
+
+M_33_l_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xede40d_X1531.ms.split.cal
+M_33_l_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xede40d_X4491.ms.split.cal
+M_33_l_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xee01ae_X351a.ms.split.cal
+M_33_l_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xee01ae_X3e5c.ms.split.cal
+M_33_l_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xede40d_X3c89.ms.split.cal
+M_33_l_06_7M  2018.A.00058.S   all  7m   6 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xede40d_X493b.ms.split.cal
+M_33_l_06_7M  2018.A.00058.S   all  7m   7 2018.A.00058.S/M_33_l_06_7M/uid___A002_Xee01ae_X39d8.ms.split.cal
+
+M_33_m_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_m_06_7M/uid___A002_Xe0cd4d_X410a.ms.split.cal
+M_33_m_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_m_06_7M/uid___A002_Xe0cd4d_X4bfb.ms.split.cal
+M_33_m_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_m_06_7M/uid___A002_Xe0cd4d_X86ae.ms.split.cal
+M_33_m_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_m_06_7M/uid___A002_Xe0cd4d_X4725.ms.split.cal
+M_33_m_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_m_06_7M/uid___A002_Xe0cd4d_X81f5.ms.split.cal
+
+M_33_n_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_n_06_7M/uid___A002_Xed07bd_X1abc.ms.split.cal
+M_33_n_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_n_06_7M/uid___A002_Xed8123_X2a44.ms.split.cal
+M_33_n_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_n_06_7M/uid___A002_Xed9025_Xcae7.ms.split.cal
+M_33_n_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_n_06_7M/uid___A002_Xed07bd_X1e45.ms.split.cal
+M_33_n_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_n_06_7M/uid___A002_Xed9025_X9c00.ms.split.cal
+M_33_n_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_n_06_7M/uid___A002_Xed9025_Xd16c.ms.split.cal
+
+M_33_o_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_o_06_7M/uid___A002_Xe0e4ca_X3057.ms.split.cal
+M_33_o_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_o_06_7M/uid___A002_Xe12e07_X3439.ms.split.cal
+M_33_o_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_o_06_7M/uid___A002_Xe12e07_X3d29.ms.split.cal
+M_33_o_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_o_06_7M/uid___A002_Xe0e4ca_X350a.ms.split.cal
+M_33_o_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_o_06_7M/uid___A002_Xe12e07_X3823.ms.split.cal
+M_33_o_06_7M  2018.A.00058.S   all 7m   6 2018.A.00058.S/M_33_o_06_7M/uid___A002_Xe12e07_X5d3b.ms.split.cal
+
+M_33_p_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_p_06_7M/uid___A002_Xe1645c_X6e2.ms.split.cal
+M_33_p_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_p_06_7M/uid___A002_Xe1830b_X25bb.ms.split.cal
+M_33_p_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_p_06_7M/uid___A002_Xe191fa_X193a.ms.split.ca
+M_33_p_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_p_06_7M/uid___A002_Xe1830b_X21f1.ms.split.cal
+M_33_p_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_p_06_7M/uid___A002_Xe191fa_X145b.ms.split.ca
+
+M_33_q_06_7M  2018.A.00058.S   all 7m   1 2018.A.00058.S/M_33_q_06_7M/uid___A002_Xe1645c_Xbe9.ms.split.cal
+M_33_q_06_7M  2018.A.00058.S   all 7m   2 2018.A.00058.S/M_33_q_06_7M/uid___A002_Xe16acd_X3401.ms.split.cal
+M_33_q_06_7M  2018.A.00058.S   all 7m   3 2018.A.00058.S/M_33_q_06_7M/uid___A002_Xe1830b_X1e78.ms.split.ca
+M_33_q_06_7M  2018.A.00058.S   all 7m   4 2018.A.00058.S/M_33_q_06_7M/uid___A002_Xe16acd_X2f9f.ms.split.cal
+M_33_q_06_7M  2018.A.00058.S   all 7m   5 2018.A.00058.S/M_33_q_06_7M/uid___A002_Xe16acd_X3872.ms.split.cal
+
+M_33_r_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_r_06_7M/uid___A002_Xedbc85_X2d0a.ms.split.cal
+M_33_r_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_r_06_7M/uid___A002_Xedbc85_X861f.ms.split.cal
+M_33_r_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_r_06_7M/uid___A002_Xede40d_X8cc.ms.split.cal
+M_33_r_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_r_06_7M/uid___A002_Xedbc85_X31b8.ms.split.cal
+M_33_r_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_r_06_7M/uid___A002_Xede40d_X10e1.ms.split.cal
+M_33_r_06_7M  2018.A.00058.S   all  7m   6 2018.A.00058.S/M_33_r_06_7M/uid___A002_Xede40d_Xc98.ms.split.cal
+
+M_33_s_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_s_06_7M/uid___A002_Xe191fa_X1e4a.ms.split.cal
+M_33_s_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_s_06_7M/uid___A002_Xe19896_X2e52.ms.split.cal
+M_33_s_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_s_06_7M/uid___A002_Xe19896_X326d.ms.split.cal
+M_33_s_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_s_06_7M/uid___A002_Xe19896_X3613.ms.split.cal
+
+M_33_t_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_t_06_7M/uid___A002_Xe29133_X1857.ms.split.cal
+M_33_t_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_t_06_7M/uid___A002_Xe32bed_X1d69.ms.split.cal
+M_33_t_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_t_06_7M/uid___A002_Xe32bed_X265c.ms.split.cal
+M_33_t_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_t_06_7M/uid___A002_Xe407cf_X17406.ms.split.cal
+M_33_t_06_7M  2018.A.00058.S   all  7m   5 2018.A.00058.S/M_33_t_06_7M/uid___A002_Xe44309_X14eb.ms.split.cal
+
+M_33_u_06_7M  2018.A.00058.S   all  7m   1 2018.A.00058.S/M_33_u_06_7M/uid___A002_Xe07f3e_X4b53.ms.split.cal
+M_33_u_06_7M  2018.A.00058.S   all  7m   2 2018.A.00058.S/M_33_u_06_7M/uid___A002_Xe07f3e_X4f4d.ms.split.cal
+M_33_u_06_7M  2018.A.00058.S   all  7m   3 2018.A.00058.S/M_33_u_06_7M/uid___A002_Xe07f3e_X5333.ms.split.cal
+M_33_u_06_7M  2018.A.00058.S   all  7m   4 2018.A.00058.S/M_33_u_06_7M/uid___A002_Xe07f3e_Xb5bf.ms.split.cal
+
+
+# 2022.1.00403.S
+
+
+m33_a_06_brick1_box1    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_a_06_7M_calibrated_final.ms
+
+m33_b_06_brick1_box16   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_b_06_7M_calibrated_final.ms
+
+m33_c_06_brick1_box2    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_c_06_7M_calibrated_final.ms
+
+m33_d_06_brick1_box3    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_d_06_7M_uid___A002_X10a341d_X5dd1.ms.split.cal
+m33_d_06_brick1_box3    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_d_06_7M_uid___A002_X10a341d_X677b.ms.split.cal
+m33_d_06_brick1_box3    2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_d_06_7M_uid___A002_X10a341d_Xb52c.ms.split.cal
+
+m33_e_06_brick1_box4    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_e_06_7M_uid___A002_X10a513c_X182c_targets.ms
+m33_e_06_brick1_box4    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_e_06_7M_uid___A002_X10a513c_X1f03_targets.ms
+m33_e_06_brick1_box4    2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_e_06_7M_uid___A002_X10a67b8_X3385_targets.ms
+
+m33_f_06_brick1_box5    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_f_06_7M_uid___A002_X10a341d_Xbc26.ms.split.cal
+m33_f_06_brick1_box5    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_f_06_7M_uid___A002_X10a341d_Xc311.ms.split.cal
+
+m33_g_06_brick1_box6    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_g_06_7M_uid___A002_X10a7a20_X2d56_targets.ms
+m33_g_06_brick1_box6    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_g_06_7M_uid___A002_X10a7a20_X6619_targets.ms
+
+m33_h_06_brick1_box7    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_h_06_7M_uid___A002_X1097a87_X10298_targets.ms
+m33_h_06_brick1_box7    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_h_06_7M_uid___A002_X1097a87_Xfaf6_targets.ms
+m33_h_06_brick1_box7    2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_h_06_7M_uid___A002_X109a1cb_X3a70_targets.ms
+
+m33_i_06_brick1_box8    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_i_06_7M_calibrated_final.ms
+
+m33_j_06_brick1_box9    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_j_06_7M_uid___A002_X105e6e0_X7091.ms.split.cal
+m33_j_06_brick1_box9    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_j_06_7M_uid___A002_X1060df2_Xd10a.ms.split.cal
+
+m33_k_06_brick1_box10   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_k_06_7M_calibrated_final.ms
+
+m33_l_06_brick1_box11   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_l_06_7M_uid___A002_X108af0a_X5d2a_targets.ms
+m33_l_06_brick1_box11   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_l_06_7M_uid___A002_X108c378_X470f_targets.ms
+
+m33_m_06_brick1_box12   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_m_06_7M_uid___A002_X10a513c_X7ec3_targets.ms
+m33_m_06_brick1_box12   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_m_06_7M_uid___A002_X10a7a20_X2634_targets.ms
+
+m33_n_06_brick1_box13   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_n_06_7M_uid___A002_X1077d5b_X54f7.ms.split.cal
+m33_n_06_brick1_box13   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_n_06_7M_uid___A002_X1077d5b_X663c.ms.split.cal
+m33_n_06_brick1_box13   2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_n_06_7M_uid___A002_X107a139_X1d86.ms.split.cal
+
+m33_o_06_brick1_box14   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_o_06_7M_uid___A002_X109d26e_X16333_targets.ms
+m33_o_06_brick1_box14   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_o_06_7M_uid___A002_X109d26e_X466d_targets.ms
+m33_o_06_brick1_box14   2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_o_06_7M_uid___A002_X109d26e_Xcbab_targets.ms
+
+m33_p_06_brick1_box15   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_p_06_7M_calibrated_final.ms
+
+m33_q_06_brick2_box1    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_q_06_7M_calibrated_final.ms
+
+m33_r_06_brick2_box2    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_r_06_7M_uid___A002_X1097a87_X3284_targets.ms
+m33_r_06_brick2_box2    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_r_06_7M_uid___A002_X1097a87_X9988_targets.ms
+
+m33_s_06_brick2_box3    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_s_06_7M_uid___A002_X109d26e_X3bd4_targets.ms
+m33_s_06_brick2_box3    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_s_06_7M_uid___A002_X109d26e_Xcf1f_targets.ms
+
+m33_t_06_brick2_box4    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_t_06_7M_uid___A002_X1090815_X274e_targets.ms
+m33_t_06_brick2_box4    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_t_06_7M_uid___A002_X1090815_X2dc1_targets.ms
+
+m33_u_06_brick2_box5    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_u_06_7M_uid___A002_X108c378_X54a9_targets.ms
+m33_u_06_brick2_box5    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_u_06_7M_uid___A002_X108d93e_X25c1_targets.ms
+m33_u_06_brick2_box5    2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_u_06_7M_uid___A002_X108d93e_X2f2a_targets.ms
+
+m33_v_06_brick2_box6    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_v_06_7M_uid___A002_X10a7a20_X6d49_targets.ms
+m33_v_06_brick2_box6    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_v_06_7M_uid___A002_X10a7a20_Xcf31_targets.ms
+
+m33_w_06_brick2_box7    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_w_06_7M_uid___A002_X1003af4_X14181.ms.split.cal
+m33_w_06_brick2_box7    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_w_06_7M_uid___A002_X1003af4_X2991.ms.split.cal
+
+m33_x_06_brick2_box8    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_x_06_7M_uid___A002_X10947dc_Xadc0_targets.ms
+m33_x_06_brick2_box8    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_x_06_7M_uid___A002_X10947dc_Xbc7a_targets.ms
+
+m33_y_06_brick2_box9    2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_y_06_7M_uid___A002_X10a341d_X23f7_targets.ms
+m33_y_06_brick2_box9    2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_y_06_7M_uid___A002_X10a341d_X2b8a_targets.ms
+
+m33_z_06_brick2_box10   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_z_06_7M_calibrated_final.ms
+
+m33_aa_06_brick2_box11  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_aa_06_7M_uid___A002_X10924ab_X2a53_targets.ms
+m33_aa_06_brick2_box11  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_aa_06_7M_uid___A002_X10924ab_X3120_targets.ms
+
+m33_ab_06_brick2_box12  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ab_06_7M_uid___A002_X1096e27_X145c_targets.ms
+m33_ab_06_brick2_box12  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ab_06_7M_uid___A002_X1096e27_X654e_targets.ms
+
+m33_ac_06_brick2_box13  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ac_06_7M_uid___A002_X10924ab_X3944_targets.ms
+m33_ac_06_brick2_box13  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ac_06_7M_uid___A002_X10924ab_X836b_targets.ms
+
+m33_ad_06_brick2_box14  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ad_06_7M_uid___A002_X10947dc_Xc9c1_targets.ms
+m33_ad_06_brick2_box14  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ad_06_7M_uid___A002_X1096e27_Xde0_targets.ms
+
+m33_ae_06_brick2_box15  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ae_06_7M_uid___A002_X109a1cb_X450c_targets.ms
+m33_ae_06_brick2_box15  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ae_06_7M_uid___A002_X109a1cb_X946d_targets.ms
+
+m33_af_06_brick3_box1   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_af_06_7M_uid___A002_X108d93e_Xe6fd_targets.ms
+m33_af_06_brick3_box1   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_af_06_7M_uid___A002_X1090815_X3a3a_targets.ms
+m33_af_06_brick3_box1   2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_af_06_7M_uid___A002_X1090815_X9eec_targets.ms
+
+m33_ag_06_brick3_box2   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ag_06_7M_calibrated_final.ms
+
+m33_ah_06_brick3_box3   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ah_06_7M_calibrated_final.ms
+
+m33_ai_06_brick3_box4   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ai_06_7M_uid___A002_X109d26e_X16b1d_targets.ms
+m33_ai_06_brick3_box4   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ai_06_7M_uid___A002_X10a1d0b_X2c2d_targets.ms
+
+m33_aj_06_brick3_box5   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_aj_06_7M_brick3_box5_uid___A002_X107fa96_X2c9c.ms
+m33_aj_06_brick3_box5   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_aj_06_7M_brick3_box5_uid___A002_X107fa96_X8db6.ms
+
+m33_ak_06_brick3_box6   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ak_06_7M_uid___A002_X1093ae8_X36ad_targets.ms
+m33_ak_06_brick3_box6   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ak_06_7M_uid___A002_X1093ae8_X420b_targets.ms
+
+m33_al_06_brick3_box7   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_al_06_7M_calibrated_final.ms
+
+m33_am_06_brick3_box8   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_am_06_7M_calibrated_final.ms
+
+m33_an_06_brick3_box9   2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_an_06_7M_uid___A002_X101088d_X13a50.ms.split.cal
+m33_an_06_brick3_box9   2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_an_06_7M_uid___A002_X1015532_Xf64b.ms.split.cal
+m33_an_06_brick3_box9   2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_an_06_7M_uid___A002_X1018459_X6c7.ms.split.cal
+m33_an_06_brick3_box9   2022.1.00403.S  all  7m  4 2022.1.00403.S/m33_bric_an_06_7M_uid___A002_X101e5ab_X14dd7.ms.split.cal
+
+m33_ao_06_brick3_box10  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ao_06_7M_uid___A002_X109a1cb_X9b29_targets.ms
+m33_ao_06_brick3_box10  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ao_06_7M_uid___A002_X109bbf3_X9cc1_targets.ms
+
+m33_ap_06_brick3_box11  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_ap_06_7M_uid___A002_X107fa96_X23bc7_targets.ms
+m33_ap_06_brick3_box11  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_bric_ap_06_7M_uid___A002_X107fa96_X3a20_targets.ms
+m33_ap_06_brick3_box11  2022.1.00403.S  all  7m  3 2022.1.00403.S/m33_bric_ap_06_7M_uid___A002_X1084abd_X3c49_targets.ms
+
+m33_aq_06_brick3_box12  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_aq_06_7M_calibrated_final.ms
+
+m33_ar_06_brick3_box13  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_ar_06_brick3_box13_7M_uid___A002_X1003af4_Xc60f.ms.split.cal
+m33_ar_06_brick3_box13  2022.1.00403.S  all  7m  2 2022.1.00403.S/m33_ar_06_brick3_box13_7M_uid___A002_X10065c7_X3dc.ms.split.cal
+
+m33_as_06_brick3_box14  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_as_06_7M_calibrated_final.ms
+
+m33_at_06_brick3_box15  2022.1.00403.S  all  7m  1 2022.1.00403.S/m33_bric_at_06_7M_calibrated_final.ms

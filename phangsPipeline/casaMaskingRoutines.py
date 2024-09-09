@@ -121,7 +121,8 @@ def estimate_noise(
     else:
         use_mask = mask * np.isfinite(data)
 
-    if np.sum(use_mask) == 0:
+    # std not defined with less than 2 points. You'd obviously want far more.
+    if np.sum(use_mask) < 2:
         logger.error("No valid data. Returning NaN.")
         return (np.nan)
 
@@ -148,7 +149,7 @@ def estimate_noise(
 
             chauv_crit = 1.0 / (2.0 * len(use_data))
             keep = this_prob > chauv_crit
-            if np.sum(keep) == 0:
+            if np.sum(keep) == 0 or this_std == 0.0:
                 logger.error("Rejected all data. Returning NaN.")
                 return (np.nan)
             use_data = use_data[keep]
@@ -200,6 +201,9 @@ def noise_for_cube(
 
     this_noise = estimate_noise(
         data=data, mask=mask, method=method, niter=niter)
+
+    if np.isnan(this_noise):
+        raise Exception(f"Returned nan for noise: {this_noise}")
 
     return (this_noise)
 

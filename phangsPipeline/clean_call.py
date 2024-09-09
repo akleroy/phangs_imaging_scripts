@@ -2,6 +2,7 @@
 This is a dummy CleanCall class for dry run only, or to be inheritted by casaImagingRoutines.CleanCall.
 """
 
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import re
 
@@ -12,8 +13,8 @@ logger.setLevel(logging.DEBUG)
 #region class CleanCall
 
 class CleanCall:
-    
-    def __init__(self, infile_list=[]):
+
+    def __init__(self, infile_list=[], use_chunks=False, nchan=None):
 
         ############################################
         # Parameters used by the CleanCall object. #
@@ -25,9 +26,16 @@ class CleanCall:
         ###################################
         # Initialize the clean parameters #
         ###################################
-        
+
         self.clean_params = {}
         self.reset_params()
+
+        self.use_chunks = use_chunks
+
+        # Allows for consistently overriding the number of channels in the config file.
+        # Otherwise the default is -1 (all w/o knowing the number of channels)
+        if nchan is not None:
+            self.clean_params['nchan'] = nchan
 
     def __str__(self):
         """
@@ -48,7 +56,7 @@ class CleanCall:
         #    clean_text += str(this_kwarg)+'='+string_for_kwarg
         #clean_text += ')'
         #return clean_text
-        # 
+        #
         #<TODO><DL># return 'tclean('+', '.join("{!s}={!r}".format(k, self.clean_params[k]) for k in self.clean_params.keys())+')'
         kwargs_for_clean = self.kwargs_for_clean()
         return 'tclean('+', '.join("{!s}={!r}".format(k, kwargs_for_clean[k]) for k in kwargs_for_clean.keys())+')'
@@ -80,7 +88,7 @@ class CleanCall:
         logger.info("Reading: "+fname)
 
         with open(fname, 'r') as infile:
-            
+
             lines_read = 0
             while True:
                 line = infile.readline()
@@ -96,7 +104,7 @@ class CleanCall:
                 continue
 
         return()
-        
+
     #####################
     # Attribute setting #
     #####################
@@ -122,7 +130,7 @@ class CleanCall:
         """
         self.clean_params['restfreq']=str(value)+'GHz'
         return()
-    
+
     def set_reffreq_ghz(self, value=None):
         """
         Set the refrence frequency used in continuum imaging. Expects
@@ -133,7 +141,7 @@ class CleanCall:
         else:
             self.clean_params['reffreq']=''
         return()
-    
+
     def set_multiscale_arcsec(self, scales=[]):
         """
         Set the scales for deconvolution in acseconds. Requires that a
@@ -158,11 +166,11 @@ class CleanCall:
         """
         self.clean_params['uvtaper'] = [str(taper)+'arcsec',str(taper)+'arcsec','0deg']
         return()
-    
+
     ####################
     # Attribute access #
     ####################
-    
+
     def get_cell_in_arcsec(self):
         """
         Return the cell size (assumed in arcsec string format) as a float in arcsec.
@@ -177,7 +185,7 @@ class CleanCall:
             cell_string = self.clean_params['cell']
         # We don't worry about arcmin or deg right now - can adjust if needed
         return(float((cell_string).replace('arcsec','')))
-    
+
     def has_param(self, key=None):
         """
         Check if an attribute is in the clean parameter dictionary.
@@ -200,12 +208,61 @@ class CleanCall:
             logger.warning('clean_params does not have an attribute named "'+str(key)+'"')
             return(None)
 
+    def return_chunked_channel_ranges(self, chunksize=1):
+        '''
+        Set the channel ranges split up large cubes into smaller channel chunks.
+
+        Parameters
+        ----------
+        chunksize : int
+            Number of channels to image together in a chunk.
+        '''
+
+        if not self.use_chunks:
+            logger.warn("use_chunks has not been enabled. Call `CleanCall` with `use_chunks=True`.")
+            return
+
+        if not isinstance(chunksize, int):
+            raise ValueError("chunksize must be an integer.")
+
+        if chunksize < 1:
+            raise ValueError("chunksize must be positive.")
+
+        nchan = self.clean_params['nchan']
+
+        # Group by requested chunk size
+        nchunks = nchan // chunksize
+        nleft = nchan % chunksize
+
+        self._num_chunks = nchunks
+
+        if nchunks == 1:
+            logger.error("Given chunksize {0} does not require chunking the cleaning job.".format(chunksize) +
+                        "Image as a whole cube or change chunksize.")
+            #TODO: fix this with something graceful
+            return
+
+        # Arange defined the upper and lower
+        chunk_limits = np.append(np.arange(0, nchan - nleft, chunksize), nchan - nleft)
+
+        # If there's a remainder, tack that on as another chunk:
+        if nleft > 0:
+            chunk_limits = np.append(chunk_limits, nchan+1)
+
+        chunk_starts = chunk_limits[:-1]
+        chunk_ends = chunk_limits[1:] - 1
+
+        # The difference between these should be chunksize - 1 for all but the last one:
+        assert all((chunk_ends - chunk_starts)[:-1] == chunksize - 1)
+
+        return chunk_starts.astype(int), chunk_ends.astype(int)
+
     ##################################
     # Hook up to executions of clean #
     ##################################
-    
+
     def kwargs_for_clean(
-        self,        
+        self,
         casaversion='5.6',
         ):
         """
@@ -219,9 +276,9 @@ class CleanCall:
 
         #<TODO># Work on adapting to different CASA versions
         #<TODO><DL># use inspect package? provide CASA version compatibility inside recipe.clean file, then do the CASA version check only when executing it?
-        
+
         return(self.clean_params)
-        
+
 #endregion
 
 

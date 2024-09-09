@@ -1000,8 +1000,7 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
     if os.path.exists(path_script+'file_flags.py'):
-        #execfile(path_script+'file_flags.py')
-        exec(compile(open(path_script+'file_flags.py').read(), path_script+'file_flags.py', 'exec'), globals(), locals())
+        execfile(path_script+'file_flags.py')    #<TODO><DZLIU>#
 
     # 2.4 Create Tsys map
     logger.info("2.4 Creating Tsysmaps" )
@@ -1619,12 +1618,19 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     if os.path.exists('ALMA_TP.'+source+'.'+name_line+'.image'):
         shutil.rmtree('ALMA_TP.'+source+'.'+name_line+'.image')
 
+    # Try concatenating MSs to handle the too many files issue in CASA 5
+    ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+'.ms_concat'
+    #if os.path.exists(ms_concat_filename):
+    #    shutil.rmtree(ms_concat_filename)
+    #casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
+
+
     logger.info("Start imaging")
     logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
     logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
     logger.info('Msnames: %s'%(Msnames))
-    casaStuff.sdimaging(infiles = Msnames,
+    casaStuff.tsdimaging(infiles = ms_concat_filename,
         mode = 'velocity',
         nchan = nchans_vel,
         width = str(chan_dv_kms)+'km/s',
@@ -1695,7 +1701,8 @@ def export_fits(name_line, source, output_file):
 
     #
     imagename = 'ALMA_TP.'+source+'.'+name_line+'.image'
-    weightname = 'ALMA_TP.'+source+'.'+name_line+'.image.weight'
+    #weightname = 'ALMA_TP.'+source+'.'+name_line+'.image.weight'
+    weightname = 'ALMA_TP.'+source+'.'+name_line+'.weight'
     imagefile = imagename + '.fits'
     weightfile = weightname + '.fits'
 
