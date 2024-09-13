@@ -1226,7 +1226,7 @@ if casa_enabled:
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("Running clean call to convergence for:")
                 logger.info(this_clean_call.get_param('imagename'))
-                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter+1)))
+                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)+1))
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("")
 
