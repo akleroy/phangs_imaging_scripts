@@ -179,10 +179,16 @@ if do_imaging:
     this_imh.task_complete_gather_into_cubes(root_name='all')
 
     # (Optional) generate FITS cubes
-    this_imh.task_export_fits(tag=None)
-    # this_imh.task_export_fits(tag='dirty')
-    # this_imh.task_export_fits(tag='multiscale')
-    # this_imh.task_export_fits(tag='singlescale')
+    this_imh.task_export_to_fits(tag=None)
+    # this_imh.task_export_to_fits(tag='dirty')
+    # this_imh.task_export_to_fits(tag='multiscale')
+    # this_imh.task_export_to_fits(tag='singlescale')
+
+    # Cleanup per chunk imaging products
+    this_imh.task_cleanup(tag=None)
+    # this_imh.task_cleanup(tag='dirty')
+    # this_imh.task_cleanup(tag='multiscale')
+    # this_imh.task_cleanup(tag='singlescale')
 
 ##############################################################################
 # Step through postprocessing
