@@ -1324,33 +1324,36 @@ if casa_enabled:
 
             return ()
 
-        def task_cleanup(self):
+        def task_cleanup(self, tag=None, chunk_num=None):
             '''
-            Cleanup additional products:
-            * prev imaging products per chunk
-            * split MS files
+            Cleanup imaging products per chunk.
+
+            Parameters
+            ----------
+            tag : str or None
+                A tag to append to the image root. Defaults to None.
+            chunk_num : int or None, optional
+                The chunk number to clean up.
             '''
 
-            root_name = 'prev'
-            if root_name is not None:
-                root_name_label = "_{}".format(root_name)
+            if tag is not None:
+                root_name_label = "_{}".format(tag)
             else:
                 root_name_label = ""
 
-            search_str = "{0}*{1}*".format(self.image_root, root_name_label)
-            os.system("rm -rf {}".format(search_str))
+            chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            chunks_iter = self.return_valid_chunks(chunk_num=None)
-
-            for ii, chunk_num in enumerate(chunks_iter):
+            for ii, this_chunk_num in enumerate(chunks_iter):
 
                 self._kh.get_imaging_dir_for_target(self.target, changeto=True)
 
-                # Make the chunk clean call:
-                this_clean_call = self.task_initialize_clean_call(chunk_num, stage='singlescale')
+                chan_start, chan_end = self.chunk_params[this_chunk_num]['channel_range']
+                chan_label = "{0}_{1}".format(chan_start, chan_end)
 
-                if os.path.isdir(this_clean_call.get_param('vis')):
-                    casaStuff.rmtables(this_clean_call.get_param('vis'))
+                image_root = f"{self.image_root}_chan{chan_label}{root_name_label}"
+
+                if not self._dry_run:
+                    os.system(f"rm -rf {image_root}*")
 
 
         # Remove split chunks of the MS
