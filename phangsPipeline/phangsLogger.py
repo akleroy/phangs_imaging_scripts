@@ -3,13 +3,14 @@ import sys
 
 def setup_logger(level='INFO',logfile=None):
 
+    # Set up the logger
     root = logging.getLogger()
 
     screen_log_format = '[%(levelname).4s] [%(funcName)25s] %(message)s'
     file_log_format = '[%(asctime)-15s] [%(levelname)08s]  [%(name)s] [%(funcName)s] %(message)s'
 
     if level.upper() not in ['DEBUG','INFO','WARNING','ERROR','CRITICAL']:
-        level_value=logging.WARNING        
+        level_value=logging.WARNING
     if level == 'DEBUG':
         level_value = logging.DEBUG
     if level == 'INFO':
@@ -29,8 +30,17 @@ def setup_logger(level='INFO',logfile=None):
 
     root.addHandler(screen_handler)
 
+    #set file output
     if logfile is not None:
-        print("Logging to file not implemented yet.")
+        print('Setting up logfile: {}'.format(logfile))
+        fh = logging.FileHandler(logfile)
+        fh.setLevel(level_value)
+        fh.setFormatter(logging.Formatter(file_log_format))
+        root.addHandler(fh)
+
+
+    # if logfile is not None:
+    #     print("Logging to file not implemented yet.")
 
     return()
-    
+
