@@ -405,7 +405,7 @@ def signal_mask(
 
     # Export the image to fits, put in the mask and convert back to a CASA image
     logger.info('Writing mask to disk')
-
+    
     write_mask(cube_root + '.image' + suffix_in, cube_root + '.mask' + suffix_out, mask, huge_cube_workaround=True)
 
 

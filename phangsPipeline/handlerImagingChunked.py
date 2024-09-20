@@ -265,6 +265,7 @@ if casa_enabled:
                 singlescale_mask_high_snr=None,
                 singlescale_mask_low_snr=None,
                 singlescale_mask_absolute=False,
+                skip_singlescale_if_mask_empty=True,                                
                 do_singlescale_clean=False,
                 do_revert_to_singlescale=False,
                 do_export_to_fits=False,
@@ -1192,6 +1193,7 @@ if casa_enabled:
                 gather_chunks_into_cube=False,
                 remove_chunks=False,
                 threshold_value=1.0,
+                skip_singlescale_if_mask_empty=True,                
                 backup=True,
         ):
             """
@@ -1234,32 +1236,45 @@ if casa_enabled:
                 # Add in before the single scale clean loop:
                 this_clean_call.set_param('usemask', 'user')
 
-                imr.clean_loop(clean_call=this_clean_call,
-                            imaging_method=imaging_method,
-                            record_file=this_clean_call.get_param('imagename') + '_singlescale_record.txt',
-                            niter_base_perchan=10,
-                            niter_growth_model='geometric',
-                            niter_growth_factor=2.0,
-                            niter_saturation_perchan=1000,
-                            niter_other_input=None,
-                            cycleniter_base=100,
-                            cycleniter_growth_model='linear',
-                            cycleniter_growth_factor=1.0,
-                            cycleniter_saturation_value=1000,
-                            cycleniter_other_input=None,
-                            threshold_type='snr',
-                            threshold_value=threshold_value,
-                            min_loops=3,
-                            max_loops=20,
-                            max_total_niter=None,
-                            convergence_fracflux=convergence_fracflux,
-                            convergence_totalflux=None,
-                            convergence_fluxperniter=None,
-                            use_absolute_delta=True,
-                            stop_at_negative=False,
-                            remask_each_loop=False,
-                            force_dirty_image=False,
-                            )
+                skip_this_step = False
+                if skip_singlescale_if_mask_empty:
+                    image_root = self.chunk_params[chunk_num]['full_imagename']
+                    mask_name = "{}.mask".format(self.chunk_params[chunk_num]['full_imagename'])
+                    mask_stats = msr.stat_cube(cube_file=mask_name)
+                    if mask_stats['sum'] == 0:
+                        skip_this_step = True
+                        logger.info("")
+                        logger.info("The clean mask is empty and SKIP_SINGLESCALE_IF_MASK_EMPTY is True. Skipping the singlescale clean step.")
+                        logger.info("")                        
+
+                if not skip_this_step:
+                    imr.clean_loop(
+                        clean_call=this_clean_call,
+                        imaging_method=imaging_method,
+                        record_file=this_clean_call.get_param('imagename') + '_singlescale_record.txt',
+                        niter_base_perchan=10,
+                        niter_growth_model='geometric',
+                        niter_growth_factor=2.0,
+                        niter_saturation_perchan=1000,
+                        niter_other_input=None,
+                        cycleniter_base=100,
+                        cycleniter_growth_model='linear',
+                        cycleniter_growth_factor=1.0,
+                        cycleniter_saturation_value=1000,
+                        cycleniter_other_input=None,
+                        threshold_type='snr',
+                        threshold_value=threshold_value,
+                        min_loops=3,
+                        max_loops=20,
+                        max_total_niter=None,
+                        convergence_fracflux=convergence_fracflux,
+                        convergence_totalflux=None,
+                        convergence_fluxperniter=None,
+                        use_absolute_delta=True,
+                        stop_at_negative=False,
+                        remask_each_loop=False,
+                        force_dirty_image=False,
+                    )
 
                 if backup:
                     imr.copy_imaging(
@@ -1379,6 +1394,7 @@ if casa_enabled:
                 singlescale_mask_high_snr=None,
                 singlescale_mask_low_snr=None,
                 singlescale_mask_absolute=False,
+                skip_singlescale_if_mask_empty=True,
                 do_singlescale_clean=True,
                 do_revert_to_singlescale=True,
                 do_recombine_cubes=True,
@@ -1500,6 +1516,7 @@ if casa_enabled:
                                             imaging_method=imaging_method,
                                             convergence_fracflux=convergence_fracflux,
                                             threshold_value=singlescale_threshold_value,
+                                            skip_singlescale_if_mask_empty=skip_singlescale_if_mask_empty,
                                             gather_chunks_into_cube=False)
 
             # Reset the current imaging to the results of the singlescale clean.
