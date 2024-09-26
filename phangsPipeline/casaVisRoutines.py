@@ -833,7 +833,9 @@ def batch_extract_line(
         infile_list=[], outfile=None,
         target_chan_kms=None, restfreq_ghz=None, line=None,
         vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
-        method='regrid_then_rebin', exact=False, freqtol='',
+        method='regrid_then_rebin', exact=False,
+        freqtol='',
+        allow_freqtol_chanfrac=False, freqtol_chanfrac=0.2,
         clear_pointing=True, require_full_line_coverage=False,
         overwrite=False):
     """
@@ -885,6 +887,9 @@ def batch_extract_line(
         for this_spw in schemes[this_infile].keys():
             this_scheme = schemes[this_infile][this_spw]
 
+            # Record the channel width in freq for later
+            chan_width_ghz = this_scheme['chan_width_ghz']
+
             # Specify output file and check for existence
             this_outfile = this_infile+'.temp_spw'+str(this_spw).strip()
 
@@ -915,11 +920,18 @@ def batch_extract_line(
                     copy_pointing = False
                     #logger.debug('Warning! Failed to run au.clearPointingTable(%r)'%(this_outfile))
 
+    # Allow a small tolerance in the channel width
+    if allow_freqtol_chanfrac:
+        freqtol_val = freqtol_chanfrac * chan_width_ghz
+        freqtol = f"{freqtol_val}GHz"
+
     # Concatenate and combine the output data sets
 
-    concat_ms(
-        infile_list=split_file_list, outfile=outfile, freqtol=freqtol,
-        overwrite=overwrite, copypointing=(not clear_pointing))
+    concat_ms(infile_list=split_file_list,
+              outfile=outfile,
+              freqtol=freqtol,
+              overwrite=overwrite,
+              copypointing=(not clear_pointing))
 
     # Clean up, deleting intermediate files
 
