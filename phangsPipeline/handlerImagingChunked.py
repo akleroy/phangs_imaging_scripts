@@ -8,6 +8,7 @@ This code needs to be run inside CASA.
 """
 
 import os, sys, re, shutil
+import datetime
 from copy import deepcopy, copy
 import glob
 import logging
@@ -65,6 +66,7 @@ if casa_enabled:
             force_square=False,
             oversamp=5,
             make_temp_dir=True,
+            temp_key=None,
             ):
 
             # inherit template class
@@ -128,7 +130,9 @@ if casa_enabled:
 
 
             if make_temp_dir:
-                self._this_imaging_dir = f"{self._orig_imaging_dir}/chunk_{chunk_num}"
+                if temp_key is None:
+                    temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{temp_key}"
                 os.makedirs(self._this_imaging_dir, exist_ok=True)
             else:
                 self._this_imaging_dir = self._orig_imaging_dir
@@ -268,7 +272,7 @@ if casa_enabled:
                 singlescale_mask_high_snr=None,
                 singlescale_mask_low_snr=None,
                 singlescale_mask_absolute=False,
-                skip_singlescale_if_mask_empty=True,                                
+                skip_singlescale_if_mask_empty=True,
                 do_singlescale_clean=False,
                 do_revert_to_singlescale=False,
                 do_export_to_fits=False,
@@ -1195,7 +1199,7 @@ if casa_enabled:
                 gather_chunks_into_cube=False,
                 remove_chunks=False,
                 threshold_value=1.0,
-                skip_singlescale_if_mask_empty=True,                
+                skip_singlescale_if_mask_empty=True,
                 backup=True,
         ):
             """
@@ -1247,7 +1251,7 @@ if casa_enabled:
                         skip_this_step = True
                         logger.info("")
                         logger.info("The clean mask is empty and SKIP_SINGLESCALE_IF_MASK_EMPTY is True. Skipping the singlescale clean step.")
-                        logger.info("")                        
+                        logger.info("")
 
                 if not skip_this_step:
                     imr.clean_loop(
