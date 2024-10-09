@@ -100,8 +100,6 @@ if casa_enabled:
             self.image_root = utilsFilenames.get_cube_filename(target=target, product=product, config=config,
                                                                casa=True, casaext='')
 
-            self.full_image_root = os.path.join(self._orig_imaging_dir, self.image_root)
-
             if imaging_method not in ['tclean', 'sdintimaging']:
                 logger.error('imaging_method should be either tclean or sdintimaging')
                 raise Exception('imaging_method should be either tclean or sdintimaging')
