@@ -46,6 +46,39 @@ if casa_enabled:
     class ImagingChunkedHandler(handlerTemplate.HandlerTemplate):
         """
         Class to makes image cubes out of uv data for imaging a single spectral line.
+
+        Parameters
+        ----------
+        target : str
+            The target name.
+        config : str
+            The configuration name.
+        product : str
+            The product name.
+        key_handler : dict
+            The key handler dictionary.
+        dry_run : bool, optional
+            If True, do not actually make the images. Defaults to False.
+        chunksize : int, optional
+            The number of channels per image cube. Defaults to 10.
+        imaging_method : str, optional
+            The imaging method. Defaults to 'tclean'.
+        recipe : str, optional
+            The recipe. Defaults to 'phangsalma'.
+        set_cell_imsize_on_init : bool, optional
+            If True, set the cell size on initialization. Defaults to True.
+        force_square : bool, optional
+            If True, force the image size to be square. Defaults to False.
+        oversamp : int, optional
+            The oversampling factor of pixels per beam FWHM. Defaults to 5.
+        make_temp_dir : bool, optional
+            If True, make a temporary directory. Defaults to True.
+        temp_key : str, optional
+            The temporary key. Defaults to None.
+        temp_path : str, optional
+            The temporary path. Defaults to None. Set this to specify an independent path for the
+            temporary directory that is unassociated with the default imaging directory.
+
         """
 
         ############
@@ -67,6 +100,7 @@ if casa_enabled:
             oversamp=5,
             make_temp_dir=True,
             temp_key=None,
+            temp_path=None,
             ):
 
             # inherit template class
@@ -130,10 +164,15 @@ if casa_enabled:
 
 
             if make_temp_dir:
-                if temp_key is None:
-                    temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
-                self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{temp_key}"
+                if temp_path is None:
+                    if temp_key is None:
+                        temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{temp_key}"
+                else:
+                    self._this_imaging_dir = temp_path
+
                 os.makedirs(self._this_imaging_dir, exist_ok=True)
+
             else:
                 self._this_imaging_dir = self._orig_imaging_dir
 
