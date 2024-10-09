@@ -316,7 +316,6 @@ if casa_enabled:
 
             if self.recipe == 'phangsalma':
                 self.recipe_phangsalma_imaging(
-                    imaging_dir=self._this_imaging_dir,
                     chunk_num=chunk_num,
                     extra_ext_in=extra_ext_in,
                     suffix_in=suffix_in,
@@ -837,7 +836,7 @@ if casa_enabled:
 
             if not self._dry_run and casa_enabled:
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 for ii, chunk_num in enumerate(chunks_iter):
 
@@ -1023,7 +1022,7 @@ if casa_enabled:
 
             for ii, chunk_num in enumerate(chunks_iter):
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 # Make the chunk clean call:
                 this_clean_call = self.task_initialize_clean_call(chunk_num, stage='multiscale')
@@ -1220,7 +1219,7 @@ if casa_enabled:
 
             for ii, chunk_num in enumerate(chunks_iter):
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 # Make the chunk clean call:
                 this_clean_call = self.task_initialize_clean_call(chunk_num, stage='singlescale')
@@ -1365,7 +1364,7 @@ if casa_enabled:
 
             for ii, this_chunk_num in enumerate(chunks_iter):
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 chan_start, chan_end = self.chunk_params[this_chunk_num]['channel_range']
                 chan_label = "{0}_{1}".format(chan_start, chan_end)
@@ -1385,7 +1384,6 @@ if casa_enabled:
         def recipe_phangsalma_imaging(
                 self,
                 chunk_num=None,
-                imaging_dir=None,
                 extra_ext_in=None,
                 suffix_in=None,
                 extra_ext_out=None,
@@ -1468,7 +1466,6 @@ if casa_enabled:
 
             if do_dirty_image:
                 self.task_make_dirty_image(chunk_num=chunk_num,
-                                           imaging_dir=imaging_dir,
                                            imaging_method=imaging_method,
                                            gather_chunks_into_cube=gather_chunks_into_cube)
 
@@ -1476,7 +1473,6 @@ if casa_enabled:
 
             if do_revert_to_dirty:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            imaging_dir=imaging_dir,
                                             imaging_method=imaging_method,
                                             tag='dirty')
 
@@ -1495,7 +1491,6 @@ if casa_enabled:
 
             if do_multiscale_clean:
                 self.task_multiscale_clean(chunk_num=chunk_num,
-                                           imaging_dir=imaging_dir,
                                            imaging_method=imaging_method,
                                            convergence_fracflux=convergence_fracflux,
                                            gather_chunks_into_cube=gather_chunks_into_cube,
@@ -1505,7 +1500,6 @@ if casa_enabled:
 
             if do_revert_to_multiscale:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            imaging_dir=imaging_dir,
                                             imaging_method=imaging_method,
                                             tag='multiscale')
 
@@ -1523,7 +1517,6 @@ if casa_enabled:
 
             if do_singlescale_clean:
                 self.task_singlescale_clean(chunk_num=chunk_num,
-                                            imaging_dir=imaging_dir,
                                             imaging_method=imaging_method,
                                             convergence_fracflux=convergence_fracflux,
                                             threshold_value=singlescale_threshold_value,
@@ -1534,7 +1527,6 @@ if casa_enabled:
 
             if do_revert_to_singlescale:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            imaging_dir=imaging_dir,
                                             imaging_method=imaging_method,
                                             tag='singlescale')
 
@@ -1546,11 +1538,10 @@ if casa_enabled:
             # Ensure products are re-combined into cubes:
             if do_recombine_cubes:
                 if chunk_num is None:
-                    self.task_complete_gather_into_cubes(root_name='all', imaging_dir=imaging_dir)
+                    self.task_complete_gather_into_cubes(root_name='all')
                                 # Export the products of the current clean to FITS files.
                     if do_export_to_fits:
-                        self.task_export_to_fits(imaging_method=imaging_method,
-                                                 imaging_dir=imaging_dir,)
+                        self.task_export_to_fits(imaging_method=imaging_method)
 
                 else:
                     import warnings
