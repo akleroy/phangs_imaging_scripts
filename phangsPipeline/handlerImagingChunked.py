@@ -128,10 +128,10 @@ if casa_enabled:
 
 
             if make_temp_dir:
-                self._this_imaging_dir = f"{this_imaging_dir}/chunk_{chunk_num}"
+                self._this_imaging_dir = f"{self._orig_imaging_dir}/chunk_{chunk_num}"
                 os.makedirs(self._this_imaging_dir, exist_ok=True)
             else:
-                self._this_imaging_dir = this_imaging_dir
+                self._this_imaging_dir = self._orig_imaging_dir
 
             # Set a flag to check on whether we need to move clean-up the final products
             self._uses_tempdir = make_temp_dir
