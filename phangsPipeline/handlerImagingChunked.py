@@ -1548,7 +1548,6 @@ if casa_enabled:
 
             if do_singlescale_mask:
                 self.task_singlescale_mask(chunk_num=chunk_num,
-                                           imaging_dir=imaging_dir,
                                            imaging_method=imaging_method,
                                            high_snr=singlescale_mask_high_snr,
                                            low_snr=singlescale_mask_low_snr,
