@@ -1788,7 +1788,6 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         feather_apod=False,
         feather_noapod=False,
         feather_before_mosaic=False,
-        feather_after_mosaic=False,
         make_directories=True,
         ):
         """
@@ -1868,6 +1867,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
 
+                is_mosaic = self._kh.is_target_linmos(this_target)
+                if is_mosaic:
+                    continue
+
                 if imaging_method == 'sdintimaging':
                     fname_dict = self._fname_dict(
                         target=this_target, product=this_product, config=this_config,
@@ -1927,6 +1930,10 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 if not is_mosaic:
                     continue
 
+                if feather_before_mosaic:
+                    logger.debug("Skipping "+this_target+" because feather_before_mosaic is True.")
+                    continue
+
                 # Mosaic the interferometer data and the
                 # single dish data (need to verify if parts
                 # have single dish, enforce the same
@@ -1945,14 +1952,16 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_feather=True):
 
-                # Mosaic the previously feathered data.
+                is_mosaic = self._kh.is_target_linmos(this_target)
+                if not is_mosaic:
+                    continue
 
                 if feather_apod:
                     self.recipe_mosaic_one_target(
                         target = this_target, product = this_product, config = this_config,
                         check_files = True,
                         extra_ext_in = '_apod',
-                        extra_ext_out = '_prefeather_apod',
+                        extra_ext_out = '',
                         )
 
                 if feather_noapod:
@@ -1960,7 +1969,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                         target = this_target, product = this_product, config = this_config,
                         check_files = True,
                         extra_ext_in = '',
-                        extra_ext_out = '_prefeather',
+                        extra_ext_out = '',
                         )
 
         # This round of feathering targets only mosaicked data. All
