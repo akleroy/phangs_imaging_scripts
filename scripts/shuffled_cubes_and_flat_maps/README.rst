@@ -15,6 +15,7 @@ If you want to produce shuffled cubes and flat maps of PHANSG-ALMA CO line cubes
 The pipeline produces shuffled cubes, noise cubes, a set of flat maps with corresponding uncertainties and velocity-integration masks:
 
 Products:
+
 - cubes:
     1. shuffled cube
     2. shuffled noise cube
