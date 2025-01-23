@@ -16,18 +16,35 @@ The pipeline produces shuffled cubes, noise cubes, a set of flat maps with corre
 
 Products:
 
-- cubes:
+* cubes:
     1. shuffled cube
     2. shuffled noise cube
     3. shuffled masks (two versions: narrow_strict, wide_broad)
     4. re-shuffled masks (same as shuffled masks but shuffled back to the original velocity field)
-- maps: 
+* maps: 
     1. narrow (+-50 km/s) fixed window flat maps
     2. wide (+-100 km/s) fixed window flat maps
     3. narrow (+-20-200 km/s; adapted to each galaxy) fixed window combined with a strict CO line emission mask
     4. narrow (+-20-200 km/s; adapted to each galaxy) fixed window combined with a broad CO line emission mask
     5. wide (+-100 km/s) fixed window combined with a strict CO line emission mask
     6. wide (+-100 km/s) fixed window combined with a broad CO line emission mask
+
+### PYTHON PACKAGES
+
+* Python 3.9 or later
+    * [numpy](https://numpy.org)
+    * [astropy](https://www.astropy.org)
+    * [matplotlib](https://matplotlib.org)
+    * [pandas](https://pandas.pydata.org)
+    * [reproject](https://reproject.readthedocs.io)
+
+* Run with: 
+    * python 3.9
+    * numpy 1.26.4
+    * astropy 5.2.2
+    * matplotlib 3.5.3 
+    * pandas 2.2.3
+    * reproject 0.13.0
 
 ### SCRIPTS
 
