@@ -10,6 +10,8 @@ import shutil
 import inspect
 import glob
 import logging
+from packaging import version
+
 
 import numpy as np
 from scipy.ndimage import label
@@ -389,12 +391,34 @@ def concat_ms(
 
 
 def contsub(
-        infile=None, outfile=None, ranges_to_exclude=[], solint='int',
+        infile=None, outfile=None,
+        ranges_to_exclude=[],
+        flag_edge_fraction=0.0,
+        solint='int',
         fitorder=0, combine='', overwrite=False):
     """
     Carry out uv continuum subtraction on a measurement set. First
     figures out channels corresponding to spectral lines for a
     provided suite of bright lines.
+
+    Parameters
+    ----------
+    infile : str
+        The input measurement set data folder.
+    outfile : str
+        The output measurement set data folder.
+    ranges_to_exclude : list
+        List of frequency ranges to exclude from the fit.
+    flag_edge_fraction : float
+        Fraction of the data to flag at the beginning and end of the fit.
+    solint : str
+        The integration time over which to fit the continuum.
+    fitorder : int
+        The order of the fit. Default is 0.
+    combine : str
+        The method to combine channels. Default is ''.
+    overwrite : bool
+        If True, overwrite existing output data.
     """
 
     # Error and file existence checking
@@ -430,18 +454,32 @@ def contsub(
 
     spw_flagging_string = spw_string_for_freq_ranges(
         infile=infile, freq_ranges_ghz=ranges_to_exclude,
+        complement=True, # default to complement for new uvcontsub task
+        flag_edge_fraction=flag_edge_fraction,
         )
 
     # uvcontsub, this outputs infile+'.contsub'
 
-    uvcontsub_params = {
-        'vis': infile,
-        'fitspw': spw_flagging_string,
-        'excludechans': True,
-        'combine': combine,
-        'fitorder': fitorder,
-        'solint': solint,
-        'want_cont': False}
+    # Pre 6.5.2
+    if version.parse(casaStuff.casa_version_str) < version.parse('6.5.2'):
+
+        uvcontsub_params = {
+            'vis': infile,
+            'fitspw': spw_flagging_string,
+            'excludechans': False, # now uses complement for channel selection.
+            'combine': combine,
+            'fitorder': fitorder,
+            'solint': solint,
+            'want_cont': False}
+    else:
+        # Post 6.5.2
+        uvcontsub_params = {
+            'vis': infile,
+            'outputvis': outfile,
+            'fitspec': spw_flagging_string,
+            'fitorder': fitorder,
+            'fitmethod': 'gsl'}  # or 'casacore'
+
     logger.info(
         "... running CASA "+'uvcontsub(' +
         ', '.join("{!s}={!r}".format(
@@ -687,7 +725,7 @@ def spw_string_for_freq_ranges(
         freq_ranges_ghz=[],
         just_spw=[],
         flag_edge_fraction=0.0,
-        complement=True,  # enabled by default for new uvcontsub inputs
+        complement=False,
         fail_on_empty=False):
     """
     Given an input measurement set, return the spectral
