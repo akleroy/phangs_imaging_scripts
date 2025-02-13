@@ -788,8 +788,8 @@ def spw_string_for_freq_ranges(
             low_edge = int(np.ceil(mask_axis.size * flag_edge_fraction))
             high_edge = int(np.floor(mask_axis.size * (1. - flag_edge_fraction)))
 
-            mask_axis[0:low_edge] = False
-            mask_axis[high_edge:mask_axis.size-1] = False
+            mask_axis[:low_edge] = False
+            mask_axis[high_edge:] = False
 
         if fail_on_empty:
             if np.sum(np.invert(mask_axis)) == 0:
