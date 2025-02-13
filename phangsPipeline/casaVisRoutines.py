@@ -683,8 +683,12 @@ def find_spws_for_science(
 
 
 def spw_string_for_freq_ranges(
-        infile=None, freq_ranges_ghz=[], just_spw=[],
-        complement=False, fail_on_empty=False):
+        infile=None,
+        freq_ranges_ghz=[],
+        just_spw=[],
+        flag_edge_fraction=0.0,
+        complement=True,  # enabled by default for new uvcontsub inputs
+        fail_on_empty=False):
     """
     Given an input measurement set, return the spectral
     List the spectral window and channels corresponding to the input
@@ -740,6 +744,14 @@ def spw_string_for_freq_ranges(
 
         if complement:
             mask_axis = np.invert(mask_axis)
+
+        # Additional edge flagging
+        if flag_edge_fraction > 0.0:
+            low_edge = int(np.ceil(mask_axis.size * flag_edge_fraction))
+            high_edge = int(np.floor(mask_axis.size * (1. - flag_edge_fraction)))
+
+            mask_axis[0:low_edge] = False
+            mask_axis[high_edge:mask_axis.size-1] = False
 
         if fail_on_empty:
             if np.sum(np.invert(mask_axis)) == 0:
