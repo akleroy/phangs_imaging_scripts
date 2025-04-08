@@ -259,7 +259,45 @@ if casa_enabled:
                 logger.info("--------------------------------------------------------")
                 logger.info('Imaging recipe: ' + recipe)
 
-                if recipe == 'phangsalma':
+                #<20241113><DZLIU># 
+                skip = False
+                if not overwrite:
+                    do_dirty_image = True
+                    do_revert_to_dirty = True
+                    do_multiscale_clean = True
+                    do_revert_to_multiscale = True
+                    do_singlescale_mask = True
+                    do_singlescale_clean = True
+                    do_revert_to_singlescale = True
+                    do_export_to_fits = True
+                    export_dirty = True
+                    export_dirty = True
+                    export_multiscale = True
+                    if os.path.exists(this_target+'_' +this_config+'_'+this_product+'_dirty.image'):
+                        do_dirty_image = False
+                        do_revert_to_dirty = True
+                    if os.path.exists(this_target+'_' +this_config+'_'+this_product+'_multiscale.image'):
+                        do_dirty_image = False
+                        do_revert_to_dirty = False
+                        do_multiscale_clean = False
+                        do_revert_to_multiscale = True
+                    if os.path.exists(this_target+'_' +this_config+'_'+this_product+'_singlescale.image'):
+                        do_dirty_image = False
+                        do_revert_to_dirty = False
+                        do_multiscale_clean = False
+                        do_revert_to_multiscale = False
+                        do_singlescale_clean = False
+                        do_revert_to_singlescale = True
+                    if os.path.exists(this_target+'_' +this_config+'_'+this_product+'.fits'):
+                        do_dirty_image = False
+                        do_revert_to_dirty = False
+                        do_multiscale_clean = False
+                        do_revert_to_multiscale = False
+                        do_singlescale_clean = False
+                        do_revert_to_singlescale = False
+                        skip = True
+
+                if recipe == 'phangsalma' and not skip:
                     self.recipe_phangsalma_imaging(
                         target=this_target,
                         product=this_product,
