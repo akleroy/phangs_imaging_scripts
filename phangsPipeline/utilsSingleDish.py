@@ -6,6 +6,11 @@ from .casaStuff import casa_version, tbtool, msmdtool, metool, qatool
 
 # Analysis utilities
 import analysisUtils as au
+from analysisUtils import mjdSecondsListToDateTime, mjdsecToUT
+
+# Import pylab for plotting
+import pylab as pb
+import matplotlib
 
 casaVersion = "{0}.{1}.{2}".format(*casa_version)
 
@@ -882,7 +887,7 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
         pb.xlabel('Universal Time on %s' % (mjdsecToUT(times[0]).split()[0]))
         pb.ylabel('Angle from origin (arcsec)')
         adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
-        setXaxisTimeTicks(adesc, np.min(times), np.max(times))
+        au.setXaxisTimeTicks(adesc, np.min(times), np.max(times))
         y0,y1 = pb.ylim()
         for s in list(timesforscan.keys()):
             b = timesforscan[s]['begin']
@@ -897,10 +902,10 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
             newEndTime = timesforscan[scansToUse[-1]]['end'] + 20
             newlimits = pb.date2num(mjdSecondsListToDateTime([newStartTime, newEndTime]))
             pb.xlim(newlimits)
-            setXaxisTimeTicks(adesc, newStartTime, newEndTime)
+            au.setXaxisTimeTicks(adesc, newStartTime, newEndTime)
         else:
             pb.xlim(pb.date2num(mjdSecondsListToDateTime(timerange)))
-            setXaxisTimeTicks(adesc, timerange[0], timerange[1])
+            au.setXaxisTimeTicks(adesc, timerange[0], timerange[1])
 
         adesc.xaxis.grid(True,which='major')
         adesc.yaxis.grid(True,which='major')

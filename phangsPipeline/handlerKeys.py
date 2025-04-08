@@ -1992,6 +1992,35 @@ class KeyHandler:
             return '0s'
         return self._config_dict['array_tag'][array_tag]['timebin']
 
+    def get_joint_imaging_dirs_for_singledish_config(self, config='tp'):
+        """
+        Get joint_imaging_dirs.
+        """
+        if 'singledish_config' in self._config_dict:
+            if config in self._config_dict['singledish_config']:
+                if 'joint_imaging_dirs' in self._config_dict['singledish_config'][config]:
+                    joint_imaging_dirs = self._config_dict['singledish_config'][config]['joint_imaging_dirs']
+                    if not isinstance(joint_imaging_dirs, (list, tuple)):
+                        joint_imaging_dirs = joint_imaging_dirs.split(' ')
+                    return joint_imaging_dirs
+                else:
+                    return None
+
+        return None
+
+    def get_joint_imaging_suffix_for_singledish_config(self, config='tp'):
+        """
+        Get joint_imaging_suffix.
+        """
+        if 'singledish_config' in self._config_dict:
+            if config in self._config_dict['singledish_config']:
+                if 'joint_imaging_suffix' in self._config_dict['singledish_config'][config]:
+                    return self._config_dict['singledish_config'][config]['joint_imaging_suffix']
+                else:
+                    return ''
+
+        return ''
+
     def loop_over_input_ms(
             self,
             target=None,

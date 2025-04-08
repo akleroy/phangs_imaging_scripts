@@ -704,6 +704,19 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'res_list': []
             }
 
+        if this_type == "singledish_config":
+            expected_params = {
+                'bl_order':1,
+                'chan_dv_kms':2.5, # for imaging cube, in default this is the channel_kms for the line_product in "config_definitions.txt"
+                'vwidth_kms':800.0, # for imaging cube, in default this is the vwidth set in "target_definitions.txt"
+                'vel_line':'800~1800', # for ms cube baseline extraction, multiple lines can be marked as '800~1000;1200~1400'. In default this is derived from vwidth_kms. 
+                'vel_cube':'300~2300', # for ms cube full extraction range. In default this is derived from vwidth_kms +- 200.0 km/s.
+                'do_step':[], # 1 for import_and_split_ant, 2 for gen_tsys_and_flag, 3 for counts2kelvin, 4 for extract_cube, 5 for baseline (with plots), 6 for concat_ants, 7 for imaging, 8 for export_fits.
+                'joint_imaging_dirs':None,
+                'joint_imaging_suffix':'',
+                'doplots':False
+            }
+
         if this_type == "line_product":
             expected_params = {
                 'line_tag': '',
