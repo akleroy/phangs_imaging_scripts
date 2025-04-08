@@ -123,7 +123,7 @@ def smooth_cube(
         if make_coverage_cube:
             if twod:
                 coverage = Projection(np.isfinite(hdulist[0].data)*1.0,
-                                      wcs=cube.wcs, header=cube.header,
+                                      wcs=cube.wcs.celestial, header=cube.header,
                                       beam=cube.beam)
             else:
                 coverage = SpectralCube(

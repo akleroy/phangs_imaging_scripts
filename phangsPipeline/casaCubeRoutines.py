@@ -583,7 +583,8 @@ def trim_cube(
     deg_im.done()
     myia.close()
 
-    mask = get_mask(outfile, huge_cube_workaround=True)
+    # This should either be .temp or .temp_deg (check if it works for 2d cases)
+    mask = get_mask(outfile + '.temp_deg', huge_cube_workaround=True)
 
     this_shape = mask.shape
     mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))

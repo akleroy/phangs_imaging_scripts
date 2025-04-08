@@ -379,7 +379,7 @@ if casa_enabled:
                     'Error! Could not get imaging recipe for config ' + config + ' product ' + product + '. Please check your "imaging_recipes.txt".')
 
             # Initialize the clean call with the appropriate recipe list
-            clean_call = CleanCall(recipe_list)
+            clean_call = CleanCall(recipe_list, use_chunks=False)
 
             # Get the visibility name
             vis_file = utilsFilenames.get_vis_filename(
@@ -510,16 +510,16 @@ if casa_enabled:
             else:
                 cell, imsize = '0.1arcsec', [1000, 1000]
                 logger.info('DRY RUN skips calling imr.estimate_cell_and_imsize()')
-            
+
             # Print info
             logger.info('cell='+cell+', imsize='+str(imsize))
 
-            # Check user-set overriding parameters: deltara deltadec 
+            # Check user-set overriding parameters: deltara deltadec
             # (width and height of the field of view in units of arcsec)
             if check_overrides:
                 # first try to find 'target_config_product' key 'deltara/deltadec' in the override file,
-                # if not found, then find 'target' key 'deltara/deltadec', 
-                # if also not found, then fall back to 'all' key 'deltara/deltadec' if it is not None. 
+                # if not found, then find 'target' key 'deltara/deltadec',
+                # if also not found, then fall back to 'all' key 'deltara/deltadec' if it is not None.
                 override_keys = []
                 if target is not None and config is not None and product is not None:
                     override_keys.append(target+'_'+config+'_'+product)
@@ -544,7 +544,7 @@ if casa_enabled:
                     logger.info('applying overriding deltadec '+str(deltadec)+' arcsec')
                     deltadec = np.abs(float(deltadec))
                     imsize[1] = int(np.ceil(deltadec/cell_arcsec/2.0)*2) # need an even number
-            
+
                 # Print info
                 if deltara is not None or deltadec is not None:
                     logger.info('cell='+cell+', imsize='+str(imsize))
@@ -1154,7 +1154,7 @@ if casa_enabled:
             if dynamic_sizing:
                 if cell is None or imsize is None:
                     cell, imsize = self.task_pick_cell_and_imsize(
-                        clean_call=clean_call, 
+                        clean_call=clean_call,
                         force_square=force_square,
                         check_overrides=True,
                         target=target, config=config, product=product,
@@ -1334,3 +1334,5 @@ if casa_enabled:
             return
 
         # end of recipe_phangsalma_imaging()
+
+

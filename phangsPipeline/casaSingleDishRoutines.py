@@ -1003,8 +1003,7 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
     if os.path.exists(path_script+'file_flags.py'):
-        #execfile(path_script+'file_flags.py')
-        exec(compile(open(path_script+'file_flags.py').read(), path_script+'file_flags.py', 'exec'), globals(), locals())
+        execfile(path_script+'file_flags.py')    #<TODO><DZLIU>#
 
     # 2.4 Create Tsys map
     logger.info("2.4 Creating Tsysmaps" )
@@ -1656,12 +1655,31 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     if os.path.exists('ALMA_TP.'+source+'.'+name_line+suffix+'.image'):
         shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
 
+    # Try concatenating MSs to handle the too many files issue in CASA 5 -- TODO: using 10 as the threshold number of MS files
+    if len(Msnames) > 10:
+        ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.ms_concat'
+        if os.path.exists(ms_concat_filename):
+            shutil.rmtree(ms_concat_filename)
+        casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
+        infiles = ms_concat_filename
+        logger.info('Msnames: %s, N=%d, concatenated: %s'%(Msnames, len(Msnames), ms_concat_filename))
+    else:
+        infiles = Msnames
+        logger.info('Msnames: %s, N=%d'%(Msnames, len(Msnames)))
+    
+    # CASA 6? has a better tsdimaging function, use it if possible
+    if hasattr(casaStuff, 'tsdimaging'):
+        func_sdimaging = casaStuff.tsdimaging
+    else:
+        func_sdimaging = casaStuff.sdimaging
+
+    # Start imaging
     logger.info("Start imaging")
     logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
     logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
-    logger.info('Msnames: %s N=%d'%(Msnames, len(Msnames)))
-    casaStuff.sdimaging(infiles = Msnames,
+    func_sdimaging(
+        infiles = Msnames,
         mode = 'velocity',
         nchan = nchans_vel,
         width = str(chan_dv_kms)+'km/s',
@@ -1735,8 +1753,9 @@ def export_fits(name_line, source, output_file, joint_imaging_suffix=''):
     #if checkdir(os.getcwd(),path_galaxy) == False:
     #    os.chdir('../'+path_galaxy+'calibration')
 
-    #
+    # Prepare to output image and weight data
     imagename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
+    #weightname = 'ALMA_TP.'+source+'.'+name_line+suffix+'.weight'
     weightname = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image.weight'
     imagefile = imagename + '.fits'
     weightfile = weightname + '.fits'

@@ -1215,3 +1215,12 @@ if has_imports:
                         target_file.write('%s\t%s\t%s\t%s\t%s\n' % (target_mosaic, ra, dec, vel, vel_width))
 
             target_file.close()
+
+else:
+    class AlmaDownloadHandler(object):
+        '''
+        Define an empty class that raises an error so the package level imports
+        work when astroquery and astropy are not installed.
+        '''
+        def __init__(self, args, **kwargs):
+            raise ImportError("Missing at least one of these dependencies: astroquery, astropy, bs4, requests.")

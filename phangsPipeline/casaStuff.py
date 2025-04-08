@@ -138,7 +138,8 @@ if casa_version[0] >= 6:
                            sdbaseline,
                            sdimaging,
                            tsdimaging,
-                           visstat)
+                           visstat,
+                           rmtables)
 
     from casatasks.private import sdint_helper
 
