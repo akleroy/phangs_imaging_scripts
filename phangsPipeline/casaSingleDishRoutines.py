@@ -1003,7 +1003,8 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
     if os.path.exists(path_script+'file_flags.py'):
-        execfile(path_script+'file_flags.py')    #<TODO><DZLIU>#
+        #execfile(path_script+'file_flags.py')    #<TODO><DZLIU>#
+        exec(open(path_script+'file_flags.py').read())
 
     # 2.4 Create Tsys map
     logger.info("2.4 Creating Tsysmaps" )
@@ -1670,8 +1671,12 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     # CASA 6? has a better tsdimaging function, use it if possible
     if hasattr(casaStuff, 'tsdimaging'):
         func_sdimaging = casaStuff.tsdimaging
+        outfile = 'ALMA_TP.'+source+'.'+name_line+suffix # tsdimaging will output '.image' and '.weight'
+        outimage = outfile+'.image'
     else:
         func_sdimaging = casaStuff.sdimaging
+        outfile = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
+        outimage = outfile
 
     # Start imaging
     logger.info("Start imaging")
@@ -1693,10 +1698,11 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         imsize = imsize,
         cell = str(cell)+'arcsec',
         overwrite = True,
-        outfile = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image')
+        outfile = outfile)
 
     # Correct the brightness unit in the image header
-    casaStuff.imhead(imagename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image',
+    casaStuff.imhead(
+        imagename = outimage, # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image',
         mode = 'put',
         hdkey = 'bunit',
         hdvalue = 'Jy/beam')
@@ -1716,12 +1722,12 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     #ia.setrestoringbeam(major = str(sfbeam)+'arcsec', minor = str(sfbeam)+'arcsec', pa = '0deg')
     #ia.done()
     myia = au.createCasaTool(casaStuff.iatool)
-    myia.open('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
+    myia.open(outimage) # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
     myia.setrestoringbeam(major = str(sfbeam)+'arcsec', minor = str(sfbeam)+'arcsec', pa = '0deg')
     myia.close()
 
     if doplots == True:
-        casaStuff.viewer('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
+        casaStuff.viewer(outimage) # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
 
     with open('done_step_7'+'_'+name_line+suffix, 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
@@ -1755,8 +1761,10 @@ def export_fits(name_line, source, output_file, joint_imaging_suffix=''):
 
     # Prepare to output image and weight data
     imagename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
-    #weightname = 'ALMA_TP.'+source+'.'+name_line+suffix+'.weight'
-    weightname = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image.weight'
+    if os.path.exists(imagename+'.weight'):
+        weightname = imagename+'.weight'
+    else:
+        weightname = 'ALMA_TP.'+source+'.'+name_line+suffix+'.weight'
     imagefile = imagename + '.fits'
     weightfile = weightname + '.fits'
 
