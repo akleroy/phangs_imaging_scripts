@@ -21,6 +21,7 @@ Then, we also need to install the 'astropy' package, because the TP pipeline nee
 If your casa's path is like /software/casa/casa-6.6.4-34-py3.8.el7, then run this to install 'astropy' into the directory './scripts/local/':
 
     /software/casa/casa-6.6.4-34-py3.8.el7/bin/python3 -m pip install astropy==5.2.2 --prefix=./scripts/local/ --ignore-installed
+    /software/casa/casa-release-5.7.2-4.el7/bin/python -m pip install astropy==5.2.2 --prefix=./scripts/local/ --ignore-installed
 
 In this script below, you can see that we will add this path into sys.path so that the pipeline can import the 'astropy' package.
 
@@ -31,23 +32,29 @@ If you have different directories, please change them in this code below.
 
 """
 import os, sys
-sys.path.insert(0, os.getcwd()+'/scripts/analysis_scripts')
-sys.path.insert(0, os.getcwd()+'/scripts/phangs_imaging_scripts/phangsPipeline')
-sys.path.insert(0, os.getcwd()+'/scripts/phangs_imaging_scripts')
-sys.path.insert(0, os.getcwd()+'/scripts/local/lib/python3.8/site-packages')
+sys.path.insert(0, os.getcwd()+'/script/analysis_scripts')
+sys.path.insert(0, os.getcwd()+'/script/phangs_imaging_scripts/phangsPipeline')
+sys.path.insert(0, os.getcwd()+'/script/phangs_imaging_scripts')
+#sys.path.insert(0, os.getcwd()+'/script/local/lib/python3.8/site-packages')
+try:
+    import pyfits
+except:
+    sys.path.insert(0, os.getcwd()+'/script/local/lib/python{}.{}/site-packages'.format(sys.version_info.major, sys.version_info.minor))
+    import astropy.io.fits as pyfits
 """Run these in advance:
-    mkdir scripts/local
-    /software/casa/casa-6.6.4-34-py3.8.el7/bin/python3 -m pip install astropy==5.2.2 --prefix=./scripts/local/ --ignore-installed
+    mkdir script/local
+    /software/casa/casa-6.6.4-34-py3.8.el7/bin/python3 -m pip install astropy==5.2.2 --prefix=./script/local/ --ignore-installed
+    /software/casa/casa-release-5.7.2-4.el7/bin/python -m pip install astropy==5.2.2 --prefix=./scripts/local/ --ignore-installed
 """
-if 'importlib' in sys.modules:
-    del sys.modules['importlib']
-if 'importlib.metadata' in sys.modules:
-    del sys.modules['importlib.metadata']
-import packaging as importlib
-from importlib import metadata
-print('importlib.__path__', importlib.__path__)
+#if 'importlib' in sys.modules:
+#    del sys.modules['importlib']
+#if 'importlib.metadata' in sys.modules:
+#    del sys.modules['importlib.metadata']
+#import packaging as importlib
+#from importlib import metadata
+#print('importlib.__path__', importlib.__path__)
 #print('metadata.__path__', metadata.__path__)
-import astropy
+#import astropy
 
 key_file = os.getcwd()+'/keys/master_key.txt'
 

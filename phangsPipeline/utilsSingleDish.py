@@ -14,6 +14,56 @@ import matplotlib
 
 casaVersion = "{0}.{1}.{2}".format(*casa_version)
 
+def setXaxisTimeTicks(adesc, t0, t1, verbose=True):
+    """
+    Sets sensible major and minor tick intervals for a plot_date plot
+    based on the start and end times.
+    Inputs: t0 (startTime in seconds)
+        and t1 (endTime in seconds)
+        Only the difference matters.
+   -Todd Hunter
+    """
+    timeRange = t1-t0
+    if (verbose):
+        print("timeRange = %f sec" % (timeRange))
+    if (timeRange > 200000):
+        #<DZLIU># if timeRange > 55 hours, show days in xaxis, this solves the error 'RRuleLocator estimated to generate %d ticks from %s to %s: exceeds Locator.MAXTICKS * 2 (%d) '
+        print("timeRange = %f sec, setting xaxis in days" % (timeRange))
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=1))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.HourLocator(interval=12))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%Y-%m-%d')
+    elif (timeRange > 20000):
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0,int(60*np.floor((t1-t0)/3600)),60)))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,60,15)))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%H')
+    elif (timeRange > 2000):
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0,60,15)))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(byminute=range(0,60,5)))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%H:%M')
+    elif (timeRange > 600):
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0,60,5)))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.SecondLocator(bysecond=range(0,60,30)))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%H:%M')
+    elif (timeRange > 200):
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(byminute=range(0,60,3)))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.SecondLocator(bysecond=range(0,60,10)))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%H:%M')
+    elif (timeRange > 40):
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.SecondLocator(bysecond=range(0,60,20)))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.SecondLocator(bysecond=range(0,60,5)))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%H:%M:%S')
+    else:
+        adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
+        adesc.xaxis.set_major_locator(matplotlib.dates.SecondLocator(bysecond=range(0,60,10)))
+        adesc.xaxis.set_minor_locator(matplotlib.dates.SecondLocator(bysecond=range(0,60,1)))
+        adesc.fmt_xdata = matplotlib.dates.DateFormatter('%H:%M:%S')
+
 def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
                   labelFirstNSamples=0, labelIncrement=1, convert=True,
                   field='auto', plotrange=[0,0,0,0], antenna=0, scan=None,
@@ -287,7 +337,7 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
     uniqueTimes, uniqueTimesIndices = np.unique(times, return_index=True)
     if (debug):
         print("Mean time: %f, MJD = %f =  %s" % (np.mean(uniqueTimes),np.mean(uniqueTimes)/86400.,
-                                                 mjdSecondsToMJDandUT(np.mean(uniqueTimes))[1]))
+                                                 au.mjdSecondsToMJDandUT(np.mean(uniqueTimes))[1]))
     timeSortedIndices = np.argsort(uniqueTimes)
 
     # single-antenna times (sorted by time)
@@ -887,7 +937,8 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
         pb.xlabel('Universal Time on %s' % (mjdsecToUT(times[0]).split()[0]))
         pb.ylabel('Angle from origin (arcsec)')
         adesc.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
-        au.setXaxisTimeTicks(adesc, np.min(times), np.max(times))
+        #au.setXaxisTimeTicks(adesc, np.min(times), np.max(times))
+        setXaxisTimeTicks(adesc, np.min(times), np.max(times)) #<DZLIU>#
         y0,y1 = pb.ylim()
         for s in list(timesforscan.keys()):
             b = timesforscan[s]['begin']
@@ -902,10 +953,12 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
             newEndTime = timesforscan[scansToUse[-1]]['end'] + 20
             newlimits = pb.date2num(mjdSecondsListToDateTime([newStartTime, newEndTime]))
             pb.xlim(newlimits)
-            au.setXaxisTimeTicks(adesc, newStartTime, newEndTime)
+            #au.setXaxisTimeTicks(adesc, newStartTime, newEndTime)
+            setXaxisTimeTicks(adesc, newStartTime, newEndTime) #<DZLIU>#
         else:
             pb.xlim(pb.date2num(mjdSecondsListToDateTime(timerange)))
-            au.setXaxisTimeTicks(adesc, timerange[0], timerange[1])
+            #au.setXaxisTimeTicks(adesc, timerange[0], timerange[1])
+            setXaxisTimeTicks(adesc, timerange[0], timerange[1]) #<DZLIU>#
 
         adesc.xaxis.grid(True,which='major')
         adesc.yaxis.grid(True,which='major')

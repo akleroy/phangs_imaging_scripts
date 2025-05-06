@@ -1609,8 +1609,19 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         except ValueError:
             xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, pickFirstRaster=False, plotfile=plotfile)
     else:
-        casaStuff.concat(vis = Msnames, concatvis = 'Msnames.cal'+'.'+name_line)
-        xSampling, ySampling, maxsize = getTPSampling('Msnames.cal'+'.'+name_line, showplot=False, plotfile=plotfile)
+        #casaStuff.concat(vis = Msnames, concatvis = 'Msnames.cal'+'.'+name_line)
+        #xSampling, ySampling, maxsize = getTPSampling('Msnames.cal'+'.'+name_line, showplot=False, plotfile=plotfile)
+
+        # Try concatenating MSs to handle the too many files issue in CASA 5
+        ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.ms_concat'
+        if os.path.exists(ms_concat_filename):
+            shutil.rmtree(ms_concat_filename)
+        casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
+        infiles = ms_concat_filename
+        logger.info('Msnames: %s, N=%d, concatenated: %s'%(Msnames, len(Msnames), ms_concat_filename))
+
+        xSampling, ySampling, maxsize = getTPSampling(ms_concat_filename, showplot=False, plotfile=plotfile)
+        logger.info('xSampling: %s, ySampling: %s, maxsize: %s'%(str(xSampling), str(ySampling), str(maxsize)))
 
 
     # Read frequency
@@ -1655,18 +1666,8 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
 
     if os.path.exists('ALMA_TP.'+source+'.'+name_line+suffix+'.image'):
         shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
-
-    # Try concatenating MSs to handle the too many files issue in CASA 5 -- TODO: using 10 as the threshold number of MS files
-    if len(Msnames) > 10:
-        ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.ms_concat'
-        if os.path.exists(ms_concat_filename):
-            shutil.rmtree(ms_concat_filename)
-        casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
-        infiles = ms_concat_filename
-        logger.info('Msnames: %s, N=%d, concatenated: %s'%(Msnames, len(Msnames), ms_concat_filename))
-    else:
-        infiles = Msnames
-        logger.info('Msnames: %s, N=%d'%(Msnames, len(Msnames)))
+    if os.path.exists('ALMA_TP.'+source+'.'+name_line+suffix+'.image.compleximage'):
+        shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image.compleximage')
     
     # CASA 6? has a better tsdimaging function, use it if possible
     if hasattr(casaStuff, 'tsdimaging'):
@@ -1684,7 +1685,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
     func_sdimaging(
-        infiles = Msnames,
+        infiles = infiles,
         mode = 'velocity',
         nchan = nchans_vel,
         width = str(chan_dv_kms)+'km/s',
