@@ -203,7 +203,7 @@ def noise_for_cube(
         data=data, mask=mask, method=method, niter=niter)
 
     if np.isnan(this_noise):
-        raise Exception(f"Returned nan for noise: {this_noise}")
+        raise Exception("Returned nan for noise: {}".format(this_noise))
 
     return (this_noise)
 

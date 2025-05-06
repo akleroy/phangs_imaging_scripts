@@ -24,6 +24,7 @@ Last modifications:
                 are not needed for Cycle 7 data.
   - 01.07.2021: Adapted to phangs alma pipeline, renamed the code as casaSingleDishRoutines, by D. Liu.
   - 02.07.2021: Trying to adapt for CASA 5, renamed the code as casaSingleDishNewRoutines, by D. Liu.
+  - 14.02.2025: Some updates to reduce multiple lines in EBs.
 
 Still need to do (probably outdated):
   - Work on errors when files are not found, where asdm import did not work fine, etc.
@@ -85,7 +86,8 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 es = au.stuffForScienceDataReduction()
 
-from .utilsSingleDish import getTPSampling
+from .utilsSingleDish import getTPSampling #20250214
+#from analysisUtils import getTPSampling
 
 # CASA stuff
 from . import casaStuff
@@ -610,9 +612,10 @@ def extract_jyperk(filename, spw_line, pipeline):
         val_arr = []
         if os.path.isfile(file_script) == False:
             filetgz = glob.glob("*auxproducts.tgz")
-            tar = tarfile.open(filetgz[0])
-            tar.extractall()
-            tar.close()
+            if len(filetgz) > 0:
+                tar = tarfile.open(filetgz[0])
+                tar.extractall()
+                tar.close()
 
             # Check if it's still not there or search for jyperk_query.csv
             if not os.path.exists(file_script):
@@ -1000,7 +1003,8 @@ def gen_tsys_and_flag(filename, spws_info, pipeline, flag_dir='', flag_file='', 
     logger.info("2.3 Initial flagging, reading flags in file file_flags.py. You can modify this file to add more flags")
     extract_flagging(filename, pipeline, flag_dir=flag_dir, flag_file=flag_file)    # Extract flags from original ALMA calibration script (sdflag entries)
     if os.path.exists(path_script+'file_flags.py'):
-        execfile(path_script+'file_flags.py')    #<TODO><DZLIU>#
+        #execfile(path_script+'file_flags.py')    #<TODO><DZLIU>#
+        exec(open(path_script+'file_flags.py').read())
 
     # 2.4 Create Tsys map
     logger.info("2.4 Creating Tsysmaps" )
@@ -1159,8 +1163,8 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
     logger.info("=========================================================")
     logger.info("Current directory: "+os.getcwd())
 
-    if os.path.exists('done_step_4_for_'+filename[0:-3]):
-        logger.info('Found file: done_step_4_for_'+filename[0:-3]+'. Will not re-do step 4.')
+    if os.path.exists('done_step_4_for_'+filename[0:-3]+'_'+name_line):
+        logger.info('Found file: done_step_4_for_'+filename[0:-3]+'_'+name_line+'. Will not re-do step 4.')
         return
 
     if ant_list is None:
@@ -1189,7 +1193,7 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
 
     # Defining extensions
     fin    = fsuffix+'.2'
-    finout = fsuffix+'.3'
+    finout = fsuffix+'.3'+'.'+name_line
 
     if len(ant_list) == 0:
         ant_list = [None]
@@ -1310,21 +1314,21 @@ def extract_cube(filename, source, name_line, ant_list=None, freq_rest=None, spw
 
         # end for ant loop
 
-    with open('done_step_4_for_'+filename[0:-3], 'w') as outlogfile:
+    with open('done_step_4_for_'+filename[0:-3]+'_'+name_line, 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
 
 #-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 # Step 5 Baseline correction
 #-*-*-*-*-*-*-*-*-*-*
 
-def baseline(filename, source, ant_list=None, freq_rest=None, spws_info=None, vel_source=None, vel_line=None, bl_order=1, doplots=True):
+def baseline(filename, source, name_line, ant_list=None, freq_rest=None, spws_info=None, vel_source=None, vel_line=None, bl_order=1, doplots=True):
     logger.info("================================")
     logger.info("= Step 5 - Baseline correction =")
     logger.info("================================")
     logger.info("Current directory: "+os.getcwd())
 
-    if os.path.exists('done_step_5_for_'+filename[0:-3]):
-        logger.info('Found file: done_step_5_for_'+filename[0:-3]+'. Will not re-do step 5.')
+    if os.path.exists('done_step_5_for_'+filename[0:-3]+'_'+name_line):
+        logger.info('Found file: done_step_5_for_'+filename[0:-3]+'_'+name_line+'. Will not re-do step 5.')
         return
 
     if ant_list is None:
@@ -1350,8 +1354,8 @@ def baseline(filename, source, ant_list=None, freq_rest=None, spws_info=None, ve
         os.makedirs('plots') # folder containing all plots
 
     # Definition of extension
-    fin    = fsuffix+'.3'
-    finout = fsuffix+'.4'
+    fin    = fsuffix+'.3'+'.'+name_line
+    finout = fsuffix+'.4'+'.'+name_line
 
     if len(ant_list) == 0:
         ant_list = [None]
@@ -1376,13 +1380,23 @@ def baseline(filename, source, ant_list=None, freq_rest=None, spws_info=None, ve
         rm_data_dir(filename_out)
 
         logger.info('Running sdbaseline to make '+filename_out+', spw = '+str(spw_extr)+', order = '+str(bl_order))
-        casaStuff.sdbaseline(infile = filename_in,
+        try:
+            casaStuff.sdbaseline(infile = filename_in,
                              datacolumn = getDataColumnForSDBaseline(filename_in),
                              spw = spw_extr,
                              maskmode = 'list',
                              blfunc = 'poly',
                              order = bl_order,
                              outfile = filename_out,
+                             overwrite = True)
+        except: # CASA 4.7.X sdbaseline has no datacolumn arg
+            casaStuff.sdbaseline(infile = filename_in, 
+                             #datacolumn = getDataColumnForSDBaseline(filename_in), 
+                             spw = spw_extr, 
+                             maskmode = 'list', 
+                             blfunc = 'poly', 
+                             order = bl_order, 
+                             outfile = filename_out, 
                              overwrite = True)
 
         if doplots:
@@ -1417,21 +1431,21 @@ def baseline(filename, source, ant_list=None, freq_rest=None, spws_info=None, ve
 
         # end for ant loop
 
-    with open('done_step_5_for_'+filename[0:-3], 'w') as outlogfile:
+    with open('done_step_5_for_'+filename[0:-3]+'_'+name_line, 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
 
 #-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 # Step 6 Concatenate antennas
 #-*-*-*-*-*-*-*-*-*-*
-def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_source=None, pipeline=True):
+def concat_ants(filename, name_line, ant_list=None, freq_rest=None, spws_info=None, vel_source=None, pipeline=True):
 
     logger.info("========================================================")
     logger.info("= Step 6 - Concatenate antennas and K to Jy conversion =")
     logger.info("========================================================")
     logger.info("Current directory: "+os.getcwd())
 
-    if os.path.exists('done_step_6_for_'+filename[0:-3]):
-        logger.info('Found file: done_step_6_for_'+filename[0:-3]+'. Will not re-do step 6.')
+    if os.path.exists('done_step_6_for_'+filename[0:-3]+'_'+name_line):
+        logger.info('Found file: done_step_6_for_'+filename[0:-3]+'_'+name_line+'. Will not re-do step 6.')
         return
 
     if ant_list is None:
@@ -1450,8 +1464,8 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
         raise Exception('Error! vel_source is not defined when calling extract_cube()!')
 
     # Defining extensions
-    fin    = fsuffix+'.4'
-    finout = '.ms.5'
+    fin    = fsuffix+'.4'+'.'+name_line
+    finout = '.ms.5'+'.'+name_line
 
     # check antenna list
     #if len(ant_list) == 0:
@@ -1479,9 +1493,9 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
         # Concatenation
         logger.info("6.2 Concatenating antennas")
         #lis_fils = [f for f in os.listdir(".") if f.endswith('.ms.5') and f.startswith(filename)]
-        rm_data_dir(filename+'.cal')
-        logger.info('Running concat to make '+filename+'.cal')
-        casaStuff.concat(vis = lis_fils, concatvis = filename+'.cal')
+        rm_data_dir(filename+'.cal'+'.'+name_line)
+        logger.info('Running concat to make '+filename+'.cal'+'.'+name_line)
+        casaStuff.concat(vis = lis_fils, concatvis = filename+'.cal'+'.'+name_line)
     else:
         filename_in  = filename+'.allant'+fin
         filename_out = filename+'.allant'+finout
@@ -1494,25 +1508,25 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
     spw_line = get_spw_line(vel_source, freq_rest, spws_info) # get the original spw ID
     jyperk = extract_jyperk(filename, spw_line, pipeline)
 
-    cp_data_dir(filename+'.cal', filename+'.cal.jy')
+    cp_data_dir(filename+'.cal'+'.'+name_line, filename+'.cal.jy'+'.'+name_line)
 
-    logger.info('Running scaleAutocorr on '+filename+'.cal.jy')
+    logger.info('Running scaleAutocorr on '+filename+'.cal.jy'+'.'+name_line)
     for ant in jyperk.keys():
         logger.info('ant: %s, spw_line: %s, jyperk[ant][spw_line][\'mean\']: %s'%(ant, spw_line, jyperk[ant][spw_line]['mean']))
         if precasa5:
-            scaleAutocorr(vis=filename+'.cal.jy', scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=spw_line) # in asap spw number does not change after split?
+            scaleAutocorr(vis=filename+'.cal.jy'+'.'+name_line, scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=spw_line) # in asap spw number does not change after split?
         else:
-            scaleAutocorr(vis=filename+'.cal.jy', scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=0) # spw is always 0
+            scaleAutocorr(vis=filename+'.cal.jy'+'.'+name_line, scale=jyperk[ant][spw_line]['mean'], antenna=ant, spw=0) # spw is always 0
 
 
     # Rename line spw to spw=0
     logger.info("6.4 Renaming spw of line "+str(spw_line)+" to 0")
-    fin = '.cal.jy'
-    finout = '.cal.jy.tmp'
+    fin = '.cal.jy'+'.'+name_line
+    finout = '.cal.jy.tmp'+'.'+name_line
     cp_data_dir(filename+fin, filename+finout)
 
-    fin = '.cal.jy.tmp'
-    finout = '.cal.jy'
+    fin = '.cal.jy.tmp'+'.'+name_line
+    finout = '.cal.jy'+'.'+name_line
     rm_data_dir(filename+finout)
     logger.info('Running split to make '+filename+finout+', datacolumn is '+getDataColumnForSplit(filename+fin))
     if precasa5:
@@ -1531,22 +1545,27 @@ def concat_ants(filename, ant_list=None, freq_rest=None, spws_info=None, vel_sou
     casaStuff.listobs(vis=filename+finout, listfile=filename+finout+'.listobs.txt')
 
 
-    with open('done_step_6_for_'+filename[0:-3], 'w') as outlogfile:
+    with open('done_step_6_for_'+filename[0:-3]+'_'+name_line, 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
 
 #-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 # Step 7 - Imaging
 #-*-*-*-*-*-*-*-*-*-*
 def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms, chan_dv_kms, freq_rest_im,
-        joint_imaging_dir='', doplots=False):
+        joint_imaging_dirs=None, joint_imaging_suffix='', doplots=False):
 
     logger.info("====================")
     logger.info("= Step 7 - Imaging =")
     logger.info("====================")
     logger.info("Current directory: "+os.getcwd())
 
-    if os.path.exists('done_step_7'):
-        logger.info('Found file: done_step_7. Will not re-do step 7.')
+    if joint_imaging_suffix == '':
+        suffix = ''
+    else:
+        suffix = '.' + joint_imaging_suffix.lstrip('.')
+
+    if os.path.exists('done_step_7'+'_'+name_line+suffix):
+        logger.info('Found file: done_step_7'+'_'+name_line+suffix+'. Will not re-do step 7.')
         return
 
     #if checkdir(os.getcwd(),path_galaxy) == False:
@@ -1557,7 +1576,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
 
     # Search for files already calibrated
     path = '.'
-    Msnames = [f for f in os.listdir(path) if f.endswith('.cal.jy')]
+    Msnames = [f for f in os.listdir(path) if f.endswith('.cal.jy'+'.'+name_line)]
 
     if doplots:
         plotfile = True
@@ -1565,15 +1584,45 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         plotfile = ''
 
     # If 2 SGs have to be imaged together, look for *cal.jy files for the second part of the galaxy
-    if joint_imaging_dir != '':
-        logger.info("Two Science goals are considerated to create the final image of the galaxy "+source)
-        path2 = joint_imaging_dir # ori_path+'/../'+path_galaxy2+'calibration/' # <TODO> for NGC4254b NGC4321b NGC3627b
-        logger.info('PATH to 2nd part of the galaxy '+path2)
-        Msnames2 = [path2+f for f in os.listdir(path2) if f.endswith('.cal.jy')]
-        Msnames = Msnames+Msnames2
-    logger.info('Msnames: %s'%(Msnames))
+    if joint_imaging_dirs is None:
+        joint_imaging_dirs = []
+    if len(joint_imaging_dirs) > 0:
+        logger.info("More than one Science goals are considerated to create the final image of the galaxy "+source)
+        for path2 in joint_imaging_dirs:
+            #path2 = joint_imaging_dir # ori_path+'/../'+path_galaxy2+'calibration/' # <TODO> for NGC4254b NGC4321b NGC3627b
+            logger.info('PATH for join imaging '+path2)
+            Msnames2 = [path2+f for f in os.listdir(path2) if f.endswith('.cal.jy'+'.'+name_line)]
+            for Msname in Msnames: 
+                if Msname in Msnames2:
+                    Msnames2.remove(Msname)
+            Msnames = Msnames+Msnames2
+    logger.info('Msnames: %s N=%d'%(Msnames, len(Msnames)))
     # Definition of parameters for imaging
-    xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, plotfile=plotfile) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
+    #xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, plotfile=plotfile) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
+    # 
+    # 20250214 concat everything then getTPSampling
+    if len(Msnames) == 0:
+        raise Exception('Error! No Msnames to do imaging!')
+    elif len(Msnames) == 1:
+        try:
+            xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, plotfile=plotfile)
+        except ValueError:
+            xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, pickFirstRaster=False, plotfile=plotfile)
+    else:
+        #casaStuff.concat(vis = Msnames, concatvis = 'Msnames.cal'+'.'+name_line)
+        #xSampling, ySampling, maxsize = getTPSampling('Msnames.cal'+'.'+name_line, showplot=False, plotfile=plotfile)
+
+        # Try concatenating MSs to handle the too many files issue in CASA 5
+        ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.ms_concat'
+        if os.path.exists(ms_concat_filename):
+            shutil.rmtree(ms_concat_filename)
+        casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
+        infiles = ms_concat_filename
+        logger.info('Msnames: %s, N=%d, concatenated: %s'%(Msnames, len(Msnames), ms_concat_filename))
+
+        xSampling, ySampling, maxsize = getTPSampling(ms_concat_filename, showplot=False, plotfile=plotfile)
+        logger.info('xSampling: %s, ySampling: %s, maxsize: %s'%(str(xSampling), str(ySampling), str(maxsize)))
+
 
     # Read frequency
     #msmd.open(Msnames[0])
@@ -1615,22 +1664,28 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     start_vel      = source_vel_kms-vwidth_kms/2
     nchans_vel     = int(round(vwidth_kms/chan_dv_kms))
 
-    if os.path.exists('ALMA_TP.'+source+'.'+name_line+'.image'):
-        shutil.rmtree('ALMA_TP.'+source+'.'+name_line+'.image')
+    if os.path.exists('ALMA_TP.'+source+'.'+name_line+suffix+'.image'):
+        shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
+    if os.path.exists('ALMA_TP.'+source+'.'+name_line+suffix+'.image.compleximage'):
+        shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image.compleximage')
+    
+    # CASA 6? has a better tsdimaging function, use it if possible
+    if hasattr(casaStuff, 'tsdimaging'):
+        func_sdimaging = casaStuff.tsdimaging
+        outfile = 'ALMA_TP.'+source+'.'+name_line+suffix # tsdimaging will output '.image' and '.weight'
+        outimage = outfile+'.image'
+    else:
+        func_sdimaging = casaStuff.sdimaging
+        outfile = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
+        outimage = outfile
 
-    # Try concatenating MSs to handle the too many files issue in CASA 5
-    ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+'.ms_concat'
-    #if os.path.exists(ms_concat_filename):
-    #    shutil.rmtree(ms_concat_filename)
-    #casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
-
-
+    # Start imaging
     logger.info("Start imaging")
     logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
     logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
-    logger.info('Msnames: %s'%(Msnames))
-    casaStuff.tsdimaging(infiles = ms_concat_filename,
+    func_sdimaging(
+        infiles = infiles,
         mode = 'velocity',
         nchan = nchans_vel,
         width = str(chan_dv_kms)+'km/s',
@@ -1644,10 +1699,11 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         imsize = imsize,
         cell = str(cell)+'arcsec',
         overwrite = True,
-        outfile = 'ALMA_TP.'+source+'.'+name_line+'.image')
+        outfile = outfile)
 
     # Correct the brightness unit in the image header
-    casaStuff.imhead(imagename = 'ALMA_TP.'+source+'.'+name_line+'.image',
+    casaStuff.imhead(
+        imagename = outimage, # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image',
         mode = 'put',
         hdkey = 'bunit',
         hdvalue = 'Jy/beam')
@@ -1663,18 +1719,18 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         fwhmfactor=fwhmfactor,
         diameter=diameter)
 
-    #ia.open('ALMA_TP.'+source+'.'+name_line+'.image')
+    #ia.open('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
     #ia.setrestoringbeam(major = str(sfbeam)+'arcsec', minor = str(sfbeam)+'arcsec', pa = '0deg')
     #ia.done()
     myia = au.createCasaTool(casaStuff.iatool)
-    myia.open('ALMA_TP.'+source+'.'+name_line+'.image')
+    myia.open(outimage) # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
     myia.setrestoringbeam(major = str(sfbeam)+'arcsec', minor = str(sfbeam)+'arcsec', pa = '0deg')
     myia.close()
 
     if doplots == True:
-        casaStuff.viewer('ALMA_TP.'+source+'.'+name_line+'.image')
+        casaStuff.viewer(outimage) # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
 
-    with open('done_step_7', 'w') as outlogfile:
+    with open('done_step_7'+'_'+name_line+suffix, 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
 
 
@@ -1682,15 +1738,20 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
 # Step 8 - Export fits file
 #-*-*-*-*-*-*-*-*-*-*-*-*-*
 
-def export_fits(name_line, source, output_file):
+def export_fits(name_line, source, output_file, joint_imaging_suffix=''):
 
     logger.info("========================")
     logger.info("= Step 8 - Export FITS =")
     logger.info("========================")
     logger.info("Current directory: "+os.getcwd())
 
-    if os.path.exists('done_step_8'):
-        logger.info('Found file: done_step_8. Will not re-do step 8.')
+    if joint_imaging_suffix == '':
+        suffix = ''
+    else:
+        suffix = '.' + joint_imaging_suffix.lstrip('.')
+
+    if os.path.exists('done_step_8'+'_'+name_line+suffix):
+        logger.info('Found file: done_step_8'+'_'+name_line+suffix+'. Will not re-do step 8.')
         return
 
     #if os.path.isdir(ori_path+'/'+path_dataproduct) == False:
@@ -1699,10 +1760,12 @@ def export_fits(name_line, source, output_file):
     #if checkdir(os.getcwd(),path_galaxy) == False:
     #    os.chdir('../'+path_galaxy+'calibration')
 
-    #
-    imagename = 'ALMA_TP.'+source+'.'+name_line+'.image'
-    #weightname = 'ALMA_TP.'+source+'.'+name_line+'.image.weight'
-    weightname = 'ALMA_TP.'+source+'.'+name_line+'.weight'
+    # Prepare to output image and weight data
+    imagename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
+    if os.path.exists(imagename+'.weight'):
+        weightname = imagename+'.weight'
+    else:
+        weightname = 'ALMA_TP.'+source+'.'+name_line+suffix+'.weight'
     imagefile = imagename + '.fits'
     weightfile = weightname + '.fits'
 
@@ -1723,7 +1786,7 @@ def export_fits(name_line, source, output_file):
 
     logger.info('> Copied FITS to "%s"'%(output_file))
 
-    with open('done_step_8', 'w') as outlogfile:
+    with open('done_step_8'+'_'+name_line+suffix, 'w') as outlogfile:
         outlogfile.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ' ' + time.strftime('%Z'))
 
 
@@ -1748,6 +1811,8 @@ def run_ALMA_TP_tools(
         freq_rest_im = np.nan,
         name_line = '',
         output_file = '',
+        joint_imaging_dirs = None,
+        joint_imaging_suffix = '', 
         do_step = [],
         EBexclude = None,
     ):
@@ -1817,6 +1882,13 @@ def run_ALMA_TP_tools(
             if not dosplitants:
                 if not precasa5:
                     vec_ants = None
+            # 
+            # 20250219 known problematic datasets
+            if vec_ants is not None:
+                if filename == 'uid___A002_Xd06716_X126.ms':
+                    if 'PM02' in vec_ants:
+                        print('** removing known problematic dataset: {} {}'.format(filename, 'PM02'))
+                        vec_ants.remove('PM02')
             #
             if 3 in do_step:
                 counts2kelvin(filename, ant_list=vec_ants,
@@ -1827,23 +1899,23 @@ def run_ALMA_TP_tools(
                                 freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, vel_cube=vel_cube, doplots=doplots)
             #
             if 5 in do_step:
-                baseline(filename, source, ant_list=vec_ants,
+                baseline(filename, source, name_line, ant_list=vec_ants,
                                 freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, vel_line=vel_line, bl_order=bl_order,
                          doplots=doplots)
             #
             if 6 in do_step:
                 # concat ants and convert flux unit to Jy
-                concat_ants(filename, ant_list=vec_ants,
+                concat_ants(filename, name_line, ant_list=vec_ants,
                                 freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, pipeline=pipeline)
             #
     #
     vel_source = read_vel_source(filename, source)
     #
     if 7 in do_step:
-        imaging(source, name_line, phase_center, vel_source, source_vel_kms, vwidth_kms, chan_dv_kms, freq_rest_im, doplots=doplots)
+        imaging(source, name_line, phase_center, vel_source, source_vel_kms, vwidth_kms, chan_dv_kms, freq_rest_im, joint_imaging_dirs=joint_imaging_dirs, joint_imaging_suffix=joint_imaging_suffix, doplots=doplots)
     #
     if 8 in do_step:
-        export_fits(name_line, source, output_file)
+        export_fits(name_line, source, output_file, joint_imaging_suffix=joint_imaging_suffix)
     #
     logger.info("> Changing directory to "+ori_path+'')
     os.chdir(ori_path)

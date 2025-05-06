@@ -10,11 +10,16 @@
 
 # Obtain a version tuple (note the syntax change from < 6 to > 6)
 
-from packaging import version
+try:
+    from packaging import version
+except:
+    class version:
+        def parse(self, vstr):
+            return tuple(map(int, vstr.replace('-','.').split('.')[0:3]))
 
 try:
     from taskinit import *
-except ModuleNotFoundError:
+except:
     pass
 
 if ('casa' in locals()) or ('casa' in globals()):
