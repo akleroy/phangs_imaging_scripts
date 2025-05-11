@@ -139,6 +139,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         this_line = self._kh.get_line_tag_for_line_product(product)
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target, check_parent=False)
         max_chanwidth_kms = self._kh.get_channel_width_for_line_product(product)
+        #joint_imaging_dirs = self._kh.get_joint_imaging_dirs_for_singledish_config()
+        #joint_imaging_suffix = self._kh.get_joint_imaging_suffix_for_singledish_config()
         
         line_wing = 200.0 # km/s TODO
         vlow1 = vsys - vwidth/2.0
@@ -189,6 +191,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         kwargs['freq_rest_im']   = freq_rest_GHz                       # rest frequency in GHz for imaging
         kwargs['name_line']      = name_line                           # Name of the line, to be used for naming the files -- will not be used anymore
         kwargs['output_file']    = output_file                         # Output file path
+        #kwargs['joint_imaging_dirs'] = joint_imaging_dirs              # Do a joint imaging by including *.cal.jy in joint_imaging_dir
+        #kwargs['joint_imaging_suffix'] = joint_imaging_suffix          # Suffix after name_line in the output file name.
         kwargs['do_step'] = []
         
         # see if there is anything defined in the config_definitions key
