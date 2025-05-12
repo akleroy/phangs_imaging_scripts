@@ -75,6 +75,10 @@
 # This is useful when multiple targets emit in the same transition along
 # a line-of-sight (e.g., Galactic and extragalactic 21-cm HI).
 
+# flag_edge_fraction: float between 0.0 and 0.5
+# This is an optional input to avoid using the edges of a SPW for
+# fitting the continuum in uvcontsub
+
 # ------------------------------------------------------------------------
 # cont_product : a continuum data product
 # ------------------------------------------------------------------------

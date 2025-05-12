@@ -667,12 +667,17 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         if combinespw:
             combine = 'spw'
 
+        flag_edge_fraction = self._kh.get_contsub_flagedgefraction(product=product)
+
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("u-v continuum subtraction for")
         logger.info("... file: " + infile)
         logger.info("... output: " + infile + '.contsub')
         logger.info("... excluding frequency ranges: " + str(ranges_to_exclude))
+        logger.info("... fitorder: " + str(fitorder))
+        logger.info("... combine: " + str(combine))
+        logger.info("... flag_edge_fraction: " + str(flag_edge_fraction))
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
@@ -687,7 +692,8 @@ class VisHandler(handlerTemplate.HandlerTemplate):
                 ranges_to_exclude=ranges_to_exclude,
                 overwrite=overwrite,
                 fitorder=fitorder,
-                combine=combine)
+                combine=combine,
+                flag_edge_fraction=flag_edge_fraction)
 
         return ()
 
