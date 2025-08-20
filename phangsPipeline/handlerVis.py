@@ -622,7 +622,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
             for this_range in manual_range_to_exclude:
                 if not len(this_range) == 2:
                     raise ValueError("Parameter `exclude_freq_ranges_ghz` in target_definitions.txt must be a list"
-                                     f" of 2 element lists with a low and high frequency. Given: {this_range}")
+                                     " of 2 element lists with a low and high frequency. Given: "+str(this_range))
                 freq_low = min(this_range)
                 freq_high = max(this_range)
 

@@ -937,6 +937,7 @@ def batch_extract_line(
             this_scheme = schemes[this_infile][this_spw]
 
             # Record the channel width in freq for later
+            
             chan_width_ghz_final = this_scheme['chan_width_ghz'] * this_scheme['binfactor']
 
             # Specify output file and check for existence
