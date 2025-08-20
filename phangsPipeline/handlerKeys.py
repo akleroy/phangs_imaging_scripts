@@ -152,7 +152,7 @@ class KeyHandler:
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
-    
+
     def _parse_path(self, input_path):
         """
         Parse relative path.
@@ -1842,6 +1842,28 @@ class KeyHandler:
             logging.info('No exclude_freq_ranges_ghz found for ' + product + ' .')
 
         return exclude_freq_ranges_ghz
+
+    def get_contsub_flagedgefraction(self, product=None):
+        """
+        Get the frequency range to force excluding for continuum subtraction for a line product.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+
+        flag_edge_fraction = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'flag_edge_fraction' in self._config_dict['line_product'][product]:
+                    flag_edge_fraction = self._config_dict['line_product'][product]['flag_edge_fraction']
+
+        if flag_edge_fraction is None:
+            logging.info('No flag_edge_fraction found for ' + product + ' Defaults to 0.0.')
+            flag_edge_fraction = 0.0
+
+        return flag_edge_fraction
 
     def get_contsub_fitorder(self, product=None):
         """

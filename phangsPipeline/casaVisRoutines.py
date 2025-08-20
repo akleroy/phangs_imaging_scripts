@@ -10,6 +10,8 @@ import shutil
 import inspect
 import glob
 import logging
+from packaging import version
+
 
 import numpy as np
 from scipy.ndimage import label
@@ -389,12 +391,34 @@ def concat_ms(
 
 
 def contsub(
-        infile=None, outfile=None, ranges_to_exclude=[], solint='int',
+        infile=None, outfile=None,
+        ranges_to_exclude=[],
+        flag_edge_fraction=0.0,
+        solint='int',
         fitorder=0, combine='', overwrite=False):
     """
     Carry out uv continuum subtraction on a measurement set. First
     figures out channels corresponding to spectral lines for a
     provided suite of bright lines.
+
+    Parameters
+    ----------
+    infile : str
+        The input measurement set data folder.
+    outfile : str
+        The output measurement set data folder.
+    ranges_to_exclude : list
+        List of frequency ranges to exclude from the fit.
+    flag_edge_fraction : float
+        Fraction of the data to flag at the beginning and end of the fit.
+    solint : str
+        The integration time over which to fit the continuum.
+    fitorder : int
+        The order of the fit. Default is 0.
+    combine : str
+        The method to combine channels. Default is ''.
+    overwrite : bool
+        If True, overwrite existing output data.
     """
 
     # Error and file existence checking
@@ -430,18 +454,32 @@ def contsub(
 
     spw_flagging_string = spw_string_for_freq_ranges(
         infile=infile, freq_ranges_ghz=ranges_to_exclude,
+        complement=True, # default to complement for new uvcontsub task
+        flag_edge_fraction=flag_edge_fraction,
         )
 
     # uvcontsub, this outputs infile+'.contsub'
 
-    uvcontsub_params = {
-        'vis': infile,
-        'fitspw': spw_flagging_string,
-        'excludechans': True,
-        'combine': combine,
-        'fitorder': fitorder,
-        'solint': solint,
-        'want_cont': False}
+    # Pre 6.5.2
+    if version.parse(casaStuff.casa_version_str) < version.parse('6.5.2'):
+
+        uvcontsub_params = {
+            'vis': infile,
+            'fitspw': spw_flagging_string,
+            'excludechans': False, # now uses complement for channel selection.
+            'combine': combine,
+            'fitorder': fitorder,
+            'solint': solint,
+            'want_cont': False}
+    else:
+        # Post 6.5.2
+        uvcontsub_params = {
+            'vis': infile,
+            'outputvis': outfile,
+            'fitspec': spw_flagging_string,
+            'fitorder': fitorder,
+            'fitmethod': 'gsl'}  # or 'casacore'
+
     logger.info(
         "... running CASA "+'uvcontsub(' +
         ', '.join("{!s}={!r}".format(
@@ -683,8 +721,12 @@ def find_spws_for_science(
 
 
 def spw_string_for_freq_ranges(
-        infile=None, freq_ranges_ghz=[], just_spw=[],
-        complement=False, fail_on_empty=False):
+        infile=None,
+        freq_ranges_ghz=[],
+        just_spw=[],
+        flag_edge_fraction=0.0,
+        complement=False,
+        fail_on_empty=False):
     """
     Given an input measurement set, return the spectral
     List the spectral window and channels corresponding to the input
@@ -740,6 +782,14 @@ def spw_string_for_freq_ranges(
 
         if complement:
             mask_axis = np.invert(mask_axis)
+
+        # Additional edge flagging
+        if flag_edge_fraction > 0.0:
+            low_edge = int(np.ceil(mask_axis.size * flag_edge_fraction))
+            high_edge = int(np.floor(mask_axis.size * (1. - flag_edge_fraction)))
+
+            mask_axis[:low_edge] = False
+            mask_axis[high_edge:] = False
 
         if fail_on_empty:
             if np.sum(np.invert(mask_axis)) == 0:
@@ -833,9 +883,8 @@ def batch_extract_line(
         infile_list=[], outfile=None,
         target_chan_kms=None, restfreq_ghz=None, line=None,
         vsys_kms=None, vwidth_kms=None, vlow_kms=None, vhigh_kms=None,
-        method='regrid_then_rebin', exact=False,
-        freqtol='',
-        allow_freqtol_chanfrac=False, freqtol_chanfrac=0.2,
+        method='regrid_then_rebin', exact=False, freqtol='',
+        allow_freqtol_chanfrac=True, freqtol_chanfrac=0.2,
         clear_pointing=True, require_full_line_coverage=False,
         overwrite=False):
     """
@@ -888,7 +937,8 @@ def batch_extract_line(
             this_scheme = schemes[this_infile][this_spw]
 
             # Record the channel width in freq for later
-            chan_width_ghz = this_scheme['chan_width_ghz']
+            
+            chan_width_ghz_final = this_scheme['chan_width_ghz'] * this_scheme['binfactor']
 
             # Specify output file and check for existence
             this_outfile = this_infile+'.temp_spw'+str(this_spw).strip()
@@ -922,16 +972,13 @@ def batch_extract_line(
 
     # Allow a small tolerance in the channel width
     if allow_freqtol_chanfrac:
-        freqtol_val = freqtol_chanfrac * chan_width_ghz
+        freqtol_val = freqtol_chanfrac * chan_width_ghz_final
         freqtol = f"{freqtol_val}GHz"
 
     # Concatenate and combine the output data sets
-
-    concat_ms(infile_list=split_file_list,
-              outfile=outfile,
-              freqtol=freqtol,
-              overwrite=overwrite,
-              copypointing=(not clear_pointing))
+    concat_ms(
+        infile_list=split_file_list, outfile=outfile, freqtol=freqtol,
+        overwrite=overwrite, copypointing=(not clear_pointing))
 
     # Clean up, deleting intermediate files
 

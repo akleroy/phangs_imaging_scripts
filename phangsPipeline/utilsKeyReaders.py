@@ -726,6 +726,7 @@ def read_config_key(fname='', existing_dict=None, delim=None):
                 'combinespw': False,
                 'lines_to_flag': [],
                 'exclude_freq_ranges_ghz': [],
+                'flag_edge_fraction': 0.0,
             }
 
         if this_type == "cont_product":

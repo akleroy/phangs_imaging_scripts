@@ -145,9 +145,8 @@ if casa_version[0] >= 6:
 
     # from recipes.almahelpers import tsysspwmap
 
-    # TODO: For now, uvcontsub doesn't work as we want it in newer CASA versions, fall back to old version
-    if version.parse(casa_version_str) >= version.parse('6.5.2'):
-        from casatasks import uvcontsub_old as uvcontsub
+    # if version.parse(casa_version_str) >= version.parse('6.5.2'):
+    #     from casatasks import uvcontsub_old as uvcontsub
 
     # sdintimaging imports
 
