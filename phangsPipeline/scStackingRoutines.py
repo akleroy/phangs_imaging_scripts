@@ -198,10 +198,10 @@ def ShuffleCube(
 
         # ... phase shift the mask
         shifted_mask = \
-            channelShiftVec(missing_data, np.atleast_1d(this_shift))
+            channelShiftVec(missing_data*1.0, np.atleast_1d(this_shift))
 
         # ... apply the mask
-        shifted_spectra[shifted_mask > 0] = np.nan
+        shifted_spectra[shifted_mask>0.5] = np.nan
 
         # ... save in the cube
         new_cube[:, this_y, this_x] = shifted_spectra
