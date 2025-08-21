@@ -394,7 +394,7 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
 
     -----------
 
-    data : string or SpectralCube
+    cube : string or SpectralCube
 
         The original data cube.
 
