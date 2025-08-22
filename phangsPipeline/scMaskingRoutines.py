@@ -450,7 +450,7 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
         vfield = vfield_in
 
     # If vfield is a Projection reproject it onto the cube and match units
-    if type(vfield) is Projection:
+    if isinstance(vfield, Projection):
         # ... NB making a dummy moment here because of issues with
         # reproject and dimensionality. Could instead do header
         # manipulation and feed in "cube"
