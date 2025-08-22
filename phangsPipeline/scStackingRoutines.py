@@ -171,6 +171,7 @@ def ShuffleCube(
     # --------------------------------------------------    
     
     # Initialize output
+    # NOTE: this will cause memory issues for large cubes. Something to address in the future.
     new_cube = np.empty(cube.shape)
     new_cube.fill(np.nan)
 
