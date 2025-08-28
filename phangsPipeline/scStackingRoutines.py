@@ -204,6 +204,18 @@ def ShuffleCube(
         # ... apply the mask
         shifted_spectra[shifted_mask>0.5] = np.nan
 
+        # ... also mask the region where the spectrum "wrapped" due to the FFT
+
+        max_channel = float(len(spaxis))
+        channels = np.arange(max_channel)
+        channel_grid = np.tile(channels.reshape((len(spaxis),1)),(1,shifted_spectra.shape[1]))
+        shift_grid = np.tile(this_shift,(shifted_spectra.shape[0],1))
+
+        wrap_mask = (shift_grid >= 0.)*(channel_grid <= shift_grid) + \
+            (shift_grid < 0)*(channel_grid >= (max_channel + shift_grid - 1))
+        
+        shifted_spectra[wrap_mask > 0.5] = np.nan        
+        
         # ... save in the cube
         new_cube[:, this_y, this_x] = shifted_spectra
 

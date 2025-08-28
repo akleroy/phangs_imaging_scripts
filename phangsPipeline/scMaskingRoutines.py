@@ -433,7 +433,7 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
     else:
         cube = cube_in
 
-    # Get spectral information from the cube        
+    # Get spectral information from the cube
     spaxis = cube.spectral_axis
     spunit = spaxis.unit
     spvalue = spaxis.value
