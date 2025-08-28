@@ -206,7 +206,7 @@ def ShuffleCube(
 
         # ... also mask the region where the spectrum "wrapped" due to the FFT
 
-        max_channel = len(spaxis)*1.0
+        max_channel = float(len(spaxis))
         channels = np.arange(max_channel)
         channel_grid = np.tile(channels.reshape((len(spaxis),1)),(1,shifted_spectra.shape[1]))
         shift_grid = np.tile(this_shift,(shifted_spectra.shape[0],1))
