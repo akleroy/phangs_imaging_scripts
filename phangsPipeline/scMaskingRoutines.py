@@ -11,11 +11,7 @@ import astropy.units as u
 from astropy.stats import mad_std
 from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
-<<<<<<< HEAD
 from spectral_cube import SpectralCube, Projection
-=======
-from spectral_cube import Projection,SpectralCube
->>>>>>> origin
 
 from phangsPipeline.pipelineVersion import tableversion, version
 
@@ -455,36 +451,10 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
     if type(vfield_in) == str:
         vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_hdu])
     else:
-<<<<<<< HEAD
         # reproject if it's a projection
         # if type(vfield) is Projection:
         #     vfield = convert_and_reproject(vfield, template=cube, unit=spunit)
         # else:
-=======
-        vfield = vfield_in
-
-    # If vfield is a Projection reproject it onto the cube and match units
-    if isinstance(vfield, Projection):
-        # ... NB making a dummy moment here because of issues with
-        # reproject and dimensionality. Could instead do header
-        # manipulation and feed in "cube"
-        dummy_mom0 = cube.moment(order=0)
-        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
-    else:
-
-        # If no units are attached to the vfield, guess that the
-        # units are the same as cube        
-        if type(vfield) != u.quantity.Quantity:
-            vfield = u.quantity.Quantity(vfield,spunit)
-        
-        # If a single value is supplied, turn it into a single-valued
-        # velocity field
-        if np.ndim(vfield.data) <= 1:
-            vfield = vfield.to(spunit)
-            vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
-        
-        # Just in case convert the units to match the cube
->>>>>>> origin
         vfield = vfield.to(spunit)
 
     # Check sizes
