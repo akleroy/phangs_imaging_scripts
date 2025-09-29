@@ -11,7 +11,11 @@ import astropy.units as u
 from astropy.stats import mad_std
 from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
+<<<<<<< HEAD
 from spectral_cube import SpectralCube, Projection
+=======
+from spectral_cube import Projection,SpectralCube
+>>>>>>> origin
 
 from phangsPipeline.pipelineVersion import tableversion, version
 
@@ -384,7 +388,8 @@ def mask_around_value(cube, target=None, delta=None):
 
     return(mask)
 
-def make_vfield_mask(cube, vfield, window,
+def make_vfield_mask(cube_in, vfield_in, window_in,
+                     vfield_hdu=0, window_hdu=0,
                      outfile=None, overwrite=True):
     """Make a mask that includes only pixels within +/- some velocity
     window of a provided velocity field, which can be two-d or one-d.
@@ -393,14 +398,16 @@ def make_vfield_mask(cube, vfield, window,
 
     -----------
 
-    data : string or SpectralCube
+    cube : string or SpectralCube
 
         The original data cube.
 
     vfield : float or two-d array or string
 
-        The velocity field to use as a template. If a string, it's
-        read as a file.
+        The velocity field to use as a template. If a string, it's read 
+        as a Projection and reprojected onto the cube. If it's a single 
+        value then this is broadcast across the whole map. If it's a 
+        two-d array it is assumed to be the velocity field.
 
     window : float
 
@@ -409,40 +416,75 @@ def make_vfield_mask(cube, vfield, window,
         span of the window equals the input window.
         The spectral units should match the velocity field units.
 
+
     Keywords:
     ---------
 
-    TBD
+    vfield_hdu : optional refers to the HDU of the velocity field if a
+    file name is supplied. Default 0.
+
+    window_hdu : optional refers to the HDU of the velocity window if
+    a file name is supplied. Default 0.
+
+    outfile : file name to write output mask to.
+
+    overwrite : flag to allow overwrite to rewrite files.
 
     """
 
     # -------------------------------------------------
-    # Get spectral information from the cube
+    # Read the cube if string are supplied
     # -------------------------------------------------
 
+    if type(cube_in) == str:
+        cube = SpectralCube.read(cube_in)
+    else:
+        cube = cube_in
+
+    # Get spectral information from the cube
     spaxis = cube.spectral_axis
     spunit = spaxis.unit
     spvalue = spaxis.value
     nz, ny, nx = cube.shape
 
     # -------------------------------------------------
-    # Convert and align the velocity field as needed
+    # Now read and align the velocity field
     # -------------------------------------------------
-
-    # Make sure the velocity is a quanity
-    if type(vfield) != u.quantity.Quantity:
-        # Guess matched units
-        vfield = u.quantity.Quantity(vfield,spunit)
-
-    # Just convert if it's a scalar
-    if np.ndim(vfield.data) <= 1:
-        vfield = vfield.to(spunit)
-        vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
+    
+    # Read the velocity field to a Projection if a file is fed in
+    if type(vfield_in) == str:
+        vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_hdu])
     else:
+<<<<<<< HEAD
         # reproject if it's a projection
         # if type(vfield) is Projection:
         #     vfield = convert_and_reproject(vfield, template=cube, unit=spunit)
         # else:
+=======
+        vfield = vfield_in
+
+    # If vfield is a Projection reproject it onto the cube and match units
+    if isinstance(vfield, Projection):
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)
+        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
+    else:
+
+        # If no units are attached to the vfield, guess that the
+        # units are the same as cube        
+        if type(vfield) != u.quantity.Quantity:
+            vfield = u.quantity.Quantity(vfield,spunit)
+        
+        # If a single value is supplied, turn it into a single-valued
+        # velocity field
+        if np.ndim(vfield.data) <= 1:
+            vfield = vfield.to(spunit)
+            vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
+        
+        # Just in case convert the units to match the cube
+>>>>>>> origin
         vfield = vfield.to(spunit)
 
     # Check sizes
@@ -453,15 +495,19 @@ def make_vfield_mask(cube, vfield, window,
     # Convert and align the window as needed
     # -------------------------------------------------
 
-    # Make sure the window is a quanity
-    if type(window) != u.quantity.Quantity:
-        # Guess matched units
-        window = u.quantity.Quantity(window,spunit)
+    # Read the velocity field to a Projection if a file is fed in
+    if type(window_in) == str:
+        window = Projection.from_hdu(fits.open(window_in)[window_hdu])
+    else:
+        window = window_in
 
-    # Just convert if it's a scalar
-    if np.ndim(window.data) <= 1:
-        window = window.to(spunit)
-        window = u.quantity.Quantity(np.ones((ny, nx))*window.value, window.unit)
+    # If window is a Projection reproject it onto the cube and match units
+    if type(window) is Projection:
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)        
+        window = convert_and_reproject(window, template=dummy_mom0, unit=spunit)
     else:
         # reproject if it's a projection
         # if type(window) is Projection:
@@ -469,31 +515,53 @@ def make_vfield_mask(cube, vfield, window,
         # else:
         window = window.to(spunit)
 
+        # If no units are attached to the window, guess that the
+        # units are the same as cube        
+        if type(window) != u.quantity.Quantity:
+            window = u.quantity.Quantity(window,spunit)
+        
+        # If a single value is supplied, turn it into a single-valued
+        # velocity field
+        if np.ndim(window.data) <= 1:
+            window = window.to(spunit)
+            window = u.quantity.Quantity(np.ones((ny, nx))*window.value, window.unit)
+        
+        # Just in case convert the units to match the cube
+        window = window.to(spunit)
+    
     # Check sizes
     if (cube.shape[1] != window.shape[0]) or (cube.shape[2] != window.shape[1]):
         return(np.nan)
 
-    # -------------------------------------------------
-    # Generate a velocity cube and a vfield cube
+    # --------------------------------------------------
+    # Generate cubes
     # -------------------------------------------------
 
+    # ... holding the velocity at each pixel
     spaxis_cube = np.ones((ny, nx))[None,:,:] * spvalue[:,None,None]
+
+    # ... the reference velocity at each pixel
     vfield_cube = (vfield.value)[None,:,:] * np.ones(nz)[:,None,None]
+
+    # ... and the window width at each pixel
     window_cube = (window.value)[None,:,:] * np.ones(nz)[:,None,None]
 
     # -------------------------------------------------
     # Make the mask
     # -------------------------------------------------
 
+    # This checks at each pixel if the value (spaxis) is within delta
+    # (the window) of the target value (the local velocity field).
+    
     mask = mask_around_value( \
         spaxis_cube,
         target=vfield_cube,
         delta=window_cube/2)
 
     # -------------------------------------------------
-    # Write to disk
+    # Output
     # -------------------------------------------------
-    
+
     mask = SpectralCube(mask.astype(int), wcs=cube.wcs,
                         header=cube.header,
                         meta={'BUNIT': ' ', 'BTYPE': 'Mask'})

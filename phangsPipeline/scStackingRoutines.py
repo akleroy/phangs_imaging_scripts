@@ -5,7 +5,11 @@ import astropy.units as u
 import astropy.wcs as wcs
 from astropy.io import fits
 from spectral_cube import SpectralCube, Projection
+<<<<<<< HEAD
 from phangsPipeline.scDerivativeRoutines import convert_and_reproject
+=======
+from .scDerivativeRoutines import convert_and_reproject
+>>>>>>> origin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,11 @@ def channelShiftVec(x, ChanShift):
 
 
 def ShuffleCube(
+<<<<<<< HEAD
         incube, invfield, vfield_hdu=0,
+=======
+        cube_in, vfield_in, vfield_hdu=0,
+>>>>>>> origin
         outfile=None, overwrite=True,
         chunk=1000):
     """Shuffles cube so that the velocity appearing in the centroid_map is set 
@@ -62,16 +70,27 @@ def ShuffleCube(
 
     vfield : float or two-d array or string
 
+<<<<<<< HEAD
         The velocity field to use as a reference. If a string, it's read
         as a Projection and reprojected onto the cube. If it's a single
         value then this is broadcast across the whole map. If it's a two-d
         array it is assumed to be the velocity field.
+=======
+    The velocity field to use as a reference. If a string, it's read
+    as a Projection and reprojected onto the cube. If it's a single
+    value then this is broadcast across the whole map. If it's a two-d
+    array it is assumed to be the velocity field.
+>>>>>>> origin
     
     Keywords
     --------
 
     vfield_hdu : optional refers to the HDU of the velocity field if a
+<<<<<<< HEAD
         file name is supplied. Default 0.
+=======
+    file name is supplied. Default 0.
+>>>>>>> origin
 
     chunk : int
         Number of data points to include in a chunk for processing.
@@ -91,6 +110,7 @@ def ShuffleCube(
     # Read the cube
     # -------------------------------------------------
 
+<<<<<<< HEAD
     if type(incube) == str:
         cube = SpectralCube.read(incube)
     else:
@@ -100,16 +120,32 @@ def ShuffleCube(
     spunit = spaxis.unit
     spvalue = spaxis.value
     nz, ny, nx = cube.shape
+=======
+    if type(cube_in) == str:
+        cube = SpectralCube.read(cube_in)
+    else:
+        cube = cube_in
+
+    spaxis = cube.spectral_axis        
+    spunit = spaxis.unit
+>>>>>>> origin
     
     # -------------------------------------------------
     # Now read and align the velocity field
     # -------------------------------------------------
     
     # Read the velocity field to a Projection if a file is fed in
+<<<<<<< HEAD
     if type(invfield) == str:
         vfield = Projection.from_hdu(fits.open(invfield)[vfield_hdu])
     else:
         vfield = invfield
+=======
+    if type(vfield_in) == str:
+        vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_hdu])
+    else:
+        vfield = vfield_in
+>>>>>>> origin
 
     # If vfield is a Projection reproject it onto the cube and match units
     if type(vfield) is Projection:

@@ -8,6 +8,7 @@ This code needs to be run inside CASA.
 """
 
 import os, sys, re, shutil
+import datetime
 from copy import deepcopy, copy
 import glob
 import logging
@@ -26,8 +27,6 @@ if casa_enabled:
     logger.debug('casa_enabled = True')
     from . import casaImagingRoutines as imr
     from . import casaMaskingRoutines as msr
-    # reload(imr)
-    # reload(msr)
 else:
     logger.debug('casa_enabled = False')
 
@@ -47,6 +46,39 @@ if casa_enabled:
     class ImagingChunkedHandler(handlerTemplate.HandlerTemplate):
         """
         Class to makes image cubes out of uv data for imaging a single spectral line.
+
+        Parameters
+        ----------
+        target : str
+            The target name.
+        config : str
+            The configuration name.
+        product : str
+            The product name.
+        key_handler : dict
+            The key handler dictionary.
+        dry_run : bool, optional
+            If True, do not actually make the images. Defaults to False.
+        chunksize : int, optional
+            The number of channels per image cube. Defaults to 10.
+        imaging_method : str, optional
+            The imaging method. Defaults to 'tclean'.
+        recipe : str, optional
+            The recipe. Defaults to 'phangsalma'.
+        set_cell_imsize_on_init : bool, optional
+            If True, set the cell size on initialization. Defaults to True.
+        force_square : bool, optional
+            If True, force the image size to be square. Defaults to False.
+        oversamp : int, optional
+            The oversampling factor of pixels per beam FWHM. Defaults to 5.
+        make_temp_dir : bool, optional
+            If True, make a temporary directory. Defaults to True.
+        temp_key : str, optional
+            The temporary key. Defaults to None.
+        temp_path : str, optional
+            The temporary path. Defaults to None. Set this to specify an independent path for the
+            temporary directory that is unassociated with the default imaging directory.
+
         """
 
         ############
@@ -66,6 +98,9 @@ if casa_enabled:
             set_cell_imsize_on_init=True,
             force_square=False,
             oversamp=5,
+            make_temp_dir=True,
+            temp_key=None,
+            temp_path=None,
             ):
 
             # inherit template class
@@ -90,18 +125,16 @@ if casa_enabled:
             if chunksize == 1:
                 raise Exception("chunksize must be greater than 1.")
 
-            self._this_imaging_dir = self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+            self._orig_imaging_dir = self._kh.get_imaging_dir_for_target(self.target, changeto=True)
 
             # Get the visibility name
             self.vis_file = utilsFilenames.get_vis_filename(target=target, product=product,
                                                             config=config)
 
-            self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
+            self.full_vis_file = os.path.join(self._orig_imaging_dir, self.vis_file)
 
             self.image_root = utilsFilenames.get_cube_filename(target=target, product=product, config=config,
                                                                casa=True, casaext='')
-
-            self.full_image_root = os.path.join(self._this_imaging_dir, self.image_root)
 
             if imaging_method not in ['tclean', 'sdintimaging']:
                 logger.error('imaging_method should be either tclean or sdintimaging')
@@ -130,6 +163,22 @@ if casa_enabled:
             self._kh.make_missing_directories(imaging=True)
 
 
+            if make_temp_dir:
+                if temp_path is None:
+                    if temp_key is None:
+                        temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{temp_key}"
+                else:
+                    self._this_imaging_dir = temp_path
+
+                os.makedirs(self._this_imaging_dir, exist_ok=True)
+
+            else:
+                self._this_imaging_dir = self._orig_imaging_dir
+
+            # Set a flag to check on whether we need to move clean-up the final products
+            self._uses_tempdir = make_temp_dir
+
             # Want to call this only once, then use throughout
             # TODO: this will fail if false as we need it for the base call.
             # Could just not give the option and force computing this on init
@@ -145,7 +194,6 @@ if casa_enabled:
             self.base_clean_call = CleanCall(self.recipe_list, use_chunks=True, nchan=self.nchan)
 
             self.chunksize = chunksize
-
 
             self.chunk_channel_starts, self.chunk_channel_ends = \
                 self.base_clean_call.return_chunked_channel_ranges(chunksize=chunksize)
@@ -193,21 +241,19 @@ if casa_enabled:
                 chan_label = "{0}_{1}".format(chan_start, chan_end)
 
                 # this_vis_name = "{0}_chan{1}".format(self.vis_file, chan_label)
-                this_vis_name = self.vis_file
+                this_vis_name = self.full_vis_file
 
                 self.chunk_params[chunk_num]['vis_name'] = this_vis_name
 
-                full_vis_file = "{0}/{1}".format(self._kh.get_imaging_dir_for_target(target=self.target),
-                                                 this_vis_name)
-                self.chunk_params[chunk_num]['full_vis_name'] = full_vis_file
+                self.chunk_params[chunk_num]['full_vis_name'] = self.full_vis_file
 
                 # Image names
 
                 this_image_name = "{0}_chan{1}".format(self.image_root, chan_label)
                 self.chunk_params[chunk_num]['image_name'] = this_image_name
 
-                full_imagename = "{0}/{1}".format(self._kh.get_imaging_dir_for_target(target=self.target),
-                                                   this_image_name)
+                full_imagename = "{0}/{1}".format(self._this_imaging_dir,
+                                                  this_image_name)
                 self.chunk_params[chunk_num]['full_imagename'] = full_imagename
 
             self.nchunks = len(self.chunk_params)
@@ -265,7 +311,7 @@ if casa_enabled:
                 singlescale_mask_high_snr=None,
                 singlescale_mask_low_snr=None,
                 singlescale_mask_absolute=False,
-                skip_singlescale_if_mask_empty=True,                                
+                skip_singlescale_if_mask_empty=True,
                 do_singlescale_clean=False,
                 do_revert_to_singlescale=False,
                 do_export_to_fits=False,
@@ -277,7 +323,7 @@ if casa_enabled:
                 dynamic_sizing=True,
                 force_square=False,
                 overwrite=False,
-        ):
+                ):
             """
             Loops over the full set of targets, products, and
             configurations to do the imaging. Toggle the parts of the loop
@@ -300,8 +346,7 @@ if casa_enabled:
                 do_export_to_fits = True
 
             # Change to the relevant directory
-
-            this_imaging_dir = self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+            os.chdir(self._this_imaging_dir)
 
             # print starting message
             logger.info("")
@@ -544,7 +589,7 @@ if casa_enabled:
 
             # Set the visibility file (note that we assume we are in the working directory)
 
-            clean_call.set_param('vis', vis_file, nowarning=True)
+            clean_call.set_param('vis', self.full_vis_file, nowarning=True)
 
             # Set the output image file name (note no suffix for imaging root)
             image_root = self.chunk_params[chunk_num]['full_imagename']
@@ -621,7 +666,7 @@ if casa_enabled:
             # Call the estimating routine
             if not self._dry_run:
                 self.cell, self.imsize = \
-                    imr.estimate_cell_and_imsize(os.path.join(self._this_imaging_dir, self.vis_file),
+                    imr.estimate_cell_and_imsize(self.full_vis_file,
                                                  oversamp,
                                                  force_square=force_square)
             else:
@@ -832,7 +877,7 @@ if casa_enabled:
 
             if not self._dry_run and casa_enabled:
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 for ii, chunk_num in enumerate(chunks_iter):
 
@@ -1018,7 +1063,7 @@ if casa_enabled:
 
             for ii, chunk_num in enumerate(chunks_iter):
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 # Make the chunk clean call:
                 this_clean_call = self.task_initialize_clean_call(chunk_num, stage='multiscale')
@@ -1193,7 +1238,7 @@ if casa_enabled:
                 gather_chunks_into_cube=False,
                 remove_chunks=False,
                 threshold_value=1.0,
-                skip_singlescale_if_mask_empty=True,                
+                skip_singlescale_if_mask_empty=True,
                 backup=True,
         ):
             """
@@ -1215,7 +1260,7 @@ if casa_enabled:
 
             for ii, chunk_num in enumerate(chunks_iter):
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 # Make the chunk clean call:
                 this_clean_call = self.task_initialize_clean_call(chunk_num, stage='singlescale')
@@ -1245,7 +1290,7 @@ if casa_enabled:
                         skip_this_step = True
                         logger.info("")
                         logger.info("The clean mask is empty and SKIP_SINGLESCALE_IF_MASK_EMPTY is True. Skipping the singlescale clean step.")
-                        logger.info("")                        
+                        logger.info("")
 
                 if not skip_this_step:
                     imr.clean_loop(
@@ -1360,7 +1405,7 @@ if casa_enabled:
 
             for ii, this_chunk_num in enumerate(chunks_iter):
 
-                self._kh.get_imaging_dir_for_target(self.target, changeto=True)
+                os.chdir(self._this_imaging_dir)
 
                 chan_start, chan_end = self.chunk_params[this_chunk_num]['channel_range']
                 chan_label = "{0}_{1}".format(chan_start, chan_end)
@@ -1384,7 +1429,6 @@ if casa_enabled:
                 suffix_in=None,
                 extra_ext_out=None,
                 imaging_method='tclean',
-                do_split_vis=True,
                 do_dirty_image=True,
                 do_revert_to_dirty=True,
                 do_read_clean_mask=True,
@@ -1525,6 +1569,11 @@ if casa_enabled:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
                                             imaging_method=imaging_method,
                                             tag='singlescale')
+
+            # If using a temp dir, first move everything to the parent imaging folder:
+            if self._uses_tempdir:
+                os.system(f'mv -f {self._this_imaging_dir}/* {self._orig_imaging_dir}')
+                os.system(f'rmdir {self._this_imaging_dir}')
 
             # Ensure products are re-combined into cubes:
             if do_recombine_cubes:
