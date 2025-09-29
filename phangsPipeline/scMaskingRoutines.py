@@ -11,8 +11,7 @@ import astropy.units as u
 from astropy.stats import mad_std
 from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
-from spectral_cube import SpectralCube
-from reproject import reproject_interp
+from spectral_cube import SpectralCube, Projection
 
 from phangsPipeline.pipelineVersion import tableversion, version
 
@@ -442,7 +441,7 @@ def make_vfield_mask(cube, vfield, window,
     else:
         # reproject if it's a projection
         # if type(vfield) is Projection:
-        #     vfield = convert_and_reproject(vfield, template=cube.header, unit=spunit)
+        #     vfield = convert_and_reproject(vfield, template=cube, unit=spunit)
         # else:
         vfield = vfield.to(spunit)
 
@@ -466,7 +465,7 @@ def make_vfield_mask(cube, vfield, window,
     else:
         # reproject if it's a projection
         # if type(window) is Projection:
-        #     window = convert_and_reproject(window, template=cube.header, unit=spunit)
+        #     window = convert_and_reproject(window, template=cube, unit=spunit)
         # else:
         window = window.to(spunit)
 
@@ -510,7 +509,7 @@ def make_vfield_mask(cube, vfield, window,
 
     return(mask)
 
-def join_masks(orig_mask_in, new_mask_in,
+def join_masks(orig_inmask, new_inmask,
                order='bilinear', operation='or',
                outfile=None,
                thresh=0.5,
@@ -522,11 +521,11 @@ def join_masks(orig_mask_in, new_mask_in,
 
     -----------
 
-    orig_mask_in : string or SpectralCube
+    orig_inmask : string or SpectralCube
 
         The original mask.
 
-    new_mask_in : string or SpectralCube
+    new_inmask : string or SpectralCube
 
         The new mask
 
@@ -555,23 +554,23 @@ def join_masks(orig_mask_in, new_mask_in,
     # Read the data
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    if type(orig_mask_in) is str:
-        orig_mask = SpectralCube.read(orig_mask_in)
-    elif type(orig_mask_in) is SpectralCube:
-        orig_mask = orig_mask_in
+    if type(orig_inmask) is str:
+        orig_mask = SpectralCube.read(orig_inmask)
+    elif type(orig_inmask) is SpectralCube:
+        orig_mask = orig_inmask
     else:
-        logging.error('Unrecognized input type for orig_mask_in')
+        logging.error('Unrecognized input type for orig_inmask')
         raise NotImplementedError
 
     # Enable large operations
     orig_mask.allow_huge_operations = True
 
-    if type(new_mask_in) is str:
-        new_mask = SpectralCube.read(new_mask_in)
-    elif type(new_mask_in) is SpectralCube:
-        new_mask = new_mask_in
+    if type(new_inmask) is str:
+        new_mask = SpectralCube.read(new_inmask)
+    elif type(new_inmask) is SpectralCube:
+        new_mask = new_inmask
     else:
-        logging.error('Unrecognized input type for new_mask_in')
+        logging.error('Unrecognized input type for new_inmask')
         raise NotImplementedError
 
     # Enable large operations
@@ -947,9 +946,9 @@ def recipe_phangs_broad_mask(
 
 def recipe_phangs_flat_mask(
     incube, invfield, inmask, 
+    vfield_hdu=0, 
     outfile=None,
     coverage=None, 
-    coverage_thresh=0.95,
     mask_kwargs=None,
     return_spectral_cube=False,
     overwrite=False):
@@ -973,6 +972,9 @@ def recipe_phangs_flat_mask(
 
     Keywords:
     ---------
+    
+    vfield_hdu : optional refers to the HDU of the velocity field if a
+        file name is supplied. Default 0.
 
     outfile : string
         Filename where the mask will be written. The mask is also
@@ -994,7 +996,7 @@ def recipe_phangs_flat_mask(
     # check input cube
     if type(incube) is SpectralCube:
         cube = incube
-    elif type(incube) == type("hello"):
+    elif type(incube) == str:
         cube = SpectralCube.read(incube)
     else:
         logger.error("Input cube must be a SpectralCube object or a filename.")
@@ -1004,27 +1006,32 @@ def recipe_phangs_flat_mask(
     # check input mask
     if type(inmask) is SpectralCube:
         mask_signal = inmask
-    elif type(inmask) == type("hello"):
+    elif type(inmask) == str:
         mask_signal = SpectralCube.read(inmask)
     else:
         logger.error("Input mask must be a SpectralCube object or a filename.")
 
     mask_signal.allow_huge_operations = True
 
-    # check input vfield map
-    if np.ndim(invfield) == 2:
-        vfield = invfield
-    elif type(invfield) == type("hello"):
-        vfield, hdr_map = fits.getdata(invfield, header=True)
-        vfield *= u.Unit(hdr_map['BUNIT'])
+    # Read the velocity field to a Projection if a file is fed in
+    if type(invfield) == str:
+        vfield = Projection.from_hdu(fits.open(invfield)[vfield_hdu])
     else:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny.")
+        vfield = invfield
 
-    # regrid velocity field if grids do not match
-    if (mask_signal.shape[1] != np.shape(vfield)[0]) | (mask_signal.shape[2] != np.shape(vfield)[1]):
-        logger.warning('Regridding velocity field with reprojection.')
-        vfield, _ = reproject_interp((vfield, hdr_map), cube.moment0().header)
-        vfield *= u.Unit(hdr_map['BUNIT'])
+    # get dimensions and units
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+    spvalue = spaxis.value
+    nz, ny, nx = cube.shape
+
+    # reproject if it's a projection
+    if type(vfield) is Projection:
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)
+        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
 
     # check that grids match after regridding
     if mask_signal.shape[1] != np.shape(vfield)[0]:

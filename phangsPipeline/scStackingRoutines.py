@@ -1,83 +1,251 @@
 import numpy as np
 import scipy.ndimage as nd
+
 import astropy.units as u
 import astropy.wcs as wcs
 from astropy.io import fits
-from spectral_cube import SpectralCube
-from reproject import reproject_interp
+from spectral_cube import SpectralCube, Projection
+from .scDerivativeRoutines import convert_and_reproject
 import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 def channelShiftVec(x, ChanShift):
-    # Shift an array of spectra (x) by a set number of Channels (array)
+    """Shift an array of spectra by some number of channels using the FFT.
+
+    Parameters
+    ----------
+
+    x : array assumed to be two dimensional with the spectral axis 0.
+
+    ChanShift : the number of channels to shift each spectrum
+    by. Should have length equal to axis 1 of x.
+
+    Returns
+    -------
+
+    an array that looks like x but with the phase of each spectrum
+    shifted.
+
+    """
+
+    # Take the FFT of x along the spectral dimension
     ftx = np.fft.fft(x, axis=0)
+
+    # Calculate frequency ais in units of channels
     m = np.fft.fftfreq(x.shape[0])
+
+    # Calculate the factor to rotate the phase of the FFT
     phase = np.exp(-2 * np.pi * m[:, np.newaxis]
                    * 1j * ChanShift[np.newaxis, :])
+
+    # Transform back along the spectral axis and return
     x2 = np.real(np.fft.ifft(ftx * phase, axis=0))
+    
     return(x2)
 
-def ShuffleCube(DataCube, vfield, chunk=1000):
-    """
-    Shuffles cube so that the velocity appearing in the vfield is set 
-    to the middle channel and velocity vfield.
+
+def ShuffleCube(
+        incube, invfield, vfield_hdu=0,
+        outfile=None, overwrite=True,
+        chunk=1000):
+    """Shuffles cube so that the velocity appearing in the centroid_map is set 
+    to the middle channel and velocity centroid.
     
     Parameters
     ----------
-    DataCube : SpectralCube
-        The original spectral cube with spatial dimensions Nx, Ny and spectral dimension Nv
-    vfield : 2D numpy.ndarray
-        A 2D map of the vfield velocities for the lines to stack of dimensions Nx, Ny.
-        Note that DataCube and vfield map must have equivalent (but not necessarily equal) 
-        spectral units (e.g., km/s and m/s)
+
+    cube : string or SpectralCube
+
+        The original data cube.
+
+    vfield : float or two-d array or string
+
+        The velocity field to use as a reference. If a string, it's read
+        as a Projection and reprojected onto the cube. If it's a single
+        value then this is broadcast across the whole map. If it's a two-d
+        array it is assumed to be the velocity field.
     
     Keywords
     --------
+
+    vfield_hdu : optional refers to the HDU of the velocity field if a
+        file name is supplied. Default 0.
+
     chunk : int
         Number of data points to include in a chunk for processing.
+
+    outfile : file name to write output mask to.
+
+    overwrite : flag to allow overwrite to rewrite files.
     
     Returns
     -------
     OutCube : np.array
         Output SpectralCube cube shuffled so that the emission is at 0.
- 
+
     """
 
-    spaxis = DataCube.spectral_axis
+    # -------------------------------------------------
+    # Read the cube
+    # -------------------------------------------------
+
+    if type(incube) == str:
+        cube = SpectralCube.read(incube)
+    else:
+        cube = incube
+
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+    spvalue = spaxis.value
+    nz, ny, nx = cube.shape
+    
+    # -------------------------------------------------
+    # Now read and align the velocity field
+    # -------------------------------------------------
+    
+    # Read the velocity field to a Projection if a file is fed in
+    if type(invfield) == str:
+        vfield = Projection.from_hdu(fits.open(invfield)[vfield_hdu])
+    else:
+        vfield = invfield
+
+    # If vfield is a Projection reproject it onto the cube and match units
+    if type(vfield) is Projection:
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)
+        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
+    else:
+
+        # If no units are attached to the vfield, guess that the
+        # units are the same as cube        
+        if type(vfield) != u.quantity.Quantity:
+            vfield = u.quantity.Quantity(vfield,spunit)
+        
+        # If a single value is supplied, turn it into a single-valued
+        # velocity field
+        if np.ndim(vfield.data) <= 1:
+            vfield = vfield.to(spunit)
+            vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
+        
+        # Just in case convert the units to match the cube
+        vfield = vfield.to(spunit)
+
+    # Check sizes
+    if (cube.shape[1] != vfield.shape[0]) or (cube.shape[2] != vfield.shape[1]):
+        return(np.nan)
+
+    # --------------------------------------------------
+    # Identify spectra and channel shifts
+    # --------------------------------------------------    
+
+    # This all assumes linear mapping between channel and velocity,
+    # which is typically a good assumption for radio data.
+    
+    # Identify pixels with a reference velocity supplied
+    
     y, x = np.where(np.isfinite(vfield))
-    vfield = vfield.to(spaxis.unit)
-    # v0 = spaxis[len(spaxis) // 2]
-    # newspaxis = spaxis - v0
-    relative_channel = np.arange(len(spaxis)) - (len(spaxis) // 2)
-    vfields = vfield[y, x]
-    sortindex = np.argsort(spaxis)
-    channel_shift = -1 * np.interp(vfields, spaxis[sortindex],
-                                   np.array(relative_channel[sortindex], dtype=float))
-    NewCube = np.empty(DataCube.shape)
-    NewCube.fill(np.nan)
+    centroids = vfield[y, x]
+
+    # Translate velocity reference to a channel shift
+    
+    # ... define a vector of channel offsets from the central value
+    relative_channel = \
+        np.array(np.arange(len(spaxis)) - (len(spaxis) // 2), dtype=float)
+
+    # ... sort the spectral axis and apply the same sort to the
+    # channel offset to enable interpolation
+    
+    idx_sorted_by_vel = np.argsort(spaxis)
+    sorted_spaxis = spaxis[idx_sorted_by_vel]
+    sorted_relative_channel = relative_channel[idx_sorted_by_vel]
+
+    # Interpolate the velocity offset (which should be the new zero)
+    # through the spectral axis to identify the channel offset. We
+    # want to shift the spectrum at that location by -1 times that
+    # amount to bring that velocity to the middle of the spectrum.
+    
+    channel_shift = -1 * np.interp(centroids, sorted_spaxis,
+                                   sorted_relative_channel)
+
+    # --------------------------------------------------
+    # Shuffle the spectra
+    # --------------------------------------------------    
+    
+    # Initialize output
+    # NOTE: this will cause memory issues for large cubes. Something to address in the future.
+    new_cube = np.empty(cube.shape)
+    new_cube.fill(np.nan)
+
+    # Identify the number of chunks into which to split the data
+    # during FFT-based shifting
     nchunk = (len(x) // chunk)
-    for thisx, thisy, thisshift in zip(np.array_split(x, nchunk), 
-                                       np.array_split(y, nchunk),
-                                       np.array_split(channel_shift, nchunk)):
-        spectrum = DataCube.filled_data[:, thisy, thisx].value
-        baddata = ~np.isfinite(spectrum)
-        shifted_spectrum = channelShiftVec(np.nan_to_num(spectrum),
-                                           np.atleast_1d(thisshift))
-        # shifted_mask = channelShiftVec(baddata, np.atleast_1d(thisshift))
-        shifted_spectrum[baddata>0] = np.nan
-        NewCube[:, thisy, thisx] = shifted_spectrum
-    hdr = DataCube.header
+
+    
+    for this_x, this_y, this_shift in zip(np.array_split(x, nchunk), 
+                                          np.array_split(y, nchunk),
+                                          np.array_split(channel_shift, nchunk)):
+
+        # Array of spectra to shift
+        this_spectra = cube.filled_data[:, this_y, this_x].value
+
+        # ... mask of NaNs
+        missing_data = ~np.isfinite(this_spectra)
+
+        # ... replace NaNs with 0s for shifting
+        filled_spectra = np.nan_to_num(this_spectra)
+
+        # ... phase shift the spectrum
+        shifted_spectra = \
+            channelShiftVec(filled_spectra, np.atleast_1d(this_shift))
+
+        # ... phase shift the mask
+        shifted_mask = \
+            channelShiftVec(missing_data*1.0, np.atleast_1d(this_shift))
+
+        # ... apply the mask
+        shifted_spectra[shifted_mask>0.5] = np.nan
+
+        # ... also mask the region where the spectrum "wrapped" due to the FFT
+
+        max_channel = float(len(spaxis))
+        channels = np.arange(max_channel)
+        channel_grid = np.tile(channels.reshape((len(spaxis),1)),(1,shifted_spectra.shape[1]))
+        shift_grid = np.tile(this_shift,(shifted_spectra.shape[0],1))
+
+        wrap_mask = (shift_grid >= 0.)*(channel_grid <= shift_grid) + \
+            (shift_grid < 0)*(channel_grid >= (max_channel + shift_grid - 1))
+        
+        shifted_spectra[wrap_mask > 0.5] = np.nan        
+        
+        # ... save in the cube
+        new_cube[:, this_y, this_x] = shifted_spectra
+
+    # -------------------------------------------------
+    # Output
+    # -------------------------------------------------
+        
+    # Format output into a spectral cube object
+    hdr = cube.header.copy()
     hdr['CRVAL3'] = 0.0
     hdr['CRPIX3'] = len(spaxis) // 2 + 1
-    newwcs = wcs.WCS(hdr)
-    NewCube *= u.Unit(hdr['BUNIT'])
-    return(SpectralCube(NewCube, newwcs, header=hdr))
+    new_wcs = wcs.WCS(hdr)
+
+    new_cube = SpectralCube(new_cube, new_wcs, header=hdr)
+
+    # Optionally write to disk
+    if outfile is not None:
+        new_cube.write(outfile, overwrite=overwrite)    
+    
+    return(new_cube)
 
 
 def recipe_phangs_vfield(
-    template_vfield,
+    invfield,
+    invfield_hdu=0,
     list_of_vfields=None,
     outfile=None,
     overwrite=False):
@@ -89,7 +257,7 @@ def recipe_phangs_vfield(
 
     -----------
 
-    template_vfield : string or fits.hdu
+    invfield : string or fits.hdu
 
         The reference velocity filed that holds the target WCS. The 
         other maps will be reprojected onto this one. This map is 
@@ -97,6 +265,8 @@ def recipe_phangs_vfield(
 
     Keywords:
     ---------
+
+    invfield_hdu : 
 
     list_of_vfields : list or list of fits.hdu
 
@@ -109,60 +279,49 @@ def recipe_phangs_vfield(
     """
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # Error checking and work out inputs
+    # Read in template velocity field
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-    # check input vfield map
-    if (type(template_vfield) == fits.hdu.hdulist.HDUList):
-        if (type(template_vfield.data) is np.array) & (np.ndim(template_vfield.data) == 2):
-            hdr_template = template_vfield.header
-            template_vfield = template_vfield.data * u.Unit(hdr_template['BUNIT'])
-        else:
-            logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny.")
-    elif type(template_vfield) == type("hello"):
-        template_vfield, hdr_template = fits.getdata(template_vfield, header=True)
-        template_vfield *= u.Unit(hdr_template['BUNIT'])
+    # Read the velocity field to a Projection if a file is fed in
+    if type(invfield) == str:
+        template_vfield = Projection.from_hdu(fits.open(invfield)[invfield_hdu])
     else:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny.")
+        template_vfield = invfield
+
+    # get velocity unit
+    spunit = template_vfield.unit
 
     # initialise combined velocity field
     vfield_combined = np.copy(template_vfield)
     vfield_combined[np.isnan(vfield_combined)] = 0
 
     # loop over list of velocity fields
-    for this_vfield in list_of_vfields:
+    for this_invfield in list_of_vfields:
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        # Error checking and work out inputs
+        # Read in and align ancillary velocity field
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-        # check input vfield map
-        if (type(this_vfield) == fits.hdu.hdulist.HDUList):
-            if (type(this_vfield.data) is np.array) & (np.ndim(this_vfield.data) == 2):
-                this_vfield = this_vfield.data * u.Unit(this_vfield.header['BUNIT'])
-            else:
-                logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny.")
-        elif type(this_vfield) == type("hello"):
-            this_vfield, hdr_this_vfield = fits.getdata(this_vfield, header=True)
-            this_vfield *= u.Unit(hdr_this_vfield['BUNIT'])
+        # Read the velocity field to a Projection if a file is fed in
+        if type(this_invfield) == str:
+            this_vfield = Projection.from_hdu(fits.open(this_invfield)[invfield_hdu])
         else:
-            logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny.")
+            this_vfield = this_invfield
 
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-        # Reproject velocity field to template grid
-        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # print(this_vfield)
 
-        # regrid velocity field if grids do not match
-        if (template_vfield.shape[0] != np.shape(this_vfield)[0]) | (template_vfield.shape[1] != np.shape(this_vfield)[1]):
-            logger.warning('Regridding velocity field with interpolated reprojection.')
-            this_vfield, _ = reproject_interp((this_vfield, hdr_this_vfield), hdr_template)
-            this_vfield *= u.Unit(hdr_this_vfield['BUNIT'])
+        # If vfield is a Projection reproject it onto the cube and match units
+        if type(this_vfield) is Projection:
+            this_vfield = convert_and_reproject(this_vfield, template=template_vfield, unit=spunit)
+        else:
 
-        # check that grids match after regridding
-        if template_vfield.shape[0] != np.shape(this_vfield)[0]:
-            logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Nx does not match.")
-        if template_vfield.shape[1] != np.shape(this_vfield)[1]:
-            logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Ny does not match.")
+            # If no units are attached to the vfield, guess that the
+            # units are the same as cube        
+            if type(this_vfield) != u.quantity.Quantity:
+                this_vfield = u.quantity.Quantity(this_vfield, spunit)
+            
+            # Just in case convert the units to match the cube
+            this_vfield = this_vfield.to(spunit)
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Merge velocity fields
@@ -183,7 +342,7 @@ def recipe_phangs_vfield(
 
     # Write to disk, if desired
     if outfile is not None:
-        fits.writeto(outfile, vfield_combined.value, hdr_template, overwrite=overwrite)
+        fits.writeto(outfile, vfield_combined.value, template_vfield.header, overwrite=overwrite)
 
     # return combined velocity field
     return(vfield_combined)
@@ -191,6 +350,7 @@ def recipe_phangs_vfield(
 def recipe_shuffle_cube(
     incube,
     invfield,
+    invfield_hdu=0,
     outfile=None,
     return_spectral_cube=False,
     overwrite=False):
@@ -212,6 +372,8 @@ def recipe_shuffle_cube(
     Keywords:
     ---------
 
+    invfield_hdu=,
+
     outfile : string
         Filename where the shuffled cube will be written. The shuffled cube is also
         returned.
@@ -232,30 +394,35 @@ def recipe_shuffle_cube(
 
     cube.allow_huge_operations = True
 
-    # check input vfield map
-    if (type(invfield) is np.array) & (np.ndim(invfield) == 2):
-        vfield = invfield
-    elif type(invfield) == type("hello"):
-        vfield, hdr_map = fits.getdata(invfield, header=True)
-        vfield *= u.Unit(hdr_map['BUNIT'])
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Read in and align velocity field
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # Read the velocity field to a Projection if a file is fed in
+    if type(invfield) == str:
+        vfield = Projection.from_hdu(fits.open(invfield)[invfield_hdu])
     else:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny.")
+        vfield = invfield
 
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
-    # Reproject velocity field to cube grid
-    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # If vfield is a Projection reproject it onto the cube and match units
+    if type(vfield) is Projection:
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)
+        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
+    else:
 
-    # regrid velocity field if grids do not match
-    if (cube.shape[1] != np.shape(vfield)[0]) | (cube.shape[2] != np.shape(vfield)[1]):
-        logger.warning('Regridding velocity field with interpolated reprojection.')
-        vfield, _ = reproject_interp((vfield, hdr_map), cube.moment0().header)
-        vfield *= u.Unit(hdr_map['BUNIT'])
-
-    # check that grids match after regridding
-    if cube.shape[1] != np.shape(vfield)[0]:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Nx does not match.")
-    if cube.shape[2] != np.shape(vfield)[1]:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Ny does not match.")
+        # If no units are attached to the vfield, guess that the
+        # units are the same as cube        
+        if type(vfield) != u.quantity.Quantity:
+            vfield = u.quantity.Quantity(vfield, spunit)
+        
+        # Just in case convert the units to match the cube
+        vfield = vfield.to(spunit)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Run the shuffling
