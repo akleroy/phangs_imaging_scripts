@@ -754,7 +754,7 @@ if has_astropy_speccube:
 
                     if res_type == 'ang':
                         input_res_value = res_value*u.arcsec
-                        smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
+                        smooth_cube(cube_in=indir+input_file, outfile=outdir+outfile,
                                     angular_resolution=input_res_value,
                                     tol=tol, nan_treatment=nan_treatment,
                                     make_coverage_cube=True, coveragefile=outdir+coveragefile,
@@ -768,7 +768,7 @@ if has_astropy_speccube:
                             return()
                         this_distance = this_distance*1e6*u.pc
                         input_res_value = res_value*u.pc
-                        smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
+                        smooth_cube(cube_in=indir+input_file, outfile=outdir+outfile,
                                     linear_resolution=input_res_value, distance=this_distance,
                                     tol=tol, nan_treatment=nan_treatment,
                                     make_coverage_cube=True, coveragefile=outdir+coveragefile,
@@ -837,7 +837,7 @@ if has_astropy_speccube:
             if (not self._dry_run):
 
                 recipe_phangs_noise(
-                    incube=indir+input_file,
+                    cube_in=indir+input_file,
                     outfile=outdir+outfile,
                     noise_kwargs=noise_kwargs,
                     return_spectral_cube=False,
@@ -933,7 +933,7 @@ if has_astropy_speccube:
                     coverage_file_in = None
 
                 recipe_phangs_strict_mask(
-                    incube=indir+input_file,
+                    cube_in=indir+input_file,
                     innoise=indir+noise_file,
                     coverage=coverage_file_in,
                     outfile=outdir+outfile,
@@ -1622,8 +1622,8 @@ if has_astropy_speccube:
             # Call shuffling routine
 
             recipe_shuffle_cube(
-                incube=indir+input_file,
-                invfield=vfield_dir+vfield_file,
+                cube_in=indir+input_file,
+                vfield_in=vfield_dir+vfield_file,
                 outfile=outdir+outfile,
                 overwrite=overwrite)
         # endregion
@@ -1734,9 +1734,9 @@ if has_astropy_speccube:
 
                 # run flat mask routine
                 recipe_phangs_flat_mask(
-                    incube=indir+input_file,
-                    invfield=vfield_dir+vfield_file,
-                    inmask=indir+mask_file,
+                    cube_in=indir+input_file,
+                    vfield_in=vfield_dir+vfield_file,
+                    mask_in=indir+mask_file,
                     coverage=coverage_file_in,
                     outfile=outdir+outfile,
                     mask_kwargs=flatmask_kwargs,
@@ -1849,9 +1849,9 @@ if has_astropy_speccube:
 
                 # run flat mask routine
                 recipe_phangs_flat_mask(
-                    incube=indir+input_file,
-                    invfield=vfield_dir+vfield_file,
-                    inmask=indir+mask_file,
+                    cube_in=indir+input_file,
+                    vfield_in=vfield_dir+vfield_file,
+                    mask_in=indir+mask_file,
                     coverage=coverage_file_in,
                     outfile=outdir+outfile,
                     mask_kwargs=flatmask_kwargs,
