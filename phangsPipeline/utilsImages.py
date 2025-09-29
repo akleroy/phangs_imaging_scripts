@@ -207,3 +207,80 @@ def make_axes(
         return(ra_deg*u.deg, dec_deg*u.deg)
     else:
         return(ra_deg, dec_deg)
+
+# ------------------------------------------------------------------------
+# Helper routines
+# ------------------------------------------------------------------------
+
+def beams_match(beam1, beam2, tol=0.05, check_pa=False, pa_tol=5.*u.deg):
+    """Check if two beams assumed to be radio beam objects of the type
+    carried by SpectralCube match within some tolerance.
+    """
+
+    match = True
+    if (beam1.major < (1-tol)*beam2.major) or \
+       (beam1.major > (1+tol)*beam2.major) or \
+       (beam1.minor < (1-tol)*beam2.minor) or \
+       (beam1.minor > (1+tol)*beam2.minor):
+        match = False
+
+    if check_pa:
+        if pa_tol == None:
+            pa_tol = tol
+        diff = (beam1.pa - beam2.pa)
+        if abs(diff) > pa_tol:
+            match = False
+
+    return(match)
+
+def common_beam_from_flist(
+        file_list, pad_frac=None, pad_deg=None, round_beam=False):
+    """Loop over a list of files and find the common major axis.
+    """
+
+    # Loop over files
+    
+    beam_list = []
+    for this_file in file_list:
+
+        cube = sc.SpectralCube.read(file_list)
+
+        this_beam = None
+        
+        if hasattr(cube,'beam') == False:
+            this_beam = cube.beam
+        
+        if hasattr(cube,'beams') == False:
+            this_beam = cube.beams.common_beam()
+
+        beam_list.append(this_beam)
+
+    common_beam = Beam.commonbeam_from_list(beam_list)
+
+    # Round the beam if requested
+
+    if round_beam:
+        common_beam.minor = common_beam.major
+        common_beam.pa = 0.0*u.deg
+    
+    # Pad the beam if requested
+    
+    pad_major = 0.0*u.deg
+    pad_minor = 0.0*u.deg
+    if pad_frac is not None:
+        pad_major = pad_frac*common_beam.major
+        pad_minor = pad_frac*common_beam.minor
+    if pad_angle is not None:
+        if pad_angle > pad_major:
+            pad_major = pad_angle
+        if pad_angle > pad_minor:
+            pad_minor = pad_minor
+
+    common_beam.major = common_beam.major + pad_major
+    common_beam.minor = common_beam.minor + pad_minor
+
+    return(common_beam)
+
+    
+        
+            
