@@ -1,12 +1,13 @@
+import logging
+
 import numpy as np
 import scipy.ndimage as nd
-
 import astropy.units as u
 import astropy.wcs as wcs
 from astropy.io import fits
 from spectral_cube import SpectralCube, Projection
+
 from phangsPipeline.scDerivativeRoutines import convert_and_reproject
-import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -47,7 +48,7 @@ def channelShiftVec(x, ChanShift):
 
 
 def ShuffleCube(
-        incube, invfield, vfield_hdu=0,
+        cube_in, vfield_in, vfield_hdu=0,
         outfile=None, overwrite=True,
         chunk=1000):
     """Shuffles cube so that the velocity appearing in the centroid_map is set 
@@ -91,10 +92,10 @@ def ShuffleCube(
     # Read the cube
     # -------------------------------------------------
 
-    if type(incube) == str:
-        cube = SpectralCube.read(incube)
+    if type(cube_in) == str:
+        cube = SpectralCube.read(cube_in)
     else:
-        cube = incube
+        cube = cube_in
 
     spaxis = cube.spectral_axis
     spunit = spaxis.unit
@@ -106,10 +107,10 @@ def ShuffleCube(
     # -------------------------------------------------
     
     # Read the velocity field to a Projection if a file is fed in
-    if type(invfield) == str:
-        vfield = Projection.from_hdu(fits.open(invfield)[vfield_hdu])
+    if type(vfield_in) == str:
+        vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_hdu])
     else:
-        vfield = invfield
+        vfield = vfield_in
 
     # If vfield is a Projection reproject it onto the cube and match units
     if type(vfield) is Projection:
@@ -244,8 +245,8 @@ def ShuffleCube(
 
 
 def recipe_phangs_vfield(
-    invfield,
-    invfield_hdu=0,
+    vfield_in,
+    vfield_in_hdu=0,
     list_of_vfields=None,
     outfile=None,
     overwrite=False):
@@ -257,7 +258,7 @@ def recipe_phangs_vfield(
 
     -----------
 
-    invfield : string or fits.hdu
+    vfield_in : string or fits.hdu
 
         The reference velocity filed that holds the target WCS. The 
         other maps will be reprojected onto this one. This map is 
@@ -266,7 +267,7 @@ def recipe_phangs_vfield(
     Keywords:
     ---------
 
-    invfield_hdu : 
+    vfield_in_hdu : 
 
     list_of_vfields : list or list of fits.hdu
 
@@ -283,10 +284,10 @@ def recipe_phangs_vfield(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     # Read the velocity field to a Projection if a file is fed in
-    if type(invfield) == str:
-        template_vfield = Projection.from_hdu(fits.open(invfield)[invfield_hdu])
+    if type(vfield_in) == str:
+        template_vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_in_hdu])
     else:
-        template_vfield = invfield
+        template_vfield = vfield_in
 
     # get velocity unit
     spunit = template_vfield.unit
@@ -296,17 +297,17 @@ def recipe_phangs_vfield(
     vfield_combined[np.isnan(vfield_combined)] = 0
 
     # loop over list of velocity fields
-    for this_invfield in list_of_vfields:
+    for this_vfield_in in list_of_vfields:
 
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
         # Read in and align ancillary velocity field
         # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
         # Read the velocity field to a Projection if a file is fed in
-        if type(this_invfield) == str:
-            this_vfield = Projection.from_hdu(fits.open(this_invfield)[invfield_hdu])
+        if type(this_vfield_in) == str:
+            this_vfield = Projection.from_hdu(fits.open(this_vfield_in)[vfield_in_hdu])
         else:
-            this_vfield = this_invfield
+            this_vfield = this_vfield_in
 
         # print(this_vfield)
 
@@ -348,9 +349,9 @@ def recipe_phangs_vfield(
     return(vfield_combined)
 
 def recipe_shuffle_cube(
-    incube,
-    invfield,
-    invfield_hdu=0,
+    cube_in,
+    vfield_in,
+    vfield_in_hdu=0,
     outfile=None,
     return_spectral_cube=False,
     overwrite=False):
@@ -360,10 +361,10 @@ def recipe_shuffle_cube(
     Parameters:
     -----------
 
-    incube : string or SpectralCube
+    cube_in : string or SpectralCube
         The cube to be masked.
 
-    invfield : 2D numpy.ndarray
+    vfield_in : 2D numpy.ndarray
         A 2D map of the vfield velocities for the lines to stack of dimensions Nx, Ny.
         Note that DataCube and vfield map must have equivalent (but not necessarily equal) 
         spectral units (e.g., km/s and m/s)
@@ -372,7 +373,7 @@ def recipe_shuffle_cube(
     Keywords:
     ---------
 
-    invfield_hdu=,
+    vfield_in_hdu=,
 
     outfile : string
         Filename where the shuffled cube will be written. The shuffled cube is also
@@ -385,10 +386,10 @@ def recipe_shuffle_cube(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     # check input cube
-    if type(incube) is SpectralCube:
-        cube = incube
-    elif type(incube) == type("hello"):
-        cube = SpectralCube.read(incube)
+    if type(cube_in) is SpectralCube:
+        cube = cube_in
+    elif type(cube_in) == type("hello"):
+        cube = SpectralCube.read(cube_in)
     else:
         logger.error("Input cube must be a SpectralCube object or a filename.")
 
@@ -402,10 +403,10 @@ def recipe_shuffle_cube(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     # Read the velocity field to a Projection if a file is fed in
-    if type(invfield) == str:
-        vfield = Projection.from_hdu(fits.open(invfield)[invfield_hdu])
+    if type(vfield_in) == str:
+        vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_in_hdu])
     else:
-        vfield = invfield
+        vfield = vfield_in
 
     # If vfield is a Projection reproject it onto the cube and match units
     if type(vfield) is Projection:

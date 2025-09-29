@@ -389,7 +389,7 @@ def noise_cube(data, mask=None,
     return(noise_cube_out)
 
 def recipe_phangs_noise(
-    incube=None,
+    cube_in=None,
     outfile=None,
     mask=None,
     noise_kwargs=None,
@@ -422,10 +422,10 @@ def recipe_phangs_noise(
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
 
-    if type(incube) is SpectralCube:
-        cube = incube
-    elif type(incube) == str:
-        cube = SpectralCube.read(incube)
+    if type(cube_in) is SpectralCube:
+        cube = cube_in
+    elif type(cube_in) == str:
+        cube = SpectralCube.read(cube_in)
     else:
         logger.error("Input must be a SpectralCube object or a filename.")
 
