@@ -161,7 +161,7 @@ class KeyHandler:
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("")
-    
+
     def _parse_path(self, input_path):
         """
         Parse relative path.
@@ -1917,6 +1917,28 @@ class KeyHandler:
 
         return exclude_freq_ranges_ghz
 
+    def get_contsub_flagedgefraction(self, product=None):
+        """
+        Get the frequency range to force excluding for continuum subtraction for a line product.
+        """
+
+        if product is None:
+            logging.error("Please specify a product.")
+            raise Exception("Please specify a product.")
+            return None
+
+        flag_edge_fraction = None
+        if 'line_product' in self._config_dict:
+            if product in self._config_dict['line_product']:
+                if 'flag_edge_fraction' in self._config_dict['line_product'][product]:
+                    flag_edge_fraction = self._config_dict['line_product'][product]['flag_edge_fraction']
+
+        if flag_edge_fraction is None:
+            logging.info('No flag_edge_fraction found for ' + product + ' Defaults to 0.0.')
+            flag_edge_fraction = 0.0
+
+        return flag_edge_fraction
+
     def get_contsub_fitorder(self, product=None):
         """
         Get the fitorder to be used for continuum subtraction for a line product.
@@ -2065,6 +2087,35 @@ class KeyHandler:
             logger.debug("Tag " + str(array_tag) + " has no timebin.")
             return '0s'
         return self._config_dict['array_tag'][array_tag]['timebin']
+
+    def get_joint_imaging_dirs_for_singledish_config(self, config='tp'):
+        """
+        Get joint_imaging_dirs.
+        """
+        if 'singledish_config' in self._config_dict:
+            if config in self._config_dict['singledish_config']:
+                if 'joint_imaging_dirs' in self._config_dict['singledish_config'][config]:
+                    joint_imaging_dirs = self._config_dict['singledish_config'][config]['joint_imaging_dirs']
+                    if not isinstance(joint_imaging_dirs, (list, tuple)):
+                        joint_imaging_dirs = joint_imaging_dirs.split(' ')
+                    return joint_imaging_dirs
+                else:
+                    return None
+
+        return None
+
+    def get_joint_imaging_suffix_for_singledish_config(self, config='tp'):
+        """
+        Get joint_imaging_suffix.
+        """
+        if 'singledish_config' in self._config_dict:
+            if config in self._config_dict['singledish_config']:
+                if 'joint_imaging_suffix' in self._config_dict['singledish_config'][config]:
+                    return self._config_dict['singledish_config'][config]['joint_imaging_suffix']
+                else:
+                    return ''
+
+        return ''
 
     def loop_over_input_ms(
             self,

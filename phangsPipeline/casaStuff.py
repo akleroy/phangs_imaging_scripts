@@ -10,11 +10,16 @@
 
 # Obtain a version tuple (note the syntax change from < 6 to > 6)
 
-from packaging import version
+try:
+    from packaging import version
+except:
+    class version:
+        def parse(self, vstr):
+            return tuple(map(int, vstr.replace('-','.').split('.')[0:3]))
 
 try:
     from taskinit import *
-except ModuleNotFoundError:
+except:
     pass
 
 if ('casa' in locals()) or ('casa' in globals()):
@@ -140,9 +145,8 @@ if casa_version[0] >= 6:
 
     # from recipes.almahelpers import tsysspwmap
 
-    # TODO: For now, uvcontsub doesn't work as we want it in newer CASA versions, fall back to old version
-    if version.parse(casa_version_str) >= version.parse('6.5.2'):
-        from casatasks import uvcontsub_old as uvcontsub
+    # if version.parse(casa_version_str) >= version.parse('6.5.2'):
+    #     from casatasks import uvcontsub_old as uvcontsub
 
     # sdintimaging imports
 
