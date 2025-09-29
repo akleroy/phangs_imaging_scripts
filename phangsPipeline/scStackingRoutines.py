@@ -5,7 +5,7 @@ import astropy.units as u
 import astropy.wcs as wcs
 from astropy.io import fits
 from spectral_cube import SpectralCube, Projection
-from .scDerivativeRoutines import convert_and_reproject
+from phangsPipeline.scDerivativeRoutines import convert_and_reproject
 import logging
 
 logger = logging.getLogger(__name__)
