@@ -62,7 +62,8 @@ if has_astropy_speccube:
 
     from .scConvolution import smooth_cube
     from .scNoiseRoutines import recipe_phangs_noise
-    from .scMaskingRoutines import recipe_phangs_strict_mask, recipe_phangs_broad_mask
+    from .scMaskingRoutines import recipe_phangs_strict_mask, recipe_phangs_broad_mask, recipe_phangs_flat_mask
+    from .scStackingRoutines import recipe_phangs_vfield, recipe_shuffle_cube
 
     #from . import scDerivativeRoutines as scderiv
     from .scMoments import moment_generator
@@ -102,6 +103,10 @@ if has_astropy_speccube:
                 do_broadmask=False,
                 do_moments=False,
                 do_secondary=False,
+                do_vfield=False,
+                do_shuffling=False, 
+                do_flatmask=False,
+                do_flatmaps=False,
                 make_directories=True,
                 extra_ext_in='',
                 extra_ext_out='',
@@ -121,6 +126,10 @@ if has_astropy_speccube:
                 do_broadmask = True
                 do_moments = True
                 do_secondary = True
+                do_vfield=True,
+                do_shuffling = True
+                do_flatmask = True
+                do_flatmaps = True
 
             # Error checking
 
@@ -308,7 +317,145 @@ if has_astropy_speccube:
                             target=this_target, product=this_product, config=this_config,
                             res_tag=this_res, overwrite=overwrite)
 
+            # Create velocity field.
 
+            if do_vfield:
+    
+                for this_target, this_product, this_config in \
+                        self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                    # Only build one velocity field that covers all resolutions
+
+                    self.task_build_vfield(
+                        target=this_target, config=this_config, product=this_product,
+                        overwrite=overwrite, res_tag=None)
+
+
+            # Make shuffled cube.
+
+            if do_shuffling:
+
+                for this_target, this_product, this_config in \
+                        self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                    # Always start with the native resolution
+
+                    self.task_shuffle_cube(
+                        target=this_target, config=this_config, product=this_product,
+                        overwrite=overwrite)
+
+                    # Loop over all angular and physical resolutions.
+                    # N.B. we only want native resolution shuffled cubes;
+                    # feel free to uncomment the lines below for other resolutions
+
+                    # res_dict = self._kh.get_ang_res_dict(
+                    #     config=this_config,product=this_product)
+                    # res_list = list(res_dict)
+                    # if len(res_list) > 0:
+                    #     res_list.sort()
+                    # for this_res_tag in res_list:
+
+                    #     self.task_shuffle_cube(
+                    #         target=this_target, config=this_config, product=this_product,
+                    #         res_tag=this_res_tag, overwrite=overwrite)
+
+                    # res_dict = self._kh.get_phys_res_dict(
+                    #     config=this_config,product=this_product)
+                    # res_list = list(res_dict)
+                    # if len(res_list) > 0:
+                    #     res_list.sort()
+                    # for this_res_tag in res_list:
+
+                    #     self.task_shuffle_cube(
+                    #         target=this_target, config=this_config, product=this_product,
+                    #         res_tag=this_res_tag, overwrite=overwrite)
+
+            # Make "flat masks" for each cube
+
+            if do_flatmask:
+
+                for this_target, this_product, this_config in \
+                        self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                    #
+                    # Flat Strict Mask
+
+                    # Always start with the native resolution
+
+                    self.task_build_flat_strict_mask(
+                        target=this_target, config=this_config, product=this_product,
+                        overwrite=overwrite, res_tag=None)
+
+                    # Loop over all angular and physical resolutions.
+
+                    for this_res in self._kh.get_ang_res_dict(
+                        config=this_config,product=this_product):
+
+                        self.task_build_flat_strict_mask(
+                            target=this_target, config=this_config, product=this_product,
+                            overwrite=overwrite, res_tag=this_res)
+
+                    for this_res in self._kh.get_phys_res_dict(
+                        config=this_config,product=this_product):
+
+                        self.task_build_flat_strict_mask(
+                            target=this_target, config=this_config, product=this_product,
+                            overwrite=overwrite, res_tag=this_res)
+                                          
+                    #
+                    # Flat Broad Mask
+
+                    # Always start with the native resolution
+
+                    self.task_build_flat_broad_mask(
+                        target=this_target, config=this_config, product=this_product,
+                        overwrite=overwrite, res_tag=None)
+
+                    # Loop over all angular and physical resolutions.
+
+                    for this_res in self._kh.get_ang_res_dict(
+                        config=this_config,product=this_product):
+
+                        self.task_build_flat_broad_mask(
+                            target=this_target, config=this_config, product=this_product,
+                            overwrite=overwrite, res_tag=this_res)
+
+                    for this_res in self._kh.get_phys_res_dict(
+                        config=this_config,product=this_product):
+
+                        self.task_build_flat_broad_mask(
+                            target=this_target, config=this_config, product=this_product,
+                            overwrite=overwrite, res_tag=this_res)
+
+            # Make "flat maps" - derived data products.
+
+            if do_flatmaps:
+
+                for this_target, this_product, this_config in \
+                        self.looper(do_targets=True,do_products=True,do_configs=True):
+
+                    # Always start with the native resolution
+
+                    self.task_generate_flatmaps(
+                        target=this_target, product=this_product, config=this_config,
+                        res_tag=None, overwrite=overwrite)
+
+                    # Loop over all angular and physical resolutions.
+
+                    for this_res in self._kh.get_ang_res_dict(
+                        config=this_config,product=this_product):
+
+                        self.task_generate_flatmaps(
+                            target=this_target, product=this_product, config=this_config,
+                            res_tag=this_res, overwrite=overwrite)
+
+                    for this_res in self._kh.get_phys_res_dict(
+                        config=this_config,product=this_product):
+
+                        self.task_generate_flatmaps(
+                            target=this_target, product=this_product, config=this_config,
+                            res_tag=this_res, overwrite=overwrite)
+                        
     # end of loop
 
 
@@ -389,6 +536,24 @@ if has_astropy_speccube:
             fname_dict['coverage2d'] = coverage2d_filename
 
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Velocity field
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            vfield_filename = target+'_vfield.fits'
+            fname_dict['vfield'] = vfield_filename
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Shuffled Cubes
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            shuffled_filename = utilsFilenames.get_cube_filename(
+                target = target, config = config, product = product,
+                ext = res_tag+extra_ext_out+'_shuffled',
+                casa = False)
+
+            fname_dict['shuffled'] = shuffled_filename
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
             # Noise Cubes
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
@@ -426,6 +591,28 @@ if has_astropy_speccube:
             fname_dict['broadmask'] = broadmask_filename
 
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Flat Strict Mask
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            flatstrictmask_filename = utilsFilenames.get_cube_filename(
+                target = target, config = config, product = product,
+                ext = extra_ext_out+'_flatstrictmask',
+                casa = False)
+
+            fname_dict['flatstrictmask'] = flatstrictmask_filename
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Flat Broad Mask
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            flatbroadmask_filename = utilsFilenames.get_cube_filename(
+                target = target, config = config, product = product,
+                ext = extra_ext_out+'_flatbroadmask',
+                casa = False)
+
+            fname_dict['flatbroadmask'] = flatbroadmask_filename
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
             # Moments
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
@@ -447,6 +634,8 @@ if has_astropy_speccube:
         ##################################################################
         # Tasks - discrete steps on target, product, config combinations #
         ##################################################################
+
+        # region convolve
 
         def task_convolve(
             self,
@@ -537,10 +726,10 @@ if has_astropy_speccube:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
 
-            logger.info("Input file "+input_file)
+            logger.info("Input file: "+input_file)
             logger.info("Target file: "+outfile)
             logger.info("Coverage file: "+coveragefile)
-            logger.info("Keywords: "+str(convolve_kwargs))
+            logger.info("Keyword arguments: "+str(convolve_kwargs))
 
             if (not self._dry_run):
 
@@ -587,6 +776,9 @@ if has_astropy_speccube:
                                     overwrite=overwrite)
 
             return()
+        # endregion
+
+        # region noise
 
         def task_estimate_noise(
             self,
@@ -636,7 +828,7 @@ if has_astropy_speccube:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
 
-            logger.info("Input file "+input_file)
+            logger.info("Input file: "+input_file)
             logger.info("Target file: "+outfile)
             logger.info("Keyword arguments: "+str(noise_kwargs))
 
@@ -650,6 +842,9 @@ if has_astropy_speccube:
                     noise_kwargs=noise_kwargs,
                     return_spectral_cube=False,
                     overwrite=overwrite)
+        # endregion
+
+        # region strict mask
 
         def task_build_strict_mask(
             self,
@@ -697,7 +892,7 @@ if has_astropy_speccube:
 
             if not (os.path.isfile(indir+coverage_file)):
                 logger.warning("Missing coverage estimate: "+indir+coverage_file)
-                logger.warning("This may be fine. Proceeding")
+                logger.warning("This may be fine. Proceeding.")
                 coverage_file = None
 
             # Access keywords for mask generation
@@ -717,12 +912,12 @@ if has_astropy_speccube:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
 
-            logger.info("Input file "+input_file)
-            logger.info("Noise file "+noise_file)
+            logger.info("Input file: "+input_file)
+            logger.info("Noise file: "+noise_file)
             if coverage_file is not None:
-                logger.info("Coverage file "+coverage_file)
+                logger.info("Coverage file: "+coverage_file)
             logger.info("Target file: "+outfile)
-            logger.info("Kwargs: "+str(strictmask_kwargs))
+            logger.info("Keyword arguments: "+str(strictmask_kwargs))
 
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
             # Call the masking routines
@@ -745,6 +940,9 @@ if has_astropy_speccube:
                     mask_kwargs=strictmask_kwargs,
                     return_spectral_cube=False,
                     overwrite=overwrite)
+        # endregion
+
+        # region broad mask
 
         def task_build_broad_mask(
             self,
@@ -846,10 +1044,10 @@ if has_astropy_speccube:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
             logger.info("")
 
-            logger.info("Input file "+input_file)
+            logger.info("Input file: "+input_file)
             logger.info("List of other masks "+str(list_of_masks))
             logger.info("Target file: "+outfile)
-            logger.info("Kwargs: "+str(broadmask_kwargs))
+            logger.info("Keyword arguments: "+str(broadmask_kwargs))
 
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
             # Call the mask combining routine
@@ -864,7 +1062,10 @@ if has_astropy_speccube:
                     #mask_kwargs=broadmask_kwargs,
                     #return_spectral_cube=False,
                     overwrite=overwrite)
+        # endregion
 
+        # region moments
+        
         def task_generate_moments(
             self,
             target = None,
@@ -1021,8 +1222,9 @@ if has_astropy_speccube:
                         moment=mom_params['algorithm'], momkwargs=mom_params['kwargs'],
                         outfile=outfile, errorfile=errorfile,
                         channel_correlation=None)
+        # endregion
 
-
+        # region secondary moments
 
         def task_generate_secondary_moments(
             self,
@@ -1129,7 +1331,7 @@ if has_astropy_speccube:
 
             logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
 
-            for thisround in uniqrounds[1:]:
+            for thisround in uniqrounds[1:2]:
                 logger.info("... Now, calculate all moments in stage {0}".format(thisround))
                 logger.info("")
 
@@ -1230,7 +1432,7 @@ if has_astropy_speccube:
                         # Call the moment generator
                         # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                        print(kwargs_dict)
+                        # print(kwargs_dict)
 
                         moment_generator(
                             indir+input_file, mask=mask_file, noise=noise_in,
@@ -1240,6 +1442,638 @@ if has_astropy_speccube:
                             momkwargs=kwargs_dict,
                             # Deprecated context
                             )
+        # endregion
+                        
+        # region vfield
+        def task_build_vfield(
+            self,
+            target = None,
+            config = None,
+            product = None,
+            res_tag = None,
+            extra_ext = '',
+            overwrite = False,
+            ):
+            """
+            Generate a combined velocity field from a list of mom1 maps.
+            """
+
+            # Generate file names
+
+            indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            indir = os.path.abspath(indir)+'/'
+
+            outdir = self._kh.get_vfield_dir_for_target(target=target, changeto=False)
+            outdir = os.path.abspath(outdir)+'/'
+
+            fname_dict = self._fname_dict(
+                target=target, config=config, product=product, res_tag=res_tag,
+                extra_ext_in=extra_ext)
+
+            input_file = fname_dict['momentroot']+'_mom1wprior.fits'
+            outfile = fname_dict['vfield']
+
+            # Check input file existence
+
+            if not (os.path.isfile(indir+input_file)):
+                logger.warning("Missing cube: "+indir+input_file)
+                return()
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Create the list of maps to combine
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            list_of_vfiels = []
+
+            linked_configs = self._kh.get_linked_mask_configs(
+                config=config, product=product)
+
+            if config not in linked_configs:
+                linked_configs.append(config)
+
+            for cross_config in linked_configs:
+
+                fname_dict = self._fname_dict(
+                    target=target, config=cross_config, product=product, res_tag=None,
+                    extra_ext_in=extra_ext)
+
+                this_vfield = fname_dict['momentroot']+'_mom1wprior.fits'
+                if this_vfield not in list_of_vfiels:
+                    if os.path.isfile(indir+this_vfield):
+                        list_of_vfiels.append(indir+this_vfield)
+
+                # Loop over all angular and physical resolutions.
+
+                for this_res in self._kh.get_ang_res_dict(
+                    config=cross_config,product=product):
+
+                    fname_dict = self._fname_dict(
+                        target=target, config=cross_config, product=product, res_tag=this_res,
+                        extra_ext_in=extra_ext)
+
+                    this_vfield = fname_dict['momentroot']+'_mom1wprior.fits'
+                    if this_vfield not in list_of_vfiels:
+                        if os.path.isfile(indir+this_vfield):
+                            list_of_vfiels.append(indir+this_vfield)
+
+                for this_res in self._kh.get_phys_res_dict(
+                    config=cross_config,product=product):
+
+                    fname_dict = self._fname_dict(
+                        target=target, config=cross_config, product=product, res_tag=this_res,
+                        extra_ext_in=extra_ext)
+
+                    this_vfield = fname_dict['momentroot']+'_mom1wprior.fits'
+                    if this_vfield not in list_of_vfiels:
+                        if os.path.isfile(indir+this_vfield):
+                            list_of_vfiels.append(indir+this_vfield)
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Report
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            logger.info("")
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("Creating a velocity field for:")
+            logger.info(str(target)+" , "+str(product)+" , "+str(config))
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+
+            logger.info("Input file: "+input_file)
+            logger.info("List of other velocity fields:")
+            for this_vfield in list_of_vfiels:
+                logger.info(str(this_vfield))
+            logger.info("Target file: "+outfile)
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Call the vfield combining routine
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            if (not self._dry_run):
+                recipe_phangs_vfield(
+                    indir+input_file,
+                    list_of_vfields=list_of_vfiels,
+                    outfile=outdir+outfile,
+                    overwrite=overwrite)
+        # endregion
+
+        # region shuffle cube
+
+        def task_shuffle_cube(
+            self,
+            target = None,
+            config = None,
+            product = None,
+            res_tag = None,
+            extra_ext = '',
+            overwrite = False,
+            ):
+            """
+            Construct shuffled cube and save it to disk.
+            """
+
+            # Generate file names
+
+            indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            indir = os.path.abspath(indir)+'/'
+
+            outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            outdir = os.path.abspath(outdir)+'/'
+
+            vfield_dir = self._kh.get_vfield_dir_for_target(target=target, changeto=False)
+            vfield_dir = os.path.abspath(vfield_dir)+'/'
+
+            fname_dict = self._fname_dict(
+                target=target, config=config, product=product, res_tag=res_tag,
+                extra_ext_in=extra_ext)
+
+            input_file = fname_dict['cube']
+            vfield_file = fname_dict['vfield']
+            outfile = fname_dict['shuffled']
+
+            # Check input file existence
+
+            if not (os.path.isfile(indir+input_file)):
+                logger.warning("Missing cube: "+indir+input_file)
+                return()
+
+            if not (os.path.isfile(vfield_dir+vfield_file)):
+                logger.warning("Missing velocity field: "+vfield_dir+vfield_file)
+                return()
+
+            # Access keywords for noise generation
+
+            shuffle_kwargs = self._kh.get_derived_kwargs(
+                config=config, product=product, kwarg_type='shuffle_kw')
+
+            # Report
+
+            logger.info("")
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("Running shuffling for:")
+            logger.info(str(target)+" , "+str(product)+" , "+str(config))
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+
+            logger.info("Input file: "+input_file)
+            logger.info("Target file: "+outfile)
+            logger.info("Keyword arguments: "+str(shuffle_kwargs))
+
+            # Call shuffling routine
+
+            recipe_shuffle_cube(
+                incube=indir+input_file,
+                invfield=vfield_dir+vfield_file,
+                outfile=outdir+outfile,
+                overwrite=overwrite)
+        # endregion
+
+        # region flat strict mask
+
+        def task_build_flat_strict_mask(
+            self,
+            target = None,
+            config = None,
+            product = None,
+            res_tag = None,
+            extra_ext = '',
+            overwrite = False,
+            ):
+            """
+            Construct the flat strict mask and save it to disk.
+            """
+
+            # Generate file names
+
+            indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            indir = os.path.abspath(indir)+'/'
+
+            outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            outdir = os.path.abspath(outdir)+'/'
+
+            vfield_dir = self._kh.get_vfield_dir_for_target(target=target, changeto=False)
+            vfield_dir = os.path.abspath(vfield_dir)+'/'
+
+            fname_dict = self._fname_dict(
+                target=target, config=config, product=product, res_tag=res_tag,
+                extra_ext_in=extra_ext)
+
+            input_file = fname_dict['cube']
+            vfield_file = fname_dict['vfield']
+            mask_file = fname_dict['strictmask']
+            coverage_file = fname_dict['coverage']
+            coverage2d_file = fname_dict['coverage2d']
+
+            outfile = fname_dict['flatstrictmask']
+
+            # Check input file existence
+
+            if not (os.path.isfile(indir+input_file)):
+                logger.warning("Missing cube: "+indir+input_file)
+                return()
+
+            if not (os.path.isfile(vfield_dir+vfield_file)):
+                logger.warning("Missing velocity field: "+vfield_dir+vfield_file)
+                return()
+
+            if not (os.path.isfile(indir+mask_file)):
+                logger.warning("Missing strict mask: "+indir+mask_file)
+                return()
+
+            # Coverage
+
+            if not (os.path.isfile(indir+coverage_file)):
+                logger.warning("Missing coverage estimate: "+indir+coverage_file)
+                logger.warning("This may be fine. .")
+                coverage_file = None
+
+            # Access keywords for mask generation
+
+            flatmask_kwargs = self._kh.get_derived_kwargs(
+                config=config, product=product, kwarg_type='flatstrictmask_kw')
+
+            # get velocity window from separate key if not provided from derived key
+            if not flatmask_kwargs:
+                this_window = self._kh.get_window_for_target(target)
+                if this_window is None:
+                    logger.error("No velocity window for target "+target)
+                    return()
+                flatmask_kwargs = {'v_window':this_window}
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Report
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            logger.info("")
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("Creating a flat strict mask for:")
+            logger.info(str(target)+" , "+str(product)+" , "+str(config))
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+
+            logger.info("Input file: "+input_file)
+            logger.info("Velocity field file: "+vfield_file)
+            logger.info("Strict mask file: "+mask_file)
+            if coverage_file is not None:
+                logger.info("Coverage file: "+coverage_file)
+            logger.info("Target file: "+outfile)
+            logger.info("Keyword arguments: "+str(flatmask_kwargs))
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Call the masking routines
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            if (not self._dry_run):
+
+                # ... put the directory into the name to allow it to remain
+                # None when missing.
+                if coverage_file is not None:
+                    coverage_file_in = indir+coverage_file
+                else:
+                    coverage_file_in = None
+
+                # run flat mask routine
+                recipe_phangs_flat_mask(
+                    incube=indir+input_file,
+                    invfield=vfield_dir+vfield_file,
+                    inmask=indir+mask_file,
+                    coverage=coverage_file_in,
+                    outfile=outdir+outfile,
+                    mask_kwargs=flatmask_kwargs,
+                    return_spectral_cube=False,
+                    overwrite=overwrite)
+
+        # region flat broad mask
+
+        def task_build_flat_broad_mask(
+            self,
+            target = None,
+            config = None,
+            product = None,
+            res_tag = None,
+            extra_ext = '',
+            overwrite = False,
+            ):
+            """
+            Construct the flat broad mask and save it to disk.
+            """
+
+            # Generate file names
+
+            indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            indir = os.path.abspath(indir)+'/'
+
+            outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            outdir = os.path.abspath(outdir)+'/'
+
+            vfield_dir = self._kh.get_vfield_dir_for_target(target=target, changeto=False)
+            vfield_dir = os.path.abspath(vfield_dir)+'/'
+
+            fname_dict = self._fname_dict(
+                target=target, config=config, product=product, res_tag=res_tag,
+                extra_ext_in=extra_ext)
+
+            input_file = fname_dict['cube']
+            vfield_file = fname_dict['vfield']
+            mask_file = fname_dict['broadmask']
+            coverage_file = fname_dict['coverage']
+            coverage2d_file = fname_dict['coverage2d']
+
+            outfile = fname_dict['flatbroadmask']
+
+            # Check input file existence
+
+            if not (os.path.isfile(indir+input_file)):
+                logger.warning("Missing cube: "+indir+input_file)
+                return()
+
+            if not (os.path.isfile(vfield_dir+vfield_file)):
+                logger.warning("Missing velocity field: "+vfield_dir+vfield_file)
+                return()
+
+            if not (os.path.isfile(indir+mask_file)):
+                logger.warning("Missing broad mask: "+indir+mask_file)
+                return()
+
+            # Coverage
+
+            if not (os.path.isfile(indir+coverage_file)):
+                logger.warning("Missing coverage estimate: "+indir+coverage_file)
+                logger.warning("This may be fine. Proceeding.")
+                coverage_file = None
+
+            # Access keywords for mask generation
+            
+            flatmask_kwargs = self._kh.get_derived_kwargs(
+                config=config, product=product, kwarg_type='flatbroadmask_kw')
+            
+            # get velocity window from separate key if not provided from derived key
+            if not flatmask_kwargs:
+                this_window = self._kh.get_window_for_target(target)
+                if this_window is None:
+                    logger.error("No velocity window for target "+target)
+                    return()
+                flatmask_kwargs = {'window':this_window}
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Report
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            logger.info("")
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("Creating a flat broad mask for:")
+            logger.info(str(target)+" , "+str(product)+" , "+str(config))
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+
+            logger.info("Input file: "+input_file)
+            logger.info("Velocity field file: "+vfield_file)
+            logger.info("Broad mask file: "+mask_file)
+            if coverage_file is not None:
+                logger.info("Coverage file: "+coverage_file)
+            logger.info("Target file: "+outfile)
+            logger.info("Keyword arguments: "+str(flatmask_kwargs))
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Call the masking routines
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            if (not self._dry_run):
+
+                # ... put the directory into the name to allow it to remain
+                # None when missing.
+                if coverage_file is not None:
+                    coverage_file_in = indir+coverage_file
+                else:
+                    coverage_file_in = None
+
+                # run flat mask routine
+                recipe_phangs_flat_mask(
+                    incube=indir+input_file,
+                    invfield=vfield_dir+vfield_file,
+                    inmask=indir+mask_file,
+                    coverage=coverage_file_in,
+                    outfile=outdir+outfile,
+                    mask_kwargs=flatmask_kwargs,
+                    return_spectral_cube=False,
+                    overwrite=overwrite)
+        # end regions
+
+        # region flat maps
+
+        def task_generate_flatmaps(
+            self,
+            target = None,
+            config = None,
+            product = None,
+            res_tag = None,
+            extra_ext = '',
+            overwrite = False,
+            ):
+            """
+            Generate moment maps.
+            """
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Look up filenames, list of moments, etc.
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            # Generate file names
+
+            indir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            indir = os.path.abspath(indir)+'/'
+
+            outdir = self._kh.get_derived_dir_for_target(target=target, changeto=False)
+            outdir = os.path.abspath(outdir)+'/'
+
+            # Filenames
+
+            fname_dict_nores = self._fname_dict(
+                target=target, config=config, product=product, res_tag=None,
+                extra_ext_in=extra_ext)
+
+            fname_dict = self._fname_dict(
+                target=target, config=config, product=product, res_tag=res_tag,
+                extra_ext_in=extra_ext)
+
+            # ... broad mask never has a resolution tag
+
+            broadmask_file = fname_dict_nores['flatbroadmask']
+
+            # ... files with resolution tag
+
+            input_file = fname_dict['cube']
+            noise_file = fname_dict['noise']
+            strictmask_file = fname_dict['flatstrictmask']
+
+            outroot = fname_dict['momentroot']
+
+            # Check input file and mask existence
+
+            if not (os.path.isfile(indir+input_file)):
+                logger.warning("Missing cube: "+indir+input_file)
+                return()
+
+            found_broadmask = (os.path.isfile(indir+broadmask_file))
+            found_strictmask = (os.path.isfile(indir+strictmask_file))
+
+            # Look up which moments to calculate
+
+            list_of_moments = self._kh.get_moment_list(config=config, product=product)
+
+            rounds = []
+            for this_mom in list_of_moments:
+                rounds.append(self._kh.get_params_for_moment(this_mom)['round'])
+            uniqrounds = sorted(list(set(rounds)))
+
+            if len(uniqrounds) == 1:
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                logger.info("")
+                logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
+                logger.info("... Secondary moments requested but not specified in moment keys")
+                logger.info("... Returning to main loop")
+                logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+                logger.info("")
+                return()
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Report
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            logger.info("")
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("Generating moment maps for:")
+            logger.info(str(target)+" , "+str(product)+" , "+str(config))
+            if res_tag is not None:
+                logger.info("Resolution "+str(res_tag))
+            logger.info("Found a flat strict mask? "+str(found_strictmask))
+            logger.info("Found a flat broad mask? "+str(found_broadmask))
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+
+            logger.info("... input file: "+input_file)
+            logger.info("... noise file: "+noise_file)
+            logger.info("... flat strict mask file: "+strictmask_file)
+            logger.info("... flat broad mask file: "+broadmask_file)
+            logger.info("... list of moments: "+str(list_of_moments))
+            logger.info("... output root: "+outroot)
+
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+            # Execute
+            # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+            logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
+            logger.info("")
+
+            logger.info("... Total stages of moment calculation: {0}".format(len(uniqrounds)))
+
+            for thisround in uniqrounds[2:3]:
+                logger.info("... Now, calculate all moments in stage {0}".format(thisround))
+                logger.info("")
+
+                sublist_of_moments = [this_mom for this_mom in list_of_moments
+                                    if self._kh.get_params_for_moment(this_mom)['round'] == thisround]
+
+                if (not self._dry_run):
+                    for this_mom in sublist_of_moments:
+                        logger.info('... generating moment: '+str(this_mom))
+
+                        proceed = True
+
+                        mom_params = self._kh.get_params_for_moment(this_mom)
+
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        # Look up mask
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                        if mom_params['mask'] is None:
+                            mask_file = None
+                        elif mom_params['mask'].strip().lower() == 'none':
+                            mask_file = None
+                        elif mom_params['mask'] == 'flatstrictmask':
+                            if not found_strictmask:
+                                logger.warning("Flat strict mask needed but not found. Skipping.")
+                                continue
+                            mask_file = indir+strictmask_file
+                        elif mom_params['mask'] == 'flatbroadmask':
+                            if not found_broadmask:
+                                logger.warning("Flat broad mask needed but not found. Skipping.")
+                                continue
+                            mask_file = indir+broadmask_file
+                        else:
+                            logger.warning("Mask choice not recognized for moment: "+str(this_mom))
+                            logger.warning("Skipping.")
+                            continue
+
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        # Check noise
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                        if not (os.path.isfile(indir+noise_file)):
+                            logger.warning("Missing noise: "+indir+noise_file)
+                            noise_in = None
+                            errorfile = None
+                        else:
+                            noise_in = indir+noise_file
+                            errorfile = outdir+outroot+mom_params['ext_error']+'.fits'
+
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        # Set up output file
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                        outfile = outdir+outroot+mom_params['ext']+'.fits'
+
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        # Look up maps to pass and build the kwarg list
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                        kwargs_dict = mom_params['kwargs']
+
+                        maps_to_pass = mom_params['maps_to_pass']
+                        for map_ext in maps_to_pass:
+
+                            # File name for this extension
+                            this_map_file = outroot+'_'+map_ext+'.fits'
+
+                            # Verify file existence
+                            if not (os.path.isfile(indir+this_map_file)):
+                                logger.warning("Missing needed context file: "+indir+this_map_file)
+                                proceed = False
+
+                            # Add as param to kwarg dict
+                            kwargs_dict[map_ext] = indir+this_map_file
+
+                        other_exts = mom_params['other_exts']
+                        for param_name in other_exts.keys():
+
+                            # File name for this extension
+                            this_ext = other_exts[param_name]
+
+                            # Code to look up file name
+                            this_ext_file = str(target)+this_ext
+
+                            # Verify file existence
+                            if not (os.path.isfile(indir+this_ext_file)):
+                                logger.warning("Missing needed context file: "+indir+this_ext_file)
+                                proceed = False
+
+                            # Add as param to kwarg dict
+                            kwargs_dict[param_name] = indir+this_ext_file
+
+                        if proceed == False:
+                            logger.warning("Missing some needed information. Skipping this calculation.")
+                            continue
+
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        # Call the moment generator
+                        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                        moment_generator(
+                            indir+input_file, mask=mask_file, noise=noise_in,
+                            moment=mom_params['algorithm'], 
+                            momkwargs=mom_params['kwargs'],
+                            outfile=outfile, errorfile=errorfile,
+                            channel_correlation=None)
+        # endregion
 
 else:
     # Make a mock DerivedHandler when astropy (and therefore spectral-cube)
