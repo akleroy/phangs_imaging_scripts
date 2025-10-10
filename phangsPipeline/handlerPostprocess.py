@@ -55,10 +55,12 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         self,
         key_handler = None,
         dry_run = False,
+        raise_exception_mosaic_part_missing = False,
         ):
 
         # inherit template class
         handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
+        self.raise_exception_mosaic_part_missing = raise_exception_mosaic_part_missing
 
 #region File name routines
 
@@ -1286,8 +1288,19 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 extra_ext=extra_ext_out,
                 )
 
-            infile_list.append(indir+this_part_dict_in[in_tag])
-            outfile_list.append(outdir+this_part_dict_out[out_tag])
+            infile = indir+this_part_dict_in[in_tag]
+            infile_exists = os.path.isdir(infile)
+
+            outfile = outdir+this_part_dict_out[out_tag]
+
+            if infile_exists:
+                infile_list.append(infile)
+                outfile_list.append(outfile)
+            else:
+                if self.raise_exception_mosaic_part_missing:
+                    raise FileNotFoundError("Missing file "+infile)
+                else:
+                    logger.warning("Missing file "+infile)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -1381,8 +1394,20 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             for this_tag_in in in_tags:
 
                 this_tag_out = out_tag_dict[this_tag_in]
-                infile_list.append(indir+this_part_dict_in[this_tag_in])
-                outfile_list.append(outdir+this_part_dict_out[this_tag_out])
+
+                infile = indir+this_part_dict_in[this_tag_in]
+                infile_exists = os.path.isdir(infile)
+
+                outfile = outdir+this_part_dict_out[this_tag_out]
+
+                if infile_exists:
+                    infile_list.append(infile)
+                    outfile_list.append(outfile)
+                else:
+                    if self.raise_exception_mosaic_part_missing:
+                        raise FileNotFoundError("Missing file " + infile)
+                    else:
+                        logger.warning("Missing file " + infile)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
@@ -1465,8 +1490,27 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
                 extra_ext=extra_ext_in,
                 )
 
-            infile_list.append(indir+this_part_dict_in[image_tag])
-            weightfile_list.append(indir+this_part_dict_in[weight_tag])
+            # Only include these files if both imaging and weights exist
+            infile = indir+this_part_dict_in[image_tag]
+            weightfile = indir+this_part_dict_in[weight_tag]
+
+            infile_exists = os.path.isdir(infile)
+            weightfile_exists = os.path.isdir(weightfile)
+
+            if infile_exists and weightfile_exists:
+                infile_list.append(infile)
+                weightfile_list.append(weightfile)
+            else:
+                if not infile_exists:
+                    if self.raise_exception_mosaic_part_missing:
+                        raise FileNotFoundError("Missing file " + infile)
+                    else:
+                        logger.warning("Missing file " + infile)
+                if not weightfile_exists:
+                    if self.raise_exception_mosaic_part_missing:
+                        raise FileNotFoundError("Missing file " + weightfile)
+                    else:
+                        logger.warning("Missing file "+weightfile)
 
         logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")

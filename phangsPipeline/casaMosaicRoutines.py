@@ -85,6 +85,10 @@ def common_res_for_mosaic(
         logger.error("Missing required infile_list.")
         return(None)
 
+    if len(infile_list) == 0:
+        logger.error("No files to process.")
+        return None
+
     for this_file in infile_list:
         if os.path.isdir(this_file) == False:
             logger.error("File not found "+this_file)
@@ -558,6 +562,10 @@ def common_grid_for_mosaic(
         logger.error("Infile list missing.")
         return(None)
 
+    if len(infile_list) == 0:
+        logger.error("No files to process.")
+        return None
+
     for this_infile in infile_list:
         if os.path.isdir(this_infile) == False:
             logger.error("File "+this_infile+" not found. Continuing.")
@@ -853,6 +861,10 @@ def mosaic_aligned_data(
     if infile_list is None:
         logger.error("Input file list required.")
         return(None)
+
+    if len(infile_list) == 0:
+        logger.error("No files to process.")
+        return None
 
     if outfile is None:
         logger.error("Output file is required.")
