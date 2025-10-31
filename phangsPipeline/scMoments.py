@@ -6,7 +6,7 @@ import numpy as np
 import astropy.units as u
 from spectral_cube import SpectralCube
 
-from . import scDerivativeRoutines as scdr
+from phangsPipeline import scDerivativeRoutines as scdr
 
 warnings.filterwarnings("ignore")
 
@@ -50,6 +50,9 @@ def _func_and_kwargs_for_moment(moment_tag=None):
     elif moment_tag == 'mom1wprior':
         func = scdr.write_moment1_hybrid
         kwargs = {'unit': u.km / u.s}
+    elif moment_tag == 'mom0flat':
+        func = scdr.write_moment0_flat
+        kwargs ={'unit': u.K * u.km / u.s}
 
     return(func, kwargs)
 

@@ -1,13 +1,16 @@
+import logging
+
 import numpy as np
 import scipy.ndimage as nd
-
 import astropy.units as u
 import astropy.wcs as wcs
 from astropy.io import fits
-
 from spectral_cube import SpectralCube, Projection
 
-from .scDerivativeRoutines import convert_and_reproject
+from phangsPipeline.scDerivativeRoutines import convert_and_reproject
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def channelShiftVec(x, ChanShift):
     """Shift an array of spectra by some number of channels using the FFT.
@@ -43,6 +46,7 @@ def channelShiftVec(x, ChanShift):
     
     return(x2)
 
+
 def ShuffleCube(
         cube_in, vfield_in, vfield_hdu=0,
         outfile=None, overwrite=True,
@@ -59,16 +63,16 @@ def ShuffleCube(
 
     vfield : float or two-d array or string
 
-    The velocity field to use as a reference. If a string, it's read
-    as a Projection and reprojected onto the cube. If it's a single
-    value then this is broadcast across the whole map. If it's a two-d
-    array it is assumed to be the velocity field.
+        The velocity field to use as a reference. If a string, it's read
+        as a Projection and reprojected onto the cube. If it's a single
+        value then this is broadcast across the whole map. If it's a two-d
+        array it is assumed to be the velocity field.
     
     Keywords
     --------
 
     vfield_hdu : optional refers to the HDU of the velocity field if a
-    file name is supplied. Default 0.
+        file name is supplied. Default 0.
 
     chunk : int
         Number of data points to include in a chunk for processing.
@@ -93,8 +97,10 @@ def ShuffleCube(
     else:
         cube = cube_in
 
-    spaxis = cube.spectral_axis        
+    spaxis = cube.spectral_axis
     spunit = spaxis.unit
+    spvalue = spaxis.value
+    nz, ny, nx = cube.shape
     
     # -------------------------------------------------
     # Now read and align the velocity field
@@ -238,9 +244,216 @@ def ShuffleCube(
     return(new_cube)
 
 
-def BinByMask(DataCube, mask, centroid_map, weight_map=None):
+def recipe_phangs_vfield(
+    vfield_in,
+    vfield_in_hdu=0,
+    list_of_vfields=None,
+    outfile=None,
+    overwrite=False):
     """
-    Bin a data cube by a label mask, aligning the data to a common centroid.  Returns an array.
+    Task to create combined velocity field from a list of velocity maps in
+    a hierarchical manner (from first to last).
+
+    Parameters:
+
+    -----------
+
+    vfield_in : string or fits.hdu
+
+        The reference velocity filed that holds the target WCS. The 
+        other maps will be reprojected onto this one. This map is 
+        included in the final output.
+
+    Keywords:
+    ---------
+
+    vfield_in_hdu : 
+
+    list_of_vfields : list or list of fits.hdu
+
+        List of velocity fields or fits.hdus. These will be reprojected
+        onto the template vfield and then combined via hierarchical addition.
+
+    outfile : string
+        Filename where the vfield will be written. The vfield maps is alsoreturned.
+
+    """
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Read in template velocity field
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # Read the velocity field to a Projection if a file is fed in
+    if type(vfield_in) == str:
+        template_vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_in_hdu])
+    else:
+        template_vfield = vfield_in
+
+    # get velocity unit
+    spunit = template_vfield.unit
+
+    # initialise combined velocity field
+    vfield_combined = np.copy(template_vfield)
+    vfield_combined[np.isnan(vfield_combined)] = 0
+
+    # loop over list of velocity fields
+    for this_vfield_in in list_of_vfields:
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Read in and align ancillary velocity field
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        # Read the velocity field to a Projection if a file is fed in
+        if type(this_vfield_in) == str:
+            this_vfield = Projection.from_hdu(fits.open(this_vfield_in)[vfield_in_hdu])
+        else:
+            this_vfield = this_vfield_in
+
+        # print(this_vfield)
+
+        # If vfield is a Projection reproject it onto the cube and match units
+        if type(this_vfield) is Projection:
+            this_vfield = convert_and_reproject(this_vfield, template=template_vfield, unit=spunit)
+        else:
+
+            # If no units are attached to the vfield, guess that the
+            # units are the same as cube        
+            if type(this_vfield) != u.quantity.Quantity:
+                this_vfield = u.quantity.Quantity(this_vfield, spunit)
+            
+            # Just in case convert the units to match the cube
+            this_vfield = this_vfield.to(spunit)
+
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+        # Merge velocity fields
+        # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+        # fill empty area with current vfield
+        mom1_temp = np.copy(this_vfield)
+        mom1_temp[vfield_combined != 0] = 0
+        vfield_combined += mom1_temp
+        vfield_combined[np.isnan(vfield_combined)] = 0
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Write or return as requested
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # prepate velocity field for output
+    vfield_combined[vfield_combined == 0] = np.nan
+
+    # Write to disk, if desired
+    if outfile is not None:
+        fits.writeto(outfile, vfield_combined.value, template_vfield.header, overwrite=overwrite)
+
+    # return combined velocity field
+    return(vfield_combined)
+
+def recipe_shuffle_cube(
+    cube_in,
+    vfield_in,
+    vfield_in_hdu=0,
+    outfile=None,
+    return_spectral_cube=False,
+    overwrite=False):
+    """
+    Task to create velocity-shuffled cubes via input velocity vfield map.
+
+    Parameters:
+    -----------
+
+    cube_in : string or SpectralCube
+        The cube to be masked.
+
+    vfield_in : 2D numpy.ndarray
+        A 2D map of the vfield velocities for the lines to stack of dimensions Nx, Ny.
+        Note that DataCube and vfield map must have equivalent (but not necessarily equal) 
+        spectral units (e.g., km/s and m/s)
+    
+
+    Keywords:
+    ---------
+
+    vfield_in_hdu=,
+
+    outfile : string
+        Filename where the shuffled cube will be written. The shuffled cube is also
+        returned.
+
+    """
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Error checking and work out inputs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # check input cube
+    if type(cube_in) is SpectralCube:
+        cube = cube_in
+    elif type(cube_in) == type("hello"):
+        cube = SpectralCube.read(cube_in)
+    else:
+        logger.error("Input cube must be a SpectralCube object or a filename.")
+
+    cube.allow_huge_operations = True
+
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Read in and align velocity field
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # Read the velocity field to a Projection if a file is fed in
+    if type(vfield_in) == str:
+        vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_in_hdu])
+    else:
+        vfield = vfield_in
+
+    # If vfield is a Projection reproject it onto the cube and match units
+    if type(vfield) is Projection:
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)
+        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
+    else:
+
+        # If no units are attached to the vfield, guess that the
+        # units are the same as cube        
+        if type(vfield) != u.quantity.Quantity:
+            vfield = u.quantity.Quantity(vfield, spunit)
+        
+        # Just in case convert the units to match the cube
+        vfield = vfield.to(spunit)
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Run the shuffling
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # run shuffling
+    shuffled_cube = ShuffleCube(cube, vfield, chunk=1000)    
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Write or return as requested
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # prepare cube for output
+    # convert data type to 32-bit float and assign WCS and header
+    shuffled_cube = SpectralCube(shuffled_cube.filled_data[:].astype(np.float32), wcs=shuffled_cube.wcs, header=shuffled_cube.header)
+
+    # Write to disk, if desired
+    if outfile is not None:
+        shuffled_cube.write(outfile, overwrite=overwrite)
+
+    # return cube
+    if return_spectral_cube:
+        return(shuffled_cube)
+    else:
+        return(shuffled_cube.filled_data[:].value)
+
+
+def BinByMask(DataCube, mask, vfield, weight_map=None):
+    """
+    Bin a data cube by a label mask, aligning the data to a common vfield.  Returns an array.
 
     Parameters
     ----------
@@ -248,9 +461,9 @@ def BinByMask(DataCube, mask, centroid_map, weight_map=None):
         The original spectral cube with spatial dimensions Nx, Ny and spectral dimension Nv
     Mask : 2D numpy.ndarray
         A 2D map containing boolean values with True indicate where the spectra should be aggregated.
-    centroid_map : 2D numpy.ndarray
-        A 2D map of the centroid velocities for the lines to stack of dimensions Nx, Ny.
-        Note that DataCube and Centroid map must have equivalent spectral units (e.g., km/s)
+    vfield : 2D numpy.ndarray
+        A 2D map of the vfield velocities for the lines to stack of dimensions Nx, Ny.
+        Note that DataCube and vfield map must have equivalent spectral units (e.g., km/s)
     weight_map : 2D numpy.ndarray
         Map containing the weight values to be used in averaging
     Returns
@@ -262,9 +475,9 @@ def BinByMask(DataCube, mask, centroid_map, weight_map=None):
     y, x = np.where(mask)
     v0 = spaxis[len(spaxis) // 2] * DataCube.spectral_axis.unit
     relative_channel = np.arange(len(spaxis)) - (len(spaxis) // 2)
-    centroids = centroid_map[y, x].to(DataCube.spectral_axis.unit).value
+    vfields = vfield[y, x].to(DataCube.spectral_axis.unit).value
     sortindex = np.argsort(spaxis)
-    channel_shift = -1 * np.interp(centroids, spaxis[sortindex],
+    channel_shift = -1 * np.interp(vfields, spaxis[sortindex],
                                    np.array(relative_channel[sortindex], dtype=float))
     spectra = DataCube.filled_data[:, y, x].value
     shifted_spectra = channelShiftVec(spectra, channel_shift)
@@ -278,11 +491,11 @@ def BinByMask(DataCube, mask, centroid_map, weight_map=None):
     return(accum_spectrum, shifted_spaxis)
 
 
-def BinByLabel(DataCube, LabelMap, centroid_map,
+def BinByLabel(DataCube, LabelMap, vfield,
                weight_map=None,
                background_labels=[0]):
     """
-    Bin a data cube by a label mask, aligning the data to a common centroid.
+    Bin a data cube by a label mask, aligning the data to a common vfield.
 
     Parameters
     ----------
@@ -290,9 +503,9 @@ def BinByLabel(DataCube, LabelMap, centroid_map,
         The original spectral cube with spatial dimensions Nx, Ny and spectral dimension Nv
     LabelMap : 2D numpy.ndarray
         A 2D map containing integer labels for each pixel into objects defining the stacking.
-    centroid_map : 2D numpy.ndarray
-        A 2D map of the centroid velocities for the lines to stack of dimensions Nx, Ny.
-        Note that DataCube and Centroid map must have equivalent spectral units to DataCube
+    vfield : 2D numpy.ndarray
+        A 2D map of the vfield velocities for the lines to stack of dimensions Nx, Ny.
+        Note that DataCube and vfield map must have equivalent spectral units to DataCube
     background_labels : list
         List of values in the label map that correspond to background objects and should not
         be processed with the stacking. 
@@ -309,7 +522,7 @@ def BinByLabel(DataCube, LabelMap, centroid_map,
         if ThisLabel not in background_labels:
             thisspec, spaxis = BinByMask(DataCube,
                                          (LabelMap == ThisLabel),
-                                         centroid_map,
+                                         vfield,
                                          weight_map=weight_map)
             output_list += [{'label': ThisLabel,
                              'spectrum': thisspec,

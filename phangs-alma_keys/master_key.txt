@@ -168,22 +168,23 @@
 
 # Locations
 
-key_dir        	     	/data/tycho/0/leroy.42/reduction/alma/phangs_pipeline_configs/phangs-alma/phangs-alma_keys/
-cleanmask_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/cleanmasks/
-imaging_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/imaging/
-postprocess_root	/data/tycho/0/leroy.42/reduction/alma/phangs-alma/postprocess/
-derived_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/derived/
-release_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/release/
-ms_root			/data/tycho/0/leroy.42/reduction/alma/phangs-alma/uvdata/
-ms_root			/data/young/leroy.42/alma_data/PHANGS/
-singledish_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/singledish/
+key_dir        	    /Users/lneumann/Work/Scripts/PHANGS/phangs_imaging_scripts/phangs-alma_keys/
+cleanmask_root		/Users/lneumann/Work/Data/PHANGS/ALMA/reduction/cleanmasks/
+imaging_root		/Users/lneumann/Work/Data/PHANGS/ALMA/reduction/imaging/
+postprocess_root	/Users/lneumann/Work/Data/PHANGS/ALMA/reduction/postprocess/
+derived_root		/Users/lneumann/Work/Data/PHANGS/ALMA/reduction/derived/
+release_root		/Users/lneumann/Work/Data/PHANGS/ALMA/reduction/release/
+ms_root			    /Users/lneumann/Work/Data/PHANGS/ALMA/reduction/uvdata/
+singledish_root		/Users/lneumann/Work/Data/PHANGS/ALMA/reduction/singledish/
+vfield_root		    /Users/lneumann/Work/Data/PHANGS/ALMA/reduction/vfield/
 
 # Data files
 
-ms_key			ms_file_key.txt
+ms_key			    ms_file_key.txt
 singledish_key		singledish_key.txt
 cleanmask_key		cleanmask_key.txt
 distance_key		distance_key.txt
+window_key          window_key.txt
 
 # Definitions and mapping
 
@@ -193,5 +194,5 @@ moment_key		moment_key.txt
 derived_key		derived_key.txt
 imaging_key		imaging_recipes.txt
 linmos_key		linearmosaic_definitions.txt
-override_key		overrides.txt
+override_key	overrides.txt
 dir_key			dir_key.txt

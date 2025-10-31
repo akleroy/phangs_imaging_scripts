@@ -25,7 +25,7 @@ def coverage_collapser(coveragecube,
 
 
 def smooth_cube(
-        incube=None,
+        cube_in=None,
         outfile=None,
         angular_resolution=None,
         linear_resolution=None,
@@ -59,15 +59,15 @@ def smooth_cube(
 
     # Require a valid cube or map input
     twod = False
-    if type(incube) is SpectralCube:
-        cube = incube
-    elif type(incube) == type("hello"):
-        hdulist = fits.open(incube)
+    if type(cube_in) is SpectralCube:
+        cube = cube_in
+    elif type(cube_in) == type("hello"):
+        hdulist = fits.open(cube_in)
         if hdulist[0].header['NAXIS'] == 2:
             cube = Projection.from_hdu(hdulist)
             twod = True
         else:
-            cube = SpectralCube.read(incube)
+            cube = SpectralCube.read(cube_in)
     else:
         logger.error("Input must be a SpectralCube object or a filename.")
 

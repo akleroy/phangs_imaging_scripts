@@ -13,12 +13,12 @@ import importlib
 
 # Pipeline directory. Set this to the location on your system
 
-pipedir = '/data/tycho/0/leroy.42/reduction/alma/phangs_imaging_scripts/'
+pipedir = '/Users/lneumann/Work/Scripts/PHANGS/phangs_imaging_scripts/'
 
 # Location of the master key. Set this to the master key that points
 # to all of the keys for your project.
 
-key_file = '/data/tycho/0/leroy.42/reduction/alma/phangs_imaging_scripts/phangs-alma_keys/master_key.txt'
+key_file = '/Users/lneumann/Work/Scripts/PHANGS/phangs_imaging_scripts/phangs-alma_keys/master_key.txt'
 
 # Change directory to the pipeline directory.
 
@@ -82,11 +82,12 @@ this_kh.make_missing_directories(imaging=True, derived=True, postprocess=True, r
 # you are running a big batch of jobs you might consider scripting
 # something similar.
 
-this_der.set_targets()
-# this_der.set_targets(only=['ngc1809'])
+# this_der.set_targets()
+this_der.set_targets(only=['ngc1672'])
 
 this_der.set_interf_configs(only=['12m+7m'])
 this_der.set_feather_configs(only=['12m+7m+tp'])
+# this_der.set_feather_configs(only=['7m+tp'])
 
 this_der.set_line_products(only=['co21'])
 this_der.set_no_cont_products(True)
@@ -94,12 +95,18 @@ this_der.set_no_cont_products(True)
 # Use boolean flags to set the steps to be performed when the pipeline
 # is called. See descriptions below (but only edit here).
 
-do_convolve = True
-do_noise = True
-do_strictmask = True
-do_broadmask = True
-do_moments = True
-do_secondary = True
+do_convolve = False
+do_noise = False
+do_strictmask = False
+do_broadmask = False
+do_moments = False
+do_secondary = False
+
+# new DR5 routines (shuffling and flat maps)
+do_vfield = False    # creates a velocity field for shuffling
+do_shuffling = True # runs independently from other tasks
+do_flatmask = True  # requires noise and broad/flat masks
+do_flatmaps = True  # requires flat masks
 
 ##############################################################################
 # Step through derived product creation
@@ -155,3 +162,44 @@ if do_secondary:
     this_der.loop_derive_products(do_convolve=False, do_noise=False,
                                   do_strictmask=False, do_broadmask=False,
                                   do_moments=False, do_secondary=True)
+
+# Create velocity field. This creates a combined velocity field from 
+# a list of derived mom1 maps.
+
+if do_vfield:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=True, do_shuffling=False, 
+                                  do_flatmask=False, do_flatmaps=False)    
+    
+# Create shuffled cubes. This shuffles the processed and derived cubes
+# by a velocity offset defined by an input velocity field.
+
+if do_shuffling:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=False, do_shuffling=True, 
+                                  do_flatmask=False, do_flatmaps=False)    
+
+# Construct flat masks. This combines the existing signal masks
+# with a velocity slab based on a input velocity field and velocity 
+# window.
+
+if do_flatmask:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=False, do_shuffling=False, 
+                                  do_flatmask=True, do_flatmaps=False)
+
+# Produce flat moment-0 maps. This uses the flat masks to create 
+# moment-0 maps.
+
+if do_flatmaps:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=False, do_shuffling=False, 
+                                  do_flatmask=False, do_flatmaps=True)

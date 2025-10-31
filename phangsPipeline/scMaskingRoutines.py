@@ -11,12 +11,11 @@ import astropy.units as u
 from astropy.stats import mad_std
 from astropy.convolution import convolve, Gaussian2DKernel
 from astropy.io import fits
-from spectral_cube import Projection,SpectralCube
+from spectral_cube import SpectralCube, Projection
 
-from .pipelineVersion import tableversion, version
-
-from .scNoiseRoutines import mad_zero_centered
-from .scDerivativeRoutines import convert_and_reproject
+from phangsPipeline.pipelineVersion import tableversion, version
+from phangsPipeline.scNoiseRoutines import mad_zero_centered
+from phangsPipeline.scDerivativeRoutines import convert_and_reproject
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -400,23 +399,27 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
 
     vfield : float or two-d array or string
 
-    The velocity field to use as a template. If a string, it's read as
-    a Projection and reprojected onto the cube. If it's a single value
-    then this is broadcast across the whole map. If it's a two-d array
-    it is assumed to be the velocity field.
+        The velocity field to use as a template. If a string, it's read 
+        as a Projection and reprojected onto the cube. If it's a single 
+        value then this is broadcast across the whole map. If it's a 
+        two-d array it is assumed to be the velocity field.
 
-    window : float or two-d array or string
+    window : float
 
-    As velocity field in handling but this refers to the window used 
+        The velocity window about the velocity field. The window
+        is applied +/- half the input window so that the total
+        span of the window equals the input window.
+        The spectral units should match the velocity field units.
+
 
     Keywords:
     ---------
 
     vfield_hdu : optional refers to the HDU of the velocity field if a
-    file name is supplied. Default 0.
+        file name is supplied. Default 0.
 
     window_hdu : optional refers to the HDU of the velocity window if
-    a file name is supplied. Default 0.
+        a file name is supplied. Default 0.
 
     outfile : file name to write output mask to.
 
@@ -446,31 +449,16 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
     # Read the velocity field to a Projection if a file is fed in
     if type(vfield_in) == str:
         vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_hdu])
+    elif type(vfield_in) is Projection:
+            # ... NB making a dummy moment here because of issues with
+            # reproject and dimensionality. Could instead do header
+            # manipulation and feed in "cube"
+            dummy_mom0 = cube.moment(order=0)      
+            vfield = convert_and_reproject(vfield_in, template=dummy_mom0, unit=spunit)
     else:
-        vfield = vfield_in
-
-    # If vfield is a Projection reproject it onto the cube and match units
-    if isinstance(vfield, Projection):
-        # ... NB making a dummy moment here because of issues with
-        # reproject and dimensionality. Could instead do header
-        # manipulation and feed in "cube"
-        dummy_mom0 = cube.moment(order=0)
-        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
-    else:
-
-        # If no units are attached to the vfield, guess that the
-        # units are the same as cube        
-        if type(vfield) != u.quantity.Quantity:
-            vfield = u.quantity.Quantity(vfield,spunit)
-        
-        # If a single value is supplied, turn it into a single-valued
-        # velocity field
-        if np.ndim(vfield.data) <= 1:
-            vfield = vfield.to(spunit)
-            vfield = u.quantity.Quantity(np.ones((ny, nx))*vfield.value, vfield.unit)
-        
-        # Just in case convert the units to match the cube
-        vfield = vfield.to(spunit)
+        logger.error('Input vfield is unknown type.')
+    
+    vfield = vfield.to(spunit)
 
     # Check sizes
     if (cube.shape[1] != vfield.shape[0]) or (cube.shape[2] != vfield.shape[1]):
@@ -494,6 +482,11 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
         dummy_mom0 = cube.moment(order=0)        
         window = convert_and_reproject(window, template=dummy_mom0, unit=spunit)
     else:
+        # reproject if it's a projection
+        # if type(window) is Projection:
+        #     window = convert_and_reproject(window, template=cube, unit=spunit)
+        # else:
+        window = window.to(spunit)
 
         # If no units are attached to the window, guess that the
         # units are the same as cube        
@@ -536,7 +529,7 @@ def make_vfield_mask(cube_in, vfield_in, window_in,
     mask = mask_around_value( \
         spaxis_cube,
         target=vfield_cube,
-        delta=window_cube)
+        delta=window_cube/2)
 
     # -------------------------------------------------
     # Output
@@ -631,7 +624,7 @@ def join_masks(orig_mask_in, new_mask_in,
 
     if order == 'fast_nearest_neighbor':
 
-        logger.warn('Joining masks with nearest neighbor coordinate lookup')
+        logger.warning('Joining masks with nearest neighbor coordinate lookup.')
         # Grab WCS out of template mask and map to other mask
         x, y, _ = new_mask.wcs.wcs_world2pix(*(orig_mask.world[0,:,:][::-1]), 0)
         _, _, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:,0,0][::-1]), 0)
@@ -659,7 +652,7 @@ def join_masks(orig_mask_in, new_mask_in,
 
     else:
 
-        logger.warn('Joining masks with reprojection')
+        logger.warning('Joining masks with reprojection.')
         new_mask = new_mask.reproject(orig_mask.header, order=order)
         new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
         new_mask_vals = np.array(new_mask.filled_data[:].value > thresh,
@@ -698,13 +691,12 @@ def join_masks(orig_mask_in, new_mask_in,
         header['DATAMIN'] = 0
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
                               header=header)
-        hdu.writeto(outfile, overwrite=overwrite)
-        # mask.write(outfile, overwrite=overwrite)
+        hdu.writeto(outfile, overwrite=True)
 
     return(mask)
 
 def recipe_phangs_strict_mask(
-    incube, innoise, outfile=None,
+    cube_in, innoise, outfile=None,
     coverage=None, coverage_thresh=0.95,
     mask_kwargs=None,
     return_spectral_cube=False,
@@ -740,10 +732,10 @@ def recipe_phangs_strict_mask(
 
     # TBD error checking, dimensions, types, etc.
 
-    if type(incube) is SpectralCube:
-        cube = incube
-    elif type(incube) == type("hello"):
-        cube = SpectralCube.read(incube)
+    if type(cube_in) is SpectralCube:
+        cube = cube_in
+    elif type(cube_in) == type("hello"):
+        cube = SpectralCube.read(cube_in)
     else:
         logger.error("Input cube must be a SpectralCube object or a filename.")
 
@@ -855,8 +847,7 @@ def recipe_phangs_broad_mask(
         template_mask, outfile=None, list_of_masks = [],
         grow_xy = None, grow_v = None,
         return_spectral_cube=True, overwrite=False,
-        recipe='anyscale', fraction_of_scales=0.25,
-):
+        recipe='anyscale', fraction_of_scales=0.25):
     """Task to create the PHANGS-style "broad" masks from the combination
     of a set of other masks. Optionally also grow the mask at the end.
 
@@ -992,3 +983,170 @@ def recipe_phangs_broad_mask(
         return(mask)
     else:
         return(mask.filled_data[:].value)
+
+
+def recipe_phangs_flat_mask(
+    cube_in, vfield_in, mask_in, 
+    vfield_hdu=0, 
+    outfile=None,
+    coverage=None, 
+    mask_kwargs=None,
+    return_spectral_cube=False,
+    overwrite=False):
+    """
+    Task to create the PHANGS-style "strict" masks.
+
+    Parameters:
+
+    -----------
+
+    cube_in : string or SpectralCube
+        The cube to be masked.
+
+
+    vfield_in : string or np.array
+        Velocity field used to define the velocity window of the 
+        flat mask.
+
+    mask_in : string or SpectralCube
+        The signal-based mask.
+
+    Keywords:
+    ---------
+    
+    vfield_hdu : optional refers to the HDU of the velocity field if a
+        file name is supplied. Default 0.
+
+    outfile : string
+        Filename where the mask will be written. The mask is also
+        returned.
+
+    masks_kwargs : dictionary
+        Parameters to be passed to the cprops masking routine.
+        Should contain the velocity window used to define a flat
+        mask.
+
+    """
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Error checking and work out inputs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # TBD error checking, dimensions, types, etc.
+
+    # check input cube
+    if type(cube_in) is SpectralCube:
+        cube = cube_in
+    elif type(cube_in) == str:
+        cube = SpectralCube.read(cube_in)
+    else:
+        logger.error("Input cube must be a SpectralCube object or a filename.")
+
+    cube.allow_huge_operations = True
+
+    # check input mask
+    if type(mask_in) is SpectralCube:
+        mask_signal = mask_in
+    elif type(mask_in) == str:
+        mask_signal = SpectralCube.read(mask_in)
+    else:
+        logger.error("Input mask must be a SpectralCube object or a filename.")
+
+    mask_signal.allow_huge_operations = True
+
+    # Read the velocity field to a Projection if a file is fed in
+    if type(vfield_in) == str:
+        vfield = Projection.from_hdu(fits.open(vfield_in)[vfield_hdu])
+    else:
+        vfield = vfield_in
+
+    # get dimensions and units
+    spaxis = cube.spectral_axis
+    spunit = spaxis.unit
+    spvalue = spaxis.value
+    nz, ny, nx = cube.shape
+
+    # reproject if it's a projection
+    if type(vfield) is Projection:
+        # ... NB making a dummy moment here because of issues with
+        # reproject and dimensionality. Could instead do header
+        # manipulation and feed in "cube"
+        dummy_mom0 = cube.moment(order=0)
+        vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
+
+    # check that grids match after regridding
+    if mask_signal.shape[1] != np.shape(vfield)[0]:
+        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Nx does not match..")
+    if mask_signal.shape[2] != np.shape(vfield)[1]:
+        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Ny does not match..")
+
+    if coverage is not None:
+        if type(coverage) is SpectralCube:
+            coverage_cube = coverage
+        elif type(coverage) == type("hello"):
+            coverage_cube = SpectralCube.read(coverage)
+        else:
+            logger.error("Coverage cube must be a SpectralCube object or a filename or None.")
+
+        coverage_cube.allow_huge_operations = True
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Set up the masking kwargs
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # Initialize an empty kwargs dictionary
+    if mask_kwargs is None:
+        mask_kwargs = {}
+
+    # Fill in strict mask defaults
+    if 'window' not in mask_kwargs:
+        mask_kwargs['window'] = '50km/s'
+
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Create the mask
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # prior_hi = None
+    # if coverage is not None:
+    #     prior_hi = coverage_cube.filled_data[:].value > coverage_thresh
+
+    # create mask around velocity centroid with fixed velocity window
+    window =u.Quantity(mask_kwargs['window'])
+    mask_window = make_vfield_mask(cube, vfield, window,
+                                   outfile=None, overwrite=True)
+
+    # combine signal and window mask
+    mask = join_masks(mask_signal, mask_window,
+                      order='fast_nearest_neighbor', 
+                      operation='or',
+                      thresh=0.5, outfile=None)
+    mask = mask.filled_data[:].value
+
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+    # Write to disk and return
+    # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
+
+    # In this case can avoid a recast
+    if not return_spectral_cube and (outfile is None):
+        return(mask)
+
+    # Recast from numpy array to spectral cube
+    mask = SpectralCube(mask*1.0, wcs=cube.wcs, header=cube.header,
+                        meta={'BUNIT': ' ', 'BTYPE': 'Mask'})
+
+    # Write to disk, if desired
+    if outfile is not None:
+        header = mask.header
+        header['DATAMAX'] = 1
+        header['DATAMIN'] = 0
+        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+                              header=header)
+        hdu.writeto(outfile, overwrite=overwrite)
+
+
+    if return_spectral_cube:
+        return(mask)
+    else:
+        return(mask.filled_data[:].value)
+    

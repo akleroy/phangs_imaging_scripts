@@ -3,7 +3,7 @@
 ##########################################################################
 
 # This key defines the derived science-ready data products produced by
-# the by the pipeline. The general format is
+# the pipeline. The general format is
 
 # configuration spectral_product field values
 
@@ -38,11 +38,16 @@
 
 # convolve_kw - keywords for convolution.
 
+# shuffle_kw - keywords for velocity shuffling.
+
 # noise_kw - keywords for noise estimation.
 
 # strictmask_kw - keywords for generation of stict masks.
 
 # broadmask_kw - keywords for generation of broad masks.
+
+# flatstrictmask_kw - keywords for generation of flat stict masks.
+# flatbroadmask_kw - keywords for generation of flat broad masks.
 
 # mask_configs - the names of other configurations to link when
 # creating broad masks. All masks for all linked configurations will
@@ -57,19 +62,24 @@ all		all	convolve_kw	{}
 
 all		all	noise_kw	{'spec_box':5,'iterations':3}
 
-12m+7m+tp	all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
-12m+7m+tp	all	strictmask_kw	{'grow_xy':0,'grow_v':0}
-12m+7m+tp	all	strictmask_kw	{'min_pix':None,'min_area':None}
+all	    all	shuffle_kw	{}
 
-12m+7m		all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
-12m+7m		all	strictmask_kw	{'grow_xy':0,'grow_v':0}
-12m+7m		all	strictmask_kw	{'min_pix':None,'min_area':None}
+#12m+7m+tp	all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
+#12m+7m+tp	all	strictmask_kw	{'grow_xy':0,'grow_v':0}
+#12m+7m+tp	all	strictmask_kw	{'min_pix':None,'min_area':None}
+
+#12m+7m		all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
+#12m+7m		all	strictmask_kw	{'grow_xy':0,'grow_v':0}
+#12m+7m		all	strictmask_kw	{'min_pix':None,'min_area':None}
 
 all		all	strictmask_kw	{'hi_thresh':4.0,'hi_nchan':2,'lo_thresh':2.0,'lo_nchan':2}
 all		all	strictmask_kw	{'grow_xy':0,'grow_v':0}
 all		all	strictmask_kw	{'min_pix':None,'min_area':None}
 
 all		all	broadmask_kw	{}
+
+#all		all	flatstrictmask_kw	{'window':'50km/s'}
+#all		all	flatbroadmask_kw	{'window':'50km/s'}
 
 12m		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0}
 12m		co21	ang_res		{'2as':2.0}
@@ -87,6 +97,7 @@ all		all	broadmask_kw	{}
 12m+7m		co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
 12m+7m		co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
 12m+7m		co21	moments		['mom1wprior']
+12m+7m		co21	moments		['flatstrictmom0','flatbroadmom0']
 12m+7m		c18o21	moments		['strictmom0','broadmom0']
 
 12m+7m+tp	co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
@@ -96,6 +107,7 @@ all		all	broadmask_kw	{}
 12m+7m+tp	co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
 12m+7m+tp	co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
 12m+7m+tp	co21	moments		['mom1wprior']
+12m+7m+tp	co21	moments		['flatstrictmom0','flatbroadmom0']
 12m+7m+tp	c18o21	moments		['strictmom0','broadmom0']
 
 7m		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
@@ -106,6 +118,7 @@ all		all	broadmask_kw	{}
 7m		co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
 7m		co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
 7m		co21	moments		['mom1wprior']
+7m	    co21	moments		['flatstrictmom0','flatbroadmom0']
 7m		c18o21	moments		['strictmom0','broadmom0']
 
 7m+tp		co21	phys_res	{'60pc':60.0,'90pc':90.0,'120pc':120.0,'150pc':150.0,'500pc':500.0,'750pc':750.0,'1kpc':1000.0}
@@ -114,7 +127,8 @@ all		all	broadmask_kw	{}
 7m+tp		co21	moments		['strictmom0','strictmom1','strictmom2','strictew']
 7m+tp		co21	moments		['broadmom0','broadtpeak','broadtpeak12p5','broadmom1']
 7m+tp		co21	moments		['mom1wprior']
-7m+tp		c18o21	moments		['strictmom0','broadmom0']
+7m+tp	    co21	moments		['flatstrictmom0','flatbroadmom0']
+7m+tp		c18o21	moments		['strictmom0','broadmom0','strictmom0flat','broadmom0flat']
 
 
 
