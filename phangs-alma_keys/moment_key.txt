@@ -131,3 +131,21 @@ mom1wprior 	ext_error 	_emom1wprior
 mom1wprior	maps_to_pass	['strict_mom1','strict_emom1','broad_mom1','broad_emom1','broad_mom0','broad_emom0']
 mom1wprior 	other_exts 	{'vfield_prior':'_7m+tp_co21_15as_strict_mom1.fits'}
 mom1wprior	kwargs 		{'vfield_reject_thresh':'20km/s','mom0_thresh':2.0}
+
+##########################################################################
+# FLAT MAPS - THESE CAN DEPEND ON OTHER MAPS AS INPUT
+##########################################################################
+
+flatstrictmom0	algorithm	mom0
+flatstrictmom0	mask		flatstrictmask
+flatstrictmom0	ext		    _flatstrict_mom0
+flatstrictmom0	ext_error	_flatstrict_emom0
+flatstrictmom0	round		3
+flatstrictmom0	kwargs		{}
+
+flatbroadmom0	algorithm	mom0
+flatbroadmom0	mask		flatbroadmask
+flatbroadmom0	ext		    _flatbroad_mom0
+flatbroadmom0	ext_error	_flatbroad_emom0
+flatbroadmom0	round		3
+flatbroadmom0	kwargs		{}

@@ -170,7 +170,7 @@ if casa_version[0] >= 6:
 
     from casatasks import (importasdm, listobs, flagcmd, flagdata)
 
-    import almatasks
+    import casatasks
 
     import casaplotms
 
@@ -180,12 +180,12 @@ if casa_version[0] >= 6:
     except AttributeError:
         plotms = casaplotms.plotms
 
-    import casaviewer
+    # import casaviewer
 
-    try:
-        viewer = casaviewer.gotasks.imview.imview
-    except AttributeError:
-        viewer = casaviewer.imview
+    # try:
+    #     viewer = casaviewer.gotasks.imview.imview
+    # except AttributeError:
+    #     viewer = casaviewer.imview
 
     import casashell
 
@@ -217,7 +217,7 @@ if casa_version[0] >= 6:
 # sdintimaging import
 
 if (casa_version[0] >= 5) and (casa_version[1] >= 7):
-    from sdintimaging import sdintimaging
+    from casatasks import sdintimaging
 
 # tsysspwmap import
 

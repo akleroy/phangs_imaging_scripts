@@ -76,7 +76,7 @@ from scipy.ndimage import label
 #import pyfits # CASA has pyfits, not astropy
 import glob
 import tarfile
-import imp
+# import imp
 
 import logging
 logger = logging.getLogger(__name__)
