@@ -1800,6 +1800,7 @@ def run_ALMA_TP_tools(
         doplots = True,
         dosplitants = True,
         bl_order = 1,
+        max_flag_frac = 0.9,
         source = '',
         freq_rest = np.nan,
         vel_cube = '',
@@ -1870,6 +1871,21 @@ def run_ALMA_TP_tools(
             source = get_sourcename(filename)                            # read the source name directly from the ms
             vec_ants_t = read_ants_names(filename)                       # Read vector with name of all antennas
             vec_ants   = [s for s in vec_ants_t if any(xs in s for xs in ['PM','DV'])] # Get only 12m antennas.
+
+            # For antenna with a significant fraction of data masked, future steps will crash
+            # so get those here
+            vec_ants_to_remove = []
+            for ant in vec_ants:
+                s = casaStuff.flagdata(filename + "." + ant + ".ms", mode="summary")
+                frac_flagged = s["flagged"] / s["total"]
+
+                if frac_flagged > max_flag_frac:
+                    logger.warning(f"{filename}.{ant} has {frac_flagged * 100}% of data flagged. Will not process")
+                    vec_ants_to_remove.append(ant)
+
+            for ant in vec_ants_to_remove:
+                vec_ants.remove(ant)
+
             vel_source = read_vel_source(filename,source)                # Read source velocity
             spws_info  = read_spw(filename,source)                       # Read information of spws (science and Tsys)
             #

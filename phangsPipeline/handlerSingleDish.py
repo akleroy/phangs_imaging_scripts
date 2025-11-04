@@ -180,6 +180,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         kwargs['flag_file']  = ''                                      # 
         kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
         kwargs['bl_order']   = 1                                       # Order for the baseline fitting
+        kwargs['max_flag_frac'] = 0.9                                  # Remove antennae with significant amounts of flagged data
         kwargs['source']     = target                                  # Source name
         kwargs['freq_rest']  = freq_rest_MHz                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))
         kwargs['vel_cube']   = vel_cube = '%.3f~%.3f'%(vlow2, vhigh2)  # Range in velocity in km/s to extract the line cube.
