@@ -73,10 +73,8 @@ Still need to do (probably outdated):
 import os, sys, re, shutil, inspect, copy, time, datetime, json, ast
 import numpy as np
 from scipy.ndimage import label
-#import pyfits # CASA has pyfits, not astropy
 import glob
 import tarfile
-import imp
 
 import logging
 logger = logging.getLogger(__name__)
@@ -247,14 +245,14 @@ def scaleAutocorr(vis, scale=1., antenna='', spw='', field='', scan=''):
             if re.match("^[0-9]+$", str(i)): # digits only: antenna ID
                 antennaids.append(int(i))
             else: # otherwise: antenna name
-                antennaids.append(mymsmd.antennaids(i)[0])
+                antennaids.append(int(mymsmd.antennaids(i)[0]))
         conditions.append("ANTENNA1 in %s" % str(antennaids))
     if spw != '':
         if not isinstance(spw, (list, tuple)):
             spw = [spw]
         datadescids = []
         for i in spw:
-            datadescids.append(mymsmd.datadescids(spw=int(i))[0])
+            datadescids.append(int(mymsmd.datadescids(spw=int(i))[0]))
         conditions.append("DATA_DESC_ID in %s" % str(datadescids))
     if field != '':
         if not isinstance(field, (list, tuple)):
@@ -264,7 +262,7 @@ def scaleAutocorr(vis, scale=1., antenna='', spw='', field='', scan=''):
             if re.match("^[0-9]+$", str(i)): # digits only: field ID
                 fieldids.append(int(i))
             else: # otherwise: field name
-                fieldids.append(mymsmd.fieldsforname(i)[0])
+                fieldids.append(int(mymsmd.fieldsforname(i)[0]))
         conditions.append("FIELD_ID in %s" % str(fieldids))
     if scan != '':
         if not isinstance(scan, (list, tuple)):
@@ -1725,7 +1723,41 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     myia = au.createCasaTool(casaStuff.iatool)
     myia.open(outimage) # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'
     myia.setrestoringbeam(major = str(sfbeam)+'arcsec', minor = str(sfbeam)+'arcsec', pa = '0deg')
+    mask = myia.getchunk(getmask=True)
     myia.close()
+
+    # Finally, trim the image and weight cube down
+    mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))
+
+    # Get bounding box in RA/Dec. Use padding of 1 pixel
+    pad = 1
+    xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
+    xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
+
+    #mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    mask_spec_y = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 1]))
+    ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
+    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
+
+    box_string = '' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax)
+
+    casaStuff.imsubimage(
+        imagename=outimage,
+        outfile=outimage+'_trimmed',
+        box=box_string,
+    )
+    casaStuff.imsubimage(
+        imagename=outimage.replace('.image', '.weight'),
+        outfile=outimage.replace('.image', '.weight')+'_trimmed',
+        box=box_string,
+    )
+
+    # Move things around
+    os.system('mv ' + outimage + ' ' + outimage + '.orig')
+    os.system('mv ' + outimage + '_trimmed ' + outimage)
+
+    os.system('mv ' + outimage.replace('.image', '.weight') + ' ' + outimage.replace('.image', '.weight') + '_orig')
+    os.system('mv ' + outimage.replace('.image', '.weight') + '_trimmed ' + outimage.replace('.image', '.weight'))
 
     if doplots == True:
         casaStuff.viewer(outimage) # 'ALMA_TP.'+source+'.'+name_line+suffix+'.image'

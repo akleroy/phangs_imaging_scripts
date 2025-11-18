@@ -422,6 +422,24 @@ def feather_two_cubes(
                      mode='multiply')
         current_interf_file = current_interf_file+'.temp'
 
+    # Finally, if we don't have a 4th (Stokes I) axis, add this
+    # here to avoid feather crashing
+    myia = au.createCasaTool(casaStuff.iatool)
+
+    myia.open(current_interf_file)
+    interf_shape = myia.shape()
+    if len(interf_shape) != 4:
+        current_interf_file = current_interf_file + '.add_stokes'
+        myia.adddegaxes(outfile=current_interf_file, stokes='I', overwrite=True)
+    myia.close()
+
+    myia.open(current_sd_file)
+    sd_shape = myia.shape()
+    if len(sd_shape) != 4:
+        current_sd_file = current_sd_file + '.add_stokes'
+        myia.adddegaxes(outfile=current_sd_file, stokes='I', overwrite=True)
+    myia.close()
+
     # Call feather, followed by an imsubimage to deal with degenerate
     # axis stuff.
 
@@ -458,6 +476,14 @@ def feather_two_cubes(
     os.system('rm -rf '+sd_file+'.temp.temp')
     os.system('rm -rf '+interf_file+'.temp.temp')
     os.system('rm -rf '+out_file+'.temp.temp')
+
+    os.system('rm -rf '+sd_file+'.temp.add_stokes')
+    os.system('rm -rf '+interf_file+'.temp.add_stokes')
+    os.system('rm -rf '+out_file+'.temp.add_stokes')
+
+    os.system('rm -rf '+sd_file+'.temp.temp.add_stokes')
+    os.system('rm -rf '+interf_file+'.temp.temp.add_stokes')
+    os.system('rm -rf '+out_file+'.temp.temp.add_stokes')
 
     return(True)
 
