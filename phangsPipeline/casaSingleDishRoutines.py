@@ -73,10 +73,8 @@ Still need to do (probably outdated):
 import os, sys, re, shutil, inspect, copy, time, datetime, json, ast
 import numpy as np
 from scipy.ndimage import label
-#import pyfits # CASA has pyfits, not astropy
 import glob
 import tarfile
-import imp
 
 import logging
 logger = logging.getLogger(__name__)
@@ -247,14 +245,14 @@ def scaleAutocorr(vis, scale=1., antenna='', spw='', field='', scan=''):
             if re.match("^[0-9]+$", str(i)): # digits only: antenna ID
                 antennaids.append(int(i))
             else: # otherwise: antenna name
-                antennaids.append(mymsmd.antennaids(i)[0])
+                antennaids.append(int(mymsmd.antennaids(i)[0]))
         conditions.append("ANTENNA1 in %s" % str(antennaids))
     if spw != '':
         if not isinstance(spw, (list, tuple)):
             spw = [spw]
         datadescids = []
         for i in spw:
-            datadescids.append(mymsmd.datadescids(spw=int(i))[0])
+            datadescids.append(int(mymsmd.datadescids(spw=int(i))[0]))
         conditions.append("DATA_DESC_ID in %s" % str(datadescids))
     if field != '':
         if not isinstance(field, (list, tuple)):
@@ -264,7 +262,7 @@ def scaleAutocorr(vis, scale=1., antenna='', spw='', field='', scan=''):
             if re.match("^[0-9]+$", str(i)): # digits only: field ID
                 fieldids.append(int(i))
             else: # otherwise: field name
-                fieldids.append(mymsmd.fieldsforname(i)[0])
+                fieldids.append(int(mymsmd.fieldsforname(i)[0]))
         conditions.append("FIELD_ID in %s" % str(fieldids))
     if scan != '':
         if not isinstance(scan, (list, tuple)):

@@ -10,6 +10,7 @@ import shutil
 import inspect
 import glob
 import logging
+import sys
 from packaging import version
 
 
@@ -1718,9 +1719,13 @@ def reweight_data(
     if exclude_str != '':
         logger.info("... running statwt with exclusion: "+exclude_str)
 
-    # Build the statwt call
+    # Build the statwt call. Use the appropriate command for getting arguments
+    if sys.version_info >= (3, 11, 0):
+        getargspec = inspect.getfullargspec
+    else:
+        getargspec = inspect.getargspec
 
-    if 'fitspw' in inspect.getargspec(casaStuff.statwt)[0]:
+    if 'fitspw' in getargspec(casaStuff.statwt)[0]:
         # CASA version somewhat >= 5.5.0
         if exclude_str == '':
             excludechans = False

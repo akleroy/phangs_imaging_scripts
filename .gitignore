@@ -70,4 +70,5 @@ casa*.log
 *_noise.fits
 .idea
 *.json
+.DS_Store
 #*
