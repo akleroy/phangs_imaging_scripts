@@ -2,9 +2,9 @@
 Standalone routines related to linear mosaicking of multi-part mosaics
 in CASA.
 """
-
 #region Imports and definitions
 
+import copy
 import os
 import glob
 import logging
@@ -928,13 +928,38 @@ def mosaic_aligned_data(
     first = True
     counter = 0
 
+    # We might need to add a 4th (Stokes) axis
+    # to prevent crashing
+    myia = au.createCasaTool(casaStuff.iatool)
+
     for this_infile in infile_list:
 
         # Build out to a list that goes infile1, infile2, ... infilen,
         # weightfile1, weightfile2, ... weightfilen.
 
-        full_imlist.append(this_infile)
-        full_imlist.append(weightfile_dict[this_infile])
+        # Ensure we've got all the axes needed
+        myia.open(this_infile)
+        in_shape = myia.shape()
+        if len(in_shape) != 4:
+            cur_infile = this_infile + '.add_stokes'
+            myia.adddegaxes(outfile=cur_infile, stokes='I', overwrite=True)
+        else:
+            cur_infile = copy.deepcopy(this_infile)
+        myia.close()
+
+        # Do the same for the weight file
+        this_weightfile = weightfile_dict[this_infile]
+        myia.open(this_weightfile)
+        in_shape = myia.shape()
+        if len(in_shape) != 4:
+            cur_weightfile = this_weightfile + '.add_stokes'
+            myia.adddegaxes(outfile=cur_weightfile, stokes='I', overwrite=True)
+        else:
+            cur_weightfile = copy.deepcopy(this_weightfile)
+        myia.close()
+
+        full_imlist.append(cur_infile)
+        full_imlist.append(cur_weightfile)
 
         # Make LEL string expressions that refer to these two images
         # and then increment the counter by 2. So IM0 is the first
@@ -984,10 +1009,12 @@ def mosaic_aligned_data(
 
     casaStuff.immath(imagename = local_imlist, mode='evalexpr',
                      expr=lel_exp_sum, outfile=sum_file,
+                     stokes='I',
                      imagemd = local_imlist[0])
 
     casaStuff.immath(imagename = local_imlist, mode='evalexpr',
                      expr=lel_exp_weight, outfile=weight_file,
+                     stokes='I',
                      imagemd = local_imlist[0])
 
     # Just to be safe, reset the masks on the two images.
@@ -1016,12 +1043,27 @@ def mosaic_aligned_data(
                      expr='iif(IM0 > 0.0, 1.0, 0.0)',
                      outfile=local_maskfile)
 
+    # Add in potential Stokes axis to the mask file
+    myia = au.createCasaTool(casaStuff.iatool)
+    myia.open(local_maskfile)
+    in_shape = myia.shape()
+    if len(in_shape) != 4:
+        cur_maskfile = local_maskfile + '.add_stokes'
+        myia.adddegaxes(outfile=cur_maskfile, stokes='I', overwrite=True)
+    else:
+        cur_maskfile = copy.deepcopy(local_maskfile)
+    myia.close()
+
     # Strip out any degenerate axes and create the final output file.
 
     casaStuff.imsubimage(imagename=temp_file,
                     outfile=local_outfile,
-                    mask='"'+local_maskfile+'"',
+                    mask='"'+cur_maskfile+'"',
                     dropdeg=True)
+
+    # Remove any temp Stokes files we've made along the way
+    os.system('rm -rf *.add_stokes')
+
     os.chdir(cwd)
     return(None)
 
