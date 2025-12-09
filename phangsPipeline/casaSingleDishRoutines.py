@@ -668,14 +668,39 @@ def read_source_coordinates(filename,source):
     return coord
 
 # Get source name
-def get_sourcename(filename):
+def get_sourcename(filename,
+                   source='all',
+                   ):
 
     mytb   = au.createCasaTool(casaStuff.msmdtool)
     mytb.open(filename)
-    source = mytb.fieldnames()[mytb.fieldsforintent('OBSERVE_TARGET#ON_SOURCE')[0]]
+
+    # If we're looking for all intents, then just take the (first) science target
+    fieldnames = mytb.fieldnames()
+    if source == 'all':
+        field = mytb.fieldsforintent('OBSERVE_TARGET#ON_SOURCE')[0]
+
+    # Else, key in on the source name
+    else:
+
+        if source not in fieldnames:
+            logger.warning(f"source {source} not in field names: {', '.join(fieldnames)}")
+            return None
+
+        field = mytb.fieldsforname(source)
+
+        # If we don't find anything, get the science targets
+        if len(field) == 0:
+            field = mytb.fieldsforintent('OBSERVE_TARGET#ON_SOURCE')
+
+        # Take the first result
+        field = field[0]
+
+    source_name = fieldnames[field]
+
     mytb.close()
 
-    return source
+    return source_name
 
 # Create string of spws to apply the Tsys
 def str_spw_apply_tsys(spws_info):
@@ -1833,7 +1858,7 @@ def run_ALMA_TP_tools(
         dosplitants = True,
         bl_order = 1,
         max_flag_frac = 0.9,
-        source = '',
+        in_source = '',
         freq_rest = np.nan,
         vel_cube = '',
         vel_line = '',
@@ -1850,7 +1875,7 @@ def run_ALMA_TP_tools(
         EBexclude = None,
     ):
 
-    if path_galaxy == '' or source == '' or np.isnan(freq_rest) or np.isnan(source_vel_kms) or np.isnan(vwidth_kms) \
+    if path_galaxy == '' or in_source == '' or np.isnan(freq_rest) or np.isnan(source_vel_kms) or np.isnan(vwidth_kms) \
         or np.isnan(chan_dv_kms) or np.isnan(freq_rest_im) or name_line == '' or output_file == '':
         logger.info('Error! Invalid input arguments when calling run_ALMA_TP_tools.')
         return
@@ -1887,6 +1912,12 @@ def run_ALMA_TP_tools(
     if len(do_step) == 0:
         do_step = [1,2,3,4,5,6,7,8]
 
+    # Keep a check around that we've found anything
+    found_any_ebs = False
+
+    filenames = []
+    sourcenames = []
+
     # Do data reduction for each EB
     for EBs in EBsnames:
         #
@@ -1896,11 +1927,19 @@ def run_ALMA_TP_tools(
         file_exists = check_exists(filename)                             # Check weather the raw data exists
         #
         if file_exists == True:
+
+            found_any_ebs = True
+
             if 1 in do_step:
                 import_and_split_ant(filename,
                                      doplots=doplots,
                                      dosplitants=dosplitants)            # Import and split data per antenna
-            source = get_sourcename(filename)                            # read the source name directly from the ms
+            source = get_sourcename(filename, source=in_source)          # read the source name directly from the ms
+
+            # If we don't find the expected source in the EB, continue
+            if source is None:
+                continue
+
             vec_ants_t = read_ants_names(filename)                       # Read vector with name of all antennas
             vec_ants   = [s for s in vec_ants_t if any(xs in s for xs in ['PM','DV'])] # Get only 12m antennas.
 
@@ -1956,7 +1995,17 @@ def run_ALMA_TP_tools(
                 concat_ants(filename, name_line, ant_list=vec_ants,
                                 freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, pipeline=pipeline)
             #
+
+            filenames.append(filename)
+            sourcenames.append(source)
     #
+    if not found_any_ebs:
+        raise Exception("No EBs found to process")
+
+    # Pull out the first file/source to get velocity and any outstanding info
+    filename = filenames[0]
+    source = sourcenames[0]
+
     vel_source = read_vel_source(filename, source)
     #
     if 7 in do_step:

@@ -90,6 +90,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             sd_file = self._kh.get_sd_filename(target = target, product = product, nocheck = True)
             if sd_file is not None:
                 fname_dict[tag] = sd_file
+
+        fname_dict['source'] = 'all'
         
         tag = 'sd_raw_data_list'
         fname_dict[tag] = []
@@ -98,7 +100,13 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
                 self._kh.loop_over_input_ms(target = target, config = 'tp'):
                 sd_file = self._kh.get_file_for_input_ms(target = this_target, \
                     project = this_project, array_tag = this_arraytag, obsnum = this_obsnum)
-            fname_dict[tag].append(sd_file)
+                source = self._kh.get_field_for_input_ms(target=this_target,
+                                                         project=this_project,
+                                                         array_tag=this_arraytag,
+                                                         obsnum=this_obsnum,
+                                                         )
+                fname_dict[tag].append(sd_file)
+                fname_dict['source'] = source
 
         # Return
         
@@ -113,7 +121,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         target,
         product,
         input_raw_data, 
-        output_file, 
+        output_file,
+        source='all',
         extra_ext_in = '',
         extra_ext_out = '',
         ):
@@ -181,7 +190,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
         kwargs['bl_order']   = 1                                       # Order for the baseline fitting
         kwargs['max_flag_frac'] = 0.9                                  # Remove antennae with significant amounts of flagged data
-        kwargs['source']     = target                                  # Source name
+        kwargs['in_source']     = source                               # Source name. This comes from the field name in the MS file keys
         kwargs['freq_rest']  = freq_rest_MHz                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))
         kwargs['vel_cube']   = vel_cube = '%.3f~%.3f'%(vlow2, vhigh2)  # Range in velocity in km/s to extract the line cube.
         kwargs['vel_line']   = vel_line = '%.3f~%.3f'%(vlow1, vhigh1)  # Range in velocity in km/s to exclude the line emission from the baseline fit.
@@ -223,7 +232,9 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         # mosaic, has single dish data, etc.
 
         fname_dict = self._fname_dict(
-            target=target, product=product)
+            target=target,
+            product=product,
+        )
         
         if fname_dict['sd_file'] == '':
             logger.info("Target "+target+" product "+product+" has no single dish data in the singledish_key file.")
@@ -239,6 +250,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             self.task_execute_single_dish_pipeline(
                 target = target,
                 product = product,
+                source = fname_dict['source'],
                 input_raw_data = fname_dict['sd_raw_data_list'][idx], 
                 output_file = fname_dict['sd_file'], 
                 )
