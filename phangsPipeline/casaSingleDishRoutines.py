@@ -675,15 +675,34 @@ def get_sourcename(filename,
     mytb   = au.createCasaTool(casaStuff.msmdtool)
     mytb.open(filename)
 
-    # If we're looking for all intents, then just take the (first) science target
+    # Get source field names
     fieldnames = mytb.fieldnames()
+
+    # If we're looking for all intents, then just take the (first) science target
     if source == 'all':
         field = mytb.fieldsforintent('OBSERVE_TARGET#ON_SOURCE')[0]
 
-    # Else, key in on the source name
+    # Else, key in on the source name. Do this in a regex-style
     else:
 
-        if source not in fieldnames:
+        # For field selection, this can be done with forward slashes,
+        # so make sure to strip them
+        if source.startswith("/"):
+            source = source.strip("/")
+
+        # Get science fieldnames as names
+        fieldnames_asname = mytb.fieldsforintent('OBSERVE_TARGET#ON_SOURCE', asnames=True)
+
+        regex_matches = [re.fullmatch(source, x) for x in fieldnames_asname]
+        regex_idxs = [x is not None for x in regex_matches]
+        found_field = any(regex_idxs)
+
+        # If we've found a match, update the source name with the first
+        # fieldname
+        if found_field:
+            source = fieldnames_asname[regex_idxs][0]
+
+        if not found_field:
             logger.warning(f"source {source} not in field names: {', '.join(fieldnames)}")
             return None
 
@@ -1413,13 +1432,13 @@ def baseline(filename, source, name_line, ant_list=None, freq_rest=None, spws_in
                              outfile = filename_out,
                              overwrite = True)
         except: # CASA 4.7.X sdbaseline has no datacolumn arg
-            casaStuff.sdbaseline(infile = filename_in, 
-                             #datacolumn = getDataColumnForSDBaseline(filename_in), 
-                             spw = spw_extr, 
-                             maskmode = 'list', 
-                             blfunc = 'poly', 
-                             order = bl_order, 
-                             outfile = filename_out, 
+            casaStuff.sdbaseline(infile = filename_in,
+                             #datacolumn = getDataColumnForSDBaseline(filename_in),
+                             spw = spw_extr,
+                             maskmode = 'list',
+                             blfunc = 'poly',
+                             order = bl_order,
+                             outfile = filename_out,
                              overwrite = True)
 
         if doplots:
@@ -1615,14 +1634,14 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
             #path2 = joint_imaging_dir # ori_path+'/../'+path_galaxy2+'calibration/' # <TODO> for NGC4254b NGC4321b NGC3627b
             logger.info('PATH for join imaging '+path2)
             Msnames2 = [path2+f for f in os.listdir(path2) if f.endswith('.cal.jy'+'.'+name_line)]
-            for Msname in Msnames: 
+            for Msname in Msnames:
                 if Msname in Msnames2:
                     Msnames2.remove(Msname)
             Msnames = Msnames+Msnames2
     logger.info('Msnames: %s N=%d'%(Msnames, len(Msnames)))
     # Definition of parameters for imaging
     #xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, plotfile=plotfile) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
-    # 
+    #
     # 20250214 concat everything then getTPSampling
     if len(Msnames) == 0:
         raise Exception('Error! No Msnames to do imaging!')
@@ -1691,7 +1710,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image')
     if os.path.exists('ALMA_TP.'+source+'.'+name_line+suffix+'.image.compleximage'):
         shutil.rmtree('ALMA_TP.'+source+'.'+name_line+suffix+'.image.compleximage')
-    
+
     # CASA 6? has a better tsdimaging function, use it if possible
     if hasattr(casaStuff, 'tsdimaging'):
         func_sdimaging = casaStuff.tsdimaging
@@ -1870,7 +1889,7 @@ def run_ALMA_TP_tools(
         name_line = '',
         output_file = '',
         joint_imaging_dirs = None,
-        joint_imaging_suffix = '', 
+        joint_imaging_suffix = '',
         do_step = [],
         EBexclude = None,
     ):
@@ -1969,7 +1988,7 @@ def run_ALMA_TP_tools(
             if not dosplitants:
                 if not precasa5:
                     vec_ants = None
-            # 
+            #
             # 20250219 known problematic datasets
             if vec_ants is not None:
                 if filename == 'uid___A002_Xd06716_X126.ms':
