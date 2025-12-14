@@ -503,10 +503,8 @@ if casa_enabled:
 
             # Call the estimating routine
             if not self._dry_run:
-                cell, imsize = \
-                    imr.estimate_cell_and_imsize(vis_file,
-                                                 oversamp,
-                                                 force_square=force_square)
+                cell, imsize = imr.estimate_cell_and_imsize(
+                    vis_file, oversamp, force_square=force_square)
             else:
                 cell, imsize = '0.1arcsec', [1000, 1000]
                 logger.info('DRY RUN skips calling imr.estimate_cell_and_imsize()')
@@ -514,39 +512,56 @@ if casa_enabled:
             # Print info
             logger.info('cell='+cell+', imsize='+str(imsize))
 
-            # Check user-set overriding parameters: deltara deltadec
-            # (width and height of the field of view in units of arcsec)
+            # Check user-set overriding parameters: cell deltara deltadec
+            # (pixel size and width/height of the field of view in units of arcsec)
             if check_overrides:
-                # first try to find 'target_config_product' key 'deltara/deltadec' in the override file,
-                # if not found, then find 'target' key 'deltara/deltadec',
-                # if also not found, then fall back to 'all' key 'deltara/deltadec' if it is not None.
+                # first try to find 'target_config_product' key 'cell/deltara/deltadec' in the override file,
+                # if not found, then find 'target_config' key 'cell/deltara/deltadec',
+                # if also not found, then find 'target' key 'cell/deltara/deltadec',
+                # finally, fall back to 'all' key 'cell/deltara/deltadec' if it is not None.
                 override_keys = []
                 if target is not None and config is not None and product is not None:
                     override_keys.append(target+'_'+config+'_'+product)
+                if target is not None and config is not None:
+                    override_keys.append(target+'_'+config)
                 if target is not None:
                     override_keys.append(target)
                 override_keys.append('all')
-                deltara = None
-                deltadec = None
+                override_cell = None
+                override_deltara = None
+                override_deltadec = None
                 for override_key in override_keys:
-                    if deltara is None:
-                        deltara = self._kh.get_overrides(override_key, 'deltara')
-                    if deltadec is None:
-                        deltadec = self._kh.get_overrides(override_key, 'deltadec')
-                cell_arcsec = float(str(cell).replace('arcsec',''))
-                if deltara is not None:
-                    logger.info('applying overriding deltara '+str(deltara)+' arcsec')
-                    deltara = np.abs(float(deltara))
-                    imsize[0] = int(np.ceil(deltara/cell_arcsec/2.0)*2) # need an even number
-                if len(imsize) == 1:
-                    imsize = [imsize[0], imsize[0]]
-                if deltadec is not None:
-                    logger.info('applying overriding deltadec '+str(deltadec)+' arcsec')
-                    deltadec = np.abs(float(deltadec))
-                    imsize[1] = int(np.ceil(deltadec/cell_arcsec/2.0)*2) # need an even number
+                    if override_cell is None:
+                        override_cell = self._kh.get_overrides(override_key, 'cell')
+                    if override_deltara is None:
+                        override_deltara = self._kh.get_overrides(override_key, 'deltara')
+                    if override_deltadec is None:
+                        override_deltadec = self._kh.get_overrides(override_key, 'deltadec')
+                orig_cell_arcsec = float(str(cell).replace('arcsec',''))
+                if override_cell is not None:
+                    logger.info('applying overriding cell '+str(override_cell)+' arcsec')
+                    cell_arcsec = np.abs(float(override_cell))
+                    cell = str(cell_arcsec)+'arcsec'
+                else:
+                    cell_arcsec = orig_cell_arcsec
+                orig_imsize = imsize.copy()
+                if override_deltara is not None:
+                    logger.info('applying overriding deltara '+str(override_deltara)+' arcsec')
+                    override_deltara = np.abs(float(override_deltara))
+                    imsize[0] = int(np.ceil(override_deltara/cell_arcsec/2.0)*2) # need an even number
+                else:
+                    orig_deltara = orig_imsize[0] * orig_cell_arcsec
+                    imsize[0] = int(np.ceil(orig_deltara/cell_arcsec/2.0)*2)  # ensure even number
+                if override_deltadec is not None:
+                    logger.info('applying overriding deltadec '+str(override_deltadec)+' arcsec')
+                    override_deltadec = np.abs(float(override_deltadec))
+                    imsize[1] = int(np.ceil(override_deltadec/cell_arcsec/2.0)*2) # need an even number
+                else:
+                    orig_deltadec = orig_imsize[1] * orig_cell_arcsec
+                    imsize[1] = int(np.ceil(orig_deltadec/cell_arcsec/2.0)*2)  # ensure even number
 
                 # Print info
-                if deltara is not None or deltadec is not None:
+                if override_cell is not None or override_deltara is not None or override_deltadec is not None:
                     logger.info('cell='+cell+', imsize='+str(imsize))
 
             # Set clean call parameters

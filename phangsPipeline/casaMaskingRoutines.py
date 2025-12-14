@@ -288,6 +288,7 @@ def write_mask(infile, outfile, mask, huge_cube_workaround=True):
         # Remove the intermediate fits file
         os.system('rm -rf ' + outfile + '.fits')
     else:
+        myia = au.createCasaTool(casaStuff.iatool)
         myia.open(outfile)
         myia.putchunk(mask)
         myia.close()
@@ -421,10 +422,6 @@ def apply_additional_mask(
     beam based masks by setting the PB file to new_mask_file and the
     pb_limit as new_thresh.
     """
-    if root_mask == None:
-        logger.info("Specify a cube root file name.")
-        return
-
     myia = au.createCasaTool(casaStuff.iatool)
     myia.open(new_mask_file)
     new_mask = myia.getchunk()
