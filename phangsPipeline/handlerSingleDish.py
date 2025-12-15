@@ -91,7 +91,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             if sd_file is not None:
                 fname_dict[tag] = sd_file
 
-        fname_dict['source'] = 'all'
+        fname_dict['source'] = []
         
         tag = 'sd_raw_data_list'
         fname_dict[tag] = []
@@ -106,7 +106,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
                                                          obsnum=this_obsnum,
                                                          )
                 fname_dict[tag].append(sd_file)
-                fname_dict['source'] = source
+                fname_dict['source'].append(source)
 
         # Return
         
@@ -134,7 +134,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("  target: "+str(target))
         logger.info("  product: "+str(product))
-        logger.info("  raw data: "+str(input_raw_data))
+        logger.info("  raw data: "+", ".join(input_raw_data))
         logger.info("  output file: "+str(output_file))
         
         if os.path.isfile(output_file):
@@ -144,6 +144,9 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         if product not in self._kh.get_line_products():
             logger.error('Error! Product '+str(product)+' is not defined in the config_definitions key?!')
             return
+
+        if isinstance(source, str):
+            source = [source]
         
         this_line = self._kh.get_line_tag_for_line_product(product)
         vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target, check_parent=False)
@@ -165,32 +168,58 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         
         name_line = line_name.upper() + '_%.0fkmsres'%(max_chanwidth_kms)
         
-        # copy raw data over
-        path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_'+target + os.sep
-        path_galaxy = os.path.abspath(path_galaxy) + os.sep
-        input_raw_data = os.path.abspath(input_raw_data) + os.sep
+        # copy raw data over for each MS
+        singledish_dir = self._kh.get_singledish_dir_for_target(target=target, changeto=False)
+        path_galaxy = os.path.join(singledish_dir, f"processing_singledish_{target}")
+        path_galaxy = os.path.abspath(path_galaxy)
+
+        # Loop over each raw data directory and copy files over
+
+        dirs_to_copy = [
+            'calibration',
+            'raw',
+            'script',
+            'qa',
+        ]
+
         if not os.path.isdir(path_galaxy):
             os.makedirs(path_galaxy)
-        for dir_to_copy in ['calibration', 'raw', 'script', 'qa']:
-            if os.path.isdir(os.path.join(path_galaxy, dir_to_copy)):
-                input_raw_data_files = glob.glob(os.path.join(input_raw_data, dir_to_copy))
-                copied_raw_data_files = glob.glob(os.path.join(path_galaxy, dir_to_copy))
-                if len(input_raw_data_files) > len(copied_raw_data_files):
-                    logger.info("  cleaning up: "+str(os.path.join(path_galaxy, dir_to_copy)))
-                    shutil.rmtree(glob.glob(os.path.join(path_galaxy, dir_to_copy)))
-            if not os.path.isdir(os.path.join(path_galaxy, dir_to_copy)):
-                logger.info("  copying raw data: "+str(os.path.join(input_raw_data, dir_to_copy)))
-                logger.info("  to processing dir: "+str(os.path.join(path_galaxy, dir_to_copy)))
-                shutil.copytree(os.path.join(input_raw_data, dir_to_copy), \
-                                os.path.join(path_galaxy, dir_to_copy))
+
+        ms_dirs = []
+
+        for ird in input_raw_data:
+            ird = os.path.abspath(ird)
+            ird_member_dir = os.path.split(ird)[-1]
+
+            ms_dirs.append(ird_member_dir)
+
+            for dir_to_copy in dirs_to_copy:
+
+                in_dir_to_copy = os.path.join(ird, dir_to_copy)
+                out_dir_to_copy = os.path.join(path_galaxy, ird_member_dir, dir_to_copy)
+
+                if os.path.isdir(out_dir_to_copy):
+
+                    in_files = glob.glob(in_dir_to_copy)
+                    out_files = glob.glob(out_dir_to_copy)
+
+                    if len(in_files) > len(out_files):
+                        logger.info("  cleaning up: "+str(out_dir_to_copy))
+                        shutil.rmtree(out_dir_to_copy)
+
+                if not os.path.isdir(out_dir_to_copy):
+                    logger.info("  copying raw data: "+str(in_dir_to_copy))
+                    logger.info("  to processing dir: "+str(out_dir_to_copy))
+                    shutil.copytree(in_dir_to_copy, out_dir_to_copy)
         
         kwargs = {}
-        kwargs['path_galaxy'] = path_galaxy                            # 
+        kwargs['path_galaxy'] = path_galaxy                            #
+        kwargs['ms_dirs'] = ms_dirs
         kwargs['flag_file']  = ''                                      # 
         kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
         kwargs['bl_order']   = 1                                       # Order for the baseline fitting
         kwargs['max_flag_frac'] = 0.9                                  # Remove antennae with significant amounts of flagged data
-        kwargs['in_source']     = source                               # Source name. This comes from the field name in the MS file keys
+        kwargs['in_sources'] = source                                  # Source names. This comes from the field name in the MS file keys
         kwargs['freq_rest']  = freq_rest_MHz                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))
         kwargs['vel_cube']   = vel_cube = '%.3f~%.3f'%(vlow2, vhigh2)  # Range in velocity in km/s to extract the line cube.
         kwargs['vel_line']   = vel_line = '%.3f~%.3f'%(vlow1, vhigh1)  # Range in velocity in km/s to exclude the line emission from the baseline fit.
@@ -241,22 +270,13 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             return
             
         # Call tasks
-        
-        if len(fname_dict['sd_raw_data_list']) > 1:
-            logger.warning('Warning! Multiple single dish raw data entries are found in the ms_file_key! We will only process the first one! [TODO]')
-            #<TODO># We can only process one single dish raw data for now. Not sure how to combine those. Unless we specify line_product in the ms_file_key?
-        
-        for idx in range(len(fname_dict['sd_raw_data_list'])):
-            self.task_execute_single_dish_pipeline(
-                target = target,
-                product = product,
-                source = fname_dict['source'],
-                input_raw_data = fname_dict['sd_raw_data_list'][idx], 
-                output_file = fname_dict['sd_file'], 
-                )
-            if idx > 0:
-                break 
-                #<TODO># We can only process one single dish raw data for now. Not sure how to combine those. Unless we specify line_product in the ms_file_key?
+        self.task_execute_single_dish_pipeline(
+            target = target,
+            product = product,
+            source = fname_dict['source'],
+            input_raw_data = fname_dict['sd_raw_data_list'],
+            output_file = fname_dict['sd_file'],
+            )
 
         return
 
