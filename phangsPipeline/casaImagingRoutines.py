@@ -89,8 +89,12 @@ def estimate_cell_and_imsize(
 
     # Make the cell size a nice round number
 
-    if au_cellsize < 0.1:
+    if au_cellsize < 0.01:
         cell_size = au_cellsize
+    elif 0.01 <= au_cellsize < 0.05:
+        cell_size = np.floor(au_cellsize / 0.005) * 0.005
+    elif 0.05 <= au_cellsize < 0.1:
+        cell_size = np.floor(au_cellsize / 0.01) * 0.01
     elif 0.1 <= au_cellsize < 0.5:
         cell_size = np.floor(au_cellsize / 0.05) * 0.05
     elif 0.5 <= au_cellsize < 1.0:
@@ -717,7 +721,7 @@ def clean_loop(
             elif imaging_method == 'sdintimaging':
                 out_file = working_call.get_param('imagename') + '.joint.cube.mask' + suffix
 
-            signal_mask(
+            cmr.signal_mask(
                 cube_root=working_call.get_param('imagename'),
                 out_file=out_file,
                 suffix_in=suffix,
