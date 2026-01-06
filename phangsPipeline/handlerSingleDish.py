@@ -25,6 +25,9 @@ casa_enabled = is_casa_installed()
 if casa_enabled:
     logger.debug('casa_enabled = True')
     from . import casaLegacySingleDishRoutines as csdr
+
+    from . import casaSingleDishALMAWrapper as sdalma
+
 else:
     logger.debug('casa_enabled = False')
 
@@ -224,6 +227,19 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         logger.info("  kwargs: "+str(kwargs))
 
         csdr.run_ALMA_TP_tools(**kwargs)
+
+        else:
+            # Run the modified version of the ALMA pipeline
+
+            # TODO: parse line parameters into frequency ranges for baseline fitting.
+
+            sdalma.runALMAPipeline(path_galaxy=path_galaxy
+                                   baseline_fit_func='poly',
+                                   baseline_fit_order=1,
+                                   baseline_linewindowmode='replace',
+                                   baseline_linewindow=None,
+                                   )
+
 
 #endregion
 
