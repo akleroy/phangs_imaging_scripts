@@ -7,7 +7,7 @@ import scipy.stats as ss
 from scipy.signal import savgol_coeffs
 import astropy.wcs as wcs
 import astropy.units as u
-from astropy.convolution import convolve, Gaussian2DKernel
+from astropy.convolution import convolve_fft, Gaussian2DKernel, convolve
 from astropy.io import fits
 from astropy.stats import mad_std
 from spectral_cube import SpectralCube
@@ -89,13 +89,20 @@ def mad_zero_centered(data, mask=None):
 
     return(mad2)
 
-def noise_cube(data, mask=None,
-               nThresh=30, iterations=1,
-               do_map=True, do_spec=True,
-               box=None, spec_box=None,
+def noise_cube(data,
+               mask=None,
+               nThresh=30,
+               iterations=1,
+               do_map=True,
+               do_spec=True,
+               box=None,
+               spec_box=None,
+               substride=None,
                bandpass_smooth_window=None,
                bandpass_smooth_order=3,
-               oversample_boundary=False):
+               oversample_boundary=False, 
+               use_fft=True,
+               ):
 
     """
 
@@ -140,6 +147,11 @@ def noise_cube(data, mask=None,
         Spectral size of the box overwhich the noise is calculated.
         Default: no box, each channel gets its own noise estimate.
 
+    substride : int
+
+        Spatial sub-sampling stride used when calculating noise maps.  Default:
+        no sub-sampling.
+
     nThresh : int
         Minimum number of data to be used in an individual noise estimate.
 
@@ -154,6 +166,9 @@ def noise_cube(data, mask=None,
 
     bandpass_smooth_order : int
         Polynomial order used in smoothing kernel.  Defaults to 3.
+        
+    use_fft: bool
+        Use FFT for convolution and infilling (almost as good and much faster)
 
     """
 
@@ -165,6 +180,8 @@ def noise_cube(data, mask=None,
     if mask is not None:
         noisemask[mask] = False
 
+    validdatamap = np.any(noisemask, axis=0)
+    pixdim = int(np.ceil(np.sum(validdatamap)**0.5))
     # Default the spatial step size to individual pixels
 
     step = 1
@@ -176,7 +193,11 @@ def noise_cube(data, mask=None,
 
     if box is not None:
         step = np.floor(box/2.5).astype(int)
+        step = np.min([step, pixdim // 20])
         halfbox = int(box // 2)
+
+    if substride is None:
+        substride = 1
 
     # Include all pixels adjacent to the spatial
     # boundary of the data as set by NaNs
@@ -244,10 +265,10 @@ def noise_cube(data, mask=None,
             for x, y in zip(xsampsf, ysampsf):
                 # Extract a minicube and associated mask from the cube
 
-                minicube = data[:, (y-halfbox):(y+halfbox+1),
-                               (x-halfbox):(x+halfbox+1)]
-                minicube_mask = noisemask[:, (y-halfbox):(y+halfbox+1),
-                                             (x-halfbox):(x+halfbox+1)]
+                minicube = data[:, (y-halfbox):(y+halfbox+1):substride,
+                               (x-halfbox):(x+halfbox+1):substride]
+                minicube_mask = noisemask[:, (y-halfbox):(y+halfbox+1):substride,
+                                             (x-halfbox):(x+halfbox+1):substride]
 
                 # If we have enough data, fit a noise value for this entry
 
@@ -258,10 +279,10 @@ def noise_cube(data, mask=None,
             if extrax is not None and extray is not None:
                 for x, y in zip(extrax, extray):
 
-                    minicube = data[:, (y-halfbox):(y+halfbox+1),
-                                    (x-halfbox):(x+halfbox+1)]
-                    minicube_mask = noisemask[:, (y-halfbox):(y+halfbox+1),
-                                              (x-halfbox):(x+halfbox+1)]
+                    minicube = data[:, (y-halfbox):(y+halfbox+1):substride,
+                                    (x-halfbox):(x+halfbox+1):substride]
+                    minicube_mask = noisemask[:, (y-halfbox):(y+halfbox+1):substride,
+                                              (x-halfbox):(x+halfbox+1):substride]
 
                     if np.sum(minicube_mask) > nThresh:
                         noise_map[y, x] = mad_zero_centered(minicube,
@@ -295,8 +316,15 @@ def noise_cube(data, mask=None,
                 # import scipy.interpolate as interp
                 # func = interp.interp2d(x, y, noise_map[y, x], kind='cubic')
 
-                noise_map = convolve(noise_map, kernel, boundary='extend')
-
+                if use_fft:
+                    pad = int(box)
+                    noise_map_pad = np.pad(noise_map, pad, 'edge') 
+                    noise_map_pad = convolve_fft(noise_map_pad, kernel,
+                                                 nan_treatment='interpolate', 
+                                                 boundary='wrap')
+                    noise_map = noise_map_pad[pad:-pad, pad:-pad]
+                else:
+                    noise_map = convolve(noise_map, kernel, boundary='extend')
                 # yy, xx = np.indices(noise_map.shape)
                 # noise_map_beta = interp.griddata((y, x), noise_map[y,x],
                 #                                  (yy, xx), method='cubic')
@@ -439,6 +467,14 @@ def recipe_phangs_noise(
         box = np.ceil(2.5 * pixels_per_beam**0.5)
         noise_kwargs['box'] = box
 
+    if 'substride' not in noise_kwargs:
+        pixels_per_beam = cube.pixels_per_beam
+        beam_diameter_pixels = np.sqrt(pixels_per_beam * 4.0 / np.pi)
+        substride = np.floor(beam_diameter_pixels / 2.5).astype(int)
+        if substride < 1:
+            substride = 1
+        noise_kwargs['substride'] = substride
+
     # Default to an odd bandpass smothing window
     if 'bandpass_smooth_window' not in noise_kwargs:
         spectral_smooth = np.ceil(cube.shape[0] / 5) // 2 * 2 + 1
@@ -479,8 +515,9 @@ def recipe_phangs_noise(
     badmask = nd.binary_dilation(badmask,
                                  structure=nd.generate_binary_structure(3, 2))
     data[badmask] = np.nan
-    rms = noise_cube(data,
-                     **noise_kwargs)
+    
+    rms = noise_cube(data, **noise_kwargs)
+
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Write or return as requested
