@@ -131,51 +131,83 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
     def task_execute_single_dish_pipeline(
         self,
         target,
-        product,
         input_raw_data,
         output_file,
+        product='all',
         source='all',
-        extra_ext_in = '',
-        extra_ext_out = '',
+        extra_ext_in='',
+        extra_ext_out='',
+        line_wing_kms=200.0,
         ):
-        """Execute single dish data reduction for one target.
         """
+        Execute single dish data reduction for one target.
+        """
+
+        if product == 'all':
+            product_list = self._kh.get_line_products()
+        else:
+            product_list = [product]
+
+        # Legacy pipeline doesn't handle multiple line products.
+        if self.use_legacy_pipeline:
+            logger.warning('Using legacy single dish pipeline')
+            logger.warning(f'Only the first line product will be processed: {product_list[0]}')
+
+            product_list = [product_list[0]]
 
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("Executing single dish pipeline")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("  target: "+str(target))
-        logger.info("  product: "+str(product))
-        logger.info("  raw data: "+", ".join(input_raw_data))
+        logger.info("  product: "+str(product_list))
+        logger.info("  raw data: "+str(input_raw_data))
         logger.info("  output file: "+str(output_file))
 
         if os.path.isfile(output_file):
             logger.info('Output file already exists: '+str(output_file)+'. Will not re-process it.')
             return
 
-        if product not in self._kh.get_line_products():
-            logger.error('Error! Product '+str(product)+' is not defined in the config_definitions key?!')
-            return
+        for product in product_list:
+            if product not in self._kh.get_line_products():
+                logger.error('Error! Product '+str(product)+' is not defined in the config_definitions key?!')
+                return
 
-        this_line = self._kh.get_line_tag_for_line_product(product)
-        vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target, check_parent=False)
-        max_chanwidth_kms = self._kh.get_channel_width_for_line_product(product)
-        #joint_imaging_dirs = self._kh.get_joint_imaging_dirs_for_singledish_config()
-        #joint_imaging_suffix = self._kh.get_joint_imaging_suffix_for_singledish_config()
+        product_dict = {}
+        for product in product_list:
+            product_dict[product] = self._kh._config_dict['line_products'][product]
 
-        line_wing = 200.0 # km/s TODO
-        vlow1 = vsys - vwidth/2.0
-        vhigh1 = vsys + vwidth/2.0
-        vlow2 = vsys - vwidth/2.0 - line_wing
-        vhigh2 = vsys + vwidth/2.0 + line_wing
+            this_line = self._kh.get_line_tag_for_line_product(product)
+            vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target, check_parent=False)
+            max_chanwidth_kms = self._kh.get_channel_width_for_line_product(product)
 
-        line_name, freq_rest_GHz = utilsLines.get_line_name_and_frequency(this_line)
-        freq_rest_MHz = freq_rest_GHz * 1e3 # MHz
+            #joint_imaging_dirs = self._kh.get_joint_imaging_dirs_for_singledish_config()
+            #joint_imaging_suffix = self._kh.get_joint_imaging_suffix_for_singledish_config()
 
-        rastring, decstring = self._kh.get_phasecenter_for_target(target=target)
-        phase_center = 'J2000 '+rastring+' '+decstring
+            line_wing = line_wing_kms # km/s
+            vlow1 = vsys - vwidth/2.0
+            vhigh1 = vsys + vwidth/2.0
+            vlow2 = vsys - vwidth/2.0 - line_wing
+            vhigh2 = vsys + vwidth/2.0 + line_wing
 
-        name_line = line_name.upper() + '_%.0fkmsres'%(max_chanwidth_kms)
+            line_name, freq_rest_GHz = utilsLines.get_line_name_and_frequency(this_line)
+            freq_rest_MHz = freq_rest_GHz * 1e3 # MHz
+
+            rastring, decstring = self._kh.get_phasecenter_for_target(target=target)
+            phase_center = 'J2000 '+rastring+' '+decstring
+
+            name_line = line_name.upper() + '_%.0fkmsres'%(max_chanwidth_kms)
+
+            # Add to product dict:
+            product_dict[product]['line_name'] = line_name
+            product_dict[product]['freq_rest_MHz'] = freq_rest_MHz
+            product_dict[product]['vel_cube'] = [vlow2, vhigh2]
+            product_dict[product]['vel_line_mask'] = [vlow1, vhigh1]
+            product_dict[product]['name_line'] = name_line
+            product_dict[product]['phase_center'] = phase_center
+
+            product_dict[product]['max_chanwidth_kms'] = max_chanwidth_kms
+            product_dict[product]['vsys'] = vsys
+            product_dict[product]['vwidth'] = vwidth
 
         # copy raw data over
         path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_'+target + os.sep
@@ -196,26 +228,38 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
                 shutil.copytree(os.path.join(input_raw_data, dir_to_copy), \
                                 os.path.join(path_galaxy, dir_to_copy))
 
-        kwargs = {}
-        kwargs['path_galaxy'] = path_galaxy                            #
-        kwargs['flag_file']  = ''                                      #
-        kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
-        kwargs['bl_order']   = 1                                       # Order for the baseline fitting
-        kwargs['max_flag_frac'] = 0.9                                  # Remove antennae with significant amounts of flagged data
-        kwargs['in_source']     = source                               # Source name. This comes from the field name in the MS file keys
-        kwargs['freq_rest']  = freq_rest_MHz                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))
-        kwargs['vel_cube']   = vel_cube = '%.3f~%.3f'%(vlow2, vhigh2)  # Range in velocity in km/s to extract the line cube.
-        kwargs['vel_line']   = vel_line = '%.3f~%.3f'%(vlow1, vhigh1)  # Range in velocity in km/s to exclude the line emission from the baseline fit.
-        kwargs['phase_center']   = phase_center                        # Provide coordinate of phase center, otherwise set to "False" and coordinates will be read from the data
-        kwargs['source_vel_kms'] = vsys                                # Provide velocity of the source, otherwise set to "False" and coordinates will be read from the data
-        kwargs['vwidth_kms']     = vwidth                              # width in velocity and velocity resolution in km/s
-        kwargs['chan_dv_kms']    = max_chanwidth_kms                   #
-        kwargs['freq_rest_im']   = freq_rest_GHz                       # rest frequency in GHz for imaging
-        kwargs['name_line']      = name_line                           # Name of the line, to be used for naming the files -- will not be used anymore
-        kwargs['output_file']    = output_file                         # Output file path
-        #kwargs['joint_imaging_dirs'] = joint_imaging_dirs              # Do a joint imaging by including *.cal.jy in joint_imaging_dir
-        #kwargs['joint_imaging_suffix'] = joint_imaging_suffix          # Suffix after name_line in the output file name.
-        kwargs['do_step'] = []
+
+        if self.use_legacy_pipeline:
+            logger.info("  Using legacy pipeline")
+
+            product = product_list[0]
+
+            vlow2 = product_dict[product]['vel_cube'][0]
+            vhigh2 = product_dict[product]['vel_cube'][1]
+
+            vlow1 = product_dict[product]['vel_line_mask'][0]
+            vhigh1 = product_dict[product]['vel_line_mask'][1]
+
+            kwargs = {}
+            kwargs['path_galaxy'] = path_galaxy                            #
+            kwargs['flag_file']  = ''                                      #
+            kwargs['doplots']    = False                                    # Do non-interactive. additional plots (plots will be saved in "calibration/plots" folder)
+            kwargs['bl_order']   = 1                                       # Order for the baseline fitting
+            kwargs['max_flag_frac'] = 0.9                                  # Remove antennae with significant amounts of flagged data
+            kwargs['in_source']     = source                               # Source name. This comes from the field name in the MS file keys
+            kwargs['freq_rest']  = product_dict[product]['freq_rest_MHz']                           # Rest frequency of requested line in MHz (ex: "freq_rest  = 230538" for CO(2-1))
+            kwargs['vel_cube']   = vel_cube = '%.3f~%.3f'%(vlow2, vhigh2)  # Range in velocity in km/s to extract the line cube.
+            kwargs['vel_line']   = vel_line = '%.3f~%.3f'%(vlow1, vhigh1)  # Range in velocity in km/s to exclude the line emission from the baseline fit.
+            kwargs['phase_center']   = phase_center                        # Provide coordinate of phase center, otherwise set to "False" and coordinates will be read from the data
+            kwargs['source_vel_kms'] = product_dict[product]['vsys']                                # Provide velocity of the source, otherwise set to "False" and coordinates will be read from the data
+            kwargs['vwidth_kms']     = product_dict[product]['vwidth']                              # width in velocity and velocity resolution in km/s
+            kwargs['chan_dv_kms']    = product_dict[product]['max_chanwidth_kms']                   #
+            kwargs['freq_rest_im']   = product_dict[product]['freq_rest_GHz']                       # rest frequency in GHz for imaging
+            kwargs['name_line']      = product_dict[product]['line_name']                           # Name of the line, to be used for naming the files -- will not be used anymore
+            kwargs['output_file']    = output_file                         # Output file path
+            #kwargs['joint_imaging_dirs'] = joint_imaging_dirs              # Do a joint imaging by including *.cal.jy in joint_imaging_dir
+            #kwargs['joint_imaging_suffix'] = joint_imaging_suffix          # Suffix after name_line in the output file name.
+            kwargs['do_step'] = []
 
         # see if there is anything defined in the config_definitions key
         parameters = self._kh.get_params_for_singledish(singledish_config='tp')
@@ -233,11 +277,12 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
 
             # TODO: parse line parameters into frequency ranges for baseline fitting.
 
-            sdalma.runALMAPipeline(path_galaxy=path_galaxy
+            sdalma.runALMAPipeline(path_galaxy=path_galaxy,
                                    baseline_fit_func='poly',
                                    baseline_fit_order=1,
                                    baseline_linewindowmode='replace',
                                    baseline_linewindow=None,
+                                   product_dict=product_dict,
                                    )
 
 

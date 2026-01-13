@@ -9,6 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+from . import casaLegacySingleDishRoutines as csdr
 
 # path constants
 path_script = '../script/'       # Path to the script folder.
@@ -41,10 +42,12 @@ def extractJyperK():
 
 
 def runALMAPipeline(path_galaxy,
+                    source='all',
                     baseline_fit_func='poly',
                     baseline_fit_order=1,
                     baseline_linewindowmode='replace',
-                    baseline_linewindow=None,):
+                    baseline_linewindow=None,
+                    product_dict=None):
     '''
     Wraps the ALMA SD pipeline recipes into a single function. This it to pass
     custom parameters to the pipeline, primarily the baseline correction.
@@ -66,12 +69,12 @@ def runALMAPipeline(path_galaxy,
 
 
     # Change to working directory:
-    logger.info("> Changing directory to "+os.path.join(path_galaxy,'calibration'))
+    logger.info("> Changing directory to "+os.path.join(path_galaxy,'raw'))
     os.chdir(os.path.join(path_galaxy,'calibration'))   # Working on the calibration folder of the current galaxy
 
 
     # Defining Execution Blocks (EBS) names
-    EBsnames = [f for f in os.listdir(path_raw) if f.endswith('.asdm.sdm')]
+    EBsnames = [f for f in os.listdir(".") if f.endswith('.asdm.sdm')]
 
     # Retrieve the k2jy scaling from the auxiliary calibration products.
     extractJyperK()
@@ -88,13 +91,29 @@ def runALMAPipeline(path_galaxy,
 
     EBsnames = newEBnames
 
+    # Create baseline dict with freq ranges to mask:
+    if baseline_linewindow is None:
+        import astropy.units as u
+
+        # Construct the line window via spw:low~high strings based on the
+        # product_dict.
+        baseline_linewindow = []
+        for this_product in product_dict:
+
+            freq_rest = product_dict[this_product]['freq_rest_MHz']
+            vsys = product_dict[this_product]['vsys']
+            vel_line_mask = product_dict[this_product]['vel_line_mask']
+
+            # Convert velocity range to frequency range
+            freq_line_mask = (vel_line_mask * u.km / u.s).to(u.Hz, u.doppler_optical(freq_rest * u.MHz)).value
+
+            # Giving list of [low, high] frequency ranges. The pipeline will apply the ranges to all valid SPWs.
+            baseline_linewindow.append(list(freq_line_mask))
 
     # Run pipeline recipe.
     context = h_init()
     try:
-        hsd_importdata(
-            vis=EBsnames
-            )
+        hsd_importdata(vis=EBsnames)
 
         hsd_flagdata(pipelinemode="automatic")
         h_tsyscal(pipelinemode="automatic")
@@ -114,10 +133,13 @@ def runALMAPipeline(path_galaxy,
                      )
         hsd_blflag(pipelinemode="automatic")
 
-        # TODO: Add imaging with requested spw, channel and range.
-        # TODO: if possible, we should just loop through all required products in 1 go.
-        # Per product for SD imaging is cheap and fast.
 
-        # hsd_imaging(spw='23')
     finally:
         h_save()
+
+
+    # TODO: Add imaging with requested spw, channel and range.
+    # TODO: if possible, we should just loop through all required products in 1 go.
+    # Per product for SD imaging is cheap and fast.
+
+    # TODO: Export the final imaging products
