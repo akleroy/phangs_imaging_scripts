@@ -115,12 +115,17 @@ if casa_version[0] >= 6:
     except AttributeError:
         plotms = casaplotms.plotms
 
-    import casaviewer
-
     try:
-        viewer = casaviewer.gotasks.imview.imview
-    except AttributeError:
-        viewer = casaviewer.imview
+        import casaviewer
+    except (ImportError, ModuleNotFoundError):
+        casaviewer = None
+        print("Could not import casaviewer")
+
+    if casaviewer is not None:
+        try:
+            viewer = casaviewer.gotasks.imview.imview
+        except AttributeError:
+            viewer = casaviewer.imview
 
     import casashell
 
