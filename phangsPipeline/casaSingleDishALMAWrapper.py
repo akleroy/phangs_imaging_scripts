@@ -4,34 +4,37 @@ import os
 import glob
 import tarfile
 import shutil
+import numpy as np
+
+import analysisUtils as au
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 from . import casaLegacySingleDishRoutines as csdr
+from . import casaStuff
+from .utilsSingleDish import getTPSampling
+
 
 # path constants
-path_script = '../script/'       # Path to the script folder.
-path_raw    = '../raw/'          # Path to the raw folder.
-path_dataproduct = '../data/'    # Path to data products.
+path_calibration = '../calibration/'
 
-
-def extractJyperK():
+def extractJyperK(base_path=path_calibration):
     logger.info("Extracting Jy per K conversion factor")
 
-    file_script = 'jyperk.csv'
+    file_script = f'{base_path}/jyperk.csv'
 
     if not os.path.isfile(file_script):
-        filetgz = glob.glob("*auxproducts.tgz")
+        filetgz = glob.glob(f"{base_path}/*auxproducts.tgz")
         if len(filetgz) > 0:
             tar = tarfile.open(filetgz[0])
-            tar.extractall()
+            tar.extractall(path=base_path)
             tar.close()
 
         # Check if it's still not there or search for jyperk_query.csv
         if not os.path.exists(file_script):
-            alt_file_script = 'jyperk_query.csv'
+            alt_file_script = f'{base_path}/jyperk_query.csv'
             if not os.path.exists(alt_file_script):
                 raise ValueError("Unable to find the jyperk.csv or jyperk_query.csv files.")
             else:
@@ -41,13 +44,112 @@ def extractJyperK():
     shutil.copyfile(file_script, 'jyperk.csv')
 
 
+def SDImaging(filename,
+            source,
+            name_line,
+            vel_cube_range,
+            chan_dv_kms,
+            freq_rest_im,
+            phcenter='',
+            freq_Hz=None,
+            overwrite=True):
+
+    outimage = f'ALMA_TP.{source}.{name_line}.image'
+
+    # Setup imaging:
+    start_vel = vel_cube_range[0]
+    vwidth_kms = abs(vel_cube_range[1]-vel_cube_range[0])
+    nchans_vel = int(round(vwidth_kms/chan_dv_kms))
+
+    if freq_Hz is None:
+        mymsmd = casaStuff.msmdtool()
+        mymsmd.open(filename)
+        freq_Hz = mymsmd.meanfreq(0)
+        mymsmd.close()
+        logger.info("Reading frequency in image: "+str(freq_Hz))
+
+    diameter = 12.
+    fwhmfactor = 1.13
+    c_light = 2.99792458e5 # km/s
+    theorybeam = fwhmfactor * c_light*1e3 / freq_Hz / (diameter * 180/np.pi*3600)
+    cell       = theorybeam/9.0
+
+    xSampling, ySampling, maxsize = getTPSampling(filename)
+
+    imsize = int(round(maxsize/cell)*1.5)
+
+    start_vel = source_vel_kms-vwidth_kms/2
+    nchans_vel = int(round(vwidth_kms/chan_dv_kms))
+
+    if phcenter == '':
+        coord_phase = csdr.read_source_coordinates(filename, source)
+    else:
+        coord_phase = phcenter
+
+    logger.info("Start imaging")
+    logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
+    logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
+    logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
+    casaStuff.tsdimaging(
+        infiles=filename,
+        mode='velocity',
+        nchan=nchans_vel,
+        width=str(chan_dv_kms)+'km/s',
+        start=str(start_vel)+'km/s',
+        veltype ="radio",
+        outframe='LSRK',
+        restfreq=str(freq_rest_im)+'GHz',
+        gridfunction='SF',
+        convsupport=6,
+        phasecenter=coord_phase,
+        imsize=imsize,
+        cell=str(cell)+'arcsec',
+        overwrite=overwrite,
+        outfile=outimage)
+
+
+    # Trim the image:
+    myia = casaStuff.iatool()
+    myia.open(outimage)
+    mask = myia.getchunk(getmask=True)
+    myia.close()
+
+    # Finally, trim the image and weight cube down
+    mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))
+
+    # Get bounding box in RA/Dec. Use padding of 1 pixel
+    pad = 1
+    xmin = np.max([0, np.min(np.where(mask_spec_x))-pad])
+    xmax = np.min([np.max(np.where(mask_spec_x))+pad, mask.shape[0]-1])
+
+    #mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
+    mask_spec_y = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 1]))
+    ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
+    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
+
+    box_string = '' + str(xmin) + ',' + str(ymin) + ',' + str(xmax) + ',' + str(ymax)
+
+    casaStuff.imsubimage(
+        imagename=outimage,
+        outfile=outimage+'_trimmed',
+        box=box_string,
+    )
+    casaStuff.imsubimage(
+        imagename=outimage.replace('.image', '.weight'),
+        outfile=outimage.replace('.image', '.weight')+'_trimmed',
+        box=box_string,
+    )
+
+    return outimage
+
 def runALMAPipeline(path_galaxy,
-                    source='all',
+                    in_source='all',
                     baseline_fit_func='poly',
                     baseline_fit_order=1,
                     baseline_linewindowmode='replace',
                     baseline_linewindow=None,
-                    product_dict=None):
+                    product_dict=None,
+                    overwrite=True):
     '''
     Wraps the ALMA SD pipeline recipes into a single function. This it to pass
     custom parameters to the pipeline, primarily the baseline correction.
@@ -62,19 +164,36 @@ def runALMAPipeline(path_galaxy,
         Baseline fit order.
     baseline_linewindowmode : str
         Baseline line window mode.
-    baseline_linewindow : dict
+    baseline_linewindow : dict or list
         Dictionary of baseline line windows. e.g. {"23": ['230.62GHz', '230.78GHz']}
+        or List of channel/frequency ranges. e.g. [[230.62e0, 230.78e9]]
+    product_dict : dict
+        Dictionary of line products information.
+    overwrite : bool
+        Overwrite previous results.
 
     '''
 
+    from pipeline.cli import (h_init,
+                              hsd_importdata,
+                              hsd_flagdata,
+                              h_tsyscal,
+                              hsd_tsysflag,
+                              hsd_skycal,
+                              hsd_k2jycal,
+                              hsd_applycal,
+                              hsd_atmcor,
+                              hsd_baseline,
+                              hsd_blflag,
+                              h_save)
 
     # Change to working directory:
-    logger.info("> Changing directory to "+os.path.join(path_galaxy,'raw'))
-    os.chdir(os.path.join(path_galaxy,'calibration'))   # Working on the calibration folder of the current galaxy
-
+    workdir = os.path.join(path_galaxy, 'raw')
+    logger.info(f"> Changing directory to {workdir}")
+    os.chdir(workdir)
 
     # Defining Execution Blocks (EBS) names
-    EBsnames = [f for f in os.listdir(".") if f.endswith('.asdm.sdm')]
+    EBsnames = [f for f in os.listdir(".") if f.startswith('uid_')]
 
     # Retrieve the k2jy scaling from the auxiliary calibration products.
     extractJyperK()
@@ -90,6 +209,12 @@ def runALMAPipeline(path_galaxy,
         newEBnames.append(newEBname)
 
     EBsnames = newEBnames
+
+    logger.info(f"Using these ASDM files: {EBsnames}")
+
+    if len(EBsnames) == 0:
+        logger.info("No ASDM files found.")
+        raise ValueError("No ASDM files found.")
 
     # Create baseline dict with freq ranges to mask:
     if baseline_linewindow is None:
@@ -109,6 +234,9 @@ def runALMAPipeline(path_galaxy,
 
             # Giving list of [low, high] frequency ranges. The pipeline will apply the ranges to all valid SPWs.
             baseline_linewindow.append(list(freq_line_mask))
+
+            # Append this to the product dict
+            product_dict[this_product]['freq_line_mask'] = freq_line_mask
 
     # Run pipeline recipe.
     context = h_init()
@@ -138,8 +266,56 @@ def runALMAPipeline(path_galaxy,
         h_save()
 
 
-    # TODO: Add imaging with requested spw, channel and range.
-    # TODO: if possible, we should just loop through all required products in 1 go.
-    # Per product for SD imaging is cheap and fast.
+    this_vis = [f"{filename}.ms" for filename in EBsnames]
 
-    # TODO: Export the final imaging products
+    # Avoid too many files open issues
+    ms_concat_filename = 'ALMA_TP_concat.ms'
+    if os.path.exists(ms_concat_filename):
+        shutil.rmtree(ms_concat_filename)
+    casaStuff.concat(vis=this_vis, concatvis=ms_concat_filename)
+    infiles = ms_concat_filename
+    logger.info('Msnames: %s, N=%d, concatenated: %s'%(this_vis, len(this_vis), ms_concat_filename))
+
+    this_vis = ms_concat_filename
+
+    source = csdr.get_sourcename(filename, source=in_source)          # read the source name directly from the ms
+
+    for this_product in product_dict:
+
+
+        name_line = product_dict[this_product]['name_line']
+        chan_dv_kms = product_dict[this_product]['chan_dv_kms']
+        freq_rest_im = product_dict[this_product]['freq_rest_MHz']
+        vel_cube = product_dict[this_product]['vel_cube']
+
+        output_name = product_dict[this_product]['output_name']
+
+        # Setup imaging call:
+        outimage = SDImaging(
+            filename=this_vis,
+            source=source,
+            name_line=name_line,
+            vel_cube_range=vel_cube,
+            chan_dv_kms=chan_dv_kms,
+            freq_rest_im=freq_rest_im,
+            phcenter='',
+            freq_Hz=None,
+            overwrite=overwrite
+            )
+
+        # Move things around
+        os.system(f'mv {outimage} {outimage}.orig')
+        os.system(f'mv {outimage}_trimmed {outimage}')
+
+        os.system(f"mv {outimage.replace('.image', '.weight')} {outimage.replace('.image', '.weight')}_orig")
+        os.system(f"mv {outimage.replace('.image', '.weight')}_trimmed {outimage.replace('.image', '.weight')}")
+
+        # Export to fits
+        imagefile_fits = f"{outimage}.fits"
+        casaStuff.exportfits(image=outimage, fitsimage=imagefile_fits, overwrite=True)
+        weightimage = outimage.replace(".image", ".weight")
+        casaStuff.exportfits(image=weightimage, fitsimage=f"{weightimage}.fits", overwrite=True)
+
+        shutil.copy2(imagefile_fits, output_name)
+
+        logger.info('> Copied FITS to "%s"'%(output_name))

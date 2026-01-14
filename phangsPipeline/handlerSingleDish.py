@@ -131,8 +131,6 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
     def task_execute_single_dish_pipeline(
         self,
         target,
-        input_raw_data,
-        output_file,
         product='all',
         source='all',
         extra_ext_in='',
@@ -148,6 +146,20 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         else:
             product_list = [product]
 
+        fname_dict = self._fname_dict(
+            target=target,
+            product=product_list[0],
+            )
+
+        if fname_dict['sd_file'] == '':
+            logger.info("Target "+target+" product "+product+" has no single dish data in the singledish_key file.")
+
+        if len(fname_dict['sd_raw_data_list']) > 1:
+            logger.warning('Warning! Multiple single dish raw data entries are found in the ms_file_key! We will only process the first one! [TODO]')
+            #<TODO># We can only process one single dish raw data for now. Not sure how to combine those. Unless we specify line_product in the ms_file_key?
+
+        input_raw_data = fname_dict['sd_raw_data_list'][0]
+
         # Legacy pipeline doesn't handle multiple line products.
         if self.use_legacy_pipeline:
             logger.warning('Using legacy single dish pipeline')
@@ -161,20 +173,29 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         logger.info("  target: "+str(target))
         logger.info("  product: "+str(product_list))
         logger.info("  raw data: "+str(input_raw_data))
-        logger.info("  output file: "+str(output_file))
+        # logger.info("  output file: "+str(output_file))
 
-        if os.path.isfile(output_file):
-            logger.info('Output file already exists: '+str(output_file)+'. Will not re-process it.')
-            return
+        # if os.path.isfile(output_file):
+        #     logger.info('Output file already exists: '+str(output_file)+'. Will not re-process it.')
+        #     return
 
         for product in product_list:
             if product not in self._kh.get_line_products():
                 logger.error('Error! Product '+str(product)+' is not defined in the config_definitions key?!')
                 return
 
+        parameters = self._kh.get_params_for_singledish(singledish_config='tp')
+
         product_dict = {}
         for product in product_list:
-            product_dict[product] = self._kh._config_dict['line_products'][product]
+
+            fname_dict = self._fname_dict(
+                target=target,
+                product=product,
+                )
+            output_file = fname_dict['sd_file']
+
+            product_dict[product] = self._kh._config_dict['line_product'][product]
 
             this_line = self._kh.get_line_tag_for_line_product(product)
             vsys, vwidth = self._kh.get_system_velocity_and_velocity_width_for_target(target, check_parent=False)
@@ -208,6 +229,13 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             product_dict[product]['max_chanwidth_kms'] = max_chanwidth_kms
             product_dict[product]['vsys'] = vsys
             product_dict[product]['vwidth'] = vwidth
+
+            product_dict[product]['output_file'] = output_file
+
+            for key in parameters:
+                if key not in product_dict[product]:
+                    product_dict[product][key] = parameters[key]
+
 
         # copy raw data over
         path_galaxy = self._kh.get_singledish_dir_for_target(target=target, changeto=False) + os.sep + 'processing_singledish_'+target + os.sep
@@ -256,7 +284,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             kwargs['chan_dv_kms']    = product_dict[product]['max_chanwidth_kms']                   #
             kwargs['freq_rest_im']   = product_dict[product]['freq_rest_GHz']                       # rest frequency in GHz for imaging
             kwargs['name_line']      = product_dict[product]['line_name']                           # Name of the line, to be used for naming the files -- will not be used anymore
-            kwargs['output_file']    = output_file                         # Output file path
+            kwargs['output_file']    = product_dict[product]['output_file']                         # Output file path
             #kwargs['joint_imaging_dirs'] = joint_imaging_dirs              # Do a joint imaging by including *.cal.jy in joint_imaging_dir
             #kwargs['joint_imaging_suffix'] = joint_imaging_suffix          # Suffix after name_line in the output file name.
             kwargs['do_step'] = []
@@ -279,7 +307,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
 
             sdalma.runALMAPipeline(path_galaxy=path_galaxy,
                                    baseline_fit_func='poly',
-                                   baseline_fit_order=1,
+                                   baseline_fit_order=parameters['bl_order'] if 'bl_order' in parameters else 1,
                                    baseline_linewindowmode='replace',
                                    baseline_linewindow=None,
                                    product_dict=product_dict,
@@ -364,14 +392,24 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
 
         if do_step:
 
-            for this_target, this_product in self.looper(do_targets=True,
-                                                         do_products=True,
-                                                         do_configs=False):
+            if self.use_legacy_pipeline:
 
-                self.recipe_process_one_target(
-                    target = this_target,
-                    product = this_product
-                    )
+                for this_target, this_product in self.looper(do_targets=True,
+                                                            do_products=True,
+                                                            do_configs=False):
+
+                    self.recipe_process_one_target(
+                        target=this_target,
+                        product=this_product,
+                        )
+
+            else:
+                for this_target in self.get_targets():
+
+                    self.task_execute_single_dish_pipeline(
+                        target=this_target,
+                        product='all',
+                        )
 
 
 #endregion
