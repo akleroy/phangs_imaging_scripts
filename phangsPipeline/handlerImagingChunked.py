@@ -101,6 +101,7 @@ if casa_enabled:
             make_temp_dir=True,
             temp_key=None,
             temp_path=None,
+            copy_ms_to_temp=False,
             ):
 
             # inherit template class
@@ -162,7 +163,6 @@ if casa_enabled:
             # Make needed directories
             self._kh.make_missing_directories(imaging=True)
 
-
             if make_temp_dir:
                 if temp_path is None:
                     if temp_key is None:
@@ -172,6 +172,13 @@ if casa_enabled:
                     self._this_imaging_dir = temp_path
 
                 os.makedirs(self._this_imaging_dir, exist_ok=True)
+
+                if copy_ms_to_temp:
+                    # Copy the full MS file over, to speed up disk I/O
+                    os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
+
+                    # The full visibility file is now in the imaging directory
+                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
 
             else:
                 self._this_imaging_dir = self._orig_imaging_dir
