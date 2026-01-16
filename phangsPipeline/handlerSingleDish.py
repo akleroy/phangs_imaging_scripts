@@ -142,7 +142,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         """
 
         if product == 'all':
-            product_list = self._kh.get_line_products()
+            product_list = self.get_line_products()
         else:
             product_list = [product]
 
