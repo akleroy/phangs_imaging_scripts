@@ -1610,15 +1610,15 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         logger.info('Found file: done_step_7'+'_'+name_line+suffix+'. Will not re-do step 7.')
         return
 
-    #if checkdir(os.getcwd(),path_galaxy) == False:
-    #    os.chdir('../'+path_galaxy+'calibration')
-
     fwhmfactor = 1.13                               # Factor to estimate the ALMA theoretical beam
     diameter   = 12                                 # Diameter of ALMA antennas in meters
 
     # Search for files already calibrated
-    path = '.'
-    Msnames = [f for f in os.listdir(path) if f.endswith('.cal.jy'+'.'+name_line)]
+    Msnames = glob.glob(os.path.join("*",
+                                     "calibration",
+                                     f"*.cal.jy.{name_line}"
+                                     )
+                        )
 
     if doplots:
         plotfile = True
@@ -1639,10 +1639,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
                     Msnames2.remove(Msname)
             Msnames = Msnames+Msnames2
     logger.info('Msnames: %s N=%d'%(Msnames, len(Msnames)))
-    # Definition of parameters for imaging
-    #xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, plotfile=plotfile) # plot will be saved as vis+'.obsid%d.sampling.png' % (obsid) in default
-    #
-    # 20250214 concat everything then getTPSampling
+
     if len(Msnames) == 0:
         raise Exception('Error! No Msnames to do imaging!')
     elif len(Msnames) == 1:
@@ -1650,6 +1647,9 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
             xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, plotfile=plotfile)
         except ValueError:
             xSampling, ySampling, maxsize = getTPSampling(Msnames[0], showplot=False, pickFirstRaster=False, plotfile=plotfile)
+
+        infile = Msnames[0]
+
     else:
         #casaStuff.concat(vis = Msnames, concatvis = 'Msnames.cal'+'.'+name_line)
         #xSampling, ySampling, maxsize = getTPSampling('Msnames.cal'+'.'+name_line, showplot=False, plotfile=plotfile)
@@ -1659,26 +1659,23 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         if os.path.exists(ms_concat_filename):
             shutil.rmtree(ms_concat_filename)
         casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
-        infiles = ms_concat_filename
         logger.info('Msnames: %s, N=%d, concatenated: %s'%(Msnames, len(Msnames), ms_concat_filename))
 
         xSampling, ySampling, maxsize = getTPSampling(ms_concat_filename, showplot=False, plotfile=plotfile)
         logger.info('xSampling: %s, ySampling: %s, maxsize: %s'%(str(xSampling), str(ySampling), str(maxsize)))
 
+        infile = ms_concat_filename
 
     # Read frequency
-    #msmd.open(Msnames[0])
-    #freq = msmd.meanfreq(0)
-    #msmd.close()
     mymsmd = au.createCasaTool(casaStuff.msmdtool)
-    mymsmd.open(Msnames[0])
+    mymsmd.open(infile)
     freq = mymsmd.meanfreq(0)
     mymsmd.close()
     logger.info("Reading frequency in image: "+str(freq))
 
     # Coordinate of phasecenter read from the data or used as input
     if phcenter == False:
-        coord_phase = read_source_coordinates(Msnames[0],source)
+        coord_phase = read_source_coordinates(infile, source)
         logger.info("Coordinate of phasecenter, read from the data: ")
         logger.info(str(coord_phase))
     else:
@@ -1727,7 +1724,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
     logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
     func_sdimaging(
-        infiles = infiles,
+        infiles = infile,
         mode = 'velocity',
         nchan = nchans_vel,
         width = str(chan_dv_kms)+'km/s',
@@ -1872,12 +1869,13 @@ def export_fits(name_line, source, output_file, joint_imaging_suffix=''):
 #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 def run_ALMA_TP_tools(
         path_galaxy = '',
+        ms_dirs = '',
         flag_file = '',
         doplots = True,
         dosplitants = True,
         bl_order = 1,
         max_flag_frac = 0.9,
-        in_source = '',
+        in_sources = '',
         freq_rest = np.nan,
         vel_cube = '',
         vel_line = '',
@@ -1894,42 +1892,29 @@ def run_ALMA_TP_tools(
         EBexclude = None,
     ):
 
-    if path_galaxy == '' or in_source == '' or np.isnan(freq_rest) or np.isnan(source_vel_kms) or np.isnan(vwidth_kms) \
-        or np.isnan(chan_dv_kms) or np.isnan(freq_rest_im) or name_line == '' or output_file == '':
+    if (path_galaxy == ''
+            or ms_dirs == ''
+            or in_sources == ''
+            or np.isnan(freq_rest)
+            or np.isnan(source_vel_kms)
+            or np.isnan(vwidth_kms)
+            or np.isnan(chan_dv_kms)
+            or np.isnan(freq_rest_im)
+            or name_line == ''
+            or output_file == ''
+    ):
         logger.info('Error! Invalid input arguments when calling run_ALMA_TP_tools.')
         return
 
-    path_calibration = os.path.join(path_galaxy, 'calibration')
+    # Get current directory
+    ori_path = os.getcwd()
 
     logger.info("==================================")
     logger.info(" Starting TP ALMA data reduction  ")
     logger.info("==================================")
 
     logger.info("> You are executing the ALMA-TP-pipeline script from the directory: ")
-    logger.info("  "+os.getcwd())
-
-    ori_path = os.getcwd()                      # Current directory
-
-    #checktmp()                                  # check if the tmp folder exists. If not, do it and copy the data.
-
-    #print("> Changing directory to "+path_galaxy+'calibration'+"\n")
-    #os.chdir('../'+path_galaxy+'calibration')   # Working on the calibration folder of the current galaxy
-    logger.info("> Changing directory to "+os.path.join(path_galaxy,'calibration'))
-    os.chdir(os.path.join(path_galaxy,'calibration'))   # Working on the calibration folder of the current galaxy
-
-    pipeline = checkpipeline()                  # Pipeline reduced data (True or False)
-
-    # Defining Execution Blocks (EBS) names
-    EBsnames = [f for f in os.listdir(path_raw) if f.endswith('.asdm.sdm')]
-
-    #if 'EBexclude' in globals():
-    if EBexclude is not None:
-        if np.isscalar(EBexclude):
-            EBexclude = [EBexclude]
-        EBsnames = [s for s in EBsnames if s[0:-9] not in EBexclude]
-
-    if len(do_step) == 0:
-        do_step = [1,2,3,4,5,6,7,8]
+    logger.info("  "+ori_path)
 
     # Keep a check around that we've found anything
     found_any_ebs = False
@@ -1937,103 +1922,191 @@ def run_ALMA_TP_tools(
     filenames = []
     sourcenames = []
 
-    # Do data reduction for each EB
-    for EBs in EBsnames:
-        #
-        if pipeline == False:
-            EBs = EBs.replace('.ms.scriptForSDCalibration.py', '.asdm.sdm')
-        filename = 'u'+re.search('u(.+?).asdm.sdm', EBs).group(1)+'.ms'
-        file_exists = check_exists(filename)                             # Check weather the raw data exists
-        #
-        if file_exists == True:
+    logger.info("Found the following MS directories:")
+    for ms_dir in ms_dirs:
+        logger.info(f"> {ms_dir}")
 
-            found_any_ebs = True
+    # Loop over MS dirs
+    for ms_idx, ms_dir in enumerate(ms_dirs):
 
-            if 1 in do_step:
-                import_and_split_ant(filename,
-                                     doplots=doplots,
-                                     dosplitants=dosplitants)            # Import and split data per antenna
-            source = get_sourcename(filename, source=in_source)          # read the source name directly from the ms
+        # Move to calibration directory
+        calib_dir = os.path.join(path_galaxy, ms_dir, "calibration")
 
-            # If we don't find the expected source in the EB, continue
-            if source is None:
-                continue
+        logger.info("> Changing directory to " + calib_dir)
+        os.chdir(calib_dir)
 
-            vec_ants_t = read_ants_names(filename)                       # Read vector with name of all antennas
-            vec_ants   = [s for s in vec_ants_t if any(xs in s for xs in ['PM','DV'])] # Get only 12m antennas.
+        pipeline = checkpipeline()                  # Pipeline reduced data (True or False)
 
-            # For antenna with a significant fraction of data masked, future steps will crash
-            # so get those here
-            vec_ants_to_remove = []
-            for ant in vec_ants:
-                s = casaStuff.flagdata(filename + "." + ant + ".ms", mode="summary")
-                frac_flagged = s["flagged"] / s["total"]
+        # Defining Execution Blocks (EBS) names
+        EBsnames = [f for f in os.listdir(path_raw) if f.endswith('.asdm.sdm')]
 
-                if frac_flagged > max_flag_frac:
-                    logger.warning(f"{filename}.{ant} has {frac_flagged * 100}% of data flagged. Will not process")
-                    vec_ants_to_remove.append(ant)
+        if EBexclude is not None:
+            if np.isscalar(EBexclude):
+                EBexclude = [EBexclude]
+            EBsnames = [s for s in EBsnames if s[0:-9] not in EBexclude]
 
-            for ant in vec_ants_to_remove:
-                vec_ants.remove(ant)
+        if len(do_step) == 0:
+            do_step = [1,2,3,4,5,6,7,8]
 
-            vel_source = read_vel_source(filename,source)                # Read source velocity
-            spws_info  = read_spw(filename,source)                       # Read information of spws (science and Tsys)
-            #
-            if 2 in do_step:
-                spwmap = gen_tsys_and_flag(filename, spws_info, pipeline,
-                                        flag_dir=os.path.join(ori_path, 'galaxy-specific-scripts', 'flags-folder'),
-                                        flag_file='',
-                                        doplots=doplots)
-            #
-            if not dosplitants:
-                if not precasa5:
-                    vec_ants = None
-            #
-            # 20250219 known problematic datasets
-            if vec_ants is not None:
-                if filename == 'uid___A002_Xd06716_X126.ms':
-                    if 'PM02' in vec_ants:
-                        print('** removing known problematic dataset: {} {}'.format(filename, 'PM02'))
-                        vec_ants.remove('PM02')
-            #
-            if 3 in do_step:
-                counts2kelvin(filename, ant_list=vec_ants,
-                                spws_info=spws_info, spwmap=spwmap, doplots=doplots)
-            #
-            if 4 in do_step:
-                extract_cube(filename, source, name_line, ant_list=vec_ants,
-                                freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, vel_cube=vel_cube, doplots=doplots)
-            #
-            if 5 in do_step:
-                baseline(filename, source, name_line, ant_list=vec_ants,
-                                freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, vel_line=vel_line, bl_order=bl_order,
-                         doplots=doplots)
-            #
-            if 6 in do_step:
-                # concat ants and convert flux unit to Jy
-                concat_ants(filename, name_line, ant_list=vec_ants,
-                                freq_rest=freq_rest, spws_info=spws_info, vel_source=vel_source, pipeline=pipeline)
-            #
+        # Do data reduction for each EB
+        for EBs in EBsnames:
 
-            filenames.append(filename)
-            sourcenames.append(source)
-    #
-    if not found_any_ebs:
-        raise Exception("No EBs found to process")
+            if not pipeline:
+                EBs = EBs.replace('.ms.scriptForSDCalibration.py', '.asdm.sdm')
+            filename = 'u'+re.search('u(.+?).asdm.sdm', EBs).group(1)+'.ms'
+            file_exists = check_exists(filename)                             # Check weather the raw data exists
+
+            if file_exists:
+
+                found_any_ebs = True
+
+                # Import and split data by antenna
+                if 1 in do_step:
+                    import_and_split_ant(filename,
+                                         doplots=doplots,
+                                         dosplitants=dosplitants,
+                                         )
+
+                # Read source name directly from MS
+                source = get_sourcename(filename,
+                                        source=in_sources[ms_idx],
+                                        )
+
+                # If we don't find the expected source in the EB, continue
+                if source is None:
+                    continue
+
+                vec_ants_t = read_ants_names(filename)                       # Read vector with name of all antennas
+                vec_ants   = [s for s in vec_ants_t if any(xs in s for xs in ['PM','DV'])] # Get only 12m antennas.
+
+                # For antenna with a significant fraction of data masked, future steps will crash
+                # so get those here
+                vec_ants_to_remove = []
+                for ant in vec_ants:
+                    s = casaStuff.flagdata(filename + "." + ant + ".ms", mode="summary")
+                    frac_flagged = s["flagged"] / s["total"]
+
+                    if frac_flagged > max_flag_frac:
+                        logger.warning(f"{filename}.{ant} has {frac_flagged * 100}% of data flagged. Will not process")
+                        vec_ants_to_remove.append(ant)
+
+                for ant in vec_ants_to_remove:
+                    vec_ants.remove(ant)
+
+                # Read source velocity and SPW info
+                vel_source = read_vel_source(filename,source)
+                spws_info  = read_spw(filename,source)
+
+                if 2 in do_step:
+                    spwmap = gen_tsys_and_flag(
+                        filename,
+                        spws_info,
+                        pipeline,
+                        flag_dir=os.path.join(ori_path, 'galaxy-specific-scripts', 'flags-folder'),
+                        flag_file='',
+                        doplots=doplots,
+                    )
+
+                if not dosplitants:
+                    if not precasa5:
+                        vec_ants = None
+
+                # Remove known problematic datasets
+                if vec_ants is not None:
+                    if filename == 'uid___A002_Xd06716_X126.ms':
+                        if 'PM02' in vec_ants:
+                            print('** removing known problematic dataset: {} {}'.format(filename, 'PM02'))
+                            vec_ants.remove('PM02')
+
+                if 3 in do_step:
+                    counts2kelvin(
+                        filename,
+                        ant_list=vec_ants,
+                        spws_info=spws_info,
+                        spwmap=spwmap,
+                        doplots=doplots,
+                    )
+
+                if 4 in do_step:
+                    extract_cube(
+                        filename,
+                        source,
+                        name_line,
+                        ant_list=vec_ants,
+                        freq_rest=freq_rest,
+                        spws_info=spws_info,
+                        vel_source=vel_source,
+                        vel_cube=vel_cube,
+                        doplots=doplots,
+                    )
+
+                if 5 in do_step:
+                    baseline(
+                        filename,
+                        source,
+                        name_line,
+                        ant_list=vec_ants,
+                        freq_rest=freq_rest,
+                        spws_info=spws_info,
+                        vel_source=vel_source,
+                        vel_line=vel_line,
+                        bl_order=bl_order,
+                        doplots=doplots,
+                    )
+
+                if 6 in do_step:
+                    # concat ants and convert flux unit to Jy
+                    concat_ants(
+                        filename,
+                        name_line,
+                        ant_list=vec_ants,
+                        freq_rest=freq_rest,
+                        spws_info=spws_info,
+                        vel_source=vel_source,
+                        pipeline=pipeline,
+                    )
+
+                filenames.append(os.path.join(ms_dir,
+                                              "calibration",
+                                              filename,
+                                              )
+                                 )
+                sourcenames.append(source)
+
+        if not found_any_ebs:
+            raise Exception("No EBs found to process")
+
+    # Change back to the galaxy path
+    os.chdir(path_galaxy)
 
     # Pull out the first file/source to get velocity and any outstanding info
     filename = filenames[0]
     source = sourcenames[0]
 
     vel_source = read_vel_source(filename, source)
-    #
+
     if 7 in do_step:
-        imaging(source, name_line, phase_center, vel_source, source_vel_kms, vwidth_kms, chan_dv_kms, freq_rest_im, joint_imaging_dirs=joint_imaging_dirs, joint_imaging_suffix=joint_imaging_suffix, doplots=doplots)
-    #
+        imaging(source,
+                name_line,
+                phase_center,
+                vel_source,
+                source_vel_kms,
+                vwidth_kms,
+                chan_dv_kms,
+                freq_rest_im,
+                joint_imaging_dirs=joint_imaging_dirs,
+                joint_imaging_suffix=joint_imaging_suffix,
+                doplots=doplots,
+                )
+
     if 8 in do_step:
-        export_fits(name_line, source, output_file, joint_imaging_suffix=joint_imaging_suffix)
-    #
-    logger.info("> Changing directory to "+ori_path+'')
+        export_fits(name_line,
+                    source,
+                    output_file,
+                    joint_imaging_suffix=joint_imaging_suffix,
+                    )
+
+    logger.info("> Changing directory to "+ori_path)
     os.chdir(ori_path)
 
 
