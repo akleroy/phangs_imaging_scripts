@@ -624,7 +624,15 @@ def clean_loop(
     # of iterations that we give to an individual clean call.
 
     vm = au.ValueMapping(working_call.get_param('vis'))
-    nchan = vm.spwInfo[0]['numChannels']
+
+    # If we have a number of channels defined, then use that
+    nchan = working_call.get_param('nchan')
+
+    # Otherwise, pull the total number of channels from the spwInfo
+    if nchan is None:
+        nchan = -1
+    if nchan <= 0:
+        nchan = vm.spwInfo[0]['numChannels']
 
     # Create a text record of progress through successive clean calls.
 
