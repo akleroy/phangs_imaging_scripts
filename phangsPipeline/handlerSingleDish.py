@@ -329,6 +329,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         # Work out file names and note whether the target is part of a
         # mosaic, has single dish data, etc.
 
+        logger.warning('recipe_process_one_target is only used for the legacy pipeline!')
+
         fname_dict = self._fname_dict(
             target=target,
             product=product,

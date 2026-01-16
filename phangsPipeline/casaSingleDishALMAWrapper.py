@@ -57,7 +57,7 @@ def SDImaging(filename,
     outimage = f'ALMA_TP.{source}.{name_line}.image'
 
     # Setup imaging:
-    start_vel = vel_cube_range[0]
+    start_vel = min(vel_cube_range)
     vwidth_kms = abs(vel_cube_range[1]-vel_cube_range[0])
     nchans_vel = int(round(vwidth_kms/chan_dv_kms))
 
@@ -70,15 +70,14 @@ def SDImaging(filename,
 
     diameter = 12.
     fwhmfactor = 1.13
-    c_light = 2.99792458e5 # km/s
-    theorybeam = fwhmfactor * c_light*1e3 / freq_Hz / (diameter * 180/np.pi*3600)
+    c_light = 2.99792458e8 # m/s
+    theorybeam = (fwhmfactor * c_light / (freq_Hz * diameter)) * (180/np.pi) * 3600
     cell       = theorybeam/9.0
 
     xSampling, ySampling, maxsize = getTPSampling(filename)
 
     imsize = int(round(maxsize/cell)*1.5)
 
-    start_vel = source_vel_kms-vwidth_kms/2
     nchans_vel = int(round(vwidth_kms/chan_dv_kms))
 
     if phcenter == '':
@@ -254,8 +253,8 @@ def runALMAPipeline(path_galaxy,
         # NOTE: single baseline fit only. The pipeline repeats after 1 flagging step.
         # May need to revisit if flagging is missed.
         hsd_baseline(pipelinemode="automatic",
-                     fit_func=baseline_fit_func,
-                     fit_order=baseline_fit_order,
+                     fitfunc=baseline_fit_func,
+                     fitorder=baseline_fit_order,
                      linewindowmode=baseline_linewindowmode,
                      linewindow=baseline_linewindow
                      )
@@ -266,7 +265,7 @@ def runALMAPipeline(path_galaxy,
         h_save()
 
 
-    this_vis = [f"{filename}.ms" for filename in EBsnames]
+    this_vis = [f"{filename}.ms.atmcor.atmtype1_bl" for filename in EBsnames]
 
     # Avoid too many files open issues
     ms_concat_filename = 'ALMA_TP_concat.ms'
@@ -278,7 +277,7 @@ def runALMAPipeline(path_galaxy,
 
     this_vis = ms_concat_filename
 
-    source = csdr.get_sourcename(filename, source=in_source)          # read the source name directly from the ms
+    source = csdr.get_sourcename(this_vis, source=in_source)          # read the source name directly from the ms
 
     for this_product in product_dict:
 
@@ -288,7 +287,7 @@ def runALMAPipeline(path_galaxy,
         freq_rest_im = product_dict[this_product]['freq_rest_MHz']
         vel_cube = product_dict[this_product]['vel_cube']
 
-        output_name = product_dict[this_product]['output_name']
+        output_file = product_dict[this_product]['output_file']
 
         # Setup imaging call:
         outimage = SDImaging(
@@ -316,6 +315,10 @@ def runALMAPipeline(path_galaxy,
         weightimage = outimage.replace(".image", ".weight")
         casaStuff.exportfits(image=weightimage, fitsimage=f"{weightimage}.fits", overwrite=True)
 
-        shutil.copy2(imagefile_fits, output_name)
+        shutil.copy2(imagefile_fits, output_file)
+        # And export the weightfile
+        weight_output_file = output_file.replace(".fits", '_weights.fits')
+        shutil.copy2(weightfile, weight_output_file)
 
-        logger.info('> Copied FITS to "%s"'%(output_name))
+        logger.info('> Copied FITS to "%s"'%(output_file))
+        logger.info('> Copied FITS to "%s"'%(weight_output_file))
