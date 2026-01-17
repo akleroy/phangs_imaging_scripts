@@ -52,7 +52,8 @@ def SDImaging(filename,
             freq_rest_im,
             phcenter='',
             freq_Hz=None,
-            overwrite=True):
+            overwrite=True,
+            keep_only_trimmed=True):
 
     outimage = f'ALMA_TP.{source}.{name_line}.image'
 
@@ -138,6 +139,16 @@ def SDImaging(filename,
         outfile=outimage.replace('.image', '.weight')+'_trimmed',
         box=box_string,
     )
+
+    # Move things around
+    os.system(f'mv {outimage} {outimage}.orig')
+    os.system(f'mv {outimage}_trimmed {outimage}')
+
+    os.system(f"mv {outimage.replace('.image', '.weight')} {outimage.replace('.image', '.weight')}_orig")
+    os.system(f"mv {outimage.replace('.image', '.weight')}_trimmed {outimage.replace('.image', '.weight')}")
+
+    if keep_only_trimmed:
+        rmtables([outimage+'.orig', outimage.replace('.image', '.weight')+'.orig'])
 
     return outimage
 
@@ -284,7 +295,7 @@ def runALMAPipeline(path_galaxy,
 
         name_line = product_dict[this_product]['name_line']
         chan_dv_kms = product_dict[this_product]['chan_dv_kms']
-        freq_rest_im = product_dict[this_product]['freq_rest_MHz']
+        freq_rest_GHz = product_dict[this_product]['freq_rest_MHz'] / 1.e3
         vel_cube = product_dict[this_product]['vel_cube']
 
         output_file = product_dict[this_product]['output_file']
@@ -296,18 +307,11 @@ def runALMAPipeline(path_galaxy,
             name_line=name_line,
             vel_cube_range=vel_cube,
             chan_dv_kms=chan_dv_kms,
-            freq_rest_im=freq_rest_im,
+            freq_rest_im=freq_rest_GHz,
             phcenter='',
             freq_Hz=None,
             overwrite=overwrite
             )
-
-        # Move things around
-        os.system(f'mv {outimage} {outimage}.orig')
-        os.system(f'mv {outimage}_trimmed {outimage}')
-
-        os.system(f"mv {outimage.replace('.image', '.weight')} {outimage.replace('.image', '.weight')}_orig")
-        os.system(f"mv {outimage.replace('.image', '.weight')}_trimmed {outimage.replace('.image', '.weight')}")
 
         # Export to fits
         imagefile_fits = f"{outimage}.fits"
@@ -318,7 +322,7 @@ def runALMAPipeline(path_galaxy,
         shutil.copy2(imagefile_fits, output_file)
         # And export the weightfile
         weight_output_file = output_file.replace(".fits", '_weights.fits')
-        shutil.copy2(weightfile, weight_output_file)
+        shutil.copy2(weight_output_file, weight_output_file)
 
         logger.info('> Copied FITS to "%s"'%(output_file))
         logger.info('> Copied FITS to "%s"'%(weight_output_file))
