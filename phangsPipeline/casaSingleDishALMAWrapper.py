@@ -55,7 +55,8 @@ def SDImaging(filename,
             overwrite=True,
             keep_only_trimmed=True):
 
-    outimage = f'ALMA_TP.{source}.{name_line}.image'
+    outname = f'ALMA_TP.{source}.{name_line}'
+    outimage = f'{outname}.image'
 
     # Setup imaging:
     start_vel = min(vel_cube_range)
@@ -105,7 +106,7 @@ def SDImaging(filename,
         imsize=imsize,
         cell=str(cell)+'arcsec',
         overwrite=overwrite,
-        outfile=outimage)
+        outfile=outname)
 
 
     # Trim the image:
@@ -148,7 +149,7 @@ def SDImaging(filename,
     os.system(f"mv {outimage.replace('.image', '.weight')}_trimmed {outimage.replace('.image', '.weight')}")
 
     if keep_only_trimmed:
-        rmtables([outimage+'.orig', outimage.replace('.image', '.weight')+'.orig'])
+        casaStuff.rmtables([outimage+'.orig', outimage.replace('.image', '.weight')+'.orig'])
 
     return outimage
 
