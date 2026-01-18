@@ -57,6 +57,7 @@ def SDImaging(filename,
 
     outname = f'ALMA_TP.{source}.{name_line}'
     outimage = f'{outname}.image'
+    outweight = f'{outname}.weight'
 
     # Setup imaging:
     start_vel = min(vel_cube_range)
@@ -136,8 +137,8 @@ def SDImaging(filename,
         box=box_string,
     )
     casaStuff.imsubimage(
-        imagename=outimage.replace('.image', '.weight'),
-        outfile=outimage.replace('.image', '.weight')+'_trimmed',
+        imagename=outweight,
+        outfile=outweight+'_trimmed',
         box=box_string,
     )
 
@@ -145,11 +146,12 @@ def SDImaging(filename,
     os.system(f'mv {outimage} {outimage}.orig')
     os.system(f'mv {outimage}_trimmed {outimage}')
 
-    os.system(f"mv {outimage.replace('.image', '.weight')} {outimage.replace('.image', '.weight')}_orig")
-    os.system(f"mv {outimage.replace('.image', '.weight')}_trimmed {outimage.replace('.image', '.weight')}")
+    os.system(f"mv {outweight} {outweight}.orig")
+    os.system(f"mv {outweight}_trimmed {outweight}")
 
     if keep_only_trimmed:
-        casaStuff.rmtables([outimage+'.orig', outimage.replace('.image', '.weight')+'.orig'])
+        casaStuff.rmtables([outimage+'.orig'])
+        casaStuff.rmtables([outweight+'.orig'])
 
     return outimage
 
@@ -316,9 +318,9 @@ def runALMAPipeline(path_galaxy,
 
         # Export to fits
         imagefile_fits = f"{outimage}.fits"
-        casaStuff.exportfits(image=outimage, fitsimage=imagefile_fits, overwrite=True)
+        casaStuff.exportfits(imagename=outimage, fitsimage=imagefile_fits, overwrite=True)
         weightimage = outimage.replace(".image", ".weight")
-        casaStuff.exportfits(image=weightimage, fitsimage=f"{weightimage}.fits", overwrite=True)
+        casaStuff.exportfits(imagename=weightimage, fitsimage=f"{weightimage}.fits", overwrite=True)
 
         shutil.copy2(imagefile_fits, output_file)
         # And export the weightfile
