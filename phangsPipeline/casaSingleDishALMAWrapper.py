@@ -279,7 +279,18 @@ def runALMAPipeline(path_galaxy,
         h_save()
 
 
-    this_vis = [f"{filename}.ms.atmcor.atmtype1_bl" for filename in EBsnames]
+    this_vis = [f"{filename}.ms.atmcor.atmtype1_bl" for filename in EBsnames
+                if os.path.exists(f"{filename}.ms.atmcor.atmtype1_bl")]
+
+    for filename in EBsnames:
+        if os.path.exists(f"{filename}.ms.atmcor.atmtype1_bl"):
+            logger.info(f"Found {filename}.ms.atmcor.atmtype1_bl")
+        else:
+            logger.warning(f"Did not find {filename}.ms.atmcor.atmtype1_bl")
+
+    if len(this_vis) == 0:
+        logger.info("No valid MSs found for imaging.")
+        raise ValueError("No valid MSs found for imaging.")
 
     # Avoid too many files open issues
     ms_concat_filename = 'ALMA_TP_concat.ms'
