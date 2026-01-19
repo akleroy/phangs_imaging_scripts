@@ -84,7 +84,7 @@ logger.setLevel(logging.DEBUG)
 import analysisUtils as au
 es = au.stuffForScienceDataReduction()
 
-from .utilsSingleDish import getTPSampling #20250214
+from .utilsSingleDish import getTPSampling, get_first_arr_val
 #from analysisUtils import getTPSampling
 
 # CASA stuff
@@ -123,8 +123,6 @@ if hasattr(casaStuff, 'sdsave'):
 else:
     precasa5 = False
     fsuffix = '.ms'
-
-
 
 # Check if data was calibrated with the pipeline
 def checkpipeline():
@@ -351,8 +349,8 @@ def read_spw(filename,source):
     names  = mytb.getcol('NAME')
     numli  = mytb.getcol('NUM_LINES')
     ss     = np.where((names == source) & (numli ==  1))
-    spws_scie      = [int(mytb.getcol('SPECTRAL_WINDOW_ID',startrow=i,nrow=1))    for i in ss[0]]
-    rest_freq_scie = [float(mytb.getcol('REST_FREQUENCY',startrow=i,nrow=1)) for i in ss[0]]
+    spws_scie      = [int(get_first_arr_val(mytb.getcol('SPECTRAL_WINDOW_ID',startrow=i,nrow=1))) for i in ss[0]]
+    rest_freq_scie = [float(get_first_arr_val(mytb.getcol('REST_FREQUENCY', startrow=i, nrow=1))) for i in ss[0]]
     mytb.close()
     mytb.open(filename + '/SPECTRAL_WINDOW')
     names          = mytb.getcol('NAME')
@@ -368,18 +366,18 @@ def read_spw(filename,source):
     num_chan_scie   = list(range(len(spws_scie)))
     freq_rep_scie   = list(range(len(spws_scie)))
     for i in range(len(spws_scie)):
-        freq_zero_scie[i]  = float(mytb.getcol('REF_FREQUENCY',startrow=spws_scie[i],nrow=1))
-        chan_width_scie[i] = float(mytb.getcol('CHAN_WIDTH',startrow=spws_scie[i],nrow=1)[0])
-        num_chan_scie[i]   = float(mytb.getcol('NUM_CHAN',startrow=spws_scie[i],nrow=1))
+        freq_zero_scie[i]  = float(get_first_arr_val(mytb.getcol('REF_FREQUENCY',startrow=spws_scie[i],nrow=1)))
+        chan_width_scie[i] = float(get_first_arr_val(mytb.getcol('CHAN_WIDTH',startrow=spws_scie[i],nrow=1)[0]))
+        num_chan_scie[i]   = float(get_first_arr_val(mytb.getcol('NUM_CHAN',startrow=spws_scie[i],nrow=1)))
         freq_rep_scie[i]   = (num_chan_scie[i]/2*chan_width_scie[i]+freq_zero_scie[i])/1e6
     freq_zero_tsys  = list(range(len(spws_tsys)))
     chan_width_tsys = list(range(len(spws_tsys)))
     num_chan_tsys   = list(range(len(spws_tsys)))
     freq_rep_tsys   = list(range(len(spws_tsys)))
     for i in range(len(spws_tsys)):
-        freq_zero_tsys[i]  = float(mytb.getcol('REF_FREQUENCY',startrow=spws_tsys[i],nrow=1))
-        chan_width_tsys[i] = float(mytb.getcol('CHAN_WIDTH',startrow=spws_tsys[i],nrow=1)[0])
-        num_chan_tsys[i]   = float(mytb.getcol('NUM_CHAN',startrow=spws_tsys[i],nrow=1))
+        freq_zero_tsys[i]  = float(get_first_arr_val(mytb.getcol('REF_FREQUENCY',startrow=spws_tsys[i],nrow=1)))
+        chan_width_tsys[i] = float(get_first_arr_val(mytb.getcol('CHAN_WIDTH',startrow=spws_tsys[i],nrow=1)[0]))
+        num_chan_tsys[i]   = float(get_first_arr_val(mytb.getcol('NUM_CHAN',startrow=spws_tsys[i],nrow=1)))
         freq_rep_tsys[i]   =  (num_chan_tsys[i]/2*chan_width_tsys[i]+freq_zero_tsys[i])/1e6
     mytb.close()
 
@@ -393,7 +391,7 @@ def read_vel_source(filename,source):
     names = mytb.getcol('NAME')
     numli = mytb.getcol('NUM_LINES')
     ss    = np.where((names == source) & (numli ==  1))[0]
-    vel_source = float(mytb.getcol('SYSVEL',startrow=ss[0],nrow=1))/1e3
+    vel_source = float(get_first_arr_val(mytb.getcol('SYSVEL',startrow=ss[0],nrow=1)))/1e3
     vel_frame = mytb.getcolkeywords('SYSVEL')['MEASINFO']['Ref']
     logger.info("Frame of source velocity  is: "+vel_frame)
     mytb.close()
