@@ -289,21 +289,19 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             #kwargs['joint_imaging_suffix'] = joint_imaging_suffix          # Suffix after name_line in the output file name.
             kwargs['do_step'] = []
 
-        # see if there is anything defined in the config_definitions key
-        parameters = self._kh.get_params_for_singledish(singledish_config='tp')
+            # see if there is anything defined in the config_definitions key
+            parameters = self._kh.get_params_for_singledish(singledish_config='tp')
 
-        if parameters is not None:
-            for key in parameters:
-                kwargs[key] = parameters[key]
+            if parameters is not None:
+                for key in parameters:
+                    kwargs[key] = parameters[key]
 
-        logger.info("  kwargs: "+str(kwargs))
+            logger.info("  kwargs: "+str(kwargs))
 
-        csdr.run_ALMA_TP_tools(**kwargs)
+            csdr.run_ALMA_TP_tools(**kwargs)
 
         else:
-            # Run the modified version of the ALMA pipeline
-
-            # TODO: parse line parameters into frequency ranges for baseline fitting.
+            # Run the modified version of the ALMA pipeline w/ custom imaging routine
 
             sdalma.runALMAPipeline(path_galaxy=path_galaxy,
                                    baseline_fit_func='poly',
