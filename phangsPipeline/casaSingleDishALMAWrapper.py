@@ -331,12 +331,13 @@ def runALMAPipeline(path_galaxy,
         imagefile_fits = f"{outimage}.fits"
         casaStuff.exportfits(imagename=outimage, fitsimage=imagefile_fits, overwrite=True)
         weightimage = outimage.replace(".image", ".weight")
-        casaStuff.exportfits(imagename=weightimage, fitsimage=f"{weightimage}.fits", overwrite=True)
+        weightimage_fits = f"{weightimage}.fits"
+        casaStuff.exportfits(imagename=weightimage, fitsimage=weightimage_fits, overwrite=True)
 
         shutil.copy2(imagefile_fits, output_file)
         # And export the weightfile
         weight_output_file = output_file.replace(".fits", '_weights.fits')
-        shutil.copy2(weight_output_file, weight_output_file)
+        shutil.copy2(weightimage_fits, weight_output_file)
 
         logger.info('> Copied FITS to "%s"'%(output_file))
         logger.info('> Copied FITS to "%s"'%(weight_output_file))
