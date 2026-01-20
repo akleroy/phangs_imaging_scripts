@@ -14,6 +14,14 @@ import matplotlib
 
 casaVersion = "{0}.{1}.{2}".format(*casa_version)
 
+def get_first_arr_val(arr):
+    """Get the first value from a numpy array"""
+
+    while isinstance(arr, np.ndarray):
+        arr = arr[0]
+
+    return arr
+
 def setXaxisTimeTicks(adesc, t0, t1, verbose=True):
     """
     Sets sensible major and minor tick intervals for a plot_date plot
@@ -623,6 +631,11 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
         separation, dx, dy, dxcosdec = au.angularSeparationRadians(x[i],y[i],rightAscension,declination,True)
 #        if i == 0:
 #            print "x-rA=%f y-dec=%f, dx=%f dy=%f dxcosdec=%f" % (x[i]-rightAscension, y[i]-declination,dx,dy,dxcosdec)
+
+        dx = get_first_arr_val(dx)
+        dy = get_first_arr_val(dy)
+        dxcosdec = get_first_arr_val(dxcosdec)
+
         x[i] = dxcosdec*180*3600/np.pi
         y[i] = dy*180*3600/np.pi
     totalOffset = (x**2 + y**2)**0.5
@@ -632,7 +645,10 @@ def getTPSampling(vis, obsid=0, showplot=False, plotfile='', debug=False,
         idx1_ignoreOffPosition, idx1_ignoreOffPositionX, idx1_ignoreOffPositionY = au.ignoreMostCommonPosition(x,y)
     else:
         onSourceTimes = mymsmd.timesforintent(intent)
-        idx1_ignoreOffPosition = np.nonzero(np.in1d(times, onSourceTimes))
+        try:
+            idx1_ignoreOffPosition = np.nonzero(np.in1d(times, onSourceTimes))
+        except AttributeError:
+            idx1_ignoreOffPosition = np.nonzero(np.isin(times, onSourceTimes))
         idx1_ignoreOffPositionX = idx1_ignoreOffPosition
         idx1_ignoreOffPositionY = idx1_ignoreOffPosition
         if (len(idx1_ignoreOffPosition[0]) > 0):
