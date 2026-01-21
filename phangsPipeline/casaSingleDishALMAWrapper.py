@@ -49,7 +49,7 @@ def SDImaging(filename,
             name_line,
             vel_cube_range,
             chan_dv_kms,
-            freq_rest_im,
+            restfreq,
             phcenter='',
             freq_Hz=None,
             overwrite=True,
@@ -62,6 +62,10 @@ def SDImaging(filename,
     # Setup imaging:
     start_vel = min(vel_cube_range)
     vwidth_kms = abs(vel_cube_range[1]-vel_cube_range[0])
+
+    # Force >0 channel width
+    chan_dv_kms = abs(chan_dv_kms)
+
     nchans_vel = int(round(vwidth_kms/chan_dv_kms))
 
     if freq_Hz is None:
@@ -72,6 +76,9 @@ def SDImaging(filename,
         logger.info("Reading frequency in image: "+str(freq_Hz))
 
     diameter = 12.
+    # Appropriate for ALMA 12m's aperture illumination pattern
+    # Specifically, see ALMA Memo #456 (https://library.nrao.edu/public/memos/alma/main/memo456.pdf)
+    # and Todd Hunter's page on the getTPSampling function (https://safe.nrao.edu/wiki/bin/view/ALMA/PrimaryBeamArcsec)
     fwhmfactor = 1.13
     c_light = 2.99792458e8 # m/s
     theorybeam = (fwhmfactor * c_light / (freq_Hz * diameter)) * (180/np.pi) * 3600
@@ -81,8 +88,6 @@ def SDImaging(filename,
 
     imsize = int(round(maxsize/cell)*1.5)
 
-    nchans_vel = int(round(vwidth_kms/chan_dv_kms))
-
     if phcenter == '':
         coord_phase = csdr.read_source_coordinates(filename, source)
     else:
@@ -90,7 +95,7 @@ def SDImaging(filename,
 
     logger.info("Start imaging")
     logger.info("Imaging from velocity "+str(start_vel)+", using "+str(nchans_vel)+" channels.")
-    logger.info("Rest frequency is "+str(freq_rest_im)+" GHz.")
+    logger.info("Rest frequency is "+str(restfreq)+" GHz.")
     logger.info("Cell and image sizes are: "+str(cell)+"arcsec and "+str(imsize))
     casaStuff.tsdimaging(
         infiles=filename,
@@ -100,7 +105,7 @@ def SDImaging(filename,
         start=str(start_vel)+'km/s',
         veltype ="radio",
         outframe='LSRK',
-        restfreq=str(freq_rest_im)+'GHz',
+        restfreq=str(restfreq)+'GHz',
         gridfunction='SF',
         convsupport=6,
         phasecenter=coord_phase,
@@ -208,6 +213,10 @@ def runALMAPipeline(path_galaxy,
     # Defining Execution Blocks (EBS) names
     EBsnames = [f for f in os.listdir(".") if f.startswith('uid_')]
 
+    if len(EBsnames) == 0:
+        logger.info("No ASDM files found.")
+        raise ValueError("No ASDM files found.")
+
     # Retrieve the k2jy scaling from the auxiliary calibration products.
     extractJyperK()
 
@@ -225,10 +234,6 @@ def runALMAPipeline(path_galaxy,
 
     logger.info(f"Using these ASDM files: {EBsnames}")
 
-    if len(EBsnames) == 0:
-        logger.info("No ASDM files found.")
-        raise ValueError("No ASDM files found.")
-
     # Create baseline dict with freq ranges to mask:
     if baseline_linewindow is None:
         import astropy.units as u
@@ -243,9 +248,10 @@ def runALMAPipeline(path_galaxy,
             vel_line_mask = product_dict[this_product]['vel_line_mask']
 
             # Convert velocity range to frequency range
-            freq_line_mask = (vel_line_mask * u.km / u.s).to(u.Hz, u.doppler_optical(freq_rest * u.MHz)).value
+            freq_line_mask = (vel_line_mask * u.km / u.s).to(u.Hz, u.doppler_radio(freq_rest * u.MHz)).value
 
             # Giving list of [low, high] frequency ranges. The pipeline will apply the ranges to all valid SPWs.
+            # NOTE: the pipeline internally checks the low/high order and correctly applies the range regardless of order.
             baseline_linewindow.append(list(freq_line_mask))
 
             # Append this to the product dict
