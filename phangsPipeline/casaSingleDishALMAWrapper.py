@@ -327,7 +327,7 @@ def runALMAPipeline(path_galaxy,
             name_line=name_line,
             vel_cube_range=vel_cube,
             chan_dv_kms=chan_dv_kms,
-            freq_rest_im=freq_rest_GHz,
+            restfreq=freq_rest_GHz,
             phcenter='',
             freq_Hz=None,
             overwrite=overwrite
