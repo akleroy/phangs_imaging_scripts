@@ -308,7 +308,8 @@ def runALMAPipeline(path_galaxy,
 
     this_vis = ms_concat_filename
 
-    source = csdr.get_sourcename(this_vis, source=in_source)          # read the source name directly from the ms
+    # read the source name directly from the ms
+    source = csdr.get_sourcename(this_vis, source=in_source)
 
     for this_product in product_dict:
 
@@ -342,7 +343,7 @@ def runALMAPipeline(path_galaxy,
 
         shutil.copy2(imagefile_fits, output_file)
         # And export the weightfile
-        weight_output_file = output_file.replace(".fits", '_weights.fits')
+        weight_output_file = output_file.replace(".fits", '_weight.fits')
         shutil.copy2(weightimage_fits, weight_output_file)
 
         logger.info('> Copied FITS to "%s"'%(output_file))
