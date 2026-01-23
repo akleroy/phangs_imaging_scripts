@@ -221,8 +221,8 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             # Add to product dict:
             product_dict[product]['line_name'] = line_name
             product_dict[product]['freq_rest_MHz'] = freq_rest_MHz
-            product_dict[product]['vel_cube'] = [vlow2, vhigh2]
-            product_dict[product]['vel_line_mask'] = [vlow1, vhigh1]
+            product_dict[product]['vel_line_mask'] = [vlow2, vhigh2]
+            product_dict[product]['vel_cube'] = [vlow1, vhigh1]
             product_dict[product]['name_line'] = name_line
             product_dict[product]['phase_center'] = phase_center
 
