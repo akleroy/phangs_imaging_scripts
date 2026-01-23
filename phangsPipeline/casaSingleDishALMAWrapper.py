@@ -319,6 +319,8 @@ def runALMAPipeline(path_galaxy,
         freq_rest_GHz = product_dict[this_product]['freq_rest_MHz'] / 1.e3
         vel_cube = product_dict[this_product]['vel_cube']
 
+        phase_center = product_dict[this_product]['phase_center']
+
         output_file = product_dict[this_product]['output_file']
 
         # Setup imaging call:
@@ -329,7 +331,7 @@ def runALMAPipeline(path_galaxy,
             vel_cube_range=vel_cube,
             chan_dv_kms=chan_dv_kms,
             restfreq=freq_rest_GHz,
-            phcenter='',
+            phcenter=phase_center,
             freq_Hz=None,
             overwrite=overwrite
             )
