@@ -97,8 +97,6 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             if sd_file is not None:
                 fname_dict[tag] = sd_file
 
-        fname_dict['source'] = 'all'
-
         fname_dict['source'] = []
 
         tag = 'sd_raw_data_list'
@@ -304,6 +302,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             # Run the modified version of the ALMA pipeline w/ custom imaging routine
 
             sdalma.runALMAPipeline(path_galaxy=path_galaxy,
+                                   in_source=fname_dict['source'],
                                    baseline_fit_func='poly',
                                    baseline_fit_order=parameters['bl_order'] if 'bl_order' in parameters else 1,
                                    baseline_linewindowmode='replace',

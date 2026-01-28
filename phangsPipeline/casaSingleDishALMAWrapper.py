@@ -100,6 +100,7 @@ def SDImaging(filename,
     casaStuff.tsdimaging(
         infiles=filename,
         mode='velocity',
+        field=source,
         nchan=nchans_vel,
         width=str(chan_dv_kms)+'km/s',
         start=str(start_vel)+'km/s',
@@ -303,7 +304,6 @@ def runALMAPipeline(path_galaxy,
     if os.path.exists(ms_concat_filename):
         shutil.rmtree(ms_concat_filename)
     casaStuff.concat(vis=this_vis, concatvis=ms_concat_filename)
-    infiles = ms_concat_filename
     logger.info('Msnames: %s, N=%d, concatenated: %s'%(this_vis, len(this_vis), ms_concat_filename))
 
     this_vis = ms_concat_filename
