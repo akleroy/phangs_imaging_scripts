@@ -302,7 +302,7 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
             # Run the modified version of the ALMA pipeline w/ custom imaging routine
 
             sdalma.runALMAPipeline(path_galaxy=path_galaxy,
-                                   in_source=fname_dict['source'],
+                                   in_source=fname_dict['source'][0],
                                    baseline_fit_func='poly',
                                    baseline_fit_order=parameters['bl_order'] if 'bl_order' in parameters else 1,
                                    baseline_linewindowmode='replace',
