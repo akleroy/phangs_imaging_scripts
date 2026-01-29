@@ -303,7 +303,10 @@ def runALMAPipeline(path_galaxy,
     ms_concat_filename = 'ALMA_TP_concat.ms'
     if os.path.exists(ms_concat_filename):
         shutil.rmtree(ms_concat_filename)
-    casaStuff.concat(vis=this_vis, concatvis=ms_concat_filename)
+    casaStuff.concat(
+        vis=this_vis,
+        concatvis=ms_concat_filename,
+        respectname=True,)
     logger.info('Msnames: %s, N=%d, concatenated: %s'%(this_vis, len(this_vis), ms_concat_filename))
 
     this_vis = ms_concat_filename
