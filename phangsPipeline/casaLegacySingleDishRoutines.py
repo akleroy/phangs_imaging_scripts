@@ -1656,7 +1656,7 @@ def imaging(source, name_line, phcenter, vel_source, source_vel_kms, vwidth_kms,
         ms_concat_filename = 'ALMA_TP.'+source+'.'+name_line+suffix+'.ms_concat'
         if os.path.exists(ms_concat_filename):
             shutil.rmtree(ms_concat_filename)
-        casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename)
+        casaStuff.concat(vis=Msnames, concatvis=ms_concat_filename, respectname=True)
         logger.info('Msnames: %s, N=%d, concatenated: %s'%(Msnames, len(Msnames), ms_concat_filename))
 
         xSampling, ySampling, maxsize = getTPSampling(ms_concat_filename, showplot=False, plotfile=plotfile)
