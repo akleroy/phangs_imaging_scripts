@@ -6,6 +6,8 @@ import tarfile
 import shutil
 import numpy as np
 
+from astropy.table import Table
+
 import analysisUtils as au
 
 import logging
@@ -221,15 +223,25 @@ def runALMAPipeline(path_galaxy,
     # Retrieve the k2jy scaling from the auxiliary calibration products.
     extractJyperK()
 
+    # Extract MS names from the JyperK table
+    jyperk_tab = Table.read("jyperk.csv")
+    jyperk_ebs = np.unique(jyperk_tab["MS"])
+    jyperk_ebs = [str(x.split(".ms")[0]) for x in jyperk_ebs]
+
     # Drop the '.asdm.sdm' extension. This matches with the naming in the JyperK file
     # and the format in the provided pipeline script.
     newEBnames = []
     for EBname in EBsnames:
         newEBname = EBname.split('.asdm.sdm')[0]
 
-        os.rename(EBname, newEBname)
+        # Only take EBs that have an entry in the JyperK table
+        if newEBname in jyperk_ebs:
+            os.rename(EBname, newEBname)
 
-        newEBnames.append(newEBname)
+            newEBnames.append(newEBname)
+
+        else:
+            logger.warning(f"{newEBname} not found in jyperk.csv. Will not process")
 
     EBsnames = newEBnames
 
