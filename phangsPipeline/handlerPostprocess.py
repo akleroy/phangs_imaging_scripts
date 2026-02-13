@@ -390,9 +390,22 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             # logger.info("Using ccr.copy_dropdeg.")
             logger.info("Staging "+outfile)
 
+            # Move the cubes to the postprocess directory, trimming along the way
+            # (though not rebinning)
             if (not self._dry_run) and casa_enabled:
                 os.system('rm -rf ' + outdir + outfile)
-                os.system('cp -r ' + indir + infile + ' ' + outdir + outfile)
+                os.system('rm -rf ' + outdir + outfile + ".temp")
+                os.system('rm -rf ' + outdir + outfile + ".temp_deg")
+                # os.system('cp -r ' + indir + infile + ' ' + outdir + outfile)
+
+                ccr.trim_cube(
+                    infile=indir + infile,
+                    outfile=outdir + outfile,
+                    overwrite=True,
+                    inplace=False,
+                    pad=1,
+                    rebin=False,
+                    )
                 # ccr.copy_dropdeg(
                 #     infile=indir+infile,
                 #     outfile=outdir+outfile,
