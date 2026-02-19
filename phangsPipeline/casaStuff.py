@@ -83,7 +83,6 @@ if casa_version[0] >= 6:
         rmtables,
         sdbaseline,
         sdcal,
-        sdimaging,
         split,
         statwt,
         tclean,
@@ -143,11 +142,6 @@ if casa_version[0] >= 6:
         sdbaseline = casashell.private.sdbaseline.sdbaseline
     except AttributeError:
         from casatasks import sdbaseline
-
-    try:
-        sdimaging = casashell.private.sdimaging.sdimaging
-    except AttributeError:
-        from casatasks import sdimaging
 
     try:
         sdcal = casashell.private.sdcal.sdcal
