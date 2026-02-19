@@ -529,7 +529,8 @@ def trim_cube(
         overwrite=False,
         inplace=False,
         min_pixperbeam=3,
-        pad=1
+        pad=1,
+        rebin=True,
     ):
     """
     Trim empty space from around the edge of a cube. Also rebin the
@@ -545,62 +546,83 @@ def trim_cube(
         logger.error("Input file not found: "+infile)
         return(False)
 
-    # First, rebin if needed
+    if os.path.exists(outfile) and not overwrite:
+        logger.info(f"outfile {outfile} already exists and overwrite is False. Skipping")
+        return True
+
+    os.system('rm -rf ' + outfile)
+
     hdr = casaStuff.imhead(infile)
-    if (hdr['axisunits'][0] != 'rad'):
-        logger.error("ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
-        logger.error("Adjust code or investigate file "+infile)
-        return(False)
+    axis_names = hdr["axisnames"]
 
-    pixel_as = abs(hdr['incr'][0]/np.pi*180.0*3600.)
+    # Get indices for RA/Dec/Frequency axes
+    ra_axis = np.where(axis_names == "Right Ascension")[0][0]
+    dec_axis = np.where(axis_names == "Declination")[0][0]
+    freq_axis = np.where(axis_names == "Frequency")[0][0]
 
-    if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
-        logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
-        logger.error("Adjust code or investigate file "+infile)
-        return(False)
-    bmaj = hdr['restoringbeam']['major']['value']
+    # First, rebin if needed
+    just_copy = True
+    if rebin:
 
-    pix_per_beam = bmaj*1.0 / pixel_as*1.0
+        if (hdr['axisunits'][0] != 'rad'):
+            logger.error(
+                "ERROR: Based on CASA experience. I expected units of radians. I did not find this. Returning.")
+            logger.error("Adjust code or investigate file " + infile)
+            return (False)
 
-    if pix_per_beam > 6:
-        casaStuff.imrebin(
-            imagename=infile,
-            outfile=outfile+'.temp',
-            factor=[2,2,1],
-            crop=True,
-            dropdeg=True,
-            overwrite=overwrite,
-            )
-    else:
+        pixel_as = abs(hdr['incr'][0] / np.pi * 180.0 * 3600.)
+
+        if (hdr['restoringbeam']['major']['unit'] != 'arcsec'):
+            logger.error("ERROR: Based on CASA experience. I expected units of arcseconds for the beam. I did not find this. Returning.")
+            logger.error("Adjust code or investigate file "+infile)
+            return(False)
+        bmaj = hdr['restoringbeam']['major']['value']
+
+        pix_per_beam = bmaj*1.0 / pixel_as*1.0
+
+        if pix_per_beam > 6:
+            casaStuff.imrebin(
+                imagename=infile,
+                outfile=outfile+'.temp',
+                factor=[2,2,1],
+                crop=True,
+                dropdeg=True,
+                overwrite=overwrite,
+                )
+            just_copy = False
+
+    if just_copy:
         os.system('cp -r '+infile+' '+outfile+'.temp')
 
-    # Figure out the extent of the image inside the cube
+    outfile_ext = ".temp"
 
-    myia = au.createCasaTool(casaStuff.iatool)
-    myia.open(outfile + '.temp')
-    os.system('rm -rf '+outfile + '.temp_deg')
-    deg_im = myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
-    deg_im.done()
-    myia.close()
+    # If we don't have the Stokes I axis, add this in
+    if "Stokes" not in hdr["axisnames"]:
+        myia = au.createCasaTool(casaStuff.iatool)
+        myia.open(outfile + '.temp')
+        os.system('rm -rf '+outfile + '.temp_deg')
+        deg_im = myia.adddegaxes(outfile=outfile + '.temp_deg', stokes='I', overwrite=True)
+        deg_im.done()
+        myia.close()
+        outfile_ext = ".temp_deg"
 
     # This should either be .temp or .temp_deg (check if it works for 2d cases)
-    mask = get_mask(outfile + '.temp_deg', huge_cube_workaround=True)
+    mask = get_mask(outfile + outfile_ext, huge_cube_workaround=True)
 
-    this_shape = mask.shape
-    mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 0]))
-
+    # Figure out the extent of the image inside the cube
+    mask_spec_x = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != ra_axis]))
     xmin = np.max([0,np.min(np.where(mask_spec_x))-pad])
-    xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[0]-1])
+    xmax = np.min([np.max(np.where(mask_spec_x))+pad,mask.shape[ra_axis]-1])
 
     #mask_spec_y = np.sum(np.sum(mask*1.0,axis=2),axis=0) > 0
-    mask_spec_y = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 1]))
+    mask_spec_y = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != dec_axis]))
     ymin = np.max([0,np.min(np.where(mask_spec_y))-pad])
-    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[1]-1])
+    ymax = np.min([np.max(np.where(mask_spec_y))+pad,mask.shape[dec_axis]-1])
 
     #mask_spec_z = np.sum(np.sum(mask*1.0,axis=0),axis=0) > 0
-    mask_spec_z = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != 2]))
+    mask_spec_z = np.any(mask, axis=tuple([i for i, x in enumerate(list(mask.shape)) if i != freq_axis]))
     zmin = np.max([0,np.min(np.where(mask_spec_z))-pad])
-    zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[2]-1])
+    zmax = np.min([np.max(np.where(mask_spec_z))+pad,mask.shape[freq_axis]-1])
 
     box_string = ''+str(xmin)+','+str(ymin)+','+str(xmax)+','+str(ymax)
     chan_string = ''+str(zmin)+'~'+str(zmax)
@@ -608,14 +630,12 @@ def trim_cube(
     logger.info("... box selection: "+box_string)
     logger.info("... channel selection: "+chan_string)
 
-    if overwrite:
-        os.system('rm -rf '+outfile)
-        casaStuff.imsubimage(
-            imagename=outfile+'.temp',
-            outfile=outfile,
-            box=box_string,
-            chans=chan_string,
-            )
+    casaStuff.imsubimage(
+        imagename=outfile+'.temp',
+        outfile=outfile,
+        box=box_string,
+        chans=chan_string,
+        )
 
     os.system('rm -rf '+outfile+'.temp')
     os.system('rm -rf '+outfile+'.temp_deg')
