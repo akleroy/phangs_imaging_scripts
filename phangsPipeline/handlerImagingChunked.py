@@ -7,42 +7,38 @@ This code needs to be run inside CASA.
 
 """
 
-import os, sys, re, shutil
 import datetime
-from copy import deepcopy, copy
 import glob
 import logging
+import os
 import warnings
+from copy import deepcopy, copy
 
 import numpy as np
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 # Check casa environment by importing CASA-only packages
 from .casa_check import is_casa_installed
 casa_enabled = is_casa_installed()
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 if casa_enabled:
     logger.debug('casa_enabled = True')
-    from . import casaImagingRoutines as imr
-    from . import casaMaskingRoutines as msr
 else:
     logger.debug('casa_enabled = False')
 
 if casa_enabled:
 
-    # Analysis utilities
     import analysisUtils as au
 
-    from .clean_call import CleanCall, CleanCallFunctionDecorator
-
-    from . import utilsLines as lines
+    from . import casaImagingRoutines as imr
+    from . import casaMaskingRoutines as msr
+    from . import casaStuff
     from . import handlerTemplate
     from . import utilsFilenames
-    from . import casaStuff
-
+    from . import utilsLines as lines
+    from .clean_call import CleanCall, CleanCallFunctionDecorator
 
     class ImagingChunkedHandler(handlerTemplate.HandlerTemplate):
         """
@@ -950,7 +946,7 @@ if casa_enabled:
             product = self.product
             config = self.config
             overwrite = False
-            if not self._dry_run and casa_enabled:
+            if not self._dry_run:
 
                 os.chdir(self._this_imaging_dir)
 
@@ -1017,7 +1013,7 @@ if casa_enabled:
 
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            if (not self._dry_run) and casa_enabled:
+            if not self._dry_run:
 
                 for ii, this_chunk_num in enumerate(chunks_iter):
 
@@ -1150,8 +1146,6 @@ if casa_enabled:
 
             if self._dry_run:
                 return ()
-            if not casa_enabled:
-                return ()
 
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
             target = self.target
@@ -1271,8 +1265,6 @@ if casa_enabled:
 
             if self._dry_run:
                 return()
-            if not casa_enabled:
-                return()
 
             # NOTE: we've removed the non-line defaults here as this approach should only be used for
             # line imaging.
@@ -1367,8 +1359,6 @@ if casa_enabled:
             cwd = os.getcwd()
 
             if self._dry_run:
-                return ()
-            if not casa_enabled:
                 return ()
 
 
@@ -1510,7 +1500,7 @@ if casa_enabled:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
             logger.info("")
 
-            if not self._dry_run and casa_enabled:
+            if not self._dry_run:
                 imr.export_imaging_to_fits(image_root)
 
             return ()

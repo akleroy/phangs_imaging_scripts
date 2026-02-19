@@ -38,9 +38,8 @@ Example:
     this_tih.plot_image_gallery(output_file='image_gallery.png')
 """
 
-import os
 import logging
-import numpy as np
+import os
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
