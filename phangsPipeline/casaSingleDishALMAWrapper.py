@@ -1,23 +1,32 @@
-
-
-import os
 import glob
-import tarfile
+import logging
+import os
 import shutil
-import numpy as np
-
-from astropy.table import Table
+import tarfile
 
 import analysisUtils as au
-
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import astropy.units as u
+import numpy as np
+from astropy.table import Table
+from pipeline.cli import (h_init,
+                          hsd_importdata,
+                          hsd_flagdata,
+                          h_tsyscal,
+                          hsd_tsysflag,
+                          hsd_skycal,
+                          hsd_k2jycal,
+                          hsd_applycal,
+                          hsd_atmcor,
+                          hsd_baseline,
+                          hsd_blflag,
+                          h_save)
 
 from . import casaLegacySingleDishRoutines as csdr
 from . import casaStuff
 from .utilsSingleDish import getTPSampling
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # path constants
 path_calibration = '../calibration/'
@@ -195,19 +204,6 @@ def runALMAPipeline(path_galaxy,
 
     '''
 
-    from pipeline.cli import (h_init,
-                              hsd_importdata,
-                              hsd_flagdata,
-                              h_tsyscal,
-                              hsd_tsysflag,
-                              hsd_skycal,
-                              hsd_k2jycal,
-                              hsd_applycal,
-                              hsd_atmcor,
-                              hsd_baseline,
-                              hsd_blflag,
-                              h_save)
-
     # Change to working directory:
     workdir = os.path.join(path_galaxy, 'raw')
     logger.info(f"> Changing directory to {workdir}")
@@ -249,7 +245,6 @@ def runALMAPipeline(path_galaxy,
 
     # Create baseline dict with freq ranges to mask:
     if baseline_linewindow is None:
-        import astropy.units as u
 
         # Construct the line window via spw:low~high strings based on the
         # product_dict.

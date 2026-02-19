@@ -1,34 +1,34 @@
-# Licensed under a MIT license - see LICENSE.rst
+from importlib.metadata import version
 
-# Packages may add whatever they like to this file, but
-# should keep this content at the top.
-# ----------------------------------------------------------------------------
-from ._astropy_init import *   # noqa
-# ----------------------------------------------------------------------------
-
+# Ensure CASA is installed
 from .casa_check import is_casa_installed
+
 casa_enabled = is_casa_installed()
+if not casa_enabled:
+    raise ImportError("CASA not detected; pipeline is incorrectly installed")
 
-from .phangsLogger import setup_logger
-from .handlerKeys import KeyHandler
-from .handlerSingleDish import SingleDishHandler
 from .handlerAlmaDownload import AlmaDownloadHandler
-from .handlerVis import VisHandler
-from .handlerPostprocess import PostProcessHandler
 from .handlerDerived import DerivedHandler
+from .handlerImaging import ImagingHandler
+from .handlerImagingChunked import ImagingChunkedHandler
+from .handlerKeys import KeyHandler
+from .handlerPostprocess import PostProcessHandler
 from .handlerRelease import ReleaseHandler
+from .handlerSingleDish import SingleDishHandler
+from .handlerVis import VisHandler
+from .phangsLogger import setup_logger
 
-if casa_enabled:
-    from .handlerImaging import ImagingHandler
+__version__ = version(__name__)
 
-__all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "PostProcessHandler", "DerivedHandler",
-           "ReleaseHandler"]
-
-if casa_enabled:
-    __all__.append("ImagingHandler")
-
-try:
-    from .handlerAlmaDownload import AlmaDownloadHandler
-    __all__.append("AlmaDownloadHandler")
-except ImportError:
-    pass
+__all__ = [
+    "AlmaDownloadHandler",
+    "DerivedHandler",
+    "ImagingChunkedHandler",
+    "ImagingHandler",
+    "KeyHandler",
+    "PostProcessHandler",
+    "ReleaseHandler",
+    "SingleDishHandler",
+    "VisHandler",
+    "setup_logger",
+]
