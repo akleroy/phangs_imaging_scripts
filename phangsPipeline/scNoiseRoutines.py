@@ -1,18 +1,12 @@
 import logging
+from importlib.metadata import version
 
 import numpy as np
 import scipy.ndimage as nd
-import scipy.ndimage.morphology as morph
 import scipy.stats as ss
-from scipy.signal import savgol_coeffs
-import astropy.wcs as wcs
-import astropy.units as u
 from astropy.convolution import convolve_fft, Gaussian2DKernel, convolve
-from astropy.io import fits
-from astropy.stats import mad_std
+from scipy.signal import savgol_coeffs
 from spectral_cube import SpectralCube
-
-from .pipelineVersion import tableversion, version
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -195,6 +189,10 @@ def noise_cube(data,
         step = np.floor(box/2.5).astype(int)
         step = np.min([step, pixdim // 20])
         halfbox = int(box // 2)
+
+    # If step ends up being 0, then set back to 1
+    if step == 0:
+        step = 1
 
     if substride is None:
         substride = 1
@@ -535,9 +533,7 @@ def recipe_phangs_noise(
         header['DATAMIN'] = datamin
     if np.isfinite(datamax):
         header['DATAMAX'] = datamax
-    header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
-    if tableversion:
-        header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
+    header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version("phangsPipeline")
     rms = SpectralCube(rms, wcs=cube.wcs, header=header,
                        meta={'BUNIT':cube.header['BUNIT']})
 
