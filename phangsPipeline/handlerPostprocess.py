@@ -12,37 +12,19 @@ call any of the CASA-specific routines). Right now, just avoid direct
 calls to CASA from this class.
 """
 
-import os, sys, re, shutil
-import glob
 import logging
+import os
 
-import numpy as np
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-
-# Check casa environment by importing CASA-only packages
-from .casa_check import is_casa_installed
-casa_enabled = is_casa_installed()
-
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    from . import casaCubeRoutines as ccr
-    from . import casaMosaicRoutines as cmr
-    from . import casaFeatherRoutines as cfr
-    # reload(ccr)
-    # reload(cmr)
-    # reload(cfr)
-else:
-    logger.debug('casa_enabled = False')
-
+from . import casaCubeRoutines as ccr
+from . import casaFeatherRoutines as cfr
+from . import casaMosaicRoutines as cmr
 from . import handlerTemplate
 from . import utilsFilenames
 from . import utilsResolutions
-
 from .clean_call import CleanCall
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class PostProcessHandler(handlerTemplate.HandlerTemplate):
     """
@@ -392,7 +374,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
             # Move the cubes to the postprocess directory, trimming along the way
             # (though not rebinning)
-            if (not self._dry_run) and casa_enabled:
+            if not self._dry_run:
                 os.system('rm -rf ' + outdir + outfile)
                 os.system('rm -rf ' + outdir + outfile + ".temp")
                 os.system('rm -rf ' + outdir + outfile + ".temp_deg")
@@ -524,7 +506,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Correcting from "+infile)
         logger.info("Correcting using "+pbfile)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.primary_beam_correct(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -588,7 +570,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         if force_beam_as is not None:
             logger.info("Forcing beam to "+str(force_beam_as))
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.convolve_to_round_beam(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -652,7 +634,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Original file "+infile)
         logger.info("Using interferometric template "+template)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cfr.prep_sd_for_feather(
                 sdfile_in=indir+infile,
                 sdfile_out=outdir+outfile,
@@ -725,7 +707,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Based off of primary beam file "+infile)
         logger.info("Measuring noise from file "+image_file)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.generate_weight_file(
                 image_file = indir+image_file,
                 input_file = indir+infile,
@@ -786,7 +768,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Making weight file "+outfile)
         logger.info("Measuring noise from file "+image_file)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.generate_weight_file(
                 image_file = indir+image_file,
                 input_value = 1.0,
@@ -889,7 +871,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
         else:
 
-            if (not self._dry_run) and casa_enabled:
+            if not self._dry_run:
                 cfr.feather_two_cubes(
                     interf_file=indir+interf_file,
                     sd_file=indir+sd_file,
@@ -921,7 +903,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
 
                 logger.info("Copying from "+interf_weight_file)
                 logger.info("Copying to "+out_weight_file)
-                if (not self._dry_run) and casa_enabled:
+                if not self._dry_run:
                     ccr.copy_dropdeg(infile=indir+interf_weight_file,
                                      outfile=outdir+out_weight_file,
                                      overwrite=True)
@@ -1058,7 +1040,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Producing "+outfile+" using ccr.trim_cube.")
         logger.info("Trimming from original file "+infile)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.trim_cube(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -1155,7 +1137,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Creating "+outfile)
         logger.info("Converting from original file "+infile)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.convert_jytok(
                 infile=indir+infile,
                 outfile=outdir+outfile,
@@ -1246,7 +1228,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         logger.info("Writing from primary beam "+infile_pb)
         logger.info("Writing output primary beam "+outfile_pb)
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             ccr.export_and_cleanup(
                 infile=indir+infile_pb,
                 outfile=outdir+outfile_pb,
@@ -1441,7 +1423,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         delta_ra = None
         delta_dec = None
 
-        if (not self._dry_run) and casa_enabled:
+        if not self._dry_run:
             cmr.common_grid_for_mosaic(
                 infile_list = infile_list,
                 outfile_list = outfile_list,

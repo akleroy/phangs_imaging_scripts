@@ -9,32 +9,18 @@ call any of the CASA-specific routines). Right now, just avoid direct
 calls to CASA from this class.
 """
 
-import os, sys, re, shutil
 import glob
-import numpy as np
-
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+import os
+import shutil
 
-
-# Check casa environment by importing CASA-only packages
-from .casa_check import is_casa_installed
-casa_enabled = is_casa_installed()
-
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    from . import casaLegacySingleDishRoutines as csdr
-
-    from . import casaSingleDishALMAWrapper as sdalma
-
-else:
-    logger.debug('casa_enabled = False')
-
+from . import casaLegacySingleDishRoutines as csdr
+from . import casaSingleDishALMAWrapper as sdalma
 from . import handlerTemplate
-from . import utilsFilenames
 from . import utilsLines
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class SingleDishHandler(handlerTemplate.HandlerTemplate):
     """
@@ -47,7 +33,6 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
         dry_run = False,
         use_legacy_pipeline=False,
         ):
-        # Can't use super and keep python2/3 agnostic
         handlerTemplate.HandlerTemplate.__init__(self, key_handler = key_handler, dry_run = dry_run)
 
         self.use_legacy_pipeline = use_legacy_pipeline
@@ -409,6 +394,3 @@ class SingleDishHandler(handlerTemplate.HandlerTemplate):
                         target=this_target,
                         product='all',
                         )
-
-
-#endregion

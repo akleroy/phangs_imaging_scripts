@@ -1,13 +1,8 @@
-
 import logging, os
+from . import casaStuff
 
 DefaultLevel = 'DEBUG'
-
-try:
-    from . import casaStuff
-    HasCasaLog = True
-except:
-    HasCasaLog = False
+HasCasaLog = True
 
 
 class PipelineLogger(logging.getLoggerClass()):
@@ -34,7 +29,7 @@ class PipelineLogger(logging.getLoggerClass()):
         #print('PipelineLogger.__del__')
         if self.file_handler is not None:
             self.file_handler.close()
-    
+
     def hasCasaLog(self):
         global HasCasaLog
         return HasCasaLog

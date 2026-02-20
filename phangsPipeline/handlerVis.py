@@ -25,30 +25,16 @@ Example:
 
 """
 
-import os
-import sys
 import logging
+import os
 
+from . import casaVisRoutines as cvr
 from . import handlerTemplate
 from . import utilsFilenames as fnames
-
-# Spectral lines
 from . import utilsLines as lines
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-# Check casa environment by importing CASA-only packages
-from .casa_check import is_casa_installed
-
-casa_enabled = is_casa_installed()
-
-if casa_enabled:
-    logger.debug('casa_enabled = True')
-    from . import casaVisRoutines as cvr
-    # reload(cvr) #<TODO><DEBUG>#
-else:
-    logger.debug('casa_enabled = False')
 
 
 class VisHandler(handlerTemplate.HandlerTemplate):
@@ -1023,7 +1009,7 @@ class VisHandler(handlerTemplate.HandlerTemplate):
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
         logger.info("")
 
-        if not self._dry_run and casa_enabled:
+        if not self._dry_run:
 
             cvr.batch_extract_continuum(
                 infile_list=infile_list,

@@ -1,8 +1,135 @@
+[project]
+
+name = "phangsPipeline"
+version = "4.0.0"
+description = "PHANGS-ALMA Pipeline"
+readme = "README.md"
+requires-python = ">=3.12, <3.13"
+license = {file = "LICENSE"}
+
+# Paper order
+authors = [
+    {name = "Adam Leroy"},
+    {name = "Annie Hughes"},
+    {name = "Daizhong Liu"},
+    {name = "Jerome Pety"},
+    {name = "Erik Rosolowsky"},
+    {name = "Toshiki Saito"},
+    {name = "Eva Schinnerer"},
+    {name = "Andreas Schruba"},
+    {name = "Antonio Usero"},
+    {name = "Christopher Faesi"},
+    {name = "Cinthya Herrera"},
+    {name = "Melanie Chevance"},
+    {name = "Alexander Hygate"},
+    {name = "Amanda Kepley"},
+    {name = "Eric Koch"},
+    {name = "Miguel Querejeta"},
+    {name = "Kazimierz Sliwa"},
+    {name = "David Will"},
+    {name = "Christine Wilson"},
+    {name = "Gagandeep Anand"},
+    {name = "Ashley Barnes"},
+    {name = "Francesco Belfiore"},
+    {name = "Ivana Beslic"},
+    {name = "Frank Bigiel"},
+    {name = "Guillermo Blanc"},
+    {name = "Alberto Bolatto"},
+    {name = "Mederic Boquien"},
+    {name = "Yixian Cao"},
+    {name = "Rupali Chandar"},
+    {name = "Jeremy Chastenet"},
+    {name = "I-Da Chiang"},
+    {name = "Enrico Congiu"},
+    {name = "Daniel Dale"},
+    {name = "Sinan Deger"},
+    {name = "Jakob den Brok"},
+    {name = "Cosima Eibensteiner"},
+    {name = "Eric Emsellem"},
+    {name = "Axel Garcia-Rodriguez"},
+    {name = "Jaeyeon Kim"},
+    {name = "Ralf Klessen"},
+    {name = "Kathryn Kreckel"},
+    {name = "Diederik Kruijssen"},
+    {name = "Kirsten Larson"},
+    {name = "Janice Lee"},
+    {name = "Ness Mayker"},
+    {name = "Rebecca McElroy"},
+    {name = "Sharon Meidt"},
+    {name = "Angus Mok"},
+    {name = "Hsi-An Pan"},
+    {name = "Johannes Puschnig"},
+    {name = "Alessandro Razza"},
+    {name = "Patricia Sanchez-Blazquez"},
+    {name = "Karin Sandstrom"},
+    {name = "Francesco Santoro"},
+    {name = "Amy Sardone"},
+    {name = "Fabian Scheuermann"},
+    {name = "Jiayi Sun"},
+    {name = "David Thilker"},
+    {name = "Jordan Turner"},
+    {name = "Leonardo Ubeda"},
+    {name = "Dyas Utomo"},
+    {name = "Elizabeth Watkins"},
+    {name = "Thomas Williams"},
+]
+
+# Alphabetically
+maintainers = [
+    {name = "Eric Koch", email = "koch.eric.w@gmail.com"},
+    {name = "Adam Leroy", email = "leroy.42@osu.edu"},
+    {name = "Daizhong Liu", email = "astro.dzliu@gmail.com"},
+    {name = "Erik Rosolowsky", email = "rosolowsky@ualberta.ca"},
+    {name = "Jiayi Sun", email = "astrojysun@outlook.com"},
+    {name = "Thomas Williams", email = "thomas.g.williams@manchester.ac.uk"},
+]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+
+    # License
+    "License :: OSI Approved :: MIT License",
+
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [
+    "astropy == 7.2.0",
+    "astroquery == 0.4.11",
+    "casadata == 2025.9.22",
+    "casaplotms == 2.7.4",
+    "casarecipes == 0.4.0",
+    "casashell == 6.7.3.21",
+    "casatasks == 6.7.3.21",
+    "casatools == 6.7.3.21",
+    "casaviewer == 2.4.4 ; platform_system != 'Darwin'",
+    "numpy == 2.3.5",
+    "pipeline@git+https://open-bitbucket.nrao.edu/scm/pipe/pipeline.git",
+    "pytz == 2025.2",
+    "scipy == 1.16.3",
+    "spectral-cube == 0.6.7",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/akleroy/phangs_imaging_scripts"
+"Bug Reports" = "https://github.com/akleroy/phangs_imaging_scripts/issues"
+"Source" = "https://github.com/akleroy/phangs_imaging_scripts"
+
+[tool.setuptools.packages.find]
+exclude = [
+    "examples_on_clusters/*",
+    "phangs-alma_keys/*",
+    "scripts/*",
+]
+
 [build-system]
+requires = [
+    "setuptools == 80.9.0",
+    "setuptools_scm == 9.2.2",
+    "wheel == 0.45.1",
+]
 
-requires = ["setuptools",
-            "setuptools_scm",
-            "wheel",
-            "oldest-supported-numpy"]
-
-build-backend = 'setuptools.build_meta'
+build-backend = "setuptools.build_meta"

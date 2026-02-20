@@ -2,31 +2,16 @@
 Standalone routines to analyze and manipulate visibilities.
 """
 
-# 20200226: introduced os.mkdir(outfile+'.touch') os.rmdir(outfile+'.touch')
-# 20200226: to make sure we can handle sudden system break.
-
-import os
-import shutil
-import inspect
 import glob
 import logging
-import sys
-from packaging import version
+import os
+import shutil
 
-
+import analysisUtils as au
 import numpy as np
 from scipy.ndimage import label
 
-# Analysis utilities
-import analysisUtils as au
-
-# Pipeline versioning
-from .pipelineVersion import version as pipeVer
-
-# CASA stuff
 from . import casaStuff
-
-# Spectral lines
 from . import utilsLines as lines
 
 logger = logging.getLogger(__name__)
@@ -460,26 +445,12 @@ def contsub(
         )
 
     # uvcontsub, this outputs infile+'.contsub'
-
-    # Pre 6.5.2
-    if version.parse(casaStuff.casa_version_str) < version.parse('6.5.2'):
-
-        uvcontsub_params = {
-            'vis': infile,
-            'fitspw': spw_flagging_string,
-            'excludechans': False, # now uses complement for channel selection.
-            'combine': combine,
-            'fitorder': fitorder,
-            'solint': solint,
-            'want_cont': False}
-    else:
-        # Post 6.5.2
-        uvcontsub_params = {
-            'vis': infile,
-            'outputvis': outfile,
-            'fitspec': spw_flagging_string,
-            'fitorder': fitorder,
-            'fitmethod': 'gsl'}  # or 'casacore'
+    uvcontsub_params = {
+        'vis': infile,
+        'outputvis': outfile,
+        'fitspec': spw_flagging_string,
+        'fitorder': fitorder,
+        'fitmethod': 'gsl'}  # or 'casacore'
 
     logger.info(
         "... running CASA "+'uvcontsub(' +
@@ -1719,30 +1690,16 @@ def reweight_data(
     if exclude_str != '':
         logger.info("... running statwt with exclusion: "+exclude_str)
 
-    # Build the statwt call. Use the appropriate command for getting arguments
-    if sys.version_info >= (3, 11, 0):
-        getargspec = inspect.getfullargspec
+    # Build the statwt call
+    if exclude_str == '':
+        excludechans = False
     else:
-        getargspec = inspect.getargspec
-
-    if 'fitspw' in getargspec(casaStuff.statwt)[0]:
-        # CASA version somewhat >= 5.5.0
-        if exclude_str == '':
-            excludechans = False
-        else:
-            excludechans = True
-        statwt_params = {
-            'vis': infile, 'timebin': '0.001s', 'slidetimebin': False,
-            'chanbin': 'spw', 'statalg': 'classic', 'datacolumn': datacolumn,
-            'fitspw': exclude_str, 'excludechans': excludechans,
-        }
-    else:
-        # CASA version <= 5.4.1
-        statwt_params = {
-            'vis': infile, 'timebin': '0.001s', 'slidetimebin': False,
-            'chanbin': 'spw', 'statalg': 'classic', 'datacolumn': datacolumn,
-            'excludechans': exclude_str,
-        }
+        excludechans = True
+    statwt_params = {
+        'vis': infile, 'timebin': '0.001s', 'slidetimebin': False,
+        'chanbin': 'spw', 'statalg': 'classic', 'datacolumn': datacolumn,
+        'fitspw': exclude_str, 'excludechans': excludechans,
+    }
 
     # Run the call
     if not os.path.isdir(infile+'.touch'):
