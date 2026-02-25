@@ -1,21 +1,15 @@
 import logging
 from functools import reduce
+from importlib.metadata import version
 
-import numpy as np
-import scipy.ndimage.morphology as morph
-import scipy.ndimage as nd
-import scipy.stats as ss
-from scipy.signal import savgol_coeffs
-import astropy.wcs as wcs
 import astropy.units as u
-from astropy.stats import mad_std
-from astropy.convolution import convolve, Gaussian2DKernel
+import astropy.wcs as wcs
+import numpy as np
+import scipy.ndimage as nd
+import scipy.ndimage.morphology as morph
 from astropy.io import fits
-from spectral_cube import Projection,SpectralCube
+from spectral_cube import Projection, SpectralCube
 
-from .pipelineVersion import tableversion, version
-
-from .scNoiseRoutines import mad_zero_centered
 from .scDerivativeRoutines import convert_and_reproject
 
 np.seterr(divide='ignore', invalid='ignore')
@@ -980,9 +974,7 @@ def recipe_phangs_broad_mask(
         header = mask.header
         header['DATAMAX'] = 1
         header['DATAMIN'] = 0
-        header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version
-        if tableversion:
-            header['COMMENT'] = 'Galaxy properties from PHANGS sample table version ' + tableversion
+        header['COMMENT'] = 'Produced with PHANGS-ALMA pipeline version ' + version("phangsPipeline")
         hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
                               header=header)
         hdu.writeto(outfile, overwrite=overwrite)
