@@ -202,5 +202,5 @@ if casa_version[0] < 5:
     from sdplot import sdplot
 
 # sdintimaging import
-if (casa_version[0] >= 5) and (casa_version[1] >= 7):
+if (casa_version[0] >= 6):
     from .taskSDIntImaging import sdintimaging

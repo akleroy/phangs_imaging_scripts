@@ -247,7 +247,7 @@ class CleanCall:
 
         # If there's a remainder, tack that on as another chunk:
         if nleft > 0:
-            chunk_limits = np.append(chunk_limits, nchan+1)
+            chunk_limits = np.append(chunk_limits, nchan)
 
         chunk_starts = chunk_limits[:-1]
         chunk_ends = chunk_limits[1:] - 1
