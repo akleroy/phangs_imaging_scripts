@@ -207,6 +207,10 @@ if casa_enabled:
 
             self.configure_chunk_parameters()
 
+        @property
+        def tempdir_exists(self):
+            """Return True if a temporary imaging directory was created and still exists on disk."""
+            return self._uses_tempdir and os.path.isdir(self._this_imaging_dir)
 
         def set_channel_num(self, spw=0):
             '''
@@ -368,7 +372,6 @@ if casa_enabled:
                     extra_ext_in=extra_ext_in,
                     suffix_in=suffix_in,
                     extra_ext_out=extra_ext_out,
-                    imaging_method=self.imaging_method,
                     # imaging_method_override=None,
                     do_dirty_image=do_dirty_image,
                     do_revert_to_dirty=do_revert_to_dirty,
@@ -638,11 +641,8 @@ if casa_enabled:
             clean_call.set_param('start', chan_start)
             clean_call.set_param('width', 1)
 
-
-            #TODO: revisit once the rest of sdintimaging is patched back in
             if self.imaging_method == 'sdintimaging':
                 # Put in sdintimaging specific parameters to point at the SD image and PSF
-                raise NotImplementedError
 
                 image_name = clean_call.get_param('imagename')
                 clean_call.set_param('usedata', 'sdint')
@@ -690,13 +690,22 @@ if casa_enabled:
                 target=None,
                 product=None,
                 asvelocity=True,
-                overwrite=False
+                overwrite=False,
+                chunk_num=None
         ):
             """
             Regrid existing TP image to the staged MS
-            """
 
-            raise NotImplementedError("Need to come back to this.")
+            Parameters
+            ----------
+            clean_call : CleanCall object
+            target : str
+            product : str
+            asvelocity : bool
+            overwrite : bool
+            chunk_num : int or None
+
+            """
 
             if clean_call is None:
                 logger.warning("Require a clean_call object. Returning.")
@@ -716,7 +725,11 @@ if casa_enabled:
 
             if not os.path.exists(sd_image_file) or overwrite:
                 os.system('rm -rf ' + sd_image_file)
-                casaStuff.importfits(fitsimage=sd_fits_file, imagename=sd_image_file, overwrite=True)
+                casaStuff.importfits(fitsimage=sd_fits_file,
+                                     imagename=sd_image_file,
+                                     overwrite=True,
+                                     defaultaxes=True,
+                                     defaultaxesvalues=["", "", "", "I"])
 
                 # Make sure the image axes are the right way round
                 os.system('rm -rf ' + sd_image_file + '_reorder')
@@ -737,20 +750,28 @@ if casa_enabled:
 
                 template_hdr = casaStuff.imregrid(sd_image_file, template='get')
 
+                spec_key = 'spectral2'
+                if spec_key not in template_hdr['csys']:
+                    spec_key = 'spectral1'
+
                 spec_shap = template_hdr['shap'][-1]
-                spec_crpix = template_hdr['csys']['spectral2']['wcs']['crpix']
-                spec_cdelt = template_hdr['csys']['spectral2']['wcs']['cdelt']
-                spec_crval = template_hdr['csys']['spectral2']['wcs']['crval']
+                spec_crpix = template_hdr['csys'][spec_key]['wcs']['crpix']
+                spec_cdelt = template_hdr['csys'][spec_key]['wcs']['cdelt']
+                spec_crval = template_hdr['csys'][spec_key]['wcs']['crval']
 
                 if not (spec_shap == n_chan and spec_crpix == 0.0 and spec_cdelt == d_freq and spec_crval == first_freq):
 
                     template_hdr['shap'][-1] = n_chan
-                    template_hdr['csys']['spectral2']['wcs']['crpix'] = 0.0
-                    template_hdr['csys']['spectral2']['wcs']['cdelt'] = d_freq
-                    template_hdr['csys']['spectral2']['wcs']['crval'] = first_freq
+                    template_hdr['csys'][spec_key]['wcs']['crpix'] = 0.0
+                    template_hdr['csys'][spec_key]['wcs']['cdelt'] = d_freq
+                    template_hdr['csys'][spec_key]['wcs']['crval'] = first_freq
 
-                    casaStuff.imregrid(imagename=sd_image_file, output=sd_image_file + '_regrid',
-                                       template=template_hdr, asvelocity=asvelocity, overwrite=True)
+                    casaStuff.imregrid(imagename=sd_image_file,
+                                       output=sd_image_file + '_regrid',
+                                       template=template_hdr,
+                                       asvelocity=asvelocity,
+                                       overwrite=True,
+                                       )
                     os.system('rm -rf ' + sd_image_file)
                     os.system('mv -f ' + sd_image_file + '_regrid ' + sd_image_file)
 
@@ -767,6 +788,13 @@ if casa_enabled:
                     for p in range(n_pol):
                         myia.setrestoringbeam(beam=restoring_beam, channel=c, polarization=p)
                 myia.close()
+                if not chunk_num is None:
+                    start_chan = self.chunk_channel_starts[chunk_num]
+                    end_chan = self.chunk_channel_ends[chunk_num]
+
+                    casaStuff.imsubimage(imagename=sd_image_file,  outfile=sd_image_file+"_chunked",overwrite=True, chans=f"{start_chan}~{end_chan}")
+                    sd_image_file= sd_image_file+"_chunked"
+
 
             return sd_image_file
 
@@ -795,6 +823,11 @@ if casa_enabled:
 
             # We can't concat non cube products:
             skip_types = ['sumwt', 'weight']
+            # If a temp dir was used but has since been removed, search the original imaging dir
+            if not self.tempdir_exists:
+                effective_imaging_dir = self._orig_imaging_dir
+            else:
+                effective_imaging_dir = self._this_imaging_dir
 
             # With the chunk names sorted, concat into cubes
             for img_type in fname_dict:
@@ -807,28 +840,36 @@ if casa_enabled:
 
                 for chunk_num in self.chunk_params:
 
-                    this_imagename = "{0}{1}.{2}".format(self.chunk_params[chunk_num]['full_imagename'],
+                    this_imagename = "{0}/{1}{2}.{3}".format(effective_imaging_dir, self.chunk_params[chunk_num]['full_imagename'],
                                                         root_name_label, img_type)
-
+                    logger.info("Image {} ".format(this_imagename))
                     if not os.path.exists(this_imagename):
-                        missing_chunks.append(chunk_num)
-                        continue
+                        #try sdintimaging:
+                        this_imagename = "{0}/{1}{2}.joint.cube.{3}".format(
+                            effective_imaging_dir,
+                            self.chunk_params[chunk_num]['image_name'],
+                            root_name_label, img_type)
+
+                        if not os.path.exists(this_imagename):
+                            missing_chunks.append(chunk_num)
+                            continue
 
                     chunk_fname_dict[img_type].append(this_imagename)
-
                 if img_type in skip_types:
                     continue
 
                 if len(chunk_fname_dict[img_type]) != self.nchunks:
                     logger.error("Existing imaging products for type {} do not match the expected number of chunks.".format(img_type) +
                                 "This cube will not be made.")
+                    if len(missing_chunks) > 0:
+                        logger.error("Missing the following chunks for the {0}: {1}".format(img_type, missing_chunks))
+                        logger.error("The concatenated cube cannot be made for {}".format(img_type))
                     continue
 
                 if len(missing_chunks) > 0:
                     logger.error("Missing the following chunks for the {0}: {1}".format(img_type, missing_chunks))
                     logger.error("The concatenated cube cannot be made for {}".format(img_type))
                     continue
-
                 if os.path.exists(fname_dict[img_type]):
                     if overwrite:
                         os.system("rm -rf {}".format(fname_dict[img_type]))
@@ -837,14 +878,18 @@ if casa_enabled:
                                     " Enable overwrite=True to force writing a new version.")
                         continue
 
-                logger.info("Making {0} from this list of chunked images:".format(fname_dict[img_type]))
-                logger.info(chunk_fname_dict[img_type])
+                # If only one chunk exists, just copy it
+                if len(chunk_fname_dict[img_type]) == 1:
+                    logger.info("Only one chunk found for {}. Copying instead of concatenating.".format(img_type))
+                    os.system("cp -r {0} {1}".format(this_imagename, self._orig_imaging_dir+fname_dict[img_type]))
 
-                ia = casaStuff.image()
-                im = ia.imageconcat(outfile=fname_dict[img_type],
-                                    infiles=chunk_fname_dict[img_type])
-                im.done()
-                ia.close()
+                # Otherwise concatenate
+                else:
+                    ia = casaStuff.image()
+                    im = ia.imageconcat(outfile=fname_dict[img_type],
+                        infiles=chunk_fname_dict[img_type])
+                    im.done()
+                    ia.close()
 
             # (optional) clean up the per chunk imaging products
             if remove_chunks:
@@ -860,7 +905,6 @@ if casa_enabled:
         def task_make_dirty_image(
                 self,
                 chunk_num=None,
-                imaging_method='tclean',
                 backup=True,
                 gather_chunks_into_cube=False,
                 remove_chunks=False,
@@ -882,29 +926,51 @@ if casa_enabled:
             logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
             logger.info("")
 
+            target = self.target
+            product = self.product
+            config = self.config
+            overwrite = False
             if not self._dry_run and casa_enabled:
 
                 os.chdir(self._this_imaging_dir)
 
-                for ii, chunk_num in enumerate(chunks_iter):
+                for ii, this_chunk_num in enumerate(chunks_iter):
 
                     # Make the chunk clean call:
-                    this_clean_call = self.task_initialize_clean_call(chunk_num, stage='dirty')
+                    this_clean_call = self.task_initialize_clean_call(this_chunk_num, stage='dirty')
+
+                    if self.imaging_method == 'sdintimaging':
+                        sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
+                        feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
+                        if not sd_fits_file or not feather_config:
+                            logger.warning('No singledish setup for %s, %s, %s, reverting to standard tclean' %
+                                   (target, product, config))
+                            imaging_method = 'tclean'
+                        else:
+                            sd_image_file = self.task_setup_sdintimaging(this_clean_call, target=target, product=product,
+                                                                     overwrite=overwrite,
+                                                                     chunk_num=this_chunk_num)
+                            if not sd_image_file:
+                                logger.error('Error in setting up singledish for sdintimaging')
+
+                            # Set the clean call parameters as necessary.
+                            this_clean_call.set_param('usedata', 'sdint')
+                            this_clean_call.set_param('sdimage', sd_image_file)
 
                     logger.info("")
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
-                    logger.info("Making dirty image for chunk {}:".format(chunk_num))
+                    logger.info("Making dirty image for chunk {}:".format(this_chunk_num))
                     logger.info(str(this_clean_call.get_param('imagename')))
-                    logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)+1))
+                    logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)))
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                     logger.info("")
 
-                    imr.make_dirty_image(this_clean_call, imaging_method=imaging_method)
+                    imr.make_dirty_image(this_clean_call, imaging_method=self.imaging_method)
                     if backup:
                         imr.copy_imaging(
                             input_root=this_clean_call.get_param('imagename'),
                             output_root=this_clean_call.get_param('imagename') + '_dirty',
-                            imaging_method=imaging_method,
+                            imaging_method=self.imaging_method,
                             wipe_first=True)
 
             if gather_chunks_into_cube:
@@ -916,7 +982,6 @@ if casa_enabled:
         def task_revert_to_imaging(
                 self,
                 clean_call=None,
-                imaging_method='tclean',
                 tag='dirty',
                 chunk_num=None,
                 revert_cube=False,
@@ -932,10 +997,10 @@ if casa_enabled:
 
             if (not self._dry_run) and casa_enabled:
 
-                for ii, chunk_num in enumerate(chunks_iter):
+                for ii, this_chunk_num in enumerate(chunks_iter):
 
                     # Make the chunk clean call:
-                    this_clean_call = self.task_initialize_clean_call(chunk_num)
+                    this_clean_call = self.task_initialize_clean_call(this_chunk_num)
 
                     if verbose:
                         logger.info("")
@@ -949,7 +1014,7 @@ if casa_enabled:
                     imr.copy_imaging(
                         input_root=this_clean_call.get_param('imagename') + '_' + tag,
                         output_root=this_clean_call.get_param('imagename'),
-                        imaging_method=imaging_method,
+                        imaging_method=self.imaging_method,
                         wipe_first=True)
 
 
@@ -979,7 +1044,6 @@ if casa_enabled:
                 target=None,
                 config=None,
                 product=None,
-                imaging_method='tclean'
         ):
             """
             Identify the clean mask associated with the target and
@@ -1028,7 +1092,7 @@ if casa_enabled:
 
             # Get fname dict
             fname_dict = self._fname_dict(product=product, imagename=clean_call.get_param('imagename'),
-                                          imaging_method=imaging_method)
+                                          imaging_method=self.imaging_method)
 
             # import_and_align_mask
             msr.import_and_align_mask(in_file=this_cleanmask,
@@ -1046,7 +1110,6 @@ if casa_enabled:
         def task_multiscale_clean(
                 self,
                 chunk_num=None,
-                imaging_method='tclean',
                 convergence_fracflux=0.01,
                 backup=True,
                 gather_chunks_into_cube=False,
@@ -1067,13 +1130,34 @@ if casa_enabled:
                 return ()
 
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
-
-            for ii, chunk_num in enumerate(chunks_iter):
+            target = self.target
+            product = self.product
+            config = self.config
+            overwrite = False
+            for ii, this_chunk_num in enumerate(chunks_iter):
 
                 os.chdir(self._this_imaging_dir)
 
                 # Make the chunk clean call:
-                this_clean_call = self.task_initialize_clean_call(chunk_num, stage='multiscale')
+                this_clean_call = self.task_initialize_clean_call(this_chunk_num, stage='multiscale')
+
+                if self.imaging_method == 'sdintimaging':
+                    sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
+                    feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
+                    if not sd_fits_file or not feather_config:
+                        logger.warning('No singledish setup for %s, %s, %s, reverting to standard tclean' %
+                                   (target, product, config))
+                        imaging_method = 'tclean'
+                    else:
+                        sd_image_file = self.task_setup_sdintimaging(this_clean_call, target=target, product=product,
+                                                                     overwrite=overwrite,
+                                                                     chunk_num=this_chunk_num)
+                        if not sd_image_file:
+                            logger.error('Error in setting up singledish for sdintimaging')
+
+                        # Set the clean call parameters as necessary.
+                        this_clean_call.set_param('usedata', 'sdint')
+                        this_clean_call.set_param('sdimage', sd_image_file)
 
                 if this_clean_call.get_param('deconvolver') not in ['multiscale', 'mtmfs']:
                     logger.warning("I expected a multiscale or mtmfs deconvolver but got " + str(
@@ -1089,7 +1173,7 @@ if casa_enabled:
                 logger.info("")
 
                 imr.clean_loop(clean_call=this_clean_call,
-                            imaging_method=imaging_method,
+                            imaging_method=self.imaging_method,
                             record_file=this_clean_call.get_param('imagename') + '_multiscale_record.txt',
                             niter_base_perchan=10,
                             niter_growth_model='geometric',
@@ -1119,7 +1203,7 @@ if casa_enabled:
                     imr.copy_imaging(
                         input_root=this_clean_call.get_param('imagename'),
                         output_root=this_clean_call.get_param('imagename') + '_multiscale',
-                        imaging_method=imaging_method,
+                        imaging_method=self.imaging_method,
                         wipe_first=True)
 
             if gather_chunks_into_cube:
@@ -1127,12 +1211,10 @@ if casa_enabled:
                                            remove_chunks=remove_chunks)
 
 
-
         @CleanCallFunctionDecorator
         def task_singlescale_mask(
                 self,
                 chunk_num=None,
-                imaging_method='tclean',
                 high_snr=None,
                 low_snr=None,
                 absolute=False,
@@ -1191,7 +1273,7 @@ if casa_enabled:
                         return ()
 
                 # signal_mask
-                msr.signal_mask(imaging_method=imaging_method,
+                msr.signal_mask(imaging_method=self.imaging_method,
                                 cube_root=fname_dict['root'],
                                 out_file=fname_dict['mask'],
                                 suffix_in=fname_dict['suffix'],
@@ -1214,17 +1296,17 @@ if casa_enabled:
 
                 chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-                for ii, chunk_num in enumerate(chunks_iter):
+                for ii, this_chunk_num in enumerate(chunks_iter):
 
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                     logger.info("Signal masking chunk {0} of {1}".format(ii, len(chunks_iter)))
                     logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
 
-                    image_root = self.chunk_params[chunk_num]['full_imagename']
-                    mask_name = "{}.mask".format(self.chunk_params[chunk_num]['full_imagename'])
+                    image_root = self.chunk_params[this_chunk_num]['full_imagename']
+                    mask_name = "{}.mask".format(self.chunk_params[this_chunk_num]['full_imagename'])
 
                     # signal_mask
-                    msr.signal_mask(imaging_method=imaging_method,
+                    msr.signal_mask(imaging_method=self.imaging_method,
                                     cube_root=image_root,
                                     out_file=mask_name,
                                     suffix_in='',
@@ -1240,7 +1322,6 @@ if casa_enabled:
         def task_singlescale_clean(
                 self,
                 chunk_num=None,
-                imaging_method='tclean',
                 convergence_fracflux=0.01,
                 gather_chunks_into_cube=False,
                 remove_chunks=False,
@@ -1265,12 +1346,23 @@ if casa_enabled:
 
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            for ii, chunk_num in enumerate(chunks_iter):
+            for ii, this_chunk_num in enumerate(chunks_iter):
 
                 os.chdir(self._this_imaging_dir)
 
                 # Make the chunk clean call:
-                this_clean_call = self.task_initialize_clean_call(chunk_num, stage='singlescale')
+                this_clean_call = self.task_initialize_clean_call(this_chunk_num, stage='singlescale')
+                overwrite = False
+                if self.imaging_method == 'sdintimaging':
+                    sd_image_file = self.task_setup_sdintimaging(this_clean_call, target=self.target, product=self.product,
+                                                                 overwrite=overwrite,
+                                                                 chunk_num=this_chunk_num)
+                    if not sd_image_file:
+                        logger.error('Error in setting up singledish for sdintimaging')
+
+                    # Set the clean call parameters as necessary.
+                    this_clean_call.set_param('usedata', 'sdint')
+                    this_clean_call.set_param('sdimage', sd_image_file)
 
                 if this_clean_call.get_param('deconvolver') not in ['hogbom','mtmfs']:
                     logger.warning("I expected a singlescale or mtmfs deconvolver but got: " + this_clean_call.get_param('deconvolver'))
@@ -1290,8 +1382,12 @@ if casa_enabled:
 
                 skip_this_step = False
                 if skip_singlescale_if_mask_empty:
-                    image_root = self.chunk_params[chunk_num]['full_imagename']
-                    mask_name = "{}.mask".format(self.chunk_params[chunk_num]['full_imagename'])
+                    image_root = self.chunk_params[this_chunk_num]['full_imagename']
+                    if self.imaging_method == 'sdintimaging':
+                        mask_name = "{}.joint.cube.mask".format(self.chunk_params[this_chunk_num]['full_imagename'])
+                    else:
+                        mask_name = "{}.mask".format(self.chunk_params[this_chunk_num]['full_imagename'])
+
                     mask_stats = msr.stat_cube(cube_file=mask_name)
                     if mask_stats['sum'] == 0:
                         skip_this_step = True
@@ -1302,7 +1398,7 @@ if casa_enabled:
                 if not skip_this_step:
                     imr.clean_loop(
                         clean_call=this_clean_call,
-                        imaging_method=imaging_method,
+                        imaging_method=self.imaging_method,
                         record_file=this_clean_call.get_param('imagename') + '_singlescale_record.txt',
                         niter_base_perchan=10,
                         niter_growth_model='geometric',
@@ -1332,7 +1428,7 @@ if casa_enabled:
                     imr.copy_imaging(
                         input_root=this_clean_call.get_param('imagename'),
                         output_root=this_clean_call.get_param('imagename') + '_singlescale',
-                        imaging_method=imaging_method,
+                        imaging_method=self.imaging_method,
                         wipe_first=True)
 
             if gather_chunks_into_cube:
@@ -1361,11 +1457,9 @@ if casa_enabled:
                 self.task_gather_into_cube(root_name=root,
                                            remove_chunks=remove_chunks)
 
-
         @CleanCallFunctionDecorator
         def task_export_to_fits(
                 self,
-                imaging_method='tclean',
                 tag=None,
         ):
             """
@@ -1387,7 +1481,7 @@ if casa_enabled:
             logger.info("")
 
             if not self._dry_run and casa_enabled:
-                imr.export_imaging_to_fits(image_root, imaging_method=imaging_method)
+                imr.export_imaging_to_fits(image_root)
 
             return ()
 
@@ -1412,7 +1506,7 @@ if casa_enabled:
 
             for ii, this_chunk_num in enumerate(chunks_iter):
 
-                os.chdir(self._this_imaging_dir)
+                os.chdir(self._orig_imaging_dir)
 
                 chan_start, chan_end = self.chunk_params[this_chunk_num]['channel_range']
                 chan_label = "{0}_{1}".format(chan_start, chan_end)
@@ -1420,10 +1514,10 @@ if casa_enabled:
                 image_root = f"{self.image_root}_chan{chan_label}{root_name_label}"
 
                 if not self._dry_run:
-                    os.system(f"rm -rf {image_root}*")
-
-
-        # Remove split chunks of the MS
+                    try:
+                        os.system(f"rm -rf {image_root}*")
+                    except:
+                         logger.info("Temporary folder already deleted")
 
         #############################
         # recipe_imaging_one_target #
@@ -1435,7 +1529,6 @@ if casa_enabled:
                 extra_ext_in=None,
                 suffix_in=None,
                 extra_ext_out=None,
-                imaging_method='tclean',
                 do_dirty_image=True,
                 do_revert_to_dirty=True,
                 do_read_clean_mask=True,
@@ -1448,7 +1541,7 @@ if casa_enabled:
                 skip_singlescale_if_mask_empty=True,
                 do_singlescale_clean=True,
                 do_revert_to_singlescale=True,
-                do_recombine_cubes=True,
+                do_recombine_cubes=False,
                 do_export_to_fits=True,
                 convergence_fracflux=0.01,
                 singlescale_threshold_value=1.0,
@@ -1482,46 +1575,19 @@ if casa_enabled:
             key that the target/product/config setup should switch to (either tclean or sdintimaging)
             """
 
-            if imaging_method == 'sdintimaging':
-                raise NotImplementedError
-                sd_fits_file = self._kh.get_sd_filename(target=target, product=product)
-                feather_config = self._kh.get_feather_config_for_interf_config(interf_config=config)
-                if not sd_fits_file or not feather_config:
-                    logger.warning('No singledish setup for %s, %s, %s, reverting to standard tclean' %
-                                   (target, product, config))
-                    imaging_method = 'tclean'
-                else:
-                    sd_image_file = self.task_setup_sdintimaging(clean_call, target=target, product=product,
-                                                                 overwrite=overwrite)
-                    if not sd_image_file:
-                        logger.error('Error in setting up singledish for sdintimaging')
-
-                    # Set the clean call parameters as necessary.
-                    clean_call.set_param('usedata', 'sdint')
-                    clean_call.set_param('sdimage', sd_image_file)
-
-                    # Catch the case where the frequency axis might go the wrong way round by specifying this exactly to
-                    # the SD parameters
-                    sdintlib = casaStuff.sdint_helper.SDINT_helper()
-                    cube_params = sdintlib.setup_cube_params(sdcube=sd_image_file)
-                    clean_call.set_param('nchan', cube_params['nchan'])
-                    clean_call.set_param('start', cube_params['start'])
-                    clean_call.set_param('width', cube_params['width'])
-
             # Make a dirty image (niter=0)
 
             gather_chunks_into_cube = False if chunk_num is not None else True
 
             if do_dirty_image:
                 self.task_make_dirty_image(chunk_num=chunk_num,
-                                           imaging_method=imaging_method,
                                            gather_chunks_into_cube=gather_chunks_into_cube)
 
             # Reset the current imaging to the dirty image.
 
+
             if do_revert_to_dirty:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            imaging_method=imaging_method,
                                             tag='dirty')
 
             # Read and align the clean mask to the astrometry of the image.
@@ -1539,32 +1605,32 @@ if casa_enabled:
 
             if do_multiscale_clean:
                 self.task_multiscale_clean(chunk_num=chunk_num,
-                                           imaging_method=imaging_method,
                                            convergence_fracflux=convergence_fracflux,
                                            gather_chunks_into_cube=gather_chunks_into_cube,
                                            )
 
             # Reset the current imaging to the results of the multiscale clean.
 
+
             if do_revert_to_multiscale:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            imaging_method=imaging_method,
                                             tag='multiscale')
 
             # Make a signal-to-noise based mask for use in singlescale clean.
 
+
             if do_singlescale_mask:
                 self.task_singlescale_mask(chunk_num=chunk_num,
-                                           imaging_method=imaging_method,
                                            high_snr=singlescale_mask_high_snr,
                                            low_snr=singlescale_mask_low_snr,
                                            absolute=singlescale_mask_absolute)
 
             # Run a singlescale clean until it converges.
 
+
+
             if do_singlescale_clean:
                 self.task_singlescale_clean(chunk_num=chunk_num,
-                                            imaging_method=imaging_method,
                                             convergence_fracflux=convergence_fracflux,
                                             threshold_value=singlescale_threshold_value,
                                             skip_singlescale_if_mask_empty=skip_singlescale_if_mask_empty,
@@ -1572,14 +1638,17 @@ if casa_enabled:
 
             # Reset the current imaging to the results of the singlescale clean.
 
+
+
+
             if do_revert_to_singlescale:
                 self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            imaging_method=imaging_method,
                                             tag='singlescale')
 
             # If using a temp dir, first move everything to the parent imaging folder:
             if self._uses_tempdir:
                 os.system(f'mv -f {self._this_imaging_dir}/* {self._orig_imaging_dir}')
+                os.chdir(self._orig_imaging_dir)
                 os.system(f'rmdir {self._this_imaging_dir}')
 
             # Ensure products are re-combined into cubes:
@@ -1588,13 +1657,8 @@ if casa_enabled:
                     self.task_complete_gather_into_cubes(root_name='all')
                                 # Export the products of the current clean to FITS files.
                     if do_export_to_fits:
-                        self.task_export_to_fits(imaging_method=imaging_method)
+                        self.task_export_to_fits()
 
                 else:
                     import warnings
                     warnings.warn(f"Recombination of cubes requires all chunks to be run. Given only chunk {chunk_num}.")
-
-
-
-
-
