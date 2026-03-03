@@ -20,12 +20,14 @@ from .handlerRelease import ReleaseHandler
 
 if casa_enabled:
     from .handlerImaging import ImagingHandler
+    from .handlerTestImaging import TestImagingHandler
 
 __all__ = ["setup_logger", "KeyHandler", "SingleDishHandler", "VisHandler", "PostProcessHandler", "DerivedHandler",
            "ReleaseHandler"]
 
 if casa_enabled:
     __all__.append("ImagingHandler")
+    __all__.append("TestImagingHandler")
 
 try:
     from .handlerAlmaDownload import AlmaDownloadHandler
