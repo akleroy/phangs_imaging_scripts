@@ -172,6 +172,9 @@ def common_res_for_mosaic(
         this_outfile = outfile_dict[this_infile]
         logger.debug("Convolving "+this_infile+' to '+this_outfile)
 
+        if overwrite:
+            os.system("rm -rf "+this_outfile)
+
         casaStuff.imsmooth(imagename=this_infile,
                       outfile=this_outfile,
                       targetres=True,
@@ -622,6 +625,9 @@ def common_grid_for_mosaic(
 
         this_outfile = outfile_dict[this_infile]
 
+        if overwrite:
+            os.system("rm -rf " + this_outfile)
+
         casaStuff.imregrid(imagename=this_infile,
                       template=target_hdr,
                       output=this_outfile,
@@ -730,6 +736,9 @@ def generate_weight_file(
         if not os.path.isdir(image_file):
             logger.error("Missing image file directory - "+image_file)
             return(None)
+
+    if overwrite:
+        os.system("rm -rf " + outfile)
 
     # If scaling by noise is requested and no estimate is provided,
     # generate an estimate
@@ -1057,9 +1066,11 @@ def mosaic_aligned_data(
     # Strip out any degenerate axes and create the final output file.
 
     casaStuff.imsubimage(imagename=temp_file,
-                    outfile=local_outfile,
-                    mask='"'+cur_maskfile+'"',
-                    dropdeg=True)
+                         outfile=local_outfile,
+                         mask='"'+cur_maskfile+'"',
+                         overwrite=overwrite,
+                         dropdeg=True,
+                         )
 
     # Remove any temp Stokes files we've made along the way
     os.system('rm -rf *.add_stokes')
