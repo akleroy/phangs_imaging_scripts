@@ -98,6 +98,10 @@ def prep_sd_for_feather(
     current_outfile = sdfile_out
     tempfile_name = sdfile_out+'.temp'
 
+    if overwrite:
+        os.system("rm -rf "+current_outfile)
+        os.system("rm -rf "+tempfile_name)
+
     # Import from FITS if needed. Keep blanks as not-a-numbers.
 
     if do_import:
@@ -137,6 +141,7 @@ def prep_sd_for_feather(
         casaStuff.imsubimage(
             imagename=current_infile,
             outfile=current_outfile,
+            overwrite=overwrite,
             dropdeg=True)
 
         current_infile = current_outfile
@@ -179,10 +184,8 @@ def prep_sd_for_feather(
                 inplace=True)
 
     # Remove leftover temporary files.
-
-    if (os.path.isdir(tempfile_name) or os.path.isfile(tempfile_name)):
-        if overwrite:
-            os.system('rm -rf '+tempfile_name)
+    if overwrite:
+        os.system('rm -rf '+tempfile_name)
 
     return(None)
 
