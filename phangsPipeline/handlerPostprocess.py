@@ -2032,7 +2032,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
         # This round of feathering targets only mosaicked data. All
         # other data have been feathered above already.
 
-        if do_feather:
+        if do_feather and feather_before_mosaic:
 
             # N.B. if using sdintimaging this will just crash out since it hasn't staged any singledish. This is
             # intended!
@@ -2040,6 +2040,7 @@ class PostProcessHandler(handlerTemplate.HandlerTemplate):
             for this_target, this_product, this_config in \
                     self.looper(do_targets=True,do_products=True,do_configs=True,just_interf=True):
 
+                # Skip if we're not a mosaic
                 is_mosaic = self._kh.is_target_linmos(this_target)
                 if not is_mosaic:
                     continue
