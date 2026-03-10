@@ -36,6 +36,7 @@ def test_readers(root=''):
     test = read_override_key(root + 'key_templates/overrides.txt')
 
     test = read_distance_key(root + 'key_templates/distance_key.txt')
+    test = read_window_key(root + 'key_templates/vwindow_key.txt')
 
 
 ##############################################################
@@ -401,6 +402,51 @@ def read_distance_key(fname='', existing_dict=None, delim=None):
     # return out_dict
     return out_dict
 
+def read_window_key(fname='', existing_dict=None, delim=None):
+    """
+    Read a velocity window key.
+    """
+    #
+    # Initialize the dictionary
+    if existing_dict is None:
+        out_dict = {}
+    else:
+        out_dict = existing_dict
+    #
+    # Check file existence
+    if not os.path.isfile(fname):
+        logger.error("I tried to read key " + fname + " but it does not exist.")
+        return out_dict
+    #
+    # Read file
+    logger.info("Reading: " + fname)
+
+    delim = ',' if delim is None else delim
+
+    lines = [re.sub('[' + delim + ']+', delim, t) for t in open(fname, 'r').readlines()]  # compress multiple delim
+
+    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim) == 1))]
+
+    lines_read = 0
+    for t in lines:
+        name = t.split(delim)[0]
+        if name.strip() == 'galaxy':
+            continue
+        window_kms = t.split(delim)[1].strip()
+        try:
+            str(window_kms)
+        except ValueError:
+            continue
+
+        out_dict[name] = {}
+        out_dict[name]['window'] = window_kms+'km/s'
+        lines_read += 1
+
+        # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
+    logger.info("Read " + str(lines_read) + " lines into a target/vwindow dictionary.")
+    #
+    # return out_dict
+    return out_dict
 
 def read_nametoname_key(fname='', existing_dict=None, delim=None, as_list=False):
     """

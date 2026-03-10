@@ -51,6 +51,7 @@ class KeyHandler:
         self._cleanmask_dict = None
         self._linmos_dict = None
         self._distance_dict = None
+        self._window_dict = None
         self._moment_dict = None
 
         self._dir_for_target = None
@@ -148,6 +149,14 @@ class KeyHandler:
         self.print_missing_distances()
 
         logger.info("")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("Printing missing velocity windows.")
+        logger.info("&%&%&%&%&%&%&%&%&%&%&%&%")
+        logger.info("")
+
+        self.print_missing_window()
+
+        logger.info("")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
         logger.info("Master key reading and checks complete.")
         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&")
@@ -193,10 +202,12 @@ class KeyHandler:
         self._derived_root = ''  # os.getcwd()+'/../derived/'
         self._release_root = ''  # os.getcwd()+'/../release/'
         self._cleanmask_root = ''  # os.getcwd() + '/../cleanmask/'
+        self._vfield_root = ''  # os.getcwd() + '/../vfield/'
 
         self._ms_roots = []
         self._sd_roots = []
         self._cleanmask_roots = []
+        self._vfield_roots = []
         self._casaversion_keys = []
         self._alma_download_keys = []
         self._ms_keys = []
@@ -212,6 +223,7 @@ class KeyHandler:
         self._imaging_keys = []
         self._override_keys = []
         self._distance_keys = []
+        self._window_keys = []
 
         first_key_dir = True
         first_imaging_root = True
@@ -288,6 +300,11 @@ class KeyHandler:
                 self._cleanmask_roots.append(self._parse_path(this_value))
                 lines_read += 1
 
+            if this_key == 'vfield_root':
+                self._vfield_root = this_value
+                self._vfield_roots.append(self._parse_path(this_value))
+                lines_read += 1
+
             if this_key == 'casaversion_key':
                 self._casaversion_keys.append(this_value)
                 lines_read += 1
@@ -342,6 +359,10 @@ class KeyHandler:
 
             if this_key == 'distance_key':
                 self._distance_keys.append(this_value)
+                lines_read += 1
+
+            if this_key == 'window_key':
+                self._window_keys.append(this_value)
                 lines_read += 1
 
         logger.info("Successfully imported " + str(lines_read) + " key/value pairs.")
@@ -400,6 +421,10 @@ class KeyHandler:
                     all_valid = False
                     errors += 1
 
+        if len(self._vfield_roots) == 0:
+            logger.warning("The vfield root directory has not been set.")
+            logger.warning("Please set vfield_root in your master_key file if you want to use an input vfield for shuffling.")
+
         all_key_lists = [self._casaversion_keys,
                          self._alma_download_keys,
                          self._ms_keys,
@@ -412,6 +437,7 @@ class KeyHandler:
                          self._config_keys,
                          self._cleanmask_keys,
                          self._distance_keys,
+                         self._window_keys,
                          self._derived_keys,
                          self._moment_keys,
                          ]
@@ -647,7 +673,9 @@ class KeyHandler:
 
         known_param_list = ['mask_configs', 'ang_res', 'phys_res',
                             'noise_kw', 'strictmask_kw', 'broadmask_kw',
-                            'convolve_kw', 'moments']
+                            'flatstrictmask_kw', 'flatbroadmask_kw',
+                            'convolve_kw', 'moments', 'shuffle_kw',
+                            ]
 
         # Open File
 
@@ -759,7 +787,8 @@ class KeyHandler:
 
                     # Keywords for masking, noise
 
-                    for valid_dict in ['strictmask_kw', 'broadmask_kw', 'noise_kw', 'convolve_kw']:
+                    for valid_dict in ['strictmask_kw', 'broadmask_kw', 'noise_kw', 'convolve_kw', \
+                                       'shuffle_kw', 'flatstrictmask_kw', 'flatbroadmask_kw']:
                         if this_param.lower().strip() != valid_dict:
                             continue
                         this_kw_dict = ast.literal_eval(this_value)
@@ -850,6 +879,10 @@ class KeyHandler:
         self._distance_dict = key_readers.batch_read(
             key_list=self._distance_keys, reader_function=key_readers.read_distance_key,
             key_dir=self._key_dir)
+        
+        self._window_dict = key_readers.batch_read(
+            key_list=self._window_keys, reader_function=key_readers.read_window_key,
+            key_dir=self._key_dir)
 
         self._moment_dict = key_readers.batch_read(
             key_list=self._moment_keys, reader_function=key_readers.read_moment_key,
@@ -915,6 +948,14 @@ class KeyHandler:
             for target in distance_targets:
                 if target not in self._target_list:
                     # logger.error(target+ " is in the distance key but not the target list.")
+                    if target not in missing_targets:
+                        missing_targets.append(target)
+
+        if self._window_dict is not None:
+            window_targets = self._window_dict.keys()
+            for target in window_targets:
+                if target not in self._target_list:
+                    logger.error(target+ " is in the velocity window key but not the target list.")
                     if target not in missing_targets:
                         missing_targets.append(target)
 
@@ -1183,28 +1224,28 @@ class KeyHandler:
                 if os.path.isdir(self._imaging_root + this_dir):
                     found_dirs += 1
                 else:
-                    logger.warning("Missing imaging directory :" + self._imaging_root + this_dir)
+                    logger.warning("Missing imaging directory: " + self._imaging_root + this_dir)
                     missing_dirs.append(self._imaging_root + this_dir)
 
             if postprocess:
                 if os.path.isdir(self._postprocess_root + this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing post-processing directory :" + self._postprocess_root + this_dir)
+                    logging.warning("Missing post-processing directory: " + self._postprocess_root + this_dir)
                     missing_dirs.append(self._postprocess_root + this_dir)
 
             if derived:
                 if os.path.isdir(self._derived_root + this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing derived directory :" + self._derived_root + this_dir)
+                    logging.warning("Missing derived directory: " + self._derived_root + this_dir)
                     missing_dirs.append(self._derived_root + this_dir)
 
             if release:
                 if os.path.isdir(self._release_root + this_dir):
                     found_dirs += 1
                 else:
-                    logging.warning("Missing release directory :" + self._release_root + this_dir)
+                    logging.warning("Missing release directory: " + self._release_root + this_dir)
                     missing_dirs.append(self._release_root + this_dir)
 
         logging.info("Found " + str(found_dirs) + " directories.")
@@ -1224,7 +1265,8 @@ class KeyHandler:
     def _get_dir_for_target(self, target=None, changeto=False,
                             imaging=False, postprocess=False,
                             derived=False, release=False,
-                            cleanmask=False, singledish=False):
+                            cleanmask=False, singledish=False,
+                            vfield=False):
         """
         Return the imaging working directory given a target name. If
         changeto is true, then change directory to that location.
@@ -1260,6 +1302,8 @@ class KeyHandler:
             this_dir = self._cleanmask_roots[-1] + self._dir_for_target[target] + '/'
         elif singledish:
             this_dir = self._sd_roots[-1] + self._dir_for_target[target] + '/'
+        elif vfield:
+            this_dir = self._vfield_root + '/'
         else:
             logging.error("Pick a type of directory. None found.")
             return None
@@ -1300,6 +1344,13 @@ class KeyHandler:
         """
         return self._get_dir_for_target(target=target, changeto=changeto, release=True)
 
+    def get_vfield_dir_for_target(self, target=None, changeto=False):
+        """
+        Return the vfield working directory given a target name. If
+        changeto is true, then change directory to that location.
+        """
+        return self._get_dir_for_target(target=target, changeto=changeto, vfield=True)
+    
     def get_cleanmask_dir_for_target(self, target=None, changeto=False):
         """
         Return the release working directory given a target name. If
@@ -1687,6 +1738,29 @@ class KeyHandler:
                     distance = self._distance_dict[target_name]['distance']
 
         return distance
+    
+    def get_window_for_target(self, target=None):
+        """
+        Get the velocity window (in km/s) associated with a target. If the
+        target is part of a mosaic, return the velocity window to the whole
+        galaxy.
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        _, target_name = self.is_target_in_mosaic(target, return_target_name=True)
+
+        window = None
+
+        if self._window_dict is not None:
+
+            if target_name in self._window_dict:
+                if 'window' in self._window_dict[target_name]:
+                    window = self._window_dict[target_name]['window']
+
+        return window
+
 
     def get_system_velocity_and_velocity_width_for_target(
             self,
@@ -2642,6 +2716,10 @@ class KeyHandler:
         Get the dictionary of keyword arguments from the derived key
         for masking or noise estimation. Valid kwarg_types are
         'strictmask_kw', 'broadmask_kw', 'noise_kw'
+        'mask_configs', 'ang_res', 'phys_res',
+        'noise_kw', 'strictmask_kw', 'broadmask_kw',
+        'convolve_kw', 'moments', 'shuffle_kw',
+        'flatstrictmask_kw', 'flatbroadmask_kw'
         """
 
         if config is None:
@@ -2657,7 +2735,7 @@ class KeyHandler:
 
         if product not in self._derived_dict[config].keys():
             return {}
-
+        
         if kwarg_type not in self._derived_dict[config][product].keys():
             return {}
 
@@ -2826,6 +2904,29 @@ class KeyHandler:
         logger.info("... targets missing distances: " + str(missing_targets))
         return ()
 
+    def print_missing_window(
+            self
+        ):
+        """
+        Print out the missing velocity window
+        """
+
+        if self._window_dict is None:
+            logger.info("... there is no velocity window dictionary defined.")
+            return ()
+
+        missing_targets = []
+        for this_target in self.get_all_targets():
+            if self.get_window_for_target(target=this_target) is None:
+                missing_targets.append(this_target)
+
+        if len(missing_targets) == 0:
+            logger.info("... no targets are missing velocity window!")
+            return ()
+
+        logger.info("... targets missing velocity window: " + str(missing_targets))
+        return ()
+
     def print_derived(
             self
     ):
@@ -2839,7 +2940,7 @@ class KeyHandler:
         for this_config in self.get_all_configs():
             all_products = self.get_continuum_products() + self.get_line_products()
             for this_product in all_products:
-                logger.info("... derived produts for " + this_config + " " + this_product)
+                logger.info("... derived products for " + this_config + " " + this_product)
 
                 ang_res = self._derived_dict[this_config][this_product]['ang_res']
                 phys_res = self._derived_dict[this_config][this_product]['phys_res']

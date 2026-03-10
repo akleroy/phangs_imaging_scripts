@@ -101,6 +101,12 @@ do_broadmask = True
 do_moments = True
 do_secondary = True
 
+# new DR5 routines (shuffling and flat maps)
+do_vfield = False    # creates a velocity field for shuffling
+do_shuffling = True # runs independently from other tasks
+do_flatmask = True  # requires noise and broad/flat masks
+do_flatmaps = True  # requires flat masks
+
 ##############################################################################
 # Step through derived product creation
 ##############################################################################
@@ -155,3 +161,44 @@ if do_secondary:
     this_der.loop_derive_products(do_convolve=False, do_noise=False,
                                   do_strictmask=False, do_broadmask=False,
                                   do_moments=False, do_secondary=True)
+
+# Create velocity field. This creates a combined velocity field from 
+# a list of derived mom1 maps.
+
+if do_vfield:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=True, do_shuffling=False, 
+                                  do_flatmask=False, do_flatmaps=False)    
+    
+# Create shuffled cubes. This shuffles the processed and derived cubes
+# by a velocity offset defined by an input velocity field.
+
+if do_shuffling:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=False, do_shuffling=True, 
+                                  do_flatmask=False, do_flatmaps=False)    
+
+# Construct flat masks. This combines the existing signal masks
+# with a velocity slab based on a input velocity field and velocity 
+# window.
+
+if do_flatmask:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=False, do_shuffling=False, 
+                                  do_flatmask=True, do_flatmaps=False)
+
+# Produce flat moment-0 maps. This uses the flat masks to create 
+# moment-0 maps.
+
+if do_flatmaps:
+    this_der.loop_derive_products(do_convolve=False, do_noise=False,
+                                  do_strictmask=False, do_broadmask=False,
+                                  do_moments=False, do_secondary=False,
+                                  do_vfield=False, do_shuffling=False, 
+                                  do_flatmask=False, do_flatmaps=True)
