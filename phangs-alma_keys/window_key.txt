@@ -1,0 +1,115 @@
+##########################################################################
+# VELOCITY WINDOW KEY
+##########################################################################
+
+# Key to map from target name to velocity window in km/s
+
+# N.B. this file is automatically produced in some cases and this
+# documentation would be overwritten.
+
+# When the user requests to construct the flat masks used to produce the 
+# flat moment-0 maps the velocity window is needed. This file provides that 
+# velocity window.
+
+# Column 1: target name
+# Column 2: velocity window in km/s
+
+##########################################################################
+
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: target, datatype: string}
+# - {name: window, unit: km / s, datatype: float64}
+# delimiter: ','
+# schema: astropy-2.0
+target,window
+circinus,70.0
+ic1954,30.0
+ic5273,30.0
+ic5332,20.0
+ngc0247,30.0
+ngc0253,40.0
+ngc0300,20.0
+ngc0628,40.0
+ngc0685,40.0
+ngc1068,40.0
+ngc1087,40.0
+ngc1097,60.0
+ngc1300,30.0
+ngc1317,50.0
+ngc1365,200.0
+ngc1385,60.0
+ngc1433,30.0
+ngc1511,80.0
+ngc1512,30.0
+ngc1546,60.0
+ngc1559,60.0
+ngc1566,40.0
+ngc1637,30.0
+ngc1672,40.0
+ngc1792,60.0
+ngc1809,40.0
+ngc2090,40.0
+ngc2283,40.0
+ngc2566,40.0
+ngc2775,30.0
+ngc2835,30.0
+ngc2903,50.0
+ngc2997,50.0
+ngc3059,40.0
+ngc3137,40.0
+ngc3239,30.0
+ngc3351,30.0
+ngc3489,60.0
+ngc3507,40.0
+ngc3511,40.0
+ngc3521,60.0
+ngc3596,40.0
+ngc3599,30.0
+ngc3621,60.0
+ngc3626,40.0
+ngc3627,60.0
+ngc4207,50.0
+ngc4254,60.0
+ngc4293,60.0
+ngc4298,50.0
+ngc4303,60.0
+ngc4321,50.0
+ngc4424,50.0
+ngc4457,60.0
+ngc4459,60.0
+ngc4476,50.0
+ngc4477,40.0
+ngc4496a,40.0
+ngc4535,50.0
+ngc4536,40.0
+ngc4540,50.0
+ngc4548,40.0
+ngc4569,40.0
+ngc4571,30.0
+ngc4579,50.0
+ngc4596,50.0
+ngc4654,50.0
+ngc4689,40.0
+ngc4694,40.0
+ngc4731,50.0
+ngc4781,50.0
+ngc4826,50.0
+ngc4941,30.0
+ngc4945,80.0
+ngc4951,40.0
+ngc5042,40.0
+ngc5068,30.0
+ngc5128,50.0
+ngc5134,50.0
+ngc5236,50.0
+ngc5248,50.0
+ngc5530,40.0
+ngc5643,50.0
+ngc6300,50.0
+ngc6744,20.0
+ngc7456,30.0
+ngc7496,30.0
+ngc7743,50.0
+ngc7793,30.0
