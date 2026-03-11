@@ -174,8 +174,10 @@ if casa_enabled:
                 os.makedirs(self._this_imaging_dir, exist_ok=True)
 
                 if copy_ms_to_temp:
-                    # Copy the full MS file over, to speed up disk I/O
-                    os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
+                    # Copy the full MS file over, to speed up disk I/O. Only if it doesn't already exist!
+                    out_vis = os.path.join(self._this_imaging_dir, self.vis_file)
+                    if not os.path.exists(out_vis):
+                        os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
 
                     # The full visibility file is now in the imaging directory
                     self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
@@ -840,8 +842,9 @@ if casa_enabled:
 
                 for chunk_num in self.chunk_params:
 
-                    this_imagename = "{0}/{1}{2}.{3}".format(effective_imaging_dir, self.chunk_params[chunk_num]['full_imagename'],
-                                                        root_name_label, img_type)
+                    this_imagename = "{0}/{1}{2}.{3}".format(effective_imaging_dir,
+                                                             self.chunk_params[chunk_num]['image_name'],
+                                                             root_name_label, img_type)
                     logger.info("Image {} ".format(this_imagename))
                     if not os.path.exists(this_imagename):
                         #try sdintimaging:
