@@ -342,6 +342,28 @@ if casa_enabled:
                 do_revert_to_singlescale = True
                 do_export_to_fits = True
 
+            if self.make_temp_dir:
+                if self.temp_path is None:
+                    if self.temp_key is None:
+                        self.temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{self.temp_key}"
+                else:
+                    self._this_imaging_dir = self.temp_path
+
+                os.makedirs(self._this_imaging_dir, exist_ok=True)
+
+                if self.copy_ms_to_temp:
+                    # Copy the full MS file over, to speed up disk I/O. Only if it doesn't already exist!
+                    out_vis = os.path.join(self._this_imaging_dir, self.vis_file)
+                    if not os.path.exists(out_vis):
+                        os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
+
+                    # The full visibility file is now in the imaging directory
+                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
+
+            else:
+                self._this_imaging_dir = self._orig_imaging_dir
+
             # Change to the relevant directory
             os.chdir(self._this_imaging_dir)
 
@@ -1561,28 +1583,6 @@ if casa_enabled:
             with a particular setup (these can be lists or 'all'), and a 'new_imaging_method'
             key that the target/product/config setup should switch to (either tclean or sdintimaging)
             """
-
-            if self.make_temp_dir:
-                if self.temp_path is None:
-                    if self.temp_key is None:
-                        self.temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
-                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{self.temp_key}"
-                else:
-                    self._this_imaging_dir = self.temp_path
-
-                os.makedirs(self._this_imaging_dir, exist_ok=True)
-
-                if self.copy_ms_to_temp:
-                    # Copy the full MS file over, to speed up disk I/O. Only if it doesn't already exist!
-                    out_vis = os.path.join(self._this_imaging_dir, self.vis_file)
-                    if not os.path.exists(out_vis):
-                        os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
-
-                    # The full visibility file is now in the imaging directory
-                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
-
-            else:
-                self._this_imaging_dir = self._orig_imaging_dir
 
             # Make a dirty image (niter=0)
 
