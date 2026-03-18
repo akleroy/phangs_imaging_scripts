@@ -195,16 +195,45 @@ def grow_mask(mask, iters_xy=0, iters_v=0, constraint=None):
         # blob color regions in the constraint
         regions, regct = nd.label(constraint)
 
-        # get a list of all region assignments that have a True value
-        # in the original mask
-        good_regions = np.unique(regions[mask])
+        # # get a list of all region assignments that have a True value
+        # # in the original mask
+        # good_regions = np.unique(regions[mask])
 
-        # create a new mask that includes only these good new regions
-        mask = np.zeros_like(mask, dtype=bool)
-        for hit in good_regions:
-            mask[regions == hit] = True
+        # # create a new mask that includes only these good new regions
+        # mask = np.zeros_like(mask, dtype=bool)
+        # for hit in good_regions:
+        #     mask[regions == hit] = True
+
+        good_regions = regions[mask]
+
+        # build "keep" table: index = region label, value = keep/discard
+        keep = np.zeros(regct + 1, dtype=bool)
+        keep[good_regions] = True
+        keep[0] = False  # never include background label
+
+        # rebuild mask in one vectorized pass
+        mask = keep[regions]
 
     return(mask)
+
+def same_wcs(cube1, cube2):
+    """
+    Check if two WCS objects are the same.
+
+    Parameters:
+
+    -----------
+
+    wcs1, wcs2 : astropy.wcs.WCS
+
+    """
+
+    shape_check = cube1.shape == cube2.shape
+    wcs_string1 = cube1.wcs.to_header_string()
+    wcs_string2 = cube2.wcs.to_header_string()
+    wcs_check = wcs_string1 == wcs_string2
+    return(shape_check and wcs_check)
+
 
 def cprops_mask(data, noise=None,
                 hi_thresh=5, hi_nchan=2,
@@ -335,6 +364,8 @@ def cprops_mask(data, noise=None,
 
         # Now expand the original mask into the lower mask
         mask = grow_mask(hi_mask, constraint=lo_mask)
+    else:
+        mask = hi_mask
 
     # If requested, grow the mask in xy and v directions. Sequential
     # calls mean that the xy is applied then the v.
@@ -561,6 +592,7 @@ def join_masks(orig_mask_in, new_mask_in,
                order='bilinear', operation='or',
                outfile=None,
                thresh=0.5,
+               yolo=False,
                ):
     """
     Reproject and combine a new mask
@@ -594,6 +626,8 @@ def join_masks(orig_mask_in, new_mask_in,
         Floating point value above which the mask is considered
         true. Relevant because of interpolation. Default 0.5 .
 
+    yolo : bool
+        If True, skip the WCS check and just do the nearest neighbor    
     """
 
     # TBD - check for two dimensional case
@@ -628,57 +662,63 @@ def join_masks(orig_mask_in, new_mask_in,
     # Reproject the new mask onto the original WCS
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
+    # Check if the new mask is already on the same WCS as the original mask. 
+    # If so, skip reprojection.
 
-    if order == 'fast_nearest_neighbor':
-
-        logger.warn('Joining masks with nearest neighbor coordinate lookup')
-        # Grab WCS out of template mask and map to other mask
-        x, y, _ = new_mask.wcs.wcs_world2pix(*(orig_mask.world[0,:,:][::-1]), 0)
-        _, _, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:,0,0][::-1]), 0)
-
-        x = np.rint(x).astype(int)
-        y = np.rint(y).astype(int)
-        z = np.rint(z).astype(int)
-        new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=bool)
-
-        # Create new mask
-        new_mask_vals = np.zeros(orig_mask.shape, dtype=bool)
-        # Find all values that are in bounds
-        inbounds = reduce((lambda A, B: np.logical_and(A, B)),
-                          [(z[:,np.newaxis,np.newaxis] >= 0),
-                           (z[:,np.newaxis,np.newaxis] < new_mask.shape[0]),
-                           (y[np.newaxis,:,:] >= 0),
-                           (y[np.newaxis,:,:] < new_mask.shape[1]),
-                           (x[np.newaxis,:,:] >= 0),
-                           (x[np.newaxis,:,:] < new_mask.shape[2])])
-#        inbounds = np.logical_and.reduce(
-        # Look 'em up in the new_mask
-        new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=int))[inbounds],
-                                                (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds],
-                                                (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds]]
-
+    if same_wcs(orig_mask, new_mask) or yolo:
+        logger.warn('New mask is already on the same WCS as the original mask. Skipping reprojection.')
+        new_mask_vals = np.array(new_mask._data > thresh, dtype=bool)
     else:
+        if order == 'fast_nearest_neighbor':
 
-        logger.warn('Joining masks with reprojection')
-        new_mask = new_mask.reproject(orig_mask.header, order=order)
-        new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
-        new_mask_vals = np.array(new_mask.filled_data[:].value > thresh,
-                                 dtype=bool)
+            logger.warn('Joining masks with nearest neighbor coordinate lookup')
+            # Grab WCS out of template mask and map to other mask
+            x, y, _ = new_mask.wcs.wcs_world2pix(*(orig_mask.world[0,:,:][::-1]), 0)
+            _, _, z = new_mask.wcs.wcs_world2pix(*(orig_mask.world[:,0,0][::-1]), 0)
+
+            x = np.rint(x).astype(int)
+            y = np.rint(y).astype(int)
+            z = np.rint(z).astype(int)
+            new_mask_data = np.array(new_mask.filled_data[:].value > thresh, dtype=bool)
+
+            # Create new mask
+            new_mask_vals = np.zeros(orig_mask.shape, dtype=bool)
+            # Find all values that are in bounds
+            inbounds = reduce((lambda A, B: np.logical_and(A, B)),
+                            [(z[:,np.newaxis,np.newaxis] >= 0),
+                            (z[:,np.newaxis,np.newaxis] < new_mask.shape[0]),
+                            (y[np.newaxis,:,:] >= 0),
+                            (y[np.newaxis,:,:] < new_mask.shape[1]),
+                            (x[np.newaxis,:,:] >= 0),
+                            (x[np.newaxis,:,:] < new_mask.shape[2])])
+    #        inbounds = np.logical_and.reduce(
+            # Look 'em up in the new_mask
+            new_mask_vals[inbounds] = new_mask_data[(z[:,np.newaxis,np.newaxis]*np.ones(inbounds.shape, dtype=int))[inbounds],
+                                                    (y[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds],
+                                                    (x[np.newaxis,:,:]*np.ones(inbounds.shape, dtype=int))[inbounds]]
+
+        else:
+
+            logger.warn('Joining masks with reprojection')
+            new_mask = new_mask.reproject(orig_mask.header, order=order)
+            new_mask = new_mask.spectral_interpolate(orig_mask.spectral_axis)
+            new_mask_vals = np.array(new_mask.filled_data[:].value > thresh,
+                                    dtype=bool)
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Combine
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
     if operation.strip().lower() == 'or':
-        mask = np.logical_or(np.array(orig_mask.filled_data[:].value > thresh,
+        mask = np.logical_or(np.array(orig_mask._data > thresh,
                                       dtype=bool),
                              new_mask_vals)
     elif operation.strip().lower() == 'and':
-        mask = np.logical_and(np.array(orig_mask.filled_data[:].value > thresh,
+        mask = np.logical_and(np.array(orig_mask._data > thresh,
                                        dtype=bool),
                               new_mask_vals)
     elif operation.strip().lower() == 'sum':
-        mask = (orig_mask.filled_data[:].value) + new_mask_vals
+        mask = (orig_mask._data > thresh).astype(int) + new_mask_vals
     else:
         logging.error('Unrecognized operation. Not "and" or "or".')
         raise NotImplementedError
@@ -696,7 +736,7 @@ def join_masks(orig_mask_in, new_mask_in,
         header = mask.header
         header['DATAMAX'] = 1
         header['DATAMIN'] = 0
-        hdu = fits.PrimaryHDU(np.array(mask.filled_data[:], dtype=np.uint8),
+        hdu = fits.PrimaryHDU(np.array(mask._data, dtype=np.uint8),
                               header=header)
         hdu.writeto(outfile, overwrite=overwrite)
         # mask.write(outfile, overwrite=overwrite)
@@ -819,8 +859,12 @@ def recipe_phangs_strict_mask(
 
         prior_hi = coverage_cube.filled_data[:].value > coverage_thresh
 
-    mask = cprops_mask(cube.filled_data[:].value,
-                       rms.filled_data[:].value,
+    # mask = cprops_mask(cube.filled_data[:].value,
+    #                    rms.filled_data[:].value,
+    #                    prior_hi = prior_hi,
+    #                    **mask_kwargs)
+    mask = cprops_mask(cube._data,
+                       rms._data,
                        prior_hi = prior_hi,
                        **mask_kwargs)
 
@@ -856,6 +900,7 @@ def recipe_phangs_broad_mask(
         grow_xy = None, grow_v = None,
         return_spectral_cube=True, overwrite=False,
         recipe='anyscale', fraction_of_scales=0.25,
+        yolo=False,
 ):
     """Task to create the PHANGS-style "broad" masks from the combination
     of a set of other masks. Optionally also grow the mask at the end.
@@ -939,7 +984,8 @@ def recipe_phangs_broad_mask(
         other_mask.allow_huge_operations = True
 
         mask = join_masks(mask, other_mask, operation='sum'
-                          , order='fast_nearest_neighbor')
+                          , order='fast_nearest_neighbor'
+                          , yolo=yolo)
 
     if recipe == 'anyscale':
         mask_values = mask.filled_data[:].value > 0
