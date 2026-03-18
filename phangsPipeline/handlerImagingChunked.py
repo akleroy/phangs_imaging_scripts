@@ -163,27 +163,11 @@ if casa_enabled:
             # Make needed directories
             self._kh.make_missing_directories(imaging=True)
 
-            if make_temp_dir:
-                if temp_path is None:
-                    if temp_key is None:
-                        temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
-                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{temp_key}"
-                else:
-                    self._this_imaging_dir = temp_path
-
-                os.makedirs(self._this_imaging_dir, exist_ok=True)
-
-                if copy_ms_to_temp:
-                    # Copy the full MS file over, to speed up disk I/O. Only if it doesn't already exist!
-                    out_vis = os.path.join(self._this_imaging_dir, self.vis_file)
-                    if not os.path.exists(out_vis):
-                        os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
-
-                    # The full visibility file is now in the imaging directory
-                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
-
-            else:
-                self._this_imaging_dir = self._orig_imaging_dir
+            self._this_imaging_dir = None
+            self.make_temp_dir = make_temp_dir
+            self.temp_key = temp_key
+            self.temp_path = temp_path
+            self.copy_ms_to_temp = copy_ms_to_temp
 
             # Set a flag to check on whether we need to move clean-up the final products
             self._uses_tempdir = make_temp_dir
@@ -1578,6 +1562,28 @@ if casa_enabled:
             key that the target/product/config setup should switch to (either tclean or sdintimaging)
             """
 
+            if self.make_temp_dir:
+                if self.temp_path is None:
+                    if self.temp_key is None:
+                        self.temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{self.temp_key}"
+                else:
+                    self._this_imaging_dir = self.temp_path
+
+                os.makedirs(self._this_imaging_dir, exist_ok=True)
+
+                if self.copy_ms_to_temp:
+                    # Copy the full MS file over, to speed up disk I/O. Only if it doesn't already exist!
+                    out_vis = os.path.join(self._this_imaging_dir, self.vis_file)
+                    if not os.path.exists(out_vis):
+                        os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
+
+                    # The full visibility file is now in the imaging directory
+                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
+
+            else:
+                self._this_imaging_dir = self._orig_imaging_dir
+
             # Make a dirty image (niter=0)
 
             gather_chunks_into_cube = False if chunk_num is not None else True
@@ -1652,7 +1658,9 @@ if casa_enabled:
             if self._uses_tempdir:
                 os.system(f'mv -f {self._this_imaging_dir}/* {self._orig_imaging_dir}')
                 os.chdir(self._orig_imaging_dir)
-                os.system(f'rmdir {self._this_imaging_dir}')
+
+                # Forcibly remove the imaging directory
+                os.system(f'rm -rf {self._this_imaging_dir}')
 
             # Ensure products are re-combined into cubes:
             if do_recombine_cubes:
