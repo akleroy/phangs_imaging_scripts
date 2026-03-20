@@ -198,7 +198,7 @@ def get_staged_msname(target=None, project=None, array_tag=None,
     return(filename)
 
 ##############################################################
-# 
+# Derived file names
 ##############################################################
 
 def get_derived_rootname(target=None, config=None, product=None,
