@@ -1028,9 +1028,10 @@ def recipe_phangs_broad_mask(
     else:
         return(mask.filled_data[:].value)
 
-
 def recipe_phangs_flat_mask(
-    cube_in, vfield_in, mask_in, 
+    cube_in=None, 
+    vfield_in=None, 
+    mask_in=None, 
     vfield_hdu=0, 
     outfile=None,
     coverage=None, 
@@ -1089,14 +1090,14 @@ def recipe_phangs_flat_mask(
     cube.allow_huge_operations = True
 
     # check input mask
-    if type(mask_in) is SpectralCube:
-        mask_signal = mask_in
-    elif type(mask_in) == str:
-        mask_signal = SpectralCube.read(mask_in)
-    else:
-        logger.error("Input mask must be a SpectralCube object or a filename.")
-
-    mask_signal.allow_huge_operations = True
+    if mask_in is not None:
+        if type(mask_in) is SpectralCube:
+            mask_signal = mask_in
+        elif type(mask_in) == str:
+            mask_signal = SpectralCube.read(mask_in)
+        else:
+            logger.error("Input mask must be a SpectralCube object or a filename.")
+        mask_signal.allow_huge_operations = True
 
     # Read the velocity field to a Projection if a file is fed in
     if type(vfield_in) == str:
@@ -1119,10 +1120,11 @@ def recipe_phangs_flat_mask(
         vfield = convert_and_reproject(vfield, template=dummy_mom0, unit=spunit)
 
     # check that grids match after regridding
-    if mask_signal.shape[1] != np.shape(vfield)[0]:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Nx does not match..")
-    if mask_signal.shape[2] != np.shape(vfield)[1]:
-        logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Ny does not match..")
+    if mask_in is not None:
+        if mask_signal.shape[1] != np.shape(vfield)[0]:
+            logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Nx does not match..")
+        if mask_signal.shape[2] != np.shape(vfield)[1]:
+            logger.error("Input velocity vfield map must be a 2D np.array of dimensions Nx, Ny, but Ny does not match..")
 
     if coverage is not None:
         if type(coverage) is SpectralCube:
@@ -1160,12 +1162,13 @@ def recipe_phangs_flat_mask(
     mask_window = make_vfield_mask(cube, vfield, window,
                                    outfile=None, overwrite=True)
 
-    # combine signal and window mask
-    mask = join_masks(mask_signal, mask_window,
-                      order='fast_nearest_neighbor', 
-                      operation='or',
-                      thresh=0.5, outfile=None)
-    mask = mask.filled_data[:].value
+    # if supplied, combine signal and window mask
+    if mask_in is not None:
+        mask = join_masks(mask_signal, mask_window,
+                        order='fast_nearest_neighbor', 
+                        operation='or',
+                        thresh=0.5, outfile=None)
+        mask = mask.filled_data[:].value
 
     # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
     # Write to disk and return

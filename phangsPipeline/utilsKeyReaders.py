@@ -36,7 +36,7 @@ def test_readers(root=''):
     test = read_override_key(root + 'key_templates/overrides.txt')
 
     test = read_distance_key(root + 'key_templates/distance_key.txt')
-    test = read_window_key(root + 'key_templates/vwindow_key.txt')
+    test = read_window_key(root + 'key_templates/window_key.txt')
 
 
 ##############################################################
@@ -425,7 +425,7 @@ def read_window_key(fname='', existing_dict=None, delim=None):
 
     lines = [re.sub('[' + delim + ']+', delim, t) for t in open(fname, 'r').readlines()]  # compress multiple delim
 
-    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim) == 1))]
+    lines = [t for t in lines if ((not t.startswith('#')) and (t.strip() != '') and (t.count(delim) == 2))]
 
     lines_read = 0
     for t in lines:
@@ -437,13 +437,19 @@ def read_window_key(fname='', existing_dict=None, delim=None):
             str(window_kms)
         except ValueError:
             continue
-
+        vfield_file = t.split(delim)[2].strip() if t.count(delim) > 1 else None
+        try:
+            str(vfield_file)
+        except ValueError:
+            continue
+        
         out_dict[name] = {}
         out_dict[name]['window'] = window_kms+'km/s'
+        out_dict[name]['vfield_file'] = vfield_file
         lines_read += 1
 
         # note that the first line of the csv is also read in. but no one will input target='galaxy' anyway.
-    logger.info("Read " + str(lines_read) + " lines into a target/vwindow dictionary.")
+    logger.info("Read " + str(lines_read) + " lines into a target/vwindow/vfield dictionary.")
     #
     # return out_dict
     return out_dict

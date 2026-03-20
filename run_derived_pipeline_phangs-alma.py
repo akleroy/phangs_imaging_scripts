@@ -13,12 +13,12 @@ import importlib
 
 # Pipeline directory. Set this to the location on your system
 
-pipedir = '/data/tycho/0/leroy.42/reduction/alma/phangs_imaging_scripts/'
+pipedir = '/home/leroy.42/python/phangs_imaging_scripts/'
 
 # Location of the master key. Set this to the master key that points
 # to all of the keys for your project.
 
-key_file = '/data/tycho/0/leroy.42/reduction/alma/phangs_imaging_scripts/phangs-alma_keys/master_key.txt'
+key_file = '/home/leroy.42/python/phangs_imaging_scripts/phangs-alma_keys/master_key.txt'
 
 # Change directory to the pipeline directory.
 
@@ -85,8 +85,9 @@ this_kh.make_missing_directories(imaging=True, derived=True, postprocess=True, r
 this_der.set_targets()
 # this_der.set_targets(only=['ngc1809'])
 
-this_der.set_interf_configs(only=['12m+7m'])
-this_der.set_feather_configs(only=['12m+7m+tp'])
+this_der.set_interf_configs()
+#this_der.set_interf_configs(only=['12m+7m'])
+this_der.set_feather_configs(only=['7m+tp','12m+7m+tp'])
 
 this_der.set_line_products(only=['co21'])
 this_der.set_no_cont_products(True)
@@ -94,17 +95,17 @@ this_der.set_no_cont_products(True)
 # Use boolean flags to set the steps to be performed when the pipeline
 # is called. See descriptions below (but only edit here).
 
-do_convolve = True
-do_noise = True
-do_strictmask = True
-do_broadmask = True
-do_moments = True
-do_secondary = True
+do_convolve = False
+do_noise = False
+do_strictmask = False
+do_broadmask = False
+do_moments = False
+do_secondary = False
 
 # new DR5 routines (shuffling and flat maps)
 do_vfield = False    # creates a velocity field for shuffling
 do_shuffling = True # runs independently from other tasks
-do_flatmask = True  # requires noise and broad/flat masks
+do_flatmask = True  # requires noise and broad/strict masks to join
 do_flatmaps = True  # requires flat masks
 
 ##############################################################################

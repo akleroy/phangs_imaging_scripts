@@ -176,16 +176,17 @@
 
 # Locations
 
-key_dir        	    /data/tycho/0/leroy.42/reduction/alma/phangs_pipeline_configs/phangs-alma/phangs-alma_keys/
-cleanmask_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/cleanmasks/
-imaging_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/imaging/
-postprocess_root	/data/tycho/0/leroy.42/reduction/alma/phangs-alma/postprocess/
-derived_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/derived/
-release_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/release/
-ms_root			    /data/tycho/0/leroy.42/reduction/alma/phangs-alma/uvdata/
+key_dir        	    /home/leroy.42/python/phangs_imaging_scripts/phangs-alma_keys/
+cleanmask_root		/export/bell-tycho/leroy.42/reduction/alma/phangs-alma/cleanmasks/
+imaging_root		/export/bell-tycho/leroy.42/reduction/alma/phangs-alma/imaging/
+postprocess_root	/export/bell-tycho/leroy.42/reduction/alma/phangs-alma/postprocess/
+derived_root		/export/bell-tycho/leroy.42/reduction/alma/phangs-alma/derived/
+release_root		/export/bell-tycho/leroy.42/reduction/alma/phangs-alma/release/
+ms_root			    /export/bell-tycho/leroy.42/reduction/alma/phangs-alma/uvdata/
 ms_root			    /data/young/leroy.42/alma_data/PHANGS/
-singledish_root		/data/tycho/0/leroy.42/reduction/alma/phangs-alma/singledish/
-vfield_root		    /data/tycho/0/leroy.42/reduction/alma/phangs-alma/vfield/
+ms_root             /data/rubin/leroy.42/alma_data/PHANGS/
+singledish_root		/export/bell-tycho/leroy.42/reduction/alma/phangs-alma/singledish/v4_singledish/
+vfield_root		    /export/bell-tycho/leroy.42/reduction/alma/phangs-alma/vfields/
 
 # Data files
 
@@ -193,6 +194,7 @@ ms_key			    ms_file_key.txt
 singledish_key		singledish_key.txt
 cleanmask_key		cleanmask_key.txt
 distance_key		distance_key.txt
+window_key          window_key.txt
 
 # Definitions and mapping
 

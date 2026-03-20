@@ -539,7 +539,8 @@ if has_astropy_speccube:
             # Velocity field
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%
 
-            vfield_filename = target+'_vfield.fits'
+            vfield_filename = self._kh.get_vfield_file_for_target(target=target)
+                                    
             fname_dict['vfield'] = vfield_filename
 
             # &%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%

@@ -1761,6 +1761,27 @@ class KeyHandler:
 
         return window
 
+    def get_vfield_file_for_target(self, target=None):
+        """
+        Get the velocity field file associated with a target. If the
+        target is part of a mosaic, return the velocity field file for the whole
+        galaxy.
+        """
+        if target is None:
+            logging.error("Please specify a target.")
+            raise Exception("Please specify a target.")
+
+        _, target_name = self.is_target_in_mosaic(target, return_target_name=True)
+
+        vfield_file = None
+
+        if self._window_dict is not None:
+
+            if target_name in self._window_dict:
+                if 'vfield_file' in self._window_dict[target_name]:
+                    vfield_file = self._window_dict[target_name]['vfield_file']
+
+        return vfield_file
 
     def get_system_velocity_and_velocity_width_for_target(
             self,

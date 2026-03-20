@@ -413,24 +413,35 @@ if do_flatmask:
 
     # native resolution
     this_infile = this_base_infile
+
+    # just flat mask, with no join    
+    print("Flat only mask for ", this_infile)
+    scm.recipe_phangs_flat_mask(
+        cube_in=this_infile, 
+        vfield_in=this_vfield_infile, 
+        mask_in=None, 
+        outfile=this_infile.replace('.fits','_flatstrictmask.fits'),
+        mask_kwargs=mask_kwargs,
+        return_spectral_cube=False,
+        overwrite=True)
     # strict version
-    this_mask = this_infile.replace('.fits','_strictmask.fits')
+    this_mask_in = this_infile.replace('.fits','_strictmask.fits')
     print("Flat strict mask for ", this_infile)
     scm.recipe_phangs_flat_mask(
-        this_infile, 
-        this_vfield_infile, 
-        this_mask, 
+        cube_in=this_infile, 
+        vfield_in=this_vfield_infile, 
+        mask_in=this_mask_in, 
         outfile=this_infile.replace('.fits','_flatstrictmask.fits'),
         mask_kwargs=mask_kwargs,
         return_spectral_cube=False,
         overwrite=True)
     # broad version
-    this_mask = this_infile.replace('.fits','_broadmask.fits')
+    this_mask_in = this_infile.replace('.fits','_broadmask.fits')
     print("Flat broad mask for ", this_infile)
     scm.recipe_phangs_flat_mask(
-        this_infile, 
-        this_vfield_infile, 
-        this_mask, 
+        cube_in=this_infile, 
+        vfield_in=this_vfield_infile, 
+        mask_in=this_mask_in, 
         outfile=this_infile.replace('.fits','_flatbroadmask.fits'),
         mask_kwargs=mask_kwargs,
         return_spectral_cube=False,
@@ -439,24 +450,34 @@ if do_flatmask:
     # angular resolutions
     for this_ext in target_angular:
         this_infile = this_base_infile.replace('.fits','_'+this_ext+'.fits')
+        # just flat mask, with no join    
+        print("Flat only mask for ", this_infile)
+        scm.recipe_phangs_flat_mask(
+            cube_in=this_infile, 
+            vfield_in=this_vfield_infile, 
+            mask_in=None, 
+            outfile=this_infile.replace('.fits','_flatmask.fits'),
+            mask_kwargs=mask_kwargs,
+            return_spectral_cube=False,
+            overwrite=True)
         # strict version
-        this_mask = this_infile.replace('.fits','_strictmask.fits')
+        this_mask_in = this_infile.replace('.fits','_strictmask.fits')
         print("Flat strict mask for ", this_infile)
         scm.recipe_phangs_flat_mask(
-            this_infile, 
-            this_vfield_infile, 
-            this_mask, 
+            cube_in=this_infile, 
+            vfield_in=this_vfield_infile, 
+            mask_in=this_mask_in, 
             outfile=this_infile.replace('.fits','_flatstrictmask.fits'),
             mask_kwargs=mask_kwargs,
             return_spectral_cube=False,
             overwrite=True)
         # broad version
-        this_mask = this_base_infile.replace('.fits','_broadmask.fits')
+        this_mask_in = this_base_infile.replace('.fits','_broadmask.fits')
         print("Flat broad mask for ", this_infile)
         scm.recipe_phangs_flat_mask(
-            this_infile, 
-            this_vfield_infile, 
-            this_mask, 
+            cube_in=this_infile, 
+            vfield_in=this_vfield_infile, 
+            mask_in=this_mask_in, 
             outfile=this_infile.replace('.fits','_flatbroadmask.fits'),
             mask_kwargs=mask_kwargs,
             return_spectral_cube=False,
@@ -465,24 +486,34 @@ if do_flatmask:
     # physical resolutions
     for this_ext in target_physical:
         this_infile = this_base_infile.replace('.fits','_'+this_ext+'.fits')
+        # just flat mask, with no join    
+        print("Flat only mask for ", this_infile)
+        scm.recipe_phangs_flat_mask(
+            cube_in=this_infile, 
+            vfield_in=this_vfield_infile, 
+            mask_in=None, 
+            outfile=this_infile.replace('.fits','_flatmask.fits'),
+            mask_kwargs=mask_kwargs,
+            return_spectral_cube=False,
+            overwrite=True)
         # strict version
-        this_mask = this_infile.replace('.fits','_strictmask.fits')
+        this_mask_in = this_infile.replace('.fits','_strictmask.fits')
         print("Flat strict mask for ", this_infile)
         scm.recipe_phangs_flat_mask(
-            this_infile, 
-            this_vfield_infile, 
-            this_mask, 
+            cube_in=this_infile, 
+            vfield_in=this_vfield_infile, 
+            mask_in=this_mask_in, 
             outfile=this_infile.replace('.fits','_flatstrictmask.fits'),
             mask_kwargs=mask_kwargs,
             return_spectral_cube=False,
             overwrite=True)
         # broad version
-        this_mask = this_base_infile.replace('.fits','_broadmask.fits')
+        this_mask_in = this_base_infile.replace('.fits','_broadmask.fits')
         print("Flat broad mask for ", this_infile)
         scm.recipe_phangs_flat_mask(
-            this_infile, 
-            this_vfield_infile, 
-            this_mask, 
+            cube_in=this_infile, 
+            vfield_in=this_vfield_infile, 
+            mask_in=this_mask_in, 
             outfile=this_infile.replace('.fits','_flatbroadmask.fits'),
             mask_kwargs=mask_kwargs,
             return_spectral_cube=False,
