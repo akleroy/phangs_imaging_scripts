@@ -82,12 +82,11 @@ this_kh.make_missing_directories(imaging=True, derived=True, postprocess=True, r
 # you are running a big batch of jobs you might consider scripting
 # something similar.
 
-this_der.set_targets()
+this_der.set_targets(only=['ngc3489'])
 # this_der.set_targets(only=['ngc1809'])
 
-this_der.set_interf_configs()
-#this_der.set_interf_configs(only=['12m+7m'])
-this_der.set_feather_configs(only=['7m+tp','12m+7m+tp'])
+this_der.set_interf_configs(skip=['7m','12m','12m+7m'])
+this_der.set_feather_configs(only=['7m+tp'])
 
 this_der.set_line_products(only=['co21'])
 this_der.set_no_cont_products(True)

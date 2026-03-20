@@ -182,7 +182,10 @@ def ShuffleCube(
     # during FFT-based shifting
     nchunk = (len(x) // chunk)
 
-    
+    print(nchunk, "chunks of size", chunk, "for shuffling. Total of ", len(x), "spectra to shuffle.")
+    if nchunk == 0:
+        nchunk = 1
+        
     for this_x, this_y, this_shift in zip(np.array_split(x, nchunk), 
                                           np.array_split(y, nchunk),
                                           np.array_split(channel_shift, nchunk)):
