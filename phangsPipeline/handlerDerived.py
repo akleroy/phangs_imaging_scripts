@@ -755,7 +755,7 @@ if has_astropy_speccube:
 
                     if res_type == 'ang':
                         input_res_value = res_value*u.arcsec
-                        smooth_cube(cube_in=indir+input_file, outfile=outdir+outfile,
+                        smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
                                     angular_resolution=input_res_value,
                                     tol=tol, nan_treatment=nan_treatment,
                                     make_coverage_cube=True, coveragefile=outdir+coveragefile,
@@ -769,7 +769,7 @@ if has_astropy_speccube:
                             return()
                         this_distance = this_distance*1e6*u.pc
                         input_res_value = res_value*u.pc
-                        smooth_cube(cube_in=indir+input_file, outfile=outdir+outfile,
+                        smooth_cube(incube=indir+input_file, outfile=outdir+outfile,
                                     linear_resolution=input_res_value, distance=this_distance,
                                     tol=tol, nan_treatment=nan_treatment,
                                     make_coverage_cube=True, coveragefile=outdir+coveragefile,
