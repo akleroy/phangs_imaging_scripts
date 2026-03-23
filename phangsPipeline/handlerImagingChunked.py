@@ -12,6 +12,7 @@ import datetime
 from copy import deepcopy, copy
 import glob
 import logging
+import warnings
 
 import numpy as np
 
@@ -163,15 +164,6 @@ if casa_enabled:
             # Make needed directories
             self._kh.make_missing_directories(imaging=True)
 
-            self._this_imaging_dir = None
-            self.make_temp_dir = make_temp_dir
-            self.temp_key = temp_key
-            self.temp_path = temp_path
-            self.copy_ms_to_temp = copy_ms_to_temp
-
-            # Set a flag to check on whether we need to move clean-up the final products
-            self._uses_tempdir = make_temp_dir
-
             # Want to call this only once, then use throughout
             # TODO: this will fail if false as we need it for the base call.
             # Could just not give the option and force computing this on init
@@ -190,6 +182,28 @@ if casa_enabled:
 
             self.chunk_channel_starts, self.chunk_channel_ends = \
                 self.base_clean_call.return_chunked_channel_ranges(chunksize=chunksize)
+
+            # If we're moving things around, take note of that here
+            self.make_temp_dir = make_temp_dir
+            self.copy_ms_to_temp = copy_ms_to_temp
+
+            if self.make_temp_dir:
+                if temp_path is None:
+                    if temp_key is None:
+                        self.temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{self.temp_key}"
+                else:
+                    self._this_imaging_dir = temp_path
+
+                if self.copy_ms_to_temp:
+                    # The full visibility file will be in the imaging directory
+                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
+
+            else:
+                self._this_imaging_dir = self._orig_imaging_dir
+
+            # Set a flag to check on whether we need to move clean-up the final products
+            self._uses_tempdir = make_temp_dir
 
             self.configure_chunk_parameters()
 
@@ -255,7 +269,6 @@ if casa_enabled:
 
             self.nchunks = len(self.chunk_params)
 
-
         ###############
         # _fname_dict #
         ###############
@@ -311,7 +324,9 @@ if casa_enabled:
                 skip_singlescale_if_mask_empty=True,
                 do_singlescale_clean=False,
                 do_revert_to_singlescale=False,
-                do_export_to_fits=False,
+                do_recombine_cubes=False,
+                do_export_to_fits=True,
+                do_cleanup=True,
                 convergence_fracflux=0.01,
                 singlescale_threshold_value=1.0,
                 extra_ext_in=None,
@@ -341,31 +356,21 @@ if casa_enabled:
                 # debateable ...
                 do_revert_to_singlescale = True
                 do_export_to_fits = True
+                do_cleanup = True
 
-            if self.make_temp_dir:
-                if self.temp_path is None:
-                    if self.temp_key is None:
-                        self.temp_key = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
-                    self._this_imaging_dir = f"{self._orig_imaging_dir}/temp_{self.image_root}_{self.temp_key}"
-                else:
-                    self._this_imaging_dir = self.temp_path
+            cwd = os.getcwd()
 
-                os.makedirs(self._this_imaging_dir, exist_ok=True)
-
-                if self.copy_ms_to_temp:
-                    # Copy the full MS file over, to speed up disk I/O. Only if it doesn't already exist!
-                    out_vis = os.path.join(self._this_imaging_dir, self.vis_file)
-                    if not os.path.exists(out_vis):
-                        os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
-
-                    # The full visibility file is now in the imaging directory
-                    self.full_vis_file = os.path.join(self._this_imaging_dir, self.vis_file)
-
-            else:
-                self._this_imaging_dir = self._orig_imaging_dir
+            # Create the imaging directory if it doesn't exist
+            if not os.path.exists(self._this_imaging_dir):
+                os.makedirs(self._this_imaging_dir)
 
             # Change to the relevant directory
             os.chdir(self._this_imaging_dir)
+
+            # Copy the MS to the temp directory if it doesn't exist
+            if self.make_temp_dir and self.copy_ms_to_temp:
+                if not os.path.exists(self.full_vis_file):
+                    os.system(f"cp -r {os.path.join(self._orig_imaging_dir, self.vis_file)} {self._this_imaging_dir}")
 
             # print starting message
             logger.info("")
@@ -392,13 +397,17 @@ if casa_enabled:
                     singlescale_mask_absolute=singlescale_mask_absolute,
                     do_singlescale_clean=do_singlescale_clean,
                     do_revert_to_singlescale=do_revert_to_singlescale,
+                    do_recombine_cubes=do_recombine_cubes,
                     do_export_to_fits=do_export_to_fits,
+                    do_cleanup=do_cleanup,
                     convergence_fracflux=convergence_fracflux,
                     singlescale_threshold_value=singlescale_threshold_value,
                     dynamic_sizing=dynamic_sizing,
                     force_square=force_square,
                     overwrite=overwrite,
                 )
+
+            os.chdir(cwd)
 
             # print ending message
             logger.info("--------------------------------------------------------")
@@ -926,6 +935,8 @@ if casa_enabled:
             {imagename}_dirty.image
             """
 
+            cwd = os.getcwd()
+
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
             logger.info("")
@@ -986,6 +997,8 @@ if casa_enabled:
                 self.task_gather_into_cube(root_name='dirty',
                                            remove_chunks=remove_chunks)
 
+            os.chdir(cwd)
+
 
         @CleanCallFunctionDecorator
         def task_revert_to_imaging(
@@ -1016,7 +1029,7 @@ if casa_enabled:
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("Resetting to " + tag + " imaging:")
                         logger.info(str(this_clean_call.get_param('imagename')))
-                        logger.info("This is chunk {0} out of {1}.".format(ii+1, len(chunks_iter)+1))
+                        logger.info("This is chunk {0} out of {1}.".format(ii+1, len(chunks_iter)))
                         logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%")
                         logger.info("")
 
@@ -1133,6 +1146,8 @@ if casa_enabled:
             image as {imagename}_multiscale.image
             """
 
+            cwd = os.getcwd()
+
             if self._dry_run:
                 return ()
             if not casa_enabled:
@@ -1177,7 +1192,7 @@ if casa_enabled:
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("Running clean call to convergence for:")
                 logger.info(this_clean_call.get_param('imagename'))
-                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)+1))
+                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)))
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("")
 
@@ -1218,6 +1233,8 @@ if casa_enabled:
             if gather_chunks_into_cube:
                 self.task_gather_into_cube(root_name='multiscale',
                                            remove_chunks=remove_chunks)
+
+            os.chdir(cwd)
 
 
         @CleanCallFunctionDecorator
@@ -1347,6 +1364,8 @@ if casa_enabled:
             image as {imagename}_singlescale.image
             """
 
+            cwd = os.getcwd()
+
             if self._dry_run:
                 return ()
             if not casa_enabled:
@@ -1381,7 +1400,7 @@ if casa_enabled:
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("Running clean call to convergence for:")
                 logger.info(this_clean_call.get_param('imagename'))
-                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)+1))
+                logger.info("This is {0} out of {1} to be imaged".format(ii+1, len(chunks_iter)))
                 logger.info("&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%&%")
                 logger.info("")
 
@@ -1443,6 +1462,8 @@ if casa_enabled:
             if gather_chunks_into_cube:
                 self.task_gather_into_cube(root_name='singlescale',
                                            remove_chunks=remove_chunks)
+
+            os.chdir(cwd)
 
             return ()
 
@@ -1513,9 +1534,16 @@ if casa_enabled:
 
             chunks_iter = self.return_valid_chunks(chunk_num=chunk_num)
 
-            for ii, this_chunk_num in enumerate(chunks_iter):
+            cwd = os.getcwd()
+            # If a temp dir was used but has since been removed, search the original imaging dir
+            if not self.tempdir_exists:
+                effective_imaging_dir = self._orig_imaging_dir
+            else:
+                effective_imaging_dir = self._this_imaging_dir
 
-                os.chdir(self._orig_imaging_dir)
+            os.chdir(effective_imaging_dir)
+
+            for ii, this_chunk_num in enumerate(chunks_iter):
 
                 chan_start, chan_end = self.chunk_params[this_chunk_num]['channel_range']
                 chan_label = "{0}_{1}".format(chan_start, chan_end)
@@ -1523,10 +1551,15 @@ if casa_enabled:
                 image_root = f"{self.image_root}_chan{chan_label}{root_name_label}"
 
                 if not self._dry_run:
-                    try:
-                        os.system(f"rm -rf {image_root}*")
-                    except:
-                         logger.info("Temporary folder already deleted")
+
+                    files_to_remove = glob.glob(f"{image_root}*")
+                    for f in files_to_remove:
+                        if os.path.exists(f):
+                            cmd = f"rm -rf {f}"
+                            logger.info(cmd)
+                            os.system(cmd)
+
+            os.chdir(cwd)
 
         #############################
         # recipe_imaging_one_target #
@@ -1552,6 +1585,7 @@ if casa_enabled:
                 do_revert_to_singlescale=True,
                 do_recombine_cubes=False,
                 do_export_to_fits=True,
+                do_cleanup=True,
                 convergence_fracflux=0.01,
                 singlescale_threshold_value=1.0,
                 dynamic_sizing=True,
@@ -1584,92 +1618,106 @@ if casa_enabled:
             key that the target/product/config setup should switch to (either tclean or sdintimaging)
             """
 
-            # Make a dirty image (niter=0)
+            # Get which chunks we'll loop over. If chunk_num is None, it's all of them
+            if chunk_num is None:
+                chunks_to_iter = range(self.nchunks)
+            else:
+                chunks_to_iter = [chunk_num]
 
-            gather_chunks_into_cube = False if chunk_num is not None else True
+            for chunk_to_iter in chunks_to_iter:
 
-            if do_dirty_image:
-                self.task_make_dirty_image(chunk_num=chunk_num,
-                                           gather_chunks_into_cube=gather_chunks_into_cube)
+                # Make a dirty image (niter=0)
+                if do_dirty_image:
+                    self.task_make_dirty_image(chunk_num=chunk_to_iter,
+                                               gather_chunks_into_cube=False,
+                                               )
 
-            # Reset the current imaging to the dirty image.
+                # Reset the current imaging to the dirty image.
+                if do_revert_to_dirty:
+                    self.task_revert_to_imaging(chunk_num=chunk_to_iter,
+                                                tag='dirty')
 
+                # Read and align the clean mask to the astrometry of the image.
+                do_read_clean_mask = False
+                if do_read_clean_mask:
+                    raise NotImplementedError
+                #     self.task_read_clean_mask(
+                #         # AKL - propose to deprecate interaction with the clean_call here
+                #         clean_call=clean_call,
+                #         target=target, config=config, product=product,
+                #         imaging_method=imaging_method)
 
-            if do_revert_to_dirty:
-                self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            tag='dirty')
+                # Run a multiscale clean until it converges.
+                if do_multiscale_clean:
+                    self.task_multiscale_clean(chunk_num=chunk_to_iter,
+                                               convergence_fracflux=convergence_fracflux,
+                                               gather_chunks_into_cube=False,
+                                               )
 
-            # Read and align the clean mask to the astrometry of the image.
+                # Reset the current imaging to the results of the multiscale clean.
+                if do_revert_to_multiscale:
+                    self.task_revert_to_imaging(chunk_num=chunk_to_iter,
+                                                tag='multiscale')
 
-            do_read_clean_mask = False
-            if do_read_clean_mask:
-                raise NotImplementedError
-            #     self.task_read_clean_mask(
-            #         # AKL - propose to deprecate interaction with the clean_call here
-            #         clean_call=clean_call,
-            #         target=target, config=config, product=product,
-            #         imaging_method=imaging_method)
+                # Make a signal-to-noise based mask for use in singlescale clean.
+                if do_singlescale_mask:
+                    self.task_singlescale_mask(chunk_num=chunk_to_iter,
+                                               high_snr=singlescale_mask_high_snr,
+                                               low_snr=singlescale_mask_low_snr,
+                                               absolute=singlescale_mask_absolute)
 
-            # Run a multiscale clean until it converges.
+                # Run a singlescale clean until it converges.
+                if do_singlescale_clean:
+                    self.task_singlescale_clean(chunk_num=chunk_to_iter,
+                                                convergence_fracflux=convergence_fracflux,
+                                                threshold_value=singlescale_threshold_value,
+                                                skip_singlescale_if_mask_empty=skip_singlescale_if_mask_empty,
+                                                gather_chunks_into_cube=False)
 
-            if do_multiscale_clean:
-                self.task_multiscale_clean(chunk_num=chunk_num,
-                                           convergence_fracflux=convergence_fracflux,
-                                           gather_chunks_into_cube=gather_chunks_into_cube,
-                                           )
+                # Reset the current imaging to the results of the singlescale clean.
+                if do_revert_to_singlescale:
+                    self.task_revert_to_imaging(chunk_num=chunk_to_iter,
+                                                tag='singlescale')
 
-            # Reset the current imaging to the results of the multiscale clean.
-
-
-            if do_revert_to_multiscale:
-                self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            tag='multiscale')
-
-            # Make a signal-to-noise based mask for use in singlescale clean.
-
-
-            if do_singlescale_mask:
-                self.task_singlescale_mask(chunk_num=chunk_num,
-                                           high_snr=singlescale_mask_high_snr,
-                                           low_snr=singlescale_mask_low_snr,
-                                           absolute=singlescale_mask_absolute)
-
-            # Run a singlescale clean until it converges.
-
-
-
-            if do_singlescale_clean:
-                self.task_singlescale_clean(chunk_num=chunk_num,
-                                            convergence_fracflux=convergence_fracflux,
-                                            threshold_value=singlescale_threshold_value,
-                                            skip_singlescale_if_mask_empty=skip_singlescale_if_mask_empty,
-                                            gather_chunks_into_cube=False)
-
-            # Reset the current imaging to the results of the singlescale clean.
-
-
-
-
-            if do_revert_to_singlescale:
-                self.task_revert_to_imaging(chunk_num=chunk_num,
-                                            tag='singlescale')
-
-            # If using a temp dir, first move everything to the parent imaging folder:
-            if self._uses_tempdir:
-                os.system(f'mv -f {self._this_imaging_dir}/* {self._orig_imaging_dir}')
-                os.chdir(self._orig_imaging_dir)
-
-                # Forcibly remove the imaging directory
-                os.system(f'rm -rf {self._this_imaging_dir}')
-
-            # Ensure products are re-combined into cubes:
+            # Ensure products are re-combined into cubes. Do this in the current imaging directory
             if do_recombine_cubes:
                 if chunk_num is None:
                     self.task_complete_gather_into_cubes(root_name='all')
-                                # Export the products of the current clean to FITS files.
+
+                    # Export the products of the current clean to FITS files.
                     if do_export_to_fits:
-                        self.task_export_to_fits()
+                        self.task_export_to_fits(tag=None)
+
+                    # Do cleanup.
+                    if do_cleanup:
+                        self.task_cleanup(tag=None)
 
                 else:
-                    import warnings
                     warnings.warn(f"Recombination of cubes requires all chunks to be run. Given only chunk {chunk_num}.")
+
+            # If using a temp dir, remove after everything is complete:
+            if self._uses_tempdir:
+
+                # Find files to move, but don't move the MS if we've copied it over
+                files_to_move = glob.glob(os.path.join(self._this_imaging_dir, "*"))
+                if self.full_vis_file in files_to_move:
+                    files_to_move.remove(self.full_vis_file)
+
+                for f in files_to_move:
+
+                    # If we're not overwriting and the file exists, then skip
+                    out_name = os.path.join(self._orig_imaging_dir, os.path.basename(f))
+                    if os.path.exists(out_name) and not overwrite:
+                        logger.debug(f"{out_name} already exists and overwrite is False, skipping")
+                        continue
+
+                    os.system(f"rm -rf {out_name}")
+                    cmd = f"mv -f {f} {self._orig_imaging_dir}"
+                    logger.info(cmd)
+                    os.system(cmd)
+
+                # Forcibly remove the temp imaging directory
+                os.system(f'rm -rf {self._this_imaging_dir}')
+
+                # Move back to the original directory
+                os.chdir(self._orig_imaging_dir)
