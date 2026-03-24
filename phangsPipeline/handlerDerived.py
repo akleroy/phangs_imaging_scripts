@@ -934,8 +934,8 @@ if has_astropy_speccube:
                     coverage_file_in = None
 
                 recipe_phangs_strict_mask(
-                    incube=indir+input_file,
-                    innoise=indir+noise_file,
+                    indir+input_file,
+                    indir+noise_file,
                     coverage=coverage_file_in,
                     outfile=outdir+outfile,
                     mask_kwargs=strictmask_kwargs,
