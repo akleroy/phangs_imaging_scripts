@@ -838,7 +838,7 @@ if has_astropy_speccube:
             if (not self._dry_run):
 
                 recipe_phangs_noise(
-                    cube_in=indir+input_file,
+                    incube=indir+input_file,
                     outfile=outdir+outfile,
                     noise_kwargs=noise_kwargs,
                     return_spectral_cube=False,
@@ -934,7 +934,7 @@ if has_astropy_speccube:
                     coverage_file_in = None
 
                 recipe_phangs_strict_mask(
-                    cube_in=indir+input_file,
+                    incube=indir+input_file,
                     innoise=indir+noise_file,
                     coverage=coverage_file_in,
                     outfile=outdir+outfile,
